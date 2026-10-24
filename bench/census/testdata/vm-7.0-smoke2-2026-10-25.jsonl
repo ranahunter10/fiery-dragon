@@ -1,0 +1,145 @@
+bench/census/census.bt:49:72-92: WARNING: Return value discarded.
+tracepoint:raw_syscalls:sys_exit /args->id == 59 || args->id == 322/ { delete(@inexec[tid]); }
+                                                                       ~~~~~~~~~~~~~~~~~~~~
+bench/census/census.bt:54:82-102: WARNING: Return value discarded.
+tracepoint:sched:sched_process_exit /comm != "bpftrace"/ { @c["exit"] = count(); delete(@inexec[tid]); }
+                                                                                 ~~~~~~~~~~~~~~~~~~~~
+{"type": "attached_probes", "count": 20, "data": {"probes": 20}}
+{"type": "printf", "data": "CENSUS v1 start\n"}
+{"type": "printf", "data": "T 128442626\n"}
+{"type": "printf", "data": "T 226237558\n"}
+{"type": "printf", "data": "T 326017423\n"}
+{"type": "printf", "data": "T 428276488\n"}
+{"type": "printf", "data": "T 526232423\n"}
+{"type": "map", "data": {"@c": {"rd_chr": 2, "wr_sock": 2, "snd": 2, "wr_chr": 2, "wr_pipe": 6, "rd_pipe": 6, "exec": 7, "rename_exec": 7, "fork": 11, "exit": 11, "rd_reg": 40, "open": 48, "sys": 1112}}}
+{"type": "map", "data": {"@b": {"wr_chr": 240, "rd_chr": 241, "snd": 312, "wr_sock": 312, "wr_pipe": 559, "rd_pipe": 559, "rd_reg": 36887}}}
+{"type": "printf", "data": "T 625559741\n"}
+{"type": "map", "data": {"@c": {"rd_chr": 2, "wr_sock": 2, "snd": 2, "wr_chr": 2, "wr_pipe": 6, "rd_pipe": 6, "exec": 26, "rename_exec": 26, "fork": 30, "exit": 30, "rd_reg": 100, "open": 126, "sys": 2844}}}
+{"type": "map", "data": {"@b": {"wr_chr": 240, "rd_chr": 241, "snd": 312, "wr_sock": 312, "wr_pipe": 559, "rd_pipe": 559, "rd_reg": 87127}}}
+{"type": "printf", "data": "T 725739729\n"}
+{"type": "map", "data": {"@c": {"rd_chr": 2, "wr_sock": 2, "snd": 2, "wr_chr": 2, "wr_pipe": 6, "rd_pipe": 6, "exec": 41, "rename_exec": 41, "fork": 45, "exit": 45, "rd_reg": 142, "open": 184, "sys": 4172}}}
+{"type": "map", "data": {"@b": {"wr_chr": 240, "rd_chr": 241, "snd": 312, "wr_sock": 312, "wr_pipe": 559, "rd_pipe": 559, "rd_reg": 122295}}}
+{"type": "printf", "data": "T 825992892\n"}
+{"type": "map", "data": {"@c": {"rd_chr": 2, "wr_sock": 2, "snd": 2, "wr_chr": 2, "wr_pipe": 8, "rd_pipe": 8, "exec": 53, "rename_exec": 53, "exit": 59, "fork": 60, "rd_reg": 183, "open": 236, "sys": 5452}}}
+{"type": "map", "data": {"@b": {"wr_chr": 240, "rd_chr": 241, "snd": 312, "wr_sock": 312, "wr_pipe": 698, "rd_pipe": 698, "rd_reg": 155021}}}
+{"type": "printf", "data": "T 926737510\n"}
+{"type": "map", "data": {"@c": {"wr_sock": 3, "snd": 3, "wr_chr": 3, "wr_pipe": 11, "rd_pipe": 11, "exec": 55, "rename_exec": 55, "exit": 64, "fork": 65, "wr_reg": 100, "rd_chr": 103, "rd_reg": 207, "open": 261, "sys": 6144}}}
+{"type": "map", "data": {"@b": {"wr_chr": 471, "snd": 580, "wr_sock": 580, "wr_pipe": 977, "rd_pipe": 977, "rd_reg": 181104, "wr_reg": 104857600, "rd_chr": 104858072}}}
+{"type": "printf", "data": "T 1025801558\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 5, "snd": 5, "wr_chr": 5, "rd_pipe": 20, "exec": 62, "rename_exec": 62, "fork": 80, "exit": 80, "wr_pipe": 93, "wr_reg": 100, "rd_chr": 105, "splice": 232, "rd_reg": 288, "open": 340, "sys": 8170}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 933, "snd": 1116, "wr_sock": 1116, "rd_pipe": 1813, "rd_reg": 253631, "wr_pipe": 590708, "wr_reg": 104857600, "rd_chr": 104858534, "splice": 210892990}}}
+{"type": "printf", "data": "T 1126815877\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1226261754\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1325595351\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1425956840\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1525590534\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1625600210\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1727227622\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9212}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1826376557\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9220}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 1925602438\n"}
+{"type": "map", "data": {"@c": {"wr_other": 1, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9220}}}
+{"type": "map", "data": {"@b": {"wr_other": 8, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2028260199\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2127993602\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2226188711\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2325522734\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2427889582\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2526700737\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2626398542\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2726996331\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2826069932\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 2927574142\n"}
+{"type": "map", "data": {"@c": {"wr_other": 2, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9225}}}
+{"type": "map", "data": {"@b": {"wr_other": 16, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3026202965\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3126576008\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3226955983\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3327043752\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3426741038\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3526289697\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3626240064\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3726227764\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3825606372\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 3927750340\n"}
+{"type": "map", "data": {"@c": {"wr_other": 3, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9230}}}
+{"type": "map", "data": {"@b": {"wr_other": 24, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4026369930\n"}
+{"type": "map", "data": {"@c": {"wr_other": 4, "wr_sock": 6, "snd": 6, "wr_chr": 6, "rd_pipe": 25, "rename": 30, "exec": 64, "rename_exec": 64, "fork": 86, "exit": 86, "wr_pipe": 98, "wr_reg": 100, "rd_chr": 106, "splice": 232, "rd_reg": 335, "open": 395, "sys": 9235}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "wr_chr": 1164, "snd": 1384, "wr_sock": 1384, "rd_pipe": 2231, "rd_reg": 495497, "wr_pipe": 591126, "wr_reg": 104857600, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4126176300\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4226268123\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4343335451\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4425446788\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4525590309\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4626263487\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4725816287\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "T 4870855307\n"}
+{"type": "map", "data": {"@c": {"rd_other": 2, "wr_other": 4, "wr_sock": 6, "wr_chr": 6, "rcv": 25, "rd_pipe": 26, "snd": 28, "rename": 31, "rename_exec": 67, "exec": 68, "exit": 91, "fork": 92, "wr_pipe": 99, "wr_reg": 104, "rd_chr": 106, "splice": 232, "rd_reg": 949, "open": 1245, "sys": 13434}}}
+{"type": "map", "data": {"@b": {"wr_other": 32, "rd_other": 136, "wr_chr": 1164, "wr_sock": 1384, "rcv": 1598, "rd_pipe": 2234, "snd": 3538, "wr_pipe": 591129, "rd_reg": 830733, "wr_reg": 104857994, "rd_chr": 104858765, "splice": 210892990}}}
+{"type": "printf", "data": "CENSUS end\n"}

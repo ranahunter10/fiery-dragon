@@ -90,13 +90,32 @@ The run used a known workload, and its raw output is the fixture [`testdata/vm-7
 2. **`cat` moves data with `splice()`, not `read()`.** `splice` carried exactly 2 × (104,857,600 + 588,895) = 210,892,990 bytes, while `rd_reg` saw 0.8 MB (E-0018). A read/write-only capture would miss `cat` entirely.
 3. **`syscalls:sys_enter_execve` was silent on 7.0** (E-0021), which broke the exec-rename split (`rename_exec` = 2 of 68 execs). It's fixed with the `raw_syscalls` bracket. The fixture was recorded before the fix and documents the failure.
 
+A follow-up diagnostic (E-0022) showed it is broader than execve:
+- **every `syscalls:sys_enter_*` tracepoint tested** (execve, openat) delivers **0 events to BPF** on 7.0 with bpftrace 0.25;
+- yet tracefs, without BPF, shows the same events, and now prints the user strings;
+- exits and `raw_syscalls` deliver normally.
+
+Whether the kernel or bpftrace is at fault is open.
+
+**Re-run with the fix** (fixture [`vm-7.0-smoke2-2026-10-25.jsonl`](testdata/), sha256 `fb23d297…1903f9f`):
+
+| Check | Result |
+|---|---|
+| `exec` / `rename_exec` | 68 / 67 |
+| `rename` | 31 (30 `prctl` + 1) |
+| `splice` | exactly 210,892,990 B again |
+| attached probes | 20 |
+| output | complete |
+
+**The probe is validated on the target.**
+
 ## Tests
 
 ```bash
 python3 -m unittest -v bench/census/test_summarize.py
 ```
 
-There are 32 tests: parsing contract, rates, budget math, reporting, CLI, and two real fixtures (container and VM).
+There are 35 tests: parsing contract, rates, budget math, reporting, CLI, and three real fixtures (one container, two VM).
 
 A mutation sweep of 8 deliberate bugs killed all 8:
 - no decrease check;
