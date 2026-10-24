@@ -1,0 +1,34 @@
+# --- build outputs ---
+/build/
+/out/
+*.o
+*.a
+*.so
+*.bpf.o
+*.skel.h
+*.d
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- capture data: large and machine-specific; commit only curated fixtures under tests/fixtures/ ---
+*.wal
+*.p15w
+/recordings/
+
+# --- editors and OS ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

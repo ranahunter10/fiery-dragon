@@ -1,0 +1,9 @@
+# Every path needs the maintainer's review.
+*                       @ranahunter10
+
+# High-risk paths, listed explicitly so the intent survives if more owners are added later.
+/bpf/                   @ranahunter10
+/schema/                @ranahunter10
+/daemon/                @ranahunter10
+/docs/decisions/        @ranahunter10
+/.github/               @ranahunter10
