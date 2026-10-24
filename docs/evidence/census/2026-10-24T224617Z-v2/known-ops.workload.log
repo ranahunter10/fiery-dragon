@@ -1,0 +1,1 @@
+{"expect": {"mkdir": 50, "rmdir": 50, "chmod": 50, "chown": 50, "truncate": 50, "link": 50, "symlink": 50, "rename_file": 50, "unlink": 150, "bind": 1, "listen": 1, "connect": 50, "accept": 50, "connect_fail": 50, "mmap_shared_w": 50, "mprotect_exec": 50, "memfd": 50, "ptrace": 50, "process_vm_writev": 50, "io_uring_setup": 50}, "params": {"k": 50}, "ops_seconds": 0.585}
