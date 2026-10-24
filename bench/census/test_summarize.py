@@ -111,6 +111,31 @@ class VmSmokeFixtureTest(unittest.TestCase):
         self.assertEqual(row(self.s, "rename")["total"], 30 + 68)
 
 
+class VmSmoke2FixtureTest(unittest.TestCase):
+    """Same VM and workload as VmSmokeFixtureTest, with census.bt at cb836f9
+    (raw_syscalls exec bracket). This is the run that validates the probe on 7.0."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(HERE, "testdata", "vm-7.0-smoke2-2026-10-25.jsonl"), encoding="utf-8") as f:
+            cls.s = run(f)
+
+    def test_exec_renames_separated_on_7_0(self):
+        exe, ren_exec = row(self.s, "exec")["total"], row(self.s, "rename_exec")["total"]
+        self.assertGreaterEqual(exe, 50)
+        self.assertLessEqual(abs(exe - ren_exec), 1)   # 68 vs 67 in this run
+        self.assertEqual(row(self.s, "rename")["total"], 31)  # 30 prctl + 1 background
+
+    def test_splice_bytes_exact_again(self):
+        total = row(self.s, "splice")["payload_mb_per_s"] * self.s["duration_s"] * 1e6
+        self.assertAlmostEqual(total, 2 * (104_857_600 + 588_895), delta=1)
+
+    def test_complete_twenty_probes(self):
+        self.assertTrue(self.s["complete"])
+        self.assertEqual(self.s["attached_probes"], 20)
+        self.assertEqual(self.s["preamble_warnings"], 2)
+
+
 class ParseContractTest(unittest.TestCase):
     def test_deltas_and_rates(self):
         s = run([START, T(100 * MS), C(exec=10), T(200 * MS), C(exec=30), END])
