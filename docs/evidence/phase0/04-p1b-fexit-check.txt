@@ -1,0 +1,62 @@
+== P1b 2026-10-21T02:35:11+00:00
+== partial-inline copies (.isra/.constprop/.part) of key functions
+none
+== signatures as the kernel publishes them
+fexit:vmlinux:vfs_read
+    struct file * file
+    char * buf
+    size_t count
+    loff_t * pos
+    ssize_t retval
+fexit:vmlinux:vfs_write
+    struct file * file
+    const char * buf
+    size_t count
+    loff_t * pos
+    ssize_t retval
+fexit:vmlinux:vfs_readv
+    struct file * file
+    const struct iovec * vec
+    long unsigned int vlen
+    loff_t * pos
+    rwf_t flags
+    ssize_t retval
+fexit:vmlinux:vfs_writev
+    struct file * file
+    const struct iovec * vec
+    long unsigned int vlen
+    loff_t * pos
+    rwf_t flags
+    ssize_t retval
+fexit:vmlinux:security_file_open
+    struct file * file
+    int retval
+fexit:vmlinux:do_splice
+    struct file * in
+    loff_t * off_in
+    struct file * out
+    loff_t * off_out
+    size_t len
+    unsigned int flags
+    ssize_t retval
+fexit:vmlinux:vfs_copy_file_range
+    struct file * file_in
+    loff_t pos_in
+    struct file * file_out
+    loff_t pos_out
+    size_t len
+    unsigned int flags
+    ssize_t retval
+== sock length tracepoint fields
+tracepoint:sock:sock_send_length
+    void * sk
+    __u16 family
+    __u16 protocol
+    int ret
+    int flags
+== live fexit test: vfs_read with return value, 3 s
+Attached 2 probes
+
+
+@bytes: 795645
+@reads: 769

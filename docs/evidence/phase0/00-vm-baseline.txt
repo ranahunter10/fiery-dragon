@@ -1,0 +1,64 @@
+== date
+2026-10-21T02:20:52+00:00
+== host
+Windows laptop i5-1135G7 4C/8T, 16GB, HypervisorPresent=True, VirtualBox 7.2.22r175245
+== vm
+created by create-p15-vm.ps1: 4 vCPU, 8GB, 64GB fixed VDI, EFI, VMSVGA, NAT ssh 2222->22
+== notes
+openssh-server installed manually after install (checkbox missed); root on plain ext4, no LVM
+== os
+PRETTY_NAME="Ubuntu 26.04.1 LTS"
+NAME="Ubuntu"
+VERSION_ID="26.04"
+VERSION="26.04.1 LTS (Resolute Raccoon)"
+== kernel
+Linux p15-dev 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux
+== virt
+oracle
+== cpu
+4
+Model name:                              11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz
+Thread(s) per core:                      1
+Core(s) per socket:                      4
+Socket(s):                               1
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology 
+Hypervisor vendor:                       KVM
+== mem
+               total        used        free      shared  buff/cache   available
+Mem:           7.2Gi       510Mi       6.6Gi       988Ki       379Mi       6.7Gi
+Swap:          4.0Gi          0B       4.0Gi
+== disk
+NAME    SIZE TYPE FSTYPE   MOUNTPOINTS
+loop0  66.8M loop squashfs /snap/core24/1643
+loop1  50.1M loop squashfs /snap/snapd/27710
+loop2   1.5M loop squashfs /snap/hwctl/123
+sda      64G disk          
+├─sda1    1G part vfat     /boot/efi
+└─sda2 62.9G part ext4     /
+sr0    1024M rom           
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/sda2      ext4   62G  7.6G   51G  13% /
+== lsm
+lockdown,capability,landlock,yama,apparmor,ima,evm
+== lockdown
+[none] integrity confidentiality
+== secureboot
+SecureBoot byte: 0
+== clocksource
+tsc
+== timezone
+                Time zone: Etc/UTC (UTC, +0000)
+System clock synchronized: yes
+              NTP service: active
+== btf
+-r--r--r-- 1 root root 7067009 Oct 21 02:12 /sys/kernel/btf/vmlinux
+== bpf sysctls
+kernel.unprivileged_bpf_disabled = 2
+kernel.bpf_stats_enabled = 0
+net.core.bpf_jit_enable = 1
+== python
+Python 3.14.4
+== holds
+linux-generic
+linux-headers-generic
+linux-image-generic

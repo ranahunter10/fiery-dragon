@@ -1,0 +1,46 @@
+== P1 2026-10-21T02:32:58+00:00 kernel 7.0.0-38-generic
+FUNCTION                       BTF   LINKAGE  FTRACE
+vfs_read                       yes   static   yes
+vfs_write                      yes   static   yes
+vfs_readv                      yes   static   yes
+vfs_writev                     yes   static   yes
+vfs_iter_read                  yes   static   yes
+vfs_iter_write                 yes   static   yes
+rw_verify_area                 yes   static   yes
+do_splice                      yes   static   yes
+do_splice_direct               yes   static   yes
+splice_file_to_pipe            yes   static   yes
+do_sendfile                    yes   static   yes
+vfs_copy_file_range            yes   static   yes
+kernel_read                    yes   static   yes
+__kernel_write                 yes   static   yes
+security_file_open             yes   static   yes
+security_file_permission       yes   static   yes
+security_mmap_file             yes   static   yes
+security_file_mprotect         yes   static   yes
+security_socket_sendmsg        yes   static   yes
+security_socket_recvmsg        yes   static   yes
+security_socket_connect        yes   static   yes
+security_socket_accept         yes   static   yes
+sock_sendmsg                   yes   static   yes
+__sock_sendmsg                 NO    -        NO
+sock_recvmsg                   yes   static   yes
+inet_sendmsg                   yes   static   yes
+inet_recvmsg                   yes   static   yes
+__sys_connect                  yes   static   yes
+inet_stream_connect            yes   static   yes
+inet_csk_accept                yes   static   yes
+do_accept                      yes   static   yes
+io_read                        yes   static   yes
+io_write                       yes   static   yes
+security_ptrace_access_check   yes   static   yes
+== tracepoints
+yes  sched/sched_process_fork
+yes  sched/sched_process_exec
+yes  sched/sched_process_exit
+yes  task/task_rename
+yes  sock/sock_send_length
+yes  sock/sock_recv_length
+yes  io_uring/io_uring_complete
+yes  io_uring/io_uring_submit_req
+yes  raw_syscalls/sys_enter
