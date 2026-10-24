@@ -1,0 +1,9 @@
+# Verbatim terminal output, VM p15-dev-2604, 2026-10-25 (~04:43 IST), pasted by the maintainer.
+# Fixed work: find /usr three times in sequence, timed with time.monotonic() in python3.
+# Probes: v1 = bench/census/census.bt at 8594df0; v2 = at a812d1b. Swap off. Page cache warmed first.
+round 1  none: 2.62 s
+round 1  v1: 3.41 s
+round 1  v2: 2.82 s
+round 2  none: 2.51 s
+round 2  v1: 3.15 s
+round 2  v2: 2.96 s

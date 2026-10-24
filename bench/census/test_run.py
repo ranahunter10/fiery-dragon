@@ -15,13 +15,14 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run as R  # noqa: E402
-from workloads import filechurn  # noqa: E402
+from workloads import filechurn, knownops  # noqa: E402
 
 
 class SelectionTest(unittest.TestCase):
     def test_group_light_expands_in_registry_order(self):
         self.assertEqual([w.name for w in R.select("light")],
                          ["idle", "exec-storm", "file-churn", "super-producer", "xfer", "io-uring"])
+        self.assertEqual([w.name for w in R.select("check")], ["known-ops"])
 
     def test_names_and_groups_mix_without_duplicates(self):
         self.assertEqual([w.name for w in R.select("xfer, idle ,light")][:2], ["xfer", "idle"])
@@ -102,6 +103,60 @@ class ClassifyTest(unittest.TestCase):
     def test_problems_are_all_listed(self):
         st = R.classify(False, {"complete": False, "lost_events": 1}, {"exit_code": 2, "killed_after_grace": False})
         self.assertEqual(st.count(";"), 3)
+
+
+class PreflightTest(unittest.TestCase):
+    def test_probe_targets_from_real_census(self):
+        with open(os.path.join(os.path.dirname(R.__file__), "census.bt")) as f:
+            funcs, tps = R.probe_targets(f.read())
+        for fn in ("vfs_read", "vfs_unlink", "vfs_mkdir", "notify_change", "__sys_connect_file",
+                   "do_accept", "security_mmap_file", "memfd_alloc_file", "__x64_sys_ptrace"):
+            self.assertIn(fn, funcs)
+        for tp in ("sock/sock_send_length", "io_uring/io_uring_complete", "task/task_rename", "raw_syscalls/sys_enter"):
+            self.assertIn(tp, tps)
+        self.assertFalse(any(t.startswith("syscalls/") for t in tps), "sys_enter_* tracepoints are silent on 7.0 (E-0022)")
+
+    def test_missing_targets(self):
+        with tempfile.TemporaryDirectory() as ev:
+            os.makedirs(os.path.join(ev, "sock", "sock_send_length"))
+            missing = R.missing_targets({"vfs_read", "gone", "inlined"}, {"sock/sock_send_length", "x/y"},
+                                        btf_funcs={"vfs_read", "inlined"}, ftrace_funcs={"vfs_read"},
+                                        events_dir=__import__("pathlib").Path(ev))
+        self.assertEqual(missing, ["gone (not in BTF)", "inlined (not traceable)", "tracepoint x/y"])
+
+    def test_unverifiable_sources_do_not_report_missing(self):
+        self.assertEqual(R.missing_targets({"anything"}, set(), None, None, __import__("pathlib").Path("/nonexistent")), [])
+
+
+class SelfCheckTest(unittest.TestCase):
+    def test_expectations_take_last_json_line(self):
+        log = 'noise\n{"expect": {"mkdir": 1}}\n{"other": 1}\n{"expect": {"mkdir": 5, "unlink": 15}}\n'
+        self.assertEqual(R.expectations(log), {"mkdir": 5, "unlink": 15})
+
+    def test_no_expectations(self):
+        self.assertIsNone(R.expectations('{"filechurn": {}}\nplain text\n'))
+
+    def test_shortfalls_only_below_expectation(self):
+        summary = {"rows": [{"class": "mkdir", "total": 50}, {"class": "unlink", "total": 149},
+                            {"class": "chmod", "total": 99}]}
+        self.assertEqual(R.shortfalls({"mkdir": 50, "unlink": 150, "chmod": 50, "memfd": 1}, summary),
+                         ["memfd 0 < 1", "unlink 149 < 150"])
+
+    def test_classify_fails_on_missed_hooks(self):
+        st = R.classify(True, {"complete": True, "lost_events": 0}, {"exit_code": 0, "killed_after_grace": False},
+                        ["memfd 0 < 50"])
+        self.assertEqual(st, "FAILED (hook missed events: memfd 0 < 50)")
+
+    def test_knownops_counts_what_it_does(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            exp = knownops.run(os.path.join(tmp, "ko"), k=3)
+        for cls in ("mkdir", "rmdir", "chmod", "chown", "truncate", "link", "symlink", "rename_file",
+                    "connect", "accept", "connect_fail", "mmap_shared_w", "memfd", "ptrace", "process_vm_writev"):
+            self.assertEqual(exp[cls], 3, cls)
+        self.assertEqual(exp["unlink"], 9)
+        self.assertEqual((exp["bind"], exp["listen"]), (1, 1))
+        self.assertIn(exp["io_uring_setup"], (0, 3))   # 0 where io_uring is disabled by sysctl
+        self.assertIn(exp["mprotect_exec"], (0, 3))    # 0 under a W^X policy
 
 
 class ReportTest(unittest.TestCase):

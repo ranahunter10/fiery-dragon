@@ -3,6 +3,9 @@
 /*
  * census.bt: count how many records of each class Fiery Dragon would emit.
  *
+ * v2 (2026-10-25): adds the META, NET-intent and capability families.
+ * Signatures checked against Linux v7.0 source (tag v7.0, 028ef9c).
+ *
  * Phase-0 probe P10 (ADR-0005/0006/0007 inputs). Run it with bpftrace
  * -f json while a workload runs; summarize.py turns the output into rates.
  *
@@ -31,7 +34,7 @@
 
 BEGIN
 {
-	printf("CENSUS v1 start\n");
+	printf("CENSUS v2 start\n");
 }
 
 /*
@@ -128,6 +131,67 @@ tracepoint:sock:sock_recv_length /comm != "bpftrace" && args->ret > 0/ { @c["rcv
 
 /* ---- io_uring completions (all opcodes; bytes are not meaningful across opcodes) ---- */
 tracepoint:io_uring:io_uring_complete /comm != "bpftrace"/ { @c["uring"] = count(); }
+
+/*
+ * ---- META: file metadata changes (v2) ----
+ * Core attack steps live here: rename a dropped file into place, chmod +x,
+ * delete the evidence. Success only (retval == 0, or a non-error pointer).
+ * In 7.0 vfs_mkdir returns struct dentry *, so success means not IS_ERR.
+ */
+fexit:vmlinux:vfs_unlink  /comm != "bpftrace" && retval == 0/ { @c["unlink"] = count(); }
+fexit:vmlinux:vfs_rmdir   /comm != "bpftrace" && retval == 0/ { @c["rmdir"] = count(); }
+fexit:vmlinux:vfs_rename  /comm != "bpftrace" && retval == 0/ { @c["rename_file"] = count(); }
+fexit:vmlinux:vfs_link    /comm != "bpftrace" && retval == 0/ { @c["link"] = count(); }
+fexit:vmlinux:vfs_symlink /comm != "bpftrace" && retval == 0/ { @c["symlink"] = count(); }
+fexit:vmlinux:vfs_mkdir   /comm != "bpftrace" && (uint64)retval != 0 && (uint64)retval < 0xfffffffffffff001/ { @c["mkdir"] = count(); }
+
+/* chmod, chown, truncate all go through notify_change; ia_valid says which (MODE 1, UID 2, GID 4, SIZE 8). */
+fexit:vmlinux:notify_change /comm != "bpftrace" && retval == 0/
+{
+	$v = args->attr->ia_valid;
+	if ($v & 6)      { @c["chown"] = count(); }
+	else if ($v & 1) { @c["chmod"] = count(); }
+	else if ($v & 8) { @c["truncate"] = count(); }
+	else             { @c["attr_other"] = count(); }
+}
+
+/*
+ * ---- NET intent: connect / accept / bind / listen (v2) ----
+ * __sys_connect_file and do_accept are shared by the syscalls and io_uring.
+ * connect counts attempts that succeeded or are in progress (0 or -EINPROGRESS);
+ * other results count as connect_fail (port scans live there).
+ */
+fexit:vmlinux:__sys_connect_file /comm != "bpftrace"/
+{
+	if (retval == 0 || retval == -115) { @c["connect"] = count(); }
+	else                               { @c["connect_fail"] = count(); }
+}
+fexit:vmlinux:do_accept   /comm != "bpftrace" && (uint64)retval != 0 && (uint64)retval < 0xfffffffffffff001/ { @c["accept"] = count(); }
+fexit:vmlinux:__sys_bind  /comm != "bpftrace" && retval == 0/ { @c["bind"] = count(); }
+fexit:vmlinux:__sys_listen /comm != "bpftrace" && retval == 0/ { @c["listen"] = count(); }
+
+/*
+ * ---- Capability: what lets a process change state outside the hooks above (v2) ----
+ * mmap_shared_w: a file mapped shared and writable: stores bypass vfs_write.
+ * mprotect_exec: memory gaining PROT_EXEC it did not have (VM_EXEC 0x4): JITs and shellcode.
+ * mmap_exec: file-backed executable mappings (libraries): counted, not emitted in v1.
+ * flags & 3: MAP_SHARED is 1, MAP_SHARED_VALIDATE is 3, MAP_PRIVATE is 2.
+ */
+fexit:vmlinux:security_mmap_file /comm != "bpftrace" && retval == 0 && args->file != 0/
+{
+	if ((args->flags & 1) && (args->prot & 2)) { @c["mmap_shared_w"] = count(); }
+	if (args->prot & 4)                         { @c["mmap_exec"] = count(); }
+}
+fexit:vmlinux:security_file_mprotect /comm != "bpftrace" && retval == 0 && (args->prot & 4) && !(args->vma->vm_flags & 4)/
+{
+	@c["mprotect_exec"] = count();
+}
+fexit:vmlinux:memfd_alloc_file /comm != "bpftrace" && (uint64)retval != 0 && (uint64)retval < 0xfffffffffffff001/ { @c["memfd"] = count(); }
+fexit:vmlinux:__x64_sys_ptrace            /comm != "bpftrace"/ { @c["ptrace"] = count(); }
+fexit:vmlinux:__x64_sys_process_vm_writev /comm != "bpftrace"/ { @c["process_vm_writev"] = count(); }
+fexit:vmlinux:__x64_sys_io_uring_setup    /comm != "bpftrace" && retval >= 0/ { @c["io_uring_setup"] = count(); }
+fexit:vmlinux:__x64_sys_finit_module      /comm != "bpftrace"/ { @c["module_load"] = count(); }
+fexit:vmlinux:__x64_sys_init_module       /comm != "bpftrace"/ { @c["module_load"] = count(); }
 
 /* ---- output: cumulative snapshot every 100 ms ---- */
 interval:ms:100

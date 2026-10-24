@@ -189,6 +189,20 @@ class ParseContractTest(unittest.TestCase):
         self.assertEqual(s["attached_probes"], 23)
         self.assertIn("3 non-JSON lines before starting", S.to_markdown(s))
 
+    def test_census_version_from_start_marker(self):
+        v2 = json.dumps({"type": "printf", "data": "CENSUS v2 start\n"})
+        self.assertEqual(run([v2, T(100 * MS), C(unlink=3), END])["census_version"], 2)
+        self.assertEqual(run([START, T(100 * MS), END])["census_version"], 1)
+
+    def test_v2_classes_are_known_and_emitted(self):
+        s = run([START, T(100 * MS), C(unlink=1, connect=1, memfd=1, mmap_exec=1, attr_other=1), END])
+        self.assertEqual(s["unknown_classes"], [])
+        self.assertEqual((row(s, "unlink")["family"], row(s, "connect")["family"], row(s, "memfd")["family"]),
+                         ("meta", "net", "cap"))
+        self.assertTrue(row(s, "unlink")["emitted"])
+        self.assertFalse(row(s, "mmap_exec")["emitted"])
+        self.assertFalse(row(s, "attr_other")["emitted"])
+
     def test_non_json_after_start_is_still_an_error(self):
         with self.assertRaisesRegex(S.CensusError, "line 3"):
             S.parse([START, T(100 * MS), "WARNING: something mid-stream"])
