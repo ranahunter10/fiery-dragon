@@ -22,7 +22,7 @@ Fiery Dragon keeps three records. They start fresh on 2026-10-21; the ESE-P15 v3
 - **`date`:** when the fact was established, not when it was written down.
 - **`area`:** platform, toolchain, hooks, schema, daemon, wal, py, bench, tests, ci, process, docs.
 - **`evidence`:** a path under `docs/evidence/`, an ADR, or a PR. Rows E-0001–E-0008 point to the ESE-P15 project notes until the phase-0 evidence is imported.
-- **`grade`:** SRC / DOC / PDF / MEAS / INF / OPEN, as in `CONTRIBUTING.md` §5.
+- **`grade`:** SRC / DOC / PDF / MEAS / INF / OPEN, as in `CONTRIBUTING.md` §5. A row that records a maintainer decision (not yet an ADR) uses `decision`.
 - **`ref`:** the PR or commit that recorded it, or `-`.
 
 ## Research register rules
