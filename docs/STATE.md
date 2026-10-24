@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, bootstrap commit
+**Last updated:** 2026-10-25, PR "docs: add decision records and fresh journals"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -22,16 +22,18 @@
 | **P10: event-rate census** | ⏳ **next** | — |
 | P11: Python wheels on 3.14 | ⏳ open | — |
 | P12: untraced baselines | ⏳ open | — |
-| ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/` |
-| ADR on the "capture v1 is enough for Layer 3" cut line | ⏳ open | — |
+| ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
+| Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
+| ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/README.md` (planned list) |
+| ADR-0014: "capture v1 is enough for Layer 3" cut line | ⏳ open | — |
 
 The phase-0 evidence files exist on the VM under `~/p15-evidence/` and in the ESE-P15 project notes (`EVIDENCE_00`, `EVIDENCE_01`). They will be imported into `docs/evidence/phase0/` by the first evidence PR.
 
 ## Next step
 
-1. Merge the bootstrap. Then the maintainer protects `main` (see the bootstrap PR notes).
-2. PR: ADR process (template, index, ADR-0000), plus the engineering log.
-3. PR: import the phase-0 evidence, plus the VM creation script (`tools/vm/`) and its runbook.
+1. ✅ Bootstrap merged (PR #1). The maintainer sets squash-only merging and protects `main` with a ruleset.
+2. ✅ This PR: ADR process and fresh journals.
+3. PR: import the phase-0 evidence (raw files from the VM's `~/p15-evidence/`), plus the VM creation script (`tools/vm/`) and its runbook.
 4. PR: event-rate census harness (`bench/census/`). The maintainer runs it on the VM, and the results come back as evidence.
 
 ## Decisions waiting
