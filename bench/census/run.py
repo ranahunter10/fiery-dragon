@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import pwd
 import shutil
 import signal
@@ -87,9 +88,13 @@ WORKLOADS: tuple[Workload, ...] = (
              ("fio",),
              'fio --name=uring --ioengine=io_uring --rw=randrw --bs=4k --size=256M --iodepth=16 '
              '--directory="$WORK" --time_based --runtime="$DURATION" --output-format=terse >/dev/null'),
+    Workload("known-ops", "check", "Exact numbers of every META, NET and capability operation; verified against the census.",
+             ("python3",),
+             'python3 "$HERE/workloads/knownops.py" --dir "$WORK/ko" --k 50 --duration "$DURATION"',
+             reference="self-test: census count must be >= what succeeded in userspace"),
 )
 
-GROUPS = {"light": [w.name for w in WORKLOADS if w.group == "light"]}
+GROUPS = {g: [w.name for w in WORKLOADS if w.group == g] for g in ("light", "check")}
 GROUPS["all"] = [w.name for w in WORKLOADS]
 
 
@@ -174,6 +179,46 @@ def conditions(args: argparse.Namespace, user: str | None) -> dict:
     }
 
 
+PROBE_RE = re.compile(r"^(fexit|fentry):vmlinux:([A-Za-z0-9_]+)|^tracepoint:([a-z0-9_]+):([a-z0-9_]+)", re.M)
+
+
+def probe_targets(probe_text: str) -> tuple[set[str], set[str]]:
+    """Kernel functions and tracepoints a bpftrace script attaches to."""
+    funcs, tps = set(), set()
+    for m in PROBE_RE.finditer(probe_text):
+        if m.group(2):
+            funcs.add(m.group(2))
+        else:
+            tps.add(f"{m.group(3)}/{m.group(4)}")
+    return funcs, tps
+
+
+def missing_targets(funcs: set[str], tps: set[str], btf_funcs: set[str] | None,
+                    ftrace_funcs: set[str] | None, events_dir: Path) -> list[str]:
+    """What the probe needs but this kernel does not offer. None for a set means unverifiable."""
+    missing = []
+    for f in sorted(funcs):
+        if btf_funcs is not None and f not in btf_funcs:
+            missing.append(f"{f} (not in BTF)")
+        elif ftrace_funcs is not None and f not in ftrace_funcs:
+            missing.append(f"{f} (not traceable)")
+    missing += [f"tracepoint {t}" for t in sorted(tps) if not (events_dir / t).is_dir()]
+    return missing
+
+
+def kernel_symbols() -> tuple[set[str] | None, set[str] | None]:
+    btf = None
+    if shutil.which("bpftool"):
+        out = sh(["bpftool", "btf", "dump", "file", "/sys/kernel/btf/vmlinux", "format", "raw"])
+        btf = set(re.findall(r"FUNC '([A-Za-z0-9_]+)'", out)) or None
+    try:
+        text = Path("/sys/kernel/tracing/available_filter_functions").read_text()
+        ftrace = {line.split()[0] for line in text.splitlines() if line}
+    except OSError:
+        ftrace = None
+    return btf, ftrace
+
+
 def start_census(bpftrace: str, probe: Path, raw: Path, err: Path) -> subprocess.Popen:
     out_f, err_f = open(raw, "w"), open(err, "w")
     p = subprocess.Popen([bpftrace, "-f", "json", str(probe)], stdout=out_f, stderr=err_f)
@@ -182,7 +227,7 @@ def start_census(bpftrace: str, probe: Path, raw: Path, err: Path) -> subprocess
     while time.monotonic() < deadline:
         if p.poll() is not None:
             raise RunError(f"bpftrace exited ({p.returncode}) before attaching; see {err}")
-        if "CENSUS v1 start" in raw.read_text(errors="replace"):
+        if S.START_RE.search(raw.read_text(errors="replace")):
             return p
         time.sleep(0.2)
     stop_census(p)
@@ -220,8 +265,27 @@ def run_workload(w: Workload, duration: int, work: Path, log: Path, user: str | 
     return {"exit_code": rc, "killed_after_grace": killed, "elapsed_s": round(time.monotonic() - t0, 2)}
 
 
-def classify(clean_stop: bool, summary: dict, workload: dict) -> str:
-    """'ok' only if the census stopped cleanly, is complete, lost nothing, and the workload ran normally."""
+def expectations(log_text: str) -> dict[str, int] | None:
+    """The {"expect": {...}} a self-checking workload prints as its last JSON line, or None."""
+    for line in reversed(log_text.strip().splitlines()):
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get("expect"), dict):
+            return {str(k): int(v) for k, v in obj["expect"].items()}
+    return None
+
+
+def shortfalls(expect: dict[str, int], summary: dict) -> list[str]:
+    """Classes the census counted fewer times than the workload provably did them."""
+    got = {r["class"]: r["total"] for r in summary["rows"]}
+    return [f"{cls} {got.get(cls, 0)} < {n}" for cls, n in sorted(expect.items()) if got.get(cls, 0) < n]
+
+
+def classify(clean_stop: bool, summary: dict, workload: dict, missed: list[str] | None = None) -> str:
+    """'ok' only if the census stopped cleanly, is complete, lost nothing, the workload ran
+    normally, and every expected count was reached."""
     problems = []
     if not clean_stop:
         problems.append("bpftrace did not stop cleanly")
@@ -233,6 +297,8 @@ def classify(clean_stop: bool, summary: dict, workload: dict) -> str:
         problems.append("workload overran and was killed")
     elif workload["exit_code"] != 0:
         problems.append(f"workload exit {workload['exit_code']}")
+    if missed:
+        problems.append("hook missed events: " + ", ".join(missed))
     return "ok" if not problems else "FAILED (" + "; ".join(problems) + ")"
 
 
@@ -255,6 +321,13 @@ def render_index(conds: dict, results: list[dict]) -> str:
                        f"{s['log_bytes_p99_per_s']/1e6:.2f} | {s['verdict']} |")
         else:
             out.append(f"| {r['name']} | {r['status']} | | | | | |")
+    checked = [r for r in results if "expect" in r]
+    for r in checked:
+        got = {row["class"]: row["total"] for row in r["summary"]["rows"]}
+        out += ["", f"**Self-check `{r['name']}`** (census count must be >= operations that succeeded):", "",
+                "| class | expected | counted | |", "|---|---:|---:|---|"]
+        out += [f"| {c} | {n} | {got.get(c, 0)} | {'✅' if got.get(c, 0) >= n else '❌ MISSED'} |"
+                for c, n in sorted(r["expect"].items())]
     out += ["", "Per-workload detail: `<workload>.md`. Raw: `<workload>.jsonl`. Conditions: `conditions.json`.", ""]
     return "\n".join(out)
 
@@ -278,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--host-note", default="unrecorded", help="host power mode, Hyper-V state, other load")
     ap.add_argument("--no-swapoff", dest="swapoff", action="store_false", help="leave swap on (default: off while measuring)")
     ap.add_argument("--drop-caches", action="store_true", help="drop page cache before each workload")
+    ap.add_argument("--skip-attach-check", action="store_true", help="run even if the pre-flight finds missing hooks")
     ap.add_argument("--keep-work", action="store_true", help="keep scratch directories")
     ap.add_argument("--list", action="store_true", help="list workloads and exit")
     ap.add_argument("--dry-run", action="store_true", help="show the plan and missing tools; run nothing")
@@ -302,6 +376,14 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("must run as root (bpftrace); use sudo")
     if shutil.which(args.bpftrace) is None:
         ap.error(f"bpftrace not found: {args.bpftrace}")
+    funcs, tps = probe_targets(args.probe.read_text())
+    btf, ftrace = kernel_symbols()
+    missing = missing_targets(funcs, tps, btf, ftrace, Path("/sys/kernel/tracing/events"))
+    print(f"[census] attach pre-flight: {len(funcs)} functions, {len(tps)} tracepoints; "
+          f"BTF {'checked' if btf is not None else 'UNVERIFIABLE'}, "
+          f"ftrace {'checked' if ftrace is not None else 'UNVERIFIABLE'}; missing: {missing or 'none'}", flush=True)
+    if missing and not args.skip_attach_check:
+        ap.error("probe needs what this kernel lacks: " + "; ".join(missing))
     user = workload_user()
     out = args.out or Path("/var/tmp/fd-census") / dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out.mkdir(parents=True, exist_ok=False)
@@ -348,7 +430,11 @@ def main(argv: list[str] | None = None) -> int:
             (out / f"{w.name}.md").write_text(S.to_markdown(s))
             (out / f"{w.name}.json").write_text(json.dumps(s, indent=2) + "\n")
             r["summary"] = s
-            r["status"] = classify(clean_stop, s, r["workload"])
+            expect = expectations((out / f"{w.name}.workload.log").read_text(errors="replace"))
+            if expect is not None:
+                r["expect"] = expect
+                r["missed"] = shortfalls(expect, s)
+            r["status"] = classify(clean_stop, s, r["workload"], r.get("missed"))
             print(f"[census] {w.name}: {r['status']}; {s['emitted_records_mean_per_s']:,.0f} records/s mean, "
                   f"p99 {s['emitted_records_p99_per_s']:,.0f}", flush=True)
             if not args.keep_work:

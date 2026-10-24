@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench/census: light-set results on the VM"
+**Last updated:** 2026-10-25, PR "bench/census: v2 classes, known-ops self-check, attach pre-flight"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -39,7 +39,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 6. ✅ This PR: census probe + summarizer, validated on the VM.
 7. ✅ This PR: census workload runner + light workloads.
 8. ✅ Light set run on the VM; results in `docs/evidence/census/2026-10-24T221732Z-light/`.
-9. PR: census v2: META family (unlink, rename, chmod/chown, link, mkdir/rmdir, truncate), connect/accept/bind, capability family (mmap shared-write, memfd, ptrace).
+9. ✅ This PR: census v2 (META, NET intent, capability), known-ops self-check, attach pre-flight. Next: maintainer runs `--workloads check,light` on the VM.
 10. PR: service workloads (Nginx, Redis, kernel build).
 11. P12 untraced baselines + Hyper-V on/off paired run (E-0029).
 

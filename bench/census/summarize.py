@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from dataclasses import dataclass, field
 from typing import Iterable, TextIO
@@ -40,10 +41,18 @@ FAMILY = {
     "splice": "xfer", "splice_direct": "xfer", "copy_range": "xfer",
     "snd": "sock", "rcv": "sock",
     "uring": "uring",
+    # v2 families
+    "unlink": "meta", "rmdir": "meta", "mkdir": "meta", "rename_file": "meta", "link": "meta",
+    "symlink": "meta", "chmod": "meta", "chown": "meta", "truncate": "meta",
+    "attr_other": "info",  # notify_change without mode/owner/size (timestamps etc.)
+    "connect": "net", "connect_fail": "net", "accept": "net", "bind": "net", "listen": "net",
+    "mmap_shared_w": "cap", "mprotect_exec": "cap", "memfd": "cap", "ptrace": "cap",
+    "process_vm_writev": "cap", "io_uring_setup": "cap", "module_load": "cap",
+    "mmap_exec": "info",    # file-backed executable mappings (libraries): counted, not emitted in v1
     "sys": "info",
 }
 
-FAMILY_ORDER = ("spine", "open", "file", "file-not-emitted", "xfer", "sock", "uring", "info")
+FAMILY_ORDER = ("spine", "open", "file", "file-not-emitted", "xfer", "sock", "uring", "meta", "net", "cap", "info")
 
 # Classes the capture would emit as records. Socket I/O via read()/write() is
 # emitted by the socket hooks (snd/rcv), so rd_sock/wr_sock are excluded here
@@ -55,6 +64,9 @@ DEFAULT_RECORD_BYTES = 64                                       # INF: FLOW targ
 DEFAULT_SIZE_OVERRIDES = {"exec": 256, "open": 128, "open_fail": 128}  # INF: carry a path/argv excerpt
 
 MIN_WINDOW_NS = 50_000_000  # a window shorter than this is merged into the previous one
+
+
+START_RE = re.compile(r"CENSUS v(\d+) start")
 
 
 class CensusError(ValueError):
@@ -78,6 +90,7 @@ class Census:
     unknown_line_types: dict[str, int] = field(default_factory=dict)
     unknown_maps: dict[str, int] = field(default_factory=dict)
     preamble: list[str] = field(default_factory=list)  # non-JSON lines before the start marker
+    version: int | None = None                          # N from "CENSUS vN start"
 
 
 def parse(lines: Iterable[str]) -> Census:
@@ -102,8 +115,9 @@ def parse(lines: Iterable[str]) -> Census:
             c.attached_probes = int(data["probes"])
         elif kind == "printf":
             text = str(data).strip()
-            if text == "CENSUS v1 start":
+            if (m := START_RE.fullmatch(text)):
                 c.started = True
+                c.version = int(m.group(1))
             elif text == "CENSUS end":
                 c.ended = True
             elif text.startswith("T "):
@@ -233,6 +247,7 @@ def summarize(c: Census, *, label: str, disk_mbps: float, headroom: float,
         "windows": len(ws),
         "attached_probes": c.attached_probes,
         "complete": c.started and c.ended,
+        "census_version": c.version,
         "lost_events": c.lost_events,
         "unknown_classes": sorted(k for k in final.counts if k not in FAMILY),
         "unknown_maps": c.unknown_maps,

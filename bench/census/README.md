@@ -31,6 +31,30 @@ The census answers it **before** any capture code exists.
 - **estimated log bandwidth** of the emitted classes;
 - a **verdict** comparing p99 against the disk budget. The default budget is P5's minimum 63.7 MB/s ÷ 3 headroom = 21.2 MB/s.
 
+## v2 additions (2026-10-25): META, NET intent, capability
+
+The light-set run showed that v1 missed whole families the design needs (E-0030). Census v2 adds them. The hooks and signatures were checked against the **Linux v7.0 source** (tag `v7.0`, commit `028ef9c`):
+
+| Family | Classes | Hook (fexit) | Notes |
+|---|---|---|---|
+| meta | `unlink`, `rmdir`, `mkdir`, `rename_file`, `link`, `symlink` | `vfs_unlink`, `vfs_rmdir`, `vfs_mkdir`, `vfs_rename`, `vfs_link`, `vfs_symlink` | success only. In 7.0, `vfs_mkdir` returns `struct dentry *`, so success = not an error pointer |
+| meta | `chmod`, `chown`, `truncate` (+ `attr_other`, info) | `notify_change` | split by `ia_valid`: UID/GID → chown, MODE → chmod, SIZE → truncate |
+| net | `connect`, `connect_fail`, `accept`, `bind`, `listen` | `__sys_connect_file`, `do_accept`, `__sys_bind`, `__sys_listen` | connect and accept hooks are shared with io_uring. `connect` = 0 or -EINPROGRESS; anything else is `connect_fail` (scans) |
+| cap | `mmap_shared_w`, `mprotect_exec`, `memfd`, `ptrace`, `process_vm_writev`, `io_uring_setup`, `module_load` | `security_mmap_file`, `security_file_mprotect`, `memfd_alloc_file`, `__x64_sys_*` | `mprotect_exec` = gaining PROT_EXEC that the VMA did not have |
+| info | `mmap_exec` | `security_mmap_file` | file-backed executable mappings (libraries): counted, not emitted in v1 |
+
+The start marker is now `CENSUS v2 start`. The summarizer records the version, and v1 output still parses.
+
+### Self-check workload: `known-ops`
+
+[`workloads/knownops.py`](workloads/knownops.py) performs **exact** numbers of every v2 operation: 50 of each, 150 unlinks, one listener. It prints what actually succeeded in userspace. The runner then requires **census count ≥ expected** for every class; background activity can only add. A shortfall marks the run **FAILED: hook missed events**, with a per-class table in `index.md`.
+
+This detects the failure seen on 7.0, where a hook attaches without error and then delivers nothing (E-0022). It is the prototype of the product's load-time self-test.
+
+### Attach pre-flight
+
+Before running, `run.py` lists every `fexit:vmlinux:*` function and `tracepoint:*` in the probe. Each function must be in BTF (`bpftool btf dump`) **and** in `available_filter_functions`, and each tracepoint must exist under tracefs. If anything is missing, the runner refuses to start (`--skip-attach-check` overrides). If a source is unreadable, that check is reported as UNVERIFIABLE, never as passed.
+
 ## How to run it (on the VM)
 
 ```bash
