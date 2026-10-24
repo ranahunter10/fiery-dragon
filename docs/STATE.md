@@ -2,14 +2,14 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "docs: import phase-0 evidence"
+**Last updated:** 2026-10-25, PR "tools: add VM creation script and runbook"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
 
 | Item | Status | Evidence |
 |---|---|---|
-| Target VM built from a script, kernel pinned | ✅ done | [`00-vm-baseline.txt`](evidence/phase0/00-vm-baseline.txt) (script itself: next PR) |
+| Target VM built from a script, kernel pinned | ✅ done | [`00-vm-baseline.txt`](evidence/phase0/00-vm-baseline.txt), [`create-vm.ps1`](../tools/vm/create-vm.ps1), [runbook](runbooks/vm-setup.md) |
 | P1: attach points exist (BTF + ftrace) | ✅ done | [`02`](evidence/phase0/02-p1-attach-points.txt), [`04`](evidence/phase0/04-p1b-fexit-check.txt) |
 | P2: BPF features | ✅ done; `bpf_get_func_ret` (INF) and `bpf_d_path` from fexit (OPEN) need a real load | [`03`](evidence/phase0/03-p2-feature-probe.txt), [notes](evidence/phase0/README.md) |
 | P3: LSM / lockdown | ✅ done | [`00`](evidence/phase0/00-vm-baseline.txt) |
@@ -33,12 +33,18 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 1. ✅ Bootstrap merged (PR #1). The maintainer sets squash-only merging and protects `main` with a ruleset.
 2. ✅ PR #2: ADR process and fresh journals.
-3. ✅ This PR: phase-0 evidence imported.
-4. PR: VM creation script (`tools/vm/create-vm.ps1`) and its runbook (`docs/runbooks/vm-setup.md`).
-5. PR: event-rate census harness (`bench/census/`). The maintainer runs it on the VM, and the results come back as evidence.
+3. ✅ Phase-0 evidence imported.
+4. ✅ This PR: VM creation script and runbook.
+5. PR: evidence-capture scripts under `tools/vm/` (closes the runbook's known gap).
+6. PR: event-rate census harness (`bench/census/`). The maintainer runs it on the VM, and the results come back as evidence.
+
+## Decisions taken, ADR still to write
+
+1. **libbpf:** vendor the latest 1.7.x tag (matches bpftool 7.7, which generates our skeletons). Goes into ADR-0002. *(2026-10-25, E-0013)*
+2. **Swap:** off only while measuring, recorded in each run's conditions. Goes into ADR-0012. *(2026-10-25)*
+3. **Hyper-V:** stays on; a paired on/off experiment decides later. Goes into ADR-0012. *(2026-10-25)*
+4. **Journals:** CSV in the repo. *(2026-10-25)*
 
 ## Decisions waiting
 
-1. **libbpf version to vendor:** 1.6.3 (the distro's) or 1.7.x (what bpftool uses). Goes into ADR-0002.
-2. **Swap during benchmarks:** off or on. Goes into the quantification-protocol ADR.
-3. **Hyper-V during measurement runs:** on (current) or off. Settled by a paired experiment later.
+None open right now.
