@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for summarize.py. Run: python3 -m unittest -v bench/census/test_summarize.py"""
 
+import contextlib
 import io
 import json
 import os
@@ -71,6 +72,70 @@ class RealOutputTest(unittest.TestCase):
         self.assertFalse(row(self.s, "sys")["emitted"])
 
 
+class VmSmokeFixtureTest(unittest.TestCase):
+    """Real output from VM p15-dev-2604 (kernel 7.0.0-38, bpftrace 0.25), 2026-10-25.
+
+    Produced by census.bt at commit 3373df6, i.e. BEFORE the raw_syscalls exec
+    bracket, so rename_exec is wrong in it (E-0020/E-0021). Known workload:
+    50 x /bin/true; dd 100 MiB /dev/zero -> file; cat file > /dev/null;
+    seq 100000 | cat > /dev/null; 30 x prctl(PR_SET_NAME).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(HERE, "testdata", "vm-7.0-smoke-2026-10-25.jsonl"), encoding="utf-8") as f:
+            cls.s = run(f)
+
+    def test_bpftrace_025_preamble_and_probes(self):
+        self.assertEqual(self.s["preamble_lines"], 15)
+        self.assertEqual(self.s["preamble_warnings"], 5)
+        self.assertEqual(self.s["attached_probes"], 23)
+        self.assertTrue(self.s["complete"])
+
+    def test_dd_write_and_devzero_read(self):
+        total = lambda cls: row(self.s, cls)["payload_mb_per_s"] * self.s["duration_s"] * 1e6
+        self.assertGreaterEqual(row(self.s, "wr_reg")["total"], 100)
+        self.assertAlmostEqual(total("wr_reg"), 104_857_994, delta=1)
+        self.assertAlmostEqual(total("rd_chr"), 104_858_765, delta=1)
+
+    def test_cat_moves_data_with_splice_not_read(self):
+        # 2 x (100 MiB file + 588,895 B from seq): cat splices file->pipe->/dev/null (E-0018)
+        total = row(self.s, "splice")["payload_mb_per_s"] * self.s["duration_s"] * 1e6
+        self.assertAlmostEqual(total, 2 * (104_857_600 + 588_895), delta=1)
+        self.assertLess(row(self.s, "rd_reg")["payload_mb_per_s"] * self.s["duration_s"] * 1e6, 1_000_000)
+
+    def test_old_exec_bracket_failed_on_7_0(self):
+        # Documents E-0020: with the syscalls:sys_enter_execve bracket, exec renames leaked into rename.
+        self.assertEqual(row(self.s, "exec")["total"], 68)
+        self.assertEqual(row(self.s, "rename_exec")["total"], 2)
+        self.assertEqual(row(self.s, "rename")["total"], 30 + 68)
+
+
+class VmSmoke2FixtureTest(unittest.TestCase):
+    """Same VM and workload as VmSmokeFixtureTest, with census.bt at cb836f9
+    (raw_syscalls exec bracket). This is the run that validates the probe on 7.0."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(HERE, "testdata", "vm-7.0-smoke2-2026-10-25.jsonl"), encoding="utf-8") as f:
+            cls.s = run(f)
+
+    def test_exec_renames_separated_on_7_0(self):
+        exe, ren_exec = row(self.s, "exec")["total"], row(self.s, "rename_exec")["total"]
+        self.assertGreaterEqual(exe, 50)
+        self.assertLessEqual(abs(exe - ren_exec), 1)   # 68 vs 67 in this run
+        self.assertEqual(row(self.s, "rename")["total"], 31)  # 30 prctl + 1 background
+
+    def test_splice_bytes_exact_again(self):
+        total = row(self.s, "splice")["payload_mb_per_s"] * self.s["duration_s"] * 1e6
+        self.assertAlmostEqual(total, 2 * (104_857_600 + 588_895), delta=1)
+
+    def test_complete_twenty_probes(self):
+        self.assertTrue(self.s["complete"])
+        self.assertEqual(self.s["attached_probes"], 20)
+        self.assertEqual(self.s["preamble_warnings"], 2)
+
+
 class ParseContractTest(unittest.TestCase):
     def test_deltas_and_rates(self):
         s = run([START, T(100 * MS), C(exec=10), T(200 * MS), C(exec=30), END])
@@ -111,6 +176,22 @@ class ParseContractTest(unittest.TestCase):
     def test_bad_json_reports_line_number(self):
         with self.assertRaisesRegex(S.CensusError, "line 3"):
             S.parse([START, T(100 * MS), "{not json"])
+
+    def test_preamble_warnings_accepted_and_reported(self):
+        # Exact shape printed by bpftrace 0.25 on the VM (2026-10-25) before the JSON stream.
+        pre = ["bench/census/census.bt:43:82-102: WARNING: Return value discarded.",
+               'tracepoint:sched:sched_process_exit /comm != "bpftrace"/ { @c["exit"] = count(); }',
+               "                                     ~~~~~~~~~~~~~~~~~~~~"]
+        attached = json.dumps({"type": "attached_probes", "count": 23, "data": {"probes": 23}})
+        s = run(pre + [attached, START, T(100 * MS), C(exec=1), END])
+        self.assertEqual(s["preamble_lines"], 3)
+        self.assertEqual(s["preamble_warnings"], 1)
+        self.assertEqual(s["attached_probes"], 23)
+        self.assertIn("3 non-JSON lines before starting", S.to_markdown(s))
+
+    def test_non_json_after_start_is_still_an_error(self):
+        with self.assertRaisesRegex(S.CensusError, "line 3"):
+            S.parse([START, T(100 * MS), "WARNING: something mid-stream"])
 
     def test_no_markers_is_an_error(self):
         with self.assertRaises(S.CensusError):
@@ -184,8 +265,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(s["assumptions"]["record_bytes"]["snd"], 100)
 
     def test_cli_rejects_bad_size(self):
-        with self.assertRaises(SystemExit):
+        err = io.StringIO()
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(err):  # keep test output clean
             S.main([FIXTURE, "--size", "snd=big"], stdout=io.StringIO())
+        self.assertIn("--size expects CLASS=BYTES", err.getvalue())
 
     def test_cli_exit_code_2_when_incomplete(self):
         path = os.path.join(HERE, "testdata", "_incomplete.tmp.jsonl")

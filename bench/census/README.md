@@ -63,7 +63,7 @@ The workload runner (idle, exec storm, file churn, super-producer, kernel build,
 - **Self-exclusion by `comm == "bpftrace"`** is a measurement shortcut. Any other process named `bpftrace` would be excluded too. The product never filters on comm.
 - **Record sizes are assumptions (INF):** 64 B per flow, 256 B for exec, 128 B for open. They become MEAS once ADR-0008 fixes the schema.
 - **`p99` equals `max` for short runs.** With fewer than 100 windows (10 s), nearest-rank p99 is the maximum. Run workloads for ≥ 60 s.
-- **32-bit compat execve** doesn't fire the `syscalls:*` tracepoints, so its own rename counts as `rename`.
+- **The "inside exec" bracket uses `raw_syscalls` with x86-64 numbers** (59 `execve`, 322 `execveat`). On kernel 7.0 with bpftrace 0.25, `syscalls:sys_enter_execve` delivered **no events** (E-0021), so it can't be used. 32-bit compat execve uses other numbers, so its own rename counts as `rename`.
 - **`copy_range` and `splice_direct` can overlap.** `vfs_copy_file_range` may fall back to `do_splice_direct`.
 
 ## Dry run (2026-10-25, dev container)
@@ -82,7 +82,32 @@ That output is the test fixture [`testdata/container-tracepoints-2026-10-25.json
 - the fexit classes (open, file flows, xfers);
 - bpftrace 0.25's JSON format, which is the version on the VM.
 
-The first VM smoke run covers both. If 0.25 prints a different format, the parser fails loudly instead of misreading it.
+## VM smoke run (2026-10-25, kernel 7.0.0-38, bpftrace 0.25)
+
+The run used a known workload, and its raw output is the fixture [`testdata/vm-7.0-smoke-2026-10-25.jsonl`](testdata/) (sha256 `1a2c2f00…beed24`). It found three things, all now covered by tests:
+
+1. **bpftrace 0.25 prints compiler warnings to stdout, before the JSON.** The parser now accepts non-JSON lines only before the start marker, and reports them.
+2. **`cat` moves data with `splice()`, not `read()`.** `splice` carried exactly 2 × (104,857,600 + 588,895) = 210,892,990 bytes, while `rd_reg` saw 0.8 MB (E-0018). A read/write-only capture would miss `cat` entirely.
+3. **`syscalls:sys_enter_execve` was silent on 7.0** (E-0021), which broke the exec-rename split (`rename_exec` = 2 of 68 execs). It's fixed with the `raw_syscalls` bracket. The fixture was recorded before the fix and documents the failure.
+
+A follow-up diagnostic (E-0022) showed it is broader than execve:
+- **every `syscalls:sys_enter_*` tracepoint tested** (execve, openat) delivers **0 events to BPF** on 7.0 with bpftrace 0.25;
+- yet tracefs, without BPF, shows the same events, and now prints the user strings;
+- exits and `raw_syscalls` deliver normally.
+
+Whether the kernel or bpftrace is at fault is open.
+
+**Re-run with the fix** (fixture [`vm-7.0-smoke2-2026-10-25.jsonl`](testdata/), sha256 `fb23d297…1903f9f`):
+
+| Check | Result |
+|---|---|
+| `exec` / `rename_exec` | 68 / 67 |
+| `rename` | 31 (30 `prctl` + 1) |
+| `splice` | exactly 210,892,990 B again |
+| attached probes | 20 |
+| output | complete |
+
+**The probe is validated on the target.**
 
 ## Tests
 
@@ -90,7 +115,7 @@ The first VM smoke run covers both. If 0.25 prints a different format, the parse
 python3 -m unittest -v bench/census/test_summarize.py
 ```
 
-There are 26 tests: parsing contract, rates, budget math, reporting, CLI, and the real fixture.
+There are 35 tests: parsing contract, rates, budget math, reporting, CLI, and three real fixtures (one container, two VM).
 
 A mutation sweep of 8 deliberate bugs killed all 8:
 - no decrease check;

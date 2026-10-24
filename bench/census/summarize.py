@@ -77,6 +77,7 @@ class Census:
     lost_events: int = 0
     unknown_line_types: dict[str, int] = field(default_factory=dict)
     unknown_maps: dict[str, int] = field(default_factory=dict)
+    preamble: list[str] = field(default_factory=list)  # non-JSON lines before the start marker
 
 
 def parse(lines: Iterable[str]) -> Census:
@@ -89,6 +90,11 @@ def parse(lines: Iterable[str]) -> Census:
         try:
             obj = json.loads(raw)
         except json.JSONDecodeError as e:
+            # bpftrace >= 0.2x prints compiler warnings to stdout before the
+            # program starts. Accept non-JSON only there, and keep it for the report.
+            if not c.started and not c.snapshots:
+                c.preamble.append(raw.rstrip("\n"))
+                continue
             raise CensusError(f"line {lineno}: not JSON: {e.msg}") from None
         kind = obj.get("type")
         data = obj.get("data")
@@ -231,6 +237,8 @@ def summarize(c: Census, *, label: str, disk_mbps: float, headroom: float,
         "unknown_classes": sorted(k for k in final.counts if k not in FAMILY),
         "unknown_maps": c.unknown_maps,
         "unknown_line_types": c.unknown_line_types,
+        "preamble_lines": len(c.preamble),
+        "preamble_warnings": sum(1 for line in c.preamble if "WARNING" in line),
         "rows": rows,
         "emitted_records_mean_per_s": emitted_total / duration_s if duration_s else 0.0,
         "emitted_records_p99_per_s": percentile(rec_rates, 99),
@@ -255,6 +263,9 @@ def to_markdown(s: dict) -> str:
         flags.append(f"**bpftrace lost {s['lost_events']} output events**: counts are a lower bound")
     if s["unknown_classes"]:
         flags.append(f"unknown classes: {', '.join(s['unknown_classes'])}")
+    if s["preamble_lines"]:
+        flags.append(f"bpftrace printed {s['preamble_lines']} non-JSON lines before starting "
+                     f"({s['preamble_warnings']} warnings); see the raw file")
     if s["unknown_maps"] or s["unknown_line_types"]:
         flags.append(f"unrecognised output: maps {s['unknown_maps']}, lines {s['unknown_line_types']}")
     out += [f"- {f}" for f in flags] or ["- output complete, no losses reported by bpftrace"]
