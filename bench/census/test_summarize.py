@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for summarize.py. Run: python3 -m unittest -v bench/census/test_summarize.py"""
 
+import contextlib
 import io
 import json
 import os
@@ -112,6 +113,22 @@ class ParseContractTest(unittest.TestCase):
         with self.assertRaisesRegex(S.CensusError, "line 3"):
             S.parse([START, T(100 * MS), "{not json"])
 
+    def test_preamble_warnings_accepted_and_reported(self):
+        # Exact shape printed by bpftrace 0.25 on the VM (2026-10-25) before the JSON stream.
+        pre = ["bench/census/census.bt:43:82-102: WARNING: Return value discarded.",
+               'tracepoint:sched:sched_process_exit /comm != "bpftrace"/ { @c["exit"] = count(); }',
+               "                                     ~~~~~~~~~~~~~~~~~~~~"]
+        attached = json.dumps({"type": "attached_probes", "count": 23, "data": {"probes": 23}})
+        s = run(pre + [attached, START, T(100 * MS), C(exec=1), END])
+        self.assertEqual(s["preamble_lines"], 3)
+        self.assertEqual(s["preamble_warnings"], 1)
+        self.assertEqual(s["attached_probes"], 23)
+        self.assertIn("3 non-JSON lines before starting", S.to_markdown(s))
+
+    def test_non_json_after_start_is_still_an_error(self):
+        with self.assertRaisesRegex(S.CensusError, "line 3"):
+            S.parse([START, T(100 * MS), "WARNING: something mid-stream"])
+
     def test_no_markers_is_an_error(self):
         with self.assertRaises(S.CensusError):
             run([START, END])
@@ -184,8 +201,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(s["assumptions"]["record_bytes"]["snd"], 100)
 
     def test_cli_rejects_bad_size(self):
-        with self.assertRaises(SystemExit):
+        err = io.StringIO()
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(err):  # keep test output clean
             S.main([FIXTURE, "--size", "snd=big"], stdout=io.StringIO())
+        self.assertIn("--size expects CLASS=BYTES", err.getvalue())
 
     def test_cli_exit_code_2_when_incomplete(self):
         path = os.path.join(HERE, "testdata", "_incomplete.tmp.jsonl")
