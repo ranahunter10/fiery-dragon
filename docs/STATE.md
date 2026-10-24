@@ -2,19 +2,19 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, bootstrap commit
+**Last updated:** 2026-10-25, PR "docs: import phase-0 evidence"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
 
 | Item | Status | Evidence |
 |---|---|---|
-| Target VM built from a script, kernel pinned | ✅ done | to be imported: `docs/evidence/phase0/00-vm-baseline.txt` |
-| P1: attach points exist (BTF + ftrace) | ✅ done | `02-p1-attach-points.txt`, `04-p1b-fexit-check.txt` |
-| P2: BPF features | ✅ done; `bpf_get_func_ret` to be confirmed by the first real load | `03-p2-feature-probe.txt` |
-| P3: LSM / lockdown | ✅ done | `00-vm-baseline.txt` |
-| P4: clocksource | ✅ done | `00-vm-baseline.txt` |
-| P5: disk bandwidth | ✅ done: min ~64 MB/s, highly variable under Hyper-V | `05-p5-disk.txt` |
+| Target VM built from a script, kernel pinned | ✅ done | [`00-vm-baseline.txt`](evidence/phase0/00-vm-baseline.txt) (script itself: next PR) |
+| P1: attach points exist (BTF + ftrace) | ✅ done | [`02`](evidence/phase0/02-p1-attach-points.txt), [`04`](evidence/phase0/04-p1b-fexit-check.txt) |
+| P2: BPF features | ✅ done; `bpf_get_func_ret` (INF) and `bpf_d_path` from fexit (OPEN) need a real load | [`03`](evidence/phase0/03-p2-feature-probe.txt), [notes](evidence/phase0/README.md) |
+| P3: LSM / lockdown | ✅ done | [`00`](evidence/phase0/00-vm-baseline.txt) |
+| P4: clocksource | ✅ done | [`00`](evidence/phase0/00-vm-baseline.txt) |
+| P5: disk bandwidth | ✅ done: min 63.7 MB/s, ±25 % under Hyper-V | [`05`](evidence/phase0/05-p5-disk.txt) |
 | P6: argv source at exec | ⏳ open | — |
 | P7: connect/accept hook layer | ⏳ open | — |
 | P8: 32-bit compat I/O visible to fexit | ⏳ open (needs `gcc-multilib`) | — |
@@ -22,17 +22,20 @@
 | **P10: event-rate census** | ⏳ **next** | — |
 | P11: Python wheels on 3.14 | ⏳ open | — |
 | P12: untraced baselines | ⏳ open | — |
-| ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/` |
-| ADR on the "capture v1 is enough for Layer 3" cut line | ⏳ open | — |
+| ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
+| Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
+| ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/README.md` (planned list) |
+| ADR-0014: "capture v1 is enough for Layer 3" cut line | ⏳ open | — |
 
-The phase-0 evidence files exist on the VM under `~/p15-evidence/` and in the ESE-P15 project notes (`EVIDENCE_00`, `EVIDENCE_01`). They will be imported into `docs/evidence/phase0/` by the first evidence PR.
+Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte for byte with `SHA256SUMS`.
 
 ## Next step
 
-1. Merge the bootstrap. Then the maintainer protects `main` (see the bootstrap PR notes).
-2. PR: ADR process (template, index, ADR-0000), plus the engineering log.
-3. PR: import the phase-0 evidence, plus the VM creation script (`tools/vm/`) and its runbook.
-4. PR: event-rate census harness (`bench/census/`). The maintainer runs it on the VM, and the results come back as evidence.
+1. ✅ Bootstrap merged (PR #1). The maintainer sets squash-only merging and protects `main` with a ruleset.
+2. ✅ PR #2: ADR process and fresh journals.
+3. ✅ This PR: phase-0 evidence imported.
+4. PR: VM creation script (`tools/vm/create-vm.ps1`) and its runbook (`docs/runbooks/vm-setup.md`).
+5. PR: event-rate census harness (`bench/census/`). The maintainer runs it on the VM, and the results come back as evidence.
 
 ## Decisions waiting
 

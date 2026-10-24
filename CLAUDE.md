@@ -52,4 +52,4 @@ Claude-Session: <session link>
 
 1. Push the branch and open or update the PR.
 2. Update `docs/STATE.md`: phase, gate status with evidence links, the next step, decisions waiting.
-3. Give the maintainer engineering-log rows for `docs/journal/engineering-log.md`.
+3. Add engineering-log rows to `docs/journal/engineering-log.csv` in the PR, following the rules in `docs/journal/README.md`.
