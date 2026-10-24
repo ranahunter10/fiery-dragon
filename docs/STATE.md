@@ -19,7 +19,7 @@
 | P7: connect/accept hook layer | ⏳ open | — |
 | P8: 32-bit compat I/O visible to fexit | ⏳ open (needs `gcc-multilib`) | — |
 | P9: io_uring completion path | ⏳ open (needs `liburing-dev`) | — |
-| **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs, but **not because of the v2 hooks** (A/B, E-0035 corrects E-0033). Next: parallel A/B (concurrency vs host drift) + untraced baseline, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
+| **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
 | P12: untraced baselines | ⏳ open | — |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
@@ -40,9 +40,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 7. ✅ Census workload runner + light workloads.
 8. ✅ Light set run on the VM; results in `docs/evidence/census/2026-10-24T221732Z-light/`.
 9. ✅ This PR: census v2 (META, NET intent, capability), known-ops self-check, attach pre-flight; VM run: all 20 hooks deliver (E-0032); the rate drop vs v1 is not caused by the v2 hooks (E-0035, correcting E-0033).
-9a. Parallel A/B (5 concurrent finds, none/v1/v2 interleaved) to separate concurrency from host drift; then the per-family bisection only if a probe effect shows up. The untraced runs double as P12 baselines.
+9a. ✅ Serial and parallel A/B: no large probe effect (+13-30 %); the census-to-census gap is host drift (E-0035, E-0036). Per-family bisection not needed now.
 10. PR: service workloads (Nginx, Redis, kernel build).
-11. P12 untraced baselines + Hyper-V on/off paired run (E-0029).
+11. **Next measurement:** Hyper-V on/off paired run + interleaved untraced baselines (P12), because host drift now limits every rate (E-0029, E-0036).
 
 ## Decisions taken, ADR still to write
 

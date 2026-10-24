@@ -32,7 +32,7 @@
 
 ## 2. Rates differ a lot from the v1 run; the cause is NOT the v2 hooks (corrected)
 
-> **Correction (2026-10-25, E-0035).** This section first attributed the rate drop to the extra v2 hooks. An interleaved A/B on fixed work ([`../2026-10-25-ab-find-serial/`](../2026-10-25-ab-find-serial/README.md)) found v2 **no slower** than v1: serial `find` ×3 took 2.57 s untraced, 3.28 s under v1 and 2.89 s under v2. The table and the selectivity result below stand. The interpretation in the bullets ("the slowdown grows with syscall rate… some hook adds a per-syscall tax") does **not**. The remaining candidates are host drift between the two runs and a concurrency effect (5 parallel finds); both are being tested. The original text is kept below so the history stays honest.
+> **Correction (2026-10-25, E-0035).** This section first attributed the rate drop to the extra v2 hooks. An interleaved A/B on fixed work ([`../2026-10-25-ab-find-serial/`](../2026-10-25-ab-find-serial/README.md)) found v2 **no slower** than v1: serial `find` ×3 took 2.57 s untraced, 3.28 s under v1 and 2.89 s under v2. The table and the selectivity result below stand. The interpretation in the bullets ("the slowdown grows with syscall rate… some hook adds a per-syscall tax") does **not**. A parallel A/B ([`../2026-10-25-ab-find-parallel/`](../2026-10-25-ab-find-parallel/README.md), E-0036) then ruled out concurrency: +17 % (v1) and +30 % (v2) with 5 concurrent finds. The remaining explanation is host drift between the two runs under Hyper-V. The original text is kept below so the history stays honest.
 
 ### Original analysis (superseded where noted above)
 
