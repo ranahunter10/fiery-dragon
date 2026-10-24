@@ -1,0 +1,141 @@
+#!/usr/bin/env bpftrace
+// SPDX-License-Identifier: MIT
+/*
+ * census.bt: count how many records of each class Fiery Dragon would emit.
+ *
+ * Phase-0 probe P10 (ADR-0005/0006/0007 inputs). Run it with bpftrace
+ * -f json while a workload runs; summarize.py turns the output into rates.
+ *
+ * Design notes (read before changing anything):
+ *  - The hooks are the ones the capture design uses (blueprint v1, §4.1):
+ *    fexit on vfs_* and security_file_open, the sock length tracepoints,
+ *    io_uring_complete and the sched lifecycle tracepoints. So the counts,
+ *    and the probe overhead, resemble what the real capture will see.
+ *  - Counters are cumulative and never cleared. Every 100 ms a "T <ns>"
+ *    marker and the maps are printed. summarize.py takes deltas between
+ *    markers. Cumulative counters avoid the print()/clear() race, which
+ *    would silently lose events landing between the two calls.
+ *  - bpftrace prints nothing for an empty map, so windows are defined
+ *    by the T markers, never by map lines.
+ *  - The census excludes itself by comm == "bpftrace". This is a
+ *    measurement shortcut only; the product must never filter on comm.
+ *  - File flows are split by inode type (S_IFMT), because the design
+ *    emits FILE_FLOW only for regular files and pipes/FIFOs. Socket
+ *    I/O through read()/write() is counted here (rd_sock/wr_sock) but is
+ *    emitted by the socket hooks (snd/rcv), so it isn't counted twice.
+ *  - Byte sums (@b) are kept for flows only.
+ *  - Known overlap: vfs_copy_file_range can fall back to do_splice_direct,
+ *    so one call may count in both copy_range and splice_direct. The
+ *    census reports both; the product's one-layer rule handles it.
+ */
+
+BEGIN
+{
+	printf("CENSUS v1 start\n");
+}
+
+/* ---- all syscalls, for the selectivity ratio (not a record class) ---- */
+tracepoint:raw_syscalls:sys_enter /comm != "bpftrace"/ { @c["sys"] = count(); }
+
+/* ---- process spine ---- */
+tracepoint:sched:sched_process_fork /comm != "bpftrace"/ { @c["fork"] = count(); }
+tracepoint:sched:sched_process_exec /comm != "bpftrace"/ { @c["exec"] = count(); }
+tracepoint:sched:sched_process_exit /comm != "bpftrace"/ { @c["exit"] = count(); delete(@inexec[tid]); }
+
+/*
+ * exec itself renames the task (it sets comm to the new binary's name), and
+ * that fires task_rename too. Those renames belong inside the EXEC record, so
+ * they are counted separately as rename_exec (not emitted). Only renames
+ * outside an execve/execveat call (prctl PR_SET_NAME, /proc/<pid>/comm writes,
+ * kernel threads) count as rename.
+ * Limitation: 32-bit compat execve does not fire the syscalls:* tracepoints,
+ * so its rename is counted as rename.
+ */
+tracepoint:syscalls:sys_enter_execve,
+tracepoint:syscalls:sys_enter_execveat /comm != "bpftrace"/ { @inexec[tid] = 1; }
+tracepoint:syscalls:sys_exit_execve,
+tracepoint:syscalls:sys_exit_execveat { delete(@inexec[tid]); }
+tracepoint:task:task_rename /comm != "bpftrace"/
+{
+	if (@inexec[tid]) { @c["rename_exec"] = count(); }
+	else              { @c["rename"] = count(); }
+}
+
+/* ---- file open (kernel-resolved file; path comes from here in the product) ---- */
+fexit:vmlinux:security_file_open /comm != "bpftrace"/
+{
+	if (retval == 0) { @c["open"] = count(); }
+	else             { @c["open_fail"] = count(); }
+}
+
+/* ---- file data flow, by inode type: 0x8000 reg, 0x1000 fifo/pipe, 0xc000 sock, 0x2000 chr ---- */
+fexit:vmlinux:vfs_read /comm != "bpftrace" && retval > 0/
+{
+	$m = args->file->f_inode->i_mode & 0xf000;
+	if ($m == 0x8000)      { @c["rd_reg"] = count();   @b["rd_reg"] = sum(retval); }
+	else if ($m == 0x1000) { @c["rd_pipe"] = count();  @b["rd_pipe"] = sum(retval); }
+	else if ($m == 0xc000) { @c["rd_sock"] = count();  @b["rd_sock"] = sum(retval); }
+	else if ($m == 0x2000) { @c["rd_chr"] = count();   @b["rd_chr"] = sum(retval); }
+	else                   { @c["rd_other"] = count(); @b["rd_other"] = sum(retval); }
+}
+
+fexit:vmlinux:vfs_readv /comm != "bpftrace" && retval > 0/
+{
+	$m = args->file->f_inode->i_mode & 0xf000;
+	if ($m == 0x8000)      { @c["rd_reg"] = count();   @b["rd_reg"] = sum(retval); }
+	else if ($m == 0x1000) { @c["rd_pipe"] = count();  @b["rd_pipe"] = sum(retval); }
+	else if ($m == 0xc000) { @c["rd_sock"] = count();  @b["rd_sock"] = sum(retval); }
+	else if ($m == 0x2000) { @c["rd_chr"] = count();   @b["rd_chr"] = sum(retval); }
+	else                   { @c["rd_other"] = count(); @b["rd_other"] = sum(retval); }
+}
+
+fexit:vmlinux:vfs_write /comm != "bpftrace" && retval > 0/
+{
+	$m = args->file->f_inode->i_mode & 0xf000;
+	if ($m == 0x8000)      { @c["wr_reg"] = count();   @b["wr_reg"] = sum(retval); }
+	else if ($m == 0x1000) { @c["wr_pipe"] = count();  @b["wr_pipe"] = sum(retval); }
+	else if ($m == 0xc000) { @c["wr_sock"] = count();  @b["wr_sock"] = sum(retval); }
+	else if ($m == 0x2000) { @c["wr_chr"] = count();   @b["wr_chr"] = sum(retval); }
+	else                   { @c["wr_other"] = count(); @b["wr_other"] = sum(retval); }
+}
+
+fexit:vmlinux:vfs_writev /comm != "bpftrace" && retval > 0/
+{
+	$m = args->file->f_inode->i_mode & 0xf000;
+	if ($m == 0x8000)      { @c["wr_reg"] = count();   @b["wr_reg"] = sum(retval); }
+	else if ($m == 0x1000) { @c["wr_pipe"] = count();  @b["wr_pipe"] = sum(retval); }
+	else if ($m == 0xc000) { @c["wr_sock"] = count();  @b["wr_sock"] = sum(retval); }
+	else if ($m == 0x2000) { @c["wr_chr"] = count();   @b["wr_chr"] = sum(retval); }
+	else                   { @c["wr_other"] = count(); @b["wr_other"] = sum(retval); }
+}
+
+/* ---- in-kernel transfers (splice, sendfile, copy_file_range) ---- */
+fexit:vmlinux:do_splice           /comm != "bpftrace" && retval > 0/ { @c["splice"] = count();        @b["splice"] = sum(retval); }
+fexit:vmlinux:do_splice_direct    /comm != "bpftrace" && retval > 0/ { @c["splice_direct"] = count(); @b["splice_direct"] = sum(retval); }
+fexit:vmlinux:vfs_copy_file_range /comm != "bpftrace" && retval > 0/ { @c["copy_range"] = count();    @b["copy_range"] = sum(retval); }
+
+/* ---- sockets: every user send/recv path, io_uring included ---- */
+tracepoint:sock:sock_send_length /comm != "bpftrace" && args->ret > 0/ { @c["snd"] = count(); @b["snd"] = sum(args->ret); }
+tracepoint:sock:sock_recv_length /comm != "bpftrace" && args->ret > 0/ { @c["rcv"] = count(); @b["rcv"] = sum(args->ret); }
+
+/* ---- io_uring completions (all opcodes; bytes are not meaningful across opcodes) ---- */
+tracepoint:io_uring:io_uring_complete /comm != "bpftrace"/ { @c["uring"] = count(); }
+
+/* ---- output: cumulative snapshot every 100 ms ---- */
+interval:ms:100
+{
+	printf("T %llu\n", elapsed);
+	print(@c);
+	print(@b);
+}
+
+END
+{
+	printf("T %llu\n", elapsed);
+	print(@c);
+	print(@b);
+	clear(@c);
+	clear(@b);
+	clear(@inexec);
+	printf("CENSUS end\n");
+}
