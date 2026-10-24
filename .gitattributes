@@ -1,0 +1,19 @@
+# Normalise line endings: LF in the repository, on every platform.
+* text=auto eol=lf
+
+# PowerShell scripts run on Windows; LF works there too, keep one rule.
+*.ps1 text eol=lf
+
+# Binary files: never touch.
+*.tgz    binary
+*.gz     binary
+*.zst    binary
+*.png    binary
+*.pdf    binary
+*.xlsx   binary
+*.wal    binary
+*.p15w   binary
+
+# Generated files: collapse in GitHub diffs; review them through their generator.
+schema/generated/** linguist-generated=true
+bpf/vmlinux/*.h     linguist-generated=true
