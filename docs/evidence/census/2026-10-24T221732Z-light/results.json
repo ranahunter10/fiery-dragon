@@ -1,0 +1,56 @@
+[
+  {
+    "name": "idle",
+    "workload": {
+      "exit_code": 0,
+      "killed_after_grace": false,
+      "elapsed_s": 60.09
+    },
+    "status": "ok"
+  },
+  {
+    "name": "exec-storm",
+    "workload": {
+      "exit_code": 0,
+      "killed_after_grace": false,
+      "elapsed_s": 59.45
+    },
+    "status": "ok"
+  },
+  {
+    "name": "file-churn",
+    "workload": {
+      "exit_code": 0,
+      "killed_after_grace": false,
+      "elapsed_s": 60.46
+    },
+    "status": "ok"
+  },
+  {
+    "name": "super-producer",
+    "workload": {
+      "exit_code": 0,
+      "killed_after_grace": false,
+      "elapsed_s": 60.04
+    },
+    "status": "ok"
+  },
+  {
+    "name": "xfer",
+    "workload": {
+      "exit_code": 0,
+      "killed_after_grace": false,
+      "elapsed_s": 61.12
+    },
+    "status": "ok"
+  },
+  {
+    "name": "io-uring",
+    "workload": {
+      "exit_code": 0,
+      "killed_after_grace": false,
+      "elapsed_s": 63.99
+    },
+    "status": "ok"
+  }
+]

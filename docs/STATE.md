@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench/census: add workload runner with light workloads"
+**Last updated:** 2026-10-25, PR "bench/census: light-set results on the VM"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -19,7 +19,7 @@
 | P7: connect/accept hook layer | ⏳ open | — |
 | P8: 32-bit compat I/O visible to fexit | ⏳ open (needs `gcc-multilib`) | — |
 | P9: io_uring completion path | ⏳ open (needs `liburing-dev`) | — |
-| **P10: event-rate census** | 🔧 probe validated on the VM (E-0023); runner + light workloads built (E-0024); **VM light run next**, then service workloads | [`bench/census/`](../bench/census/README.md) |
+| **P10: event-rate census** | 🔧 **light set measured** (E-0025): only super-producer exceeds budget, from OPEN records (E-0026). Next: census v2 with META, connect/accept and capability classes (E-0030), then service workloads | [results](evidence/census/2026-10-24T221732Z-light/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
 | P12: untraced baselines | ⏳ open | — |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
@@ -38,8 +38,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 5. PR: evidence-capture scripts under `tools/vm/` (closes the runbook's known gap).
 6. ✅ This PR: census probe + summarizer, validated on the VM.
 7. ✅ This PR: census workload runner + light workloads.
-8. Maintainer runs the light set on the VM (60 s each); results become `docs/evidence/census/`.
-9. PR: service workloads (Nginx, Redis, kernel build).
+8. ✅ Light set run on the VM; results in `docs/evidence/census/2026-10-24T221732Z-light/`.
+9. PR: census v2: META family (unlink, rename, chmod/chown, link, mkdir/rmdir, truncate), connect/accept/bind, capability family (mmap shared-write, memfd, ptrace).
+10. PR: service workloads (Nginx, Redis, kernel build).
+11. P12 untraced baselines + Hyper-V on/off paired run (E-0029).
 
 ## Decisions taken, ADR still to write
 

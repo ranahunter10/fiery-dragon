@@ -1,0 +1,1 @@
+{"filechurn": {"create": 244741, "append": 244255, "read": 245079, "delete": 243352, "bytes_written": 2582287532, "bytes_read": 2584372501}, "params": {"dir": "/var/tmp/fd-census/20261024T221732Z/work/file-churn/churn", "duration": 60.0, "files": 500, "min_size": 512, "max_size": 16384, "seed": 15}}
