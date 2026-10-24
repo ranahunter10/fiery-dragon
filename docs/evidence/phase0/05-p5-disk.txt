@@ -1,0 +1,9 @@
+== P5 2026-10-21T02:35:32+00:00 kernel 7.0.0-38-generic
+== A: sequential 1 MiB, direct I/O (raw disk bandwidth), 3 runs x 30 s
+  WRITE: bw=60.7MiB/s (63.7MB/s), 60.7MiB/s-60.7MiB/s (63.7MB/s-63.7MB/s), io=1827MiB (1916MB), run=30093-30093msec
+  WRITE: bw=101MiB/s (105MB/s), 101MiB/s-101MiB/s (105MB/s-105MB/s), io=3025MiB (3172MB), run=30072-30072msec
+  WRITE: bw=88.1MiB/s (92.3MB/s), 88.1MiB/s-88.1MiB/s (92.3MB/s-92.3MB/s), io=2673MiB (2803MB), run=30352-30352msec
+== B: log-like: 64 KiB buffered writes + fdatasync every 1 MiB, 3 runs x 30 s
+  WRITE: bw=62.7MiB/s (65.8MB/s), 62.7MiB/s-62.7MiB/s (65.8MB/s-65.8MB/s), io=1882MiB (1973MB), run=30001-30001msec
+  WRITE: bw=89.1MiB/s (93.4MB/s), 89.1MiB/s-89.1MiB/s (93.4MB/s-93.4MB/s), io=2672MiB (2802MB), run=30001-30001msec
+  WRITE: bw=105MiB/s (110MB/s), 105MiB/s-105MiB/s (110MB/s-110MB/s), io=3148MiB (3301MB), run=30002-30002msec

@@ -17,3 +17,6 @@
 # Generated files: collapse in GitHub diffs; review them through their generator.
 schema/generated/** linguist-generated=true
 bpf/vmlinux/*.h     linguist-generated=true
+
+# Raw evidence is committed byte for byte (hashes in SHA256SUMS): no whitespace rules.
+docs/evidence/** -whitespace

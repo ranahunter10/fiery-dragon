@@ -23,3 +23,8 @@ trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab
+
+# Raw evidence must stay byte-identical to what the tools printed.
+[docs/evidence/**]
+trim_trailing_whitespace = false
+insert_final_newline = unset

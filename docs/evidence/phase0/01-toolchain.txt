@@ -1,0 +1,39 @@
+== date
+2026-10-21T02:32:33+00:00
+== kernel
+7.0.0-38-generic
+== clang
+Ubuntu clang version 21.1.8 (6ubuntu1)
+== llc bpf
+    bpf         - BPF (host endian)
+    bpfeb       - BPF (big endian)
+    bpfel       - BPF (little endian)
+== bpftool
+bpftool v7.7.0
+using libbpf v1.7
+features:
+== libbpf
+1.6.3
+1:1.6.3-1ubuntu1
+== pahole
+v1.31
+== bpftrace
+bpftrace v0.25.0
+== gcc
+gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+== make
+GNU Make 4.4.1
+== fio
+fio-3.41
+== strace
+strace -- version 6.19
+== git
+git version 2.53.0
+== perf
+perf version 7.0.14
+== python
+Python 3.14.4
+== holds
+linux-generic
+linux-headers-generic
+linux-image-generic
