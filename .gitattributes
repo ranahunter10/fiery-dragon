@@ -18,5 +18,6 @@
 schema/generated/** linguist-generated=true
 bpf/vmlinux/*.h     linguist-generated=true
 
-# Raw evidence is committed byte for byte (hashes in SHA256SUMS): no whitespace rules.
+# Raw evidence and raw test fixtures are committed byte for byte: no whitespace rules.
 docs/evidence/** -whitespace
+bench/**/testdata/** -whitespace

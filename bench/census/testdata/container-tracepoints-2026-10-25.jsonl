@@ -1,0 +1,218 @@
+{"type": "attached_probes", "data": {"probes": 15}}
+{"type": "printf", "data": "CENSUS v1 start\n"}
+{"type": "printf", "data": "T 104926406\n"}
+{"type": "printf", "data": "T 204864521\n"}
+{"type": "map", "data": {"@c": {"sys": 10}}}
+{"type": "printf", "data": "T 304855436\n"}
+{"type": "map", "data": {"@c": {"sys": 10}}}
+{"type": "printf", "data": "T 404856470\n"}
+{"type": "map", "data": {"@c": {"sys": 10}}}
+{"type": "printf", "data": "T 504960515\n"}
+{"type": "map", "data": {"@c": {"sys": 31}}}
+{"type": "printf", "data": "T 604890716\n"}
+{"type": "map", "data": {"@c": {"sys": 33}}}
+{"type": "printf", "data": "T 704931633\n"}
+{"type": "map", "data": {"@c": {"sys": 34}}}
+{"type": "printf", "data": "T 804897181\n"}
+{"type": "map", "data": {"@c": {"sys": 44}}}
+{"type": "printf", "data": "T 904970304\n"}
+{"type": "map", "data": {"@c": {"sys": 46}}}
+{"type": "printf", "data": "T 1004883932\n"}
+{"type": "map", "data": {"@c": {"sys": 46}}}
+{"type": "printf", "data": "T 1104965671\n"}
+{"type": "map", "data": {"@c": {"sys": 46}}}
+{"type": "printf", "data": "T 1204870409\n"}
+{"type": "map", "data": {"@c": {"sys": 53}}}
+{"type": "printf", "data": "T 1304977699\n"}
+{"type": "map", "data": {"@c": {"sys": 53}}}
+{"type": "printf", "data": "T 1404958120\n"}
+{"type": "map", "data": {"@c": {"sys": 53}}}
+{"type": "printf", "data": "T 1504970299\n"}
+{"type": "map", "data": {"@c": {"sys": 64}}}
+{"type": "printf", "data": "T 1604896961\n"}
+{"type": "map", "data": {"@c": {"sys": 64}}}
+{"type": "printf", "data": "T 1704955861\n"}
+{"type": "map", "data": {"@c": {"sys": 65}}}
+{"type": "printf", "data": "T 1804869490\n"}
+{"type": "map", "data": {"@c": {"sys": 76}}}
+{"type": "printf", "data": "T 1904865446\n"}
+{"type": "map", "data": {"@c": {"sys": 78}}}
+{"type": "printf", "data": "T 2004887388\n"}
+{"type": "map", "data": {"@c": {"sys": 78}}}
+{"type": "printf", "data": "T 2104956856\n"}
+{"type": "map", "data": {"@c": {"sys": 80}}}
+{"type": "printf", "data": "T 2204939198\n"}
+{"type": "map", "data": {"@c": {"sys": 88}}}
+{"type": "printf", "data": "T 2304884477\n"}
+{"type": "map", "data": {"@c": {"sys": 88}}}
+{"type": "printf", "data": "T 2404981884\n"}
+{"type": "map", "data": {"@c": {"rcv": 1, "sys": 93}}}
+{"type": "map", "data": {"@b": {"rcv": 67}}}
+{"type": "printf", "data": "T 2504981117\n"}
+{"type": "map", "data": {"@c": {"rcv": 1, "sys": 107}}}
+{"type": "map", "data": {"@b": {"rcv": 67}}}
+{"type": "printf", "data": "T 2604880610\n"}
+{"type": "map", "data": {"@c": {"rcv": 1, "sys": 107}}}
+{"type": "map", "data": {"@b": {"rcv": 67}}}
+{"type": "printf", "data": "T 2704886478\n"}
+{"type": "map", "data": {"@c": {"rcv": 1, "sys": 108}}}
+{"type": "map", "data": {"@b": {"rcv": 67}}}
+{"type": "printf", "data": "T 2804889502\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 1, "sys": 180}}}
+{"type": "map", "data": {"@b": {"rcv": 67, "snd": 1772}}}
+{"type": "printf", "data": "T 2904929223\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 189}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3004833046\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 189}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3104936706\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 189}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3204869630\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 202}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3304948677\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 206}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3404898920\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 206}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3504959695\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 219}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3604875556\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 219}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3704894400\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 220}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3804869954\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 279}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 3904840166\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 282}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4004953797\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 282}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4105393144\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 308}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4204958534\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 316}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4304989984\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 316}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4404950661\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 317}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4504870139\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 473}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4604958510\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 490}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4704891687\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 491}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4804888020\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "sys": 602}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 4904934816\n"}
+{"type": "map", "data": {"@c": {"snd": 1, "rcv": 2, "rename": 30, "exit": 49, "exec": 49, "rename_exec": 49, "fork": 49, "sys": 4203}}}
+{"type": "map", "data": {"@b": {"rcv": 785, "snd": 1772}}}
+{"type": "printf", "data": "T 5004940725\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7530}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5104886291\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7530}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5204959683\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7537}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5304994784\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7537}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5404896555\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7537}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5504894780\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7566}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5604892376\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7569}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5704982829\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7570}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5804949033\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7629}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 5904964885\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7631}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6004978080\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7631}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6104998056\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7633}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6204945584\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7643}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6304966069\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7643}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6404948336\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7644}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6504948299\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7659}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6604963799\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7659}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6704889563\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7661}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6804959403\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7724}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 6904895266\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 52, "rename_exec": 52, "exit": 53, "fork": 53, "rcv": 863, "snd": 1001, "sys": 7726}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7004844375\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7104883050\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7204868228\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7304971184\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7404999661\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7504841482\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7604857715\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7704885423\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7804892041\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "T 7816371644\n"}
+{"type": "map", "data": {"@c": {"rename": 30, "exec": 56, "rename_exec": 56, "exit": 57, "fork": 57, "rcv": 863, "snd": 1001, "sys": 10297}}}
+{"type": "map", "data": {"@b": {"rcv": 861161, "snd": 1001772}}}
+{"type": "printf", "data": "CENSUS end\n"}
+
+
