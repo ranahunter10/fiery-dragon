@@ -72,6 +72,45 @@ class RealOutputTest(unittest.TestCase):
         self.assertFalse(row(self.s, "sys")["emitted"])
 
 
+class VmSmokeFixtureTest(unittest.TestCase):
+    """Real output from VM p15-dev-2604 (kernel 7.0.0-38, bpftrace 0.25), 2026-10-25.
+
+    Produced by census.bt at commit 3373df6, i.e. BEFORE the raw_syscalls exec
+    bracket, so rename_exec is wrong in it (E-0020/E-0021). Known workload:
+    50 x /bin/true; dd 100 MiB /dev/zero -> file; cat file > /dev/null;
+    seq 100000 | cat > /dev/null; 30 x prctl(PR_SET_NAME).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(HERE, "testdata", "vm-7.0-smoke-2026-10-25.jsonl"), encoding="utf-8") as f:
+            cls.s = run(f)
+
+    def test_bpftrace_025_preamble_and_probes(self):
+        self.assertEqual(self.s["preamble_lines"], 15)
+        self.assertEqual(self.s["preamble_warnings"], 5)
+        self.assertEqual(self.s["attached_probes"], 23)
+        self.assertTrue(self.s["complete"])
+
+    def test_dd_write_and_devzero_read(self):
+        total = lambda cls: row(self.s, cls)["payload_mb_per_s"] * self.s["duration_s"] * 1e6
+        self.assertGreaterEqual(row(self.s, "wr_reg")["total"], 100)
+        self.assertAlmostEqual(total("wr_reg"), 104_857_994, delta=1)
+        self.assertAlmostEqual(total("rd_chr"), 104_858_765, delta=1)
+
+    def test_cat_moves_data_with_splice_not_read(self):
+        # 2 x (100 MiB file + 588,895 B from seq): cat splices file->pipe->/dev/null (E-0018)
+        total = row(self.s, "splice")["payload_mb_per_s"] * self.s["duration_s"] * 1e6
+        self.assertAlmostEqual(total, 2 * (104_857_600 + 588_895), delta=1)
+        self.assertLess(row(self.s, "rd_reg")["payload_mb_per_s"] * self.s["duration_s"] * 1e6, 1_000_000)
+
+    def test_old_exec_bracket_failed_on_7_0(self):
+        # Documents E-0020: with the syscalls:sys_enter_execve bracket, exec renames leaked into rename.
+        self.assertEqual(row(self.s, "exec")["total"], 68)
+        self.assertEqual(row(self.s, "rename_exec")["total"], 2)
+        self.assertEqual(row(self.s, "rename")["total"], 30 + 68)
+
+
 class ParseContractTest(unittest.TestCase):
     def test_deltas_and_rates(self):
         s = run([START, T(100 * MS), C(exec=10), T(200 * MS), C(exec=30), END])

@@ -34,8 +34,19 @@ BEGIN
 	printf("CENSUS v1 start\n");
 }
 
-/* ---- all syscalls, for the selectivity ratio (not a record class) ---- */
-tracepoint:raw_syscalls:sys_enter /comm != "bpftrace"/ { @c["sys"] = count(); }
+/*
+ * ---- all syscalls, for the selectivity ratio (not a record class) ----
+ * Also marks "this thread is inside execve/execveat" (x86_64 numbers 59 and
+ * 322), used below to classify renames. raw_syscalls is used instead of
+ * syscalls:sys_enter_execve because on kernel 7.0.0-38 with bpftrace 0.25 the
+ * latter delivered no events at all, while sys_exit_execve did (E-0021).
+ */
+tracepoint:raw_syscalls:sys_enter /comm != "bpftrace"/
+{
+	@c["sys"] = count();
+	if (args->id == 59 || args->id == 322) { @inexec[tid] = 1; }
+}
+tracepoint:raw_syscalls:sys_exit /args->id == 59 || args->id == 322/ { delete(@inexec[tid]); }
 
 /* ---- process spine ---- */
 tracepoint:sched:sched_process_fork /comm != "bpftrace"/ { @c["fork"] = count(); }
@@ -47,14 +58,11 @@ tracepoint:sched:sched_process_exit /comm != "bpftrace"/ { @c["exit"] = count();
  * that fires task_rename too. Those renames belong inside the EXEC record, so
  * they are counted separately as rename_exec (not emitted). Only renames
  * outside an execve/execveat call (prctl PR_SET_NAME, /proc/<pid>/comm writes,
- * kernel threads) count as rename.
- * Limitation: 32-bit compat execve does not fire the syscalls:* tracepoints,
- * so its rename is counted as rename.
+ * kernel threads) count as rename. "Inside exec" is marked by the
+ * raw_syscalls probes above.
+ * Limitation: 32-bit compat execve uses other syscall numbers (11, 358), so
+ * its own rename is counted as rename.
  */
-tracepoint:syscalls:sys_enter_execve,
-tracepoint:syscalls:sys_enter_execveat /comm != "bpftrace"/ { @inexec[tid] = 1; }
-tracepoint:syscalls:sys_exit_execve,
-tracepoint:syscalls:sys_exit_execveat { delete(@inexec[tid]); }
 tracepoint:task:task_rename /comm != "bpftrace"/
 {
 	if (@inexec[tid]) { @c["rename_exec"] = count(); }
