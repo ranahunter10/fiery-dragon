@@ -30,7 +30,11 @@
 - **Twelve classes match exactly.** The surplus in the others is background activity during the 60 s window (sshd, the runner), which can only add.
 - So, for the hooks and success conditions in census v2 on this kernel, **no silent hook** of the kind seen with `syscalls:sys_enter_*` (E-0022).
 
-## 2. The probe set itself changes the rates a lot (MEAS), so census rates are lower bounds
+## 2. Rates differ a lot from the v1 run; the cause is NOT the v2 hooks (corrected)
+
+> **Correction (2026-10-25, E-0035).** This section first attributed the rate drop to the extra v2 hooks. An interleaved A/B on fixed work ([`../2026-10-25-ab-find-serial/`](../2026-10-25-ab-find-serial/README.md)) found v2 **no slower** than v1: serial `find` ×3 took 2.57 s untraced, 3.28 s under v1 and 2.89 s under v2. The table and the selectivity result below stand. The interpretation in the bullets ("the slowdown grows with syscall rate… some hook adds a per-syscall tax") does **not**. The remaining candidates are host drift between the two runs and a concurrency effect (5 parallel finds); both are being tested. The original text is kept below so the history stays honest.
+
+### Original analysis (superseded where noted above)
 
 The same workloads, same VM, 29 minutes apart. The only planned difference is the v2 probe set (+27 fexit functions vs +7):
 
