@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench: add event-rate census probe and summarizer"
+**Last updated:** 2026-10-25, PR "bench/census: add workload runner with light workloads"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -19,7 +19,7 @@
 | P7: connect/accept hook layer | ⏳ open | — |
 | P8: 32-bit compat I/O visible to fexit | ⏳ open (needs `gcc-multilib`) | — |
 | P9: io_uring completion path | ⏳ open (needs `liburing-dev`) | — |
-| **P10: event-rate census** | 🔧 probe + summarizer **validated on the VM** (E-0023); **workload runner next** | [`bench/census/`](../bench/census/README.md) |
+| **P10: event-rate census** | 🔧 probe validated on the VM (E-0023); runner + light workloads built (E-0024); **VM light run next**, then service workloads | [`bench/census/`](../bench/census/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
 | P12: untraced baselines | ⏳ open | — |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
@@ -37,7 +37,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 4. ✅ VM creation script and runbook.
 5. PR: evidence-capture scripts under `tools/vm/` (closes the runbook's known gap).
 6. ✅ This PR: census probe + summarizer, validated on the VM.
-7. PR: event-rate census workloads (`bench/census/`). The maintainer runs it on the VM, and the results come back as evidence.
+7. ✅ This PR: census workload runner + light workloads.
+8. Maintainer runs the light set on the VM (60 s each); results become `docs/evidence/census/`.
+9. PR: service workloads (Nginx, Redis, kernel build).
 
 ## Decisions taken, ADR still to write
 

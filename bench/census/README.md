@@ -46,7 +46,51 @@ sudo swapon -a
 - Record sizes can be overridden with `--size CLASS=BYTES` and `--record-bytes N`.
 - `--format json` gives machine-readable output for aggregating several workloads.
 
-The workload runner (idle, exec storm, file churn, super-producer, kernel build, Nginx, Redis, io_uring) is the next PR.
+## Running the workload set: `run.py`
+
+```bash
+python3 bench/census/run.py --list                                  # what exists
+python3 bench/census/run.py --workloads light --dry-run             # what would run, what's missing
+sudo python3 bench/census/run.py --workloads light --duration 60 \
+    --snapshot 01-toolchain --host-note "plugged in, Best performance, Hyper-V on"
+```
+
+For each workload, the runner:
+1. starts the census and waits until it has attached;
+2. runs the workload **as the user who called sudo** (not root) for `--duration` seconds;
+3. stops the census with SIGINT;
+4. summarizes the run.
+
+Swap is turned off during the runs and restored afterwards (STATE.md decision 2). All output goes to `/var/tmp/fd-census/<UTC time>/`, outside the repo, so nothing is committed by accident. Results are promoted to `docs/evidence/` deliberately.
+
+| File | Content |
+|---|---|
+| `index.md` | one row per workload: records/s mean/p99/max, log MB/s p99, verdict |
+| `conditions.json` | kernel, bpftrace version, probe/summarizer/runner hashes, git commit + dirty flag, CPUs, RAM, hypervisor, swap, `io_uring_disabled`, load, snapshot, host note |
+| `<w>.jsonl` / `<w>.md` / `<w>.json` | raw census output / report / machine-readable summary |
+| `<w>.workload.log`, `<w>.bpftrace.err` | the workload's own output; bpftrace's stderr |
+
+A run is **ok** only if bpftrace stopped cleanly, the output is complete, no events were lost, and the workload exited normally. Anything else is **FAILED** with every reason listed. A workload whose tools are missing is **SKIPPED** and shown, never left out silently.
+
+**Light workloads** (this PR):
+
+| Workload | What it does | Approximates |
+|---|---|---|
+| `idle` | nothing: the VM's background floor | — |
+| `exec-storm` | `/bin/echo` in a tight loop | Houssel et al. shbm (50,000 echo execs), time-bounded |
+| `file-churn` | PostMark-style create/append/read/delete over 500 small files ([`workloads/filechurn.py`](workloads/filechurn.py)) | PostMark-shaped; parameters are ours |
+| `super-producer` | five concurrent `find /usr` loops | Mao, Ujcich & Ma |
+| `xfer` | `cp` (copy_file_range), `cat` (splice), `sendfile` on a 64 MiB file | — |
+| `io-uring` | fio random read/write through io_uring | — |
+
+**Service workloads** (Nginx, Redis, kernel build) come in the next PR. They need extra packages and system services.
+
+**Dry run (dev container, 8 s each, tracepoint-only probe):**
+- all five available workloads ran and stopped cleanly; `io-uring` was correctly SKIPPED (no `fio`);
+- `exec-storm`: `rename_exec` = `exec` = 5,611;
+- `file-churn`: about 118,000 operations of each kind in 8 s.
+
+The fexit classes only light up on the VM.
 
 ## Design choices, and why
 
@@ -112,10 +156,10 @@ Whether the kernel or bpftrace is at fault is open.
 ## Tests
 
 ```bash
-python3 -m unittest -v bench/census/test_summarize.py
+python3 -m unittest -v bench/census/test_summarize.py bench/census/test_run.py
 ```
 
-There are 35 tests: parsing contract, rates, budget math, reporting, CLI, and three real fixtures (one container, two VM).
+The summarizer has 35 tests: parsing contract, rates, budget math, reporting, CLI, and three real fixtures (one container, two VM). The runner has 17: selection, planning, bash syntax of every workload, ok/FAILED classification, report, and file churn. A runner mutation sweep of 8 deliberate bugs killed all 8.
 
 A mutation sweep of 8 deliberate bugs killed all 8:
 - no decrease check;
