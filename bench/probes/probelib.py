@@ -14,6 +14,7 @@ import hashlib
 import os
 import platform
 import pwd
+import shutil
 import signal
 import subprocess
 import time
@@ -101,9 +102,20 @@ def stop_probe(p: subprocess.Popen) -> bool:
         return False
 
 
+RUNUSER_PATH = "/usr/sbin:/usr/bin:/sbin:/bin"
+
+
 def run_as(user: str | None, argv: list[str], out: Path, timeout: int, cwd: Path) -> int:
-    """Run argv as `user` (or as the caller), stdout+stderr to out. Returns the exit code; -9 if killed."""
-    cmd = (["runuser", "-u", user, "--"] if user else []) + argv
+    """Run argv as `user` (or as the caller), stdout+stderr to out. Returns the exit code; -9 if killed.
+
+    runuser lives in /usr/sbin, which is not on the child's PATH; subprocess looks the
+    program up on the *child's* PATH, so it is resolved here first (VM run 2026-10-25)."""
+    cmd = argv
+    if user:
+        runuser = shutil.which("runuser", path=RUNUSER_PATH)
+        if runuser is None:
+            raise ProbeError(f"runuser not found on {RUNUSER_PATH}; cannot drop root for the test program")
+        cmd = [runuser, "-u", user, "--", *argv]
     with open(out, "w") as f:
         try:
             return subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=timeout, cwd=cwd,
