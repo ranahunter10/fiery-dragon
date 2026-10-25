@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25 (UTC), PR "adr: proposed 0017-0019 (flood resilience, measurement v2, engineering gates)"
+**Last updated:** 2026-10-25 (UTC), PR #30 (ADR-0017..0019 accepted)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -58,10 +58,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     2. ✅ schema generator and the spine record types FORK/EXEC/EXIT/RENAME (ADR-0008, E-0063). The Python decoder with no defaults and the length checks comes with the WAL reader (step 5);
     3. ✅ spine BPF programs and the load-time self-test (ADR-0003, ADR-0009): pass in the dev container (E-0064) and **on the target VM**: 4 programs attached, self-test 21/21 twice, `reserve_failed` 0, `seen == emitted` (E-0065); other processes captured, EXEC inode matches `stat`, process end = EXIT with `group_dead=1`, which may be a non-leader thread (E-0066). [VM runs](evidence/build/2026-10-25-spine-vm/README.md). PR #26 + #27;
     4. `p15d` drain and WAL writer (ADR-0006, ADR-0007), in three PRs:
-       1. 🔧 the P15W v1.0 format spec and the C writer: batches with CRC32C, rotation, `fdatasync` interval, torn-tail recovery (E-0068, this PR);
-       2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown. If ADR-0017/0019 are accepted, also: exact-size EXEC, the writer thread and queue, the drain priority, GAP records, STATS, canary, one error path;
+       1. ✅ the P15W v1.0 format spec and the C writer: batches with CRC32C, rotation, `fdatasync` interval, torn-tail recovery (E-0068, PR #28);
+       2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown. Per ADR-0017/0019, also: exact-size EXEC, the writer thread and queue, the drain priority, GAP records, STATS, canary, one error path;
        3. the `bpf_iter/task` process snapshot at each segment open;
-    5. Python WAL reader and process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
+    5. Python WAL reader (generated, no defaults, `google-crc32c`), the P15R importer for v3.7 recordings, and the process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
 
 ## Decisions taken (now recorded in ADRs where noted)
@@ -77,26 +77,15 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 9. **Analysis-tier Python (Q-D3):** the VM's own Python 3.14 in a project venv, torch from the PyTorch CPU index; no 3.12 environment. Reopens if the first analysis code fails to import or run on 3.14. → ADR-0002. *(2026-10-25, E-0054)*
 10. **ADRs 0001, 0002, 0003, 0006, 0007, 0008, 0009, 0012 accepted**, including the choices inside them: C daemon (Q-D2), revising D2 (Q-A2), TOML schema, CLOCK_BOOTTIME timestamps, kernel-native process identity, default ring-buffer wakeups, deferred shm ring, 1 s durability window, the timing quote rule. *(2026-10-25, E-0058)*
 11. **PR #26 (schema) and PR #27 (spine) merged**; #27 accepted as one PR at 1,110 lines (the programs, their self-test and its tests are one checkable unit). VM snapshot `02-dev-deps` to be taken by the maintainer. *(2026-10-25 UTC, "all decisions are good to go", E-0066)*
+12. **ADR-0017, 0018 and 0019 accepted** (spine flood resilience; measurement protocol v2 with the Phase-1 gate at ≥ 50 % of the same-host ring-buffer ceiling if v3.7 can't run on 7.0; engineering gates). With them, also accepted:
+    - the P15R importer joins Phase 1, and caps-minimal moves to Phase 4;
+    - no self-hosted CI runner for now;
+    - the two P15W spec refinements of PR #28;
+    - `google-crc32c`, pinned, with no fallback, for the Python reader;
+    - the research note's Phase-2 inputs go into ADR-0005, 0010 and 0013 as considered options.
+
+    PRs #28–#30 merged. *(2026-10-25 UTC, "accepted and merged", E-0072)*
 
 ## Decisions waiting
 
-The maintainer's questions of 2026-10-26 (flood weakness, real workloads, statistics, engineering standards) are answered by three proposed ADRs. Accepting them closes the research note's decisions 1–5 (PR #29); its Phase-2 inputs (B2–B5, B7) go into ADR-0005, 0010 and 0013 as considered options when those are written.
-
-1. **Accept ADR-0017, spine flood resilience.**
-   - Exact-size EXEC (MEAS: a fixed reservation takes 1,344 B whatever the length; exact ways take 88–1,088 B);
-   - a writer thread so `fdatasync` never stalls the drain;
-   - a `SCHED_FIFO` 1 drain;
-   - GAP records that locate any loss;
-   - a ring size set from a measured storm;
-   - admission control documented as a deployer policy, off.
-2. **Accept ADR-0018, measurement protocol v2.**
-   - Dimensionless headlines;
-   - raw costs with intervals beside every paired effect (Hodges–Lehmann + Wilcoxon), 10 rounds;
-   - the knee against the same-host ring-buffer ceiling;
-   - one workload set for functional, performance and adversarial runs (PostgreSQL, Nginx, Redis among them).
-   - **The maintainer sets the gate value:** proposed ≥ 50 % of the same-host ceiling if v3.7 can't run on 7.0.
-3. **Accept ADR-0019, engineering gates:** typed boundaries from one source, `P15_MUST_CHECK` + one fatal path + a run state machine, hardening flags, fuzzing and analyzers in CI, STATS records + a textfile + a canary, a fixed module layout.
-4. **Phase-1 scope:** the P15R importer joins Phase 1 (the oracle diff needs it); caps-minimal moves to Phase 4.
-5. **Self-hosted CI runner on the VM:** not now (a public repo lets fork PRs run code on it).
-6. **The two P15W spec refinements in PR #28:** accept.
-7. **CRC32C in the Python reader:** `google-crc32c`, pinned, no fallback.
+None open right now.

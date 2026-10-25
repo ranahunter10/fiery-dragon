@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
 owner: Ashish Rana
 consulted: [research note 2026-10-25-measurement-and-design-inputs (B1, B6), NoDrop USENIX Sec'23, Mao et al. arXiv 2510.08479, auditd.conf(5), LTTng lost-event accounting, rb_size probe, maintainer's questions of 2026-10-26]

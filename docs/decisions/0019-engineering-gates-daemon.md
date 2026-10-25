@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
 owner: Ashish Rana
 consulted: [maintainer's requirements of 2026-10-26 (typed schemas, one error path, memory safety, observability, structure), ADR-0002, ADR-0008, PR #27/#28 practice, capture blueprint v1 §7 (L-levels), THC rootkit write-up (via quantification.md)]

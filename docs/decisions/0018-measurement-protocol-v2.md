@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-25
 owner: Ashish Rana
 consulted: [research note 2026-10-25-measurement-and-design-inputs (A1–A7), Hoefler & Belli SC'15 (R-013), NoDrop (R-012), Nitro (R-011), Gebai & Dagenais (R-014), Kahle (R-016), Piotrowski (R-017), ADR-0012, maintainer's questions of 2026-10-26]
@@ -82,7 +82,7 @@ ADR-0012 made timing on this noisy host quotable: paired rounds, an A/A control 
      - zero loss at **≥ 10 × the v3.7 knee measured in the same session** if v3.7 runs on 7.0 (a probe decides);
      - otherwise, **≥ 50 % of the same-host ring-buffer ceiling** for spine-sized records, with v3.7's 9.4 k shown as a labelled historical figure.
 
-     The 50 % is the maintainer's to confirm.
+     The maintainer accepted the 50 % value with this ADR (2026-10-26 IST).
 2. **Per-event BPF cost:** `run_time_ns ÷ run_cnt` from `bpf_stats`, **minus nothing and labelled**. Kahle measured that stats collection itself adds about 20 ns per run, so it is reported next to the number. The cost is also given as a multiple of this host's null-syscall time, measured in the same session (Gebai and Dagenais' baseline method).
 
 ### Rule 4: one workload set, three uses
