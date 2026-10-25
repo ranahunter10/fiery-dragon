@@ -59,7 +59,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 6. **Overhead protocol:** each round runs traced and untraced back to back, plus an A/A control arm (a second untraced run). Report the median and range of the per-round paired ratios, use at least 7 rounds, and claim an effect only above that run's own A/A noise floor. CV stays as a drift indicator only. Goes into ADR-0012. *(2026-10-25, E-0046)*
 7. **Census-probe overhead is no longer measured.** The next overhead number comes from the Phase-1 probe. *(2026-10-25, E-0047)*
 8. **`gcc-multilib` is installed on the VM** after a snapshot, for P8's 32-bit variant. *(2026-10-25, E-0048)*
+9. **Analysis-tier Python (Q-D3):** the VM's own Python 3.14 in a project venv, torch from the PyTorch CPU index; no 3.12 environment. Reopens if the first analysis code fails to import or run on 3.14. *(2026-10-25, E-0054)*
 
 ## Decisions waiting
 
-1. **Analysis-tier Python (blueprint Q-D3).** Use the VM's own Python 3.14 in a project venv, with torch from the PyTorch CPU index; no separate 3.12 environment. **Recommendation: yes.** Evidence: E-0053. Every package and its closure resolves as binaries on 3.14.4, with 33 packages and no GPU runtime. Not yet checked: import-and-run on 3.14, which the first analysis code settles; a failure there reopens this decision.
+None open right now.
