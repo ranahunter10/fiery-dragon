@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-10-25          # proposed; set to the merge date on acceptance
+status: accepted
+date: 2026-10-25
 owner: Ashish Rana
 consulted: [capture blueprint v1 §2.2, §4.1, §4.4 (2026-10-21), Linux v7.0 source (tag v7.0, 028ef9c), P1/P2/P6/P8/P10 evidence, Phase 0 audit]
 supersedes: none
