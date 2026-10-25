@@ -43,5 +43,9 @@ Output goes to `/var/tmp/fd-probes/<UTC>-p8/`.
 ## Tests
 
 ```bash
-python3 -m unittest -v bench/probes/p8_compat/test_run.py   # 9 tests, no root, no BPF
+python3 -m unittest -v bench/probes/p8_compat/test_run.py   # 12 tests, no root, no BPF
 ```
+
+One test runs the analysis on the VM's own raw output (`testdata/`, first VM run). It caught a bug the synthetic fixtures had built in: `compat.bt` prints TS_COMPAT as 2, not 1 (E-0051).
+
+To re-read an existing output directory with the current analysis, without root or BPF, run `python3 bench/probes/p8_compat/run.py --reanalyze DIR`.

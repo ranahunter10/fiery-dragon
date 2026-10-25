@@ -43,6 +43,23 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(r["native_exec_ids_seen"], 0)
         self.assertEqual(r["exec_compat_bit"], [0])
 
+    def test_real_vm_output_passes(self):
+        # Raw output of the first VM run (7.0.0-38, 2026-10-25). compat.bt prints TS_COMPAT as 2;
+        # the first analyzer required 1 and reported 9 false misses on this exact file.
+        td = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata")
+        with open(os.path.join(td, "vm-7.0-probe-64-2026-10-25.txt")) as p, \
+                open(os.path.join(td, "vm-7.0-program-64-2026-10-25.txt")) as o:
+            r = R.analyze("64", p.read(), o.read())
+        self.assertEqual(r["missed"], [])
+        self.assertEqual(r["op_problems"], [])
+        self.assertEqual(r["unknown_lines"], 0)
+        self.assertEqual(r["preamble_lines"], 3)          # bpftrace's delete() warning
+        self.assertEqual(r["exec_compat_bit"], [0])
+
+    def test_compat_bit_value_two_counts_as_set(self):
+        recs, _, _ = R.parse_probe(probe(["SYS 7 3 2", "VFS_READ 7 2222 2", "SYS 7 0 0"]))
+        self.assertEqual([r["compat"] for r in recs], [1, 1, 0])
+
     def test_native_execve_ids_are_counted(self):
         r = R.analyze("64", probe(GOOD_PROBE_64 + ["SYS 7 59 0", "SYS 7 322 0", "SYS 7 59 1"]), GOOD_OPS_64)
         self.assertEqual(r["native_exec_ids_seen"], 3)

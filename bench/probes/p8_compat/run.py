@@ -72,6 +72,9 @@ def parse_probe(text: str) -> tuple[list[dict], int, int]:
             try:
                 for f, v in zip(fields, parts[1:]):
                     rec[f] = v if f == "name" else int(v)
+                # compat.bt prints status & TS_COMPAT, i.e. 0 or 2 (0x2), not 0 or 1 (VM run 2026-10-25)
+                if "compat" in rec:
+                    rec["compat"] = int(rec["compat"] != 0)
             except ValueError:
                 unknown += 1
                 continue
@@ -142,12 +145,26 @@ def render(conds: dict, results: dict, skipped: dict) -> str:
     return "\n".join(out)
 
 
+def reanalyze(d: Path) -> int:
+    conds = json.loads((d / "conditions.json").read_text())
+    results = {v: analyze(v, (d / f"probe-{v}.txt").read_text(errors="replace"),
+                          (d / f"program-{v}.txt").read_text(errors="replace"))
+               for v in VARIANTS if (d / f"probe-{v}.txt").exists()}
+    skipped = {v: "not run (no probe output in this directory)" for v in VARIANTS if v not in results}
+    print(render(conds, results, skipped))
+    return 1 if any(r["missed"] or r["op_problems"] or r["unknown_lines"] for r in results.values()) else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     ap.add_argument("--bpftrace", default="bpftrace")
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--reanalyze", type=Path, metavar="DIR",
+                    help="analyze an existing output directory again (no root, no BPF); prints the report only")
     args = ap.parse_args(argv)
+    if args.reanalyze:
+        return reanalyze(args.reanalyze)
     if os.geteuid() != 0:
         ap.error("must run as root (bpftrace); use sudo")
 

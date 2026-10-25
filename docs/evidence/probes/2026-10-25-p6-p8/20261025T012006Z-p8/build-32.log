@@ -1,0 +1,9 @@
+gcc -m32 -static -O2 -Wall -Wextra -o /var/tmp/fd-probes/20261025T012006Z-p8/p8-compat32 /home/ashu/fiery-dragon/bench/probes/p8_compat/compat.c
+exit 1
+In file included from /usr/include/features.h:431,
+                 from /usr/include/fcntl.h:25,
+                 from /home/ashu/fiery-dragon/bench/probes/p8_compat/compat.c:27:
+/usr/include/features-time64.h:20:10: fatal error: bits/wordsize.h: No such file or directory
+   20 | #include <bits/wordsize.h>
+      |          ^~~~~~~~~~~~~~~~~
+compilation terminated.

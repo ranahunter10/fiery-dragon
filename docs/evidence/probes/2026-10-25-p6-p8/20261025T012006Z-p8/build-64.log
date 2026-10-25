@@ -1,0 +1,2 @@
+gcc -O2 -Wall -Wextra -o /var/tmp/fd-probes/20261025T012006Z-p8/p8-compat64 /home/ashu/fiery-dragon/bench/probes/p8_compat/compat.c
+exit 0
