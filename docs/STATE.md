@@ -17,7 +17,7 @@
 | P5: disk bandwidth | ✅ done: min 63.7 MB/s, ±25 % under Hyper-V | [`05`](evidence/phase0/05-p5-disk.txt) |
 | P6: argv source at exec | ✅ done: under a race, syscall-entry argv matched what ran 45/1000; `sched_process_exec` 1000/1000 (E-0049) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md) |
 | P7: connect/accept hook layer | ✅ covered by census v2 (`__sys_connect_file`, `do_accept`; E-0032) | [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
-| P8: 32-bit compat I/O visible to fexit | 🔧 `int $0x80` variant done: all hooks fire; `raw_syscalls` reports i386 ids with TS_COMPAT (E-0050). 32-bit vDSO variant waits for `gcc-multilib` (E-0048) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md) |
+| P8: 32-bit compat I/O visible to fexit | ✅ done: both `int $0x80` and a real i386 program (vDSO entry) pass all 12 checks; `raw_syscalls` reports i386 ids with TS_COMPAT set (E-0050, E-0052) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md), [32-bit run](evidence/probes/2026-10-25-p8-32bit/README.md) |
 | P9: io_uring completion path | ✅ covered by census (io_uring bypasses vfs_read/write; `io_uring_complete` delivers; E-0027) | [v1](evidence/census/2026-10-24T221732Z-light/README.md) |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
@@ -46,7 +46,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 12. ✅ Host state decided: Hyper-V on, relative numbers only (E-0042).
 13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; new protocol decided (E-0046).
 14. ✅ P6 done; P8 `int $0x80` variant done (this PR). P11 results filed in the next PR (stacked on this one).
-14a. VM: install `gcc-multilib` after a snapshot, re-run P8 for the 32-bit variant.
+14a. ✅ `gcc-multilib` installed; P8 32-bit variant passes (E-0052). Optional: take VM snapshot `02-multilib`.
 15. Then ADR-0001…0014.
 
 ## Decisions taken, ADR still to write
