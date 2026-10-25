@@ -90,7 +90,8 @@ def render(conds: dict, rows: list[dict], label: str) -> str:
            f"git {conds['git_commit'][:12]}{' (dirty)' if conds['git_dirty'] else ''}",
            f"- {conds['cpus']} CPUs, {conds['mem_total_kb']} kB; hypervisor seen by guest: {conds['hypervisor_vendor']} "
            f"({conds['virt']}); swap before: {conds['swap_before']}",
-           f"- host note: {conds['host_note']}; snapshot: {conds['snapshot']}", "",
+           f"- host note: {conds['host_note']}; snapshot: {conds['snapshot']}; "
+           f"warm-up before each job: {'yes' if conds.get('warmup') else 'NO'}", "",
            "| job | config | n | mean | sd | CV % | min | max | tracing slowdown |",
            "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
     unstable_jobs = {r["job"] for r in rows if r["cv_pct"] > UNSTABLE_CV_PCT}
@@ -114,6 +115,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--jobs", default=",".join(J.JOBS), help="comma-separated subset of: " + ", ".join(J.JOBS))
     ap.add_argument("--probe", type=Path, default=HERE.parent / "census" / "census.bt", help="probe for the traced config")
     ap.add_argument("--untraced-only", action="store_true")
+    ap.add_argument("--no-warmup", dest="warmup", action="store_false",
+                    help="skip the untimed warm-up run before each timed job (default: warm up)")
     ap.add_argument("--bpftrace", default="bpftrace")
     ap.add_argument("--snapshot", default="unrecorded")
     ap.add_argument("--host-note", default="unrecorded", help="Hyper-V state, power mode, other load (the guest cannot see these)")
@@ -130,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         for rnd in range(1, args.rounds + 1):
             print(f"round {rnd}: " + "  then  ".join(f"[{c}] {', '.join(jobs)}" for c in round_order(rnd, traced)))
+        print("each job: " + ("untimed warm-up run, then timed run" if args.warmup else "timed run only (--no-warmup)"))
         return 0
     if os.geteuid() != 0:
         ap.error("must run as root (bpftrace); use sudo")
@@ -141,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
                                    duration=0, snapshot=args.snapshot, host_note=args.host_note,
                                    disk_mbps=0.0, headroom=0.0)
     conds = R.conditions(cond_args, user)
-    conds.update({"label": args.label, "rounds": args.rounds, "jobs": jobs, "traced": traced})
+    conds.update({"label": args.label, "rounds": args.rounds, "jobs": jobs, "traced": traced, "warmup": args.warmup})
     (out / "conditions.json").write_text(json.dumps(conds, indent=2) + "\n")
 
     work = out / "work"
@@ -162,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
                     for job in jobs:
                         w = R.Workload(job, "baseline", J.JOBS[job][2], ("python3",),
                                        f'python3 "$HERE/../baseline/jobs.py" {job} --work "$WORK"')
+                        if args.warmup:
+                            # Untimed run of the same job, same configuration, immediately before the
+                            # timed one: every measurement then starts from the same warm cache state,
+                            # whatever ran before it (E-0039).
+                            R.run_workload(w, JOB_TIMEOUT_S, work, out / f"r{rnd}-{cfg}-{job}.warmup.log", user)
                         log = out / f"r{rnd}-{cfg}-{job}.log"
                         res = R.run_workload(w, JOB_TIMEOUT_S, work, log, user)
                         parsed = parse_job_line(log.read_text(errors="replace"))

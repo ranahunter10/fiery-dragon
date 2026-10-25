@@ -68,6 +68,23 @@ class RenderTest(unittest.TestCase):
         self.assertIn("+10 %", md)
 
 
+class WarmupTest(unittest.TestCase):
+    def test_dry_run_states_the_warmup(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            B.main(["--label", "x", "--rounds", "1", "--dry-run"])
+        self.assertIn("untimed warm-up run, then timed run", out.getvalue())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            B.main(["--label", "x", "--rounds", "1", "--dry-run", "--no-warmup"])
+        self.assertIn("timed run only", out.getvalue())
+
+    def test_report_states_warmup(self):
+        conds = dict(RenderTest.CONDS, warmup=False)
+        self.assertIn("warm-up before each job: NO", B.render(conds, [], "x"))
+
+
 class ParseTest(unittest.TestCase):
     def test_job_line_is_last_json_with_job_and_value(self):
         log = '{"job": "exec", "value": 9.9}\nwarn\n{"job": "exec", "value": 1.5}\n{"other": 1}\n'
