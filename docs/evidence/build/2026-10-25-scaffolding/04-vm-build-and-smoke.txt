@@ -1,0 +1,75 @@
+ashu@p15-dev:~/fiery-dragon$ sudo apt install -y libssl-dev && apt-mark showhold && uname -r
+cd ~/fiery-dragon && git pull -q && git log --oneline -1
+{ git log --oneline -1; uname -r; clang --version | head -1; make clean; make -j4 2>&1 | grep -vE '^\s+(CC|AR|INSTALL|LINK|GEN|CLANG|MKDIR)\s'; echo "make exit ${PIPESTATUS[0]}"; sudo make smoke; echo "smoke exit $?"; } 2>&1 | tee ~/scaffold-vm2.txt
+sha256sum ~/scaffold-vm2.txt
+[sudo: authenticate] Password:
+Installing:
+  libssl-dev
+
+Suggested packages:
+  libssl-doc
+
+Summary:
+  Upgrading: 0, Installing: 1, Removing: 0, Not Upgrading: 12
+  Download size: 2,937 kB
+  Space needed: 16.4 MB / 53.8 GB available
+
+Get:1 http://in.archive.ubuntu.com/ubuntu resolute-updates/main amd64 libssl-dev amd64 3.5.5-1ubuntu3.7 [2,937 kB]
+Fetched 2,937 kB in 3s (1,093 kB/s)
+Selecting previously unselected package libssl-dev:amd64.
+(Reading database… 106011 files and directories currently installed.)
+Preparing to unpack …/libssl-dev_3.5.5-1ubuntu3.7_amd64.deb…
+Unpacking libssl-dev:amd64 (3.5.5-1ubuntu3.7)…
+Setting up libssl-dev:amd64 (3.5.5-1ubuntu3.7)…
+Scanning processes...
+Scanning linux images...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+linux-generic
+linux-headers-generic
+linux-image-generic
+7.0.0-38-generic
+d9d5492 (HEAD -> build/scaffolding, origin/build/scaffolding) build: check build dependencies up front; bpftool v7.7.0 needs libssl-dev
+d9d5492 build: check build dependencies up front; bpftool v7.7.0 needs libssl-dev
+7.0.0-38-generic
+Ubuntu clang version 21.1.8 (6ubuntu1)
+rm -rf build
+mkdir -p build
+make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/ashu/fiery-dragon/build/libbpf/obj \
+  DESTDIR=/home/ashu/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+mkdir -p /home/ashu/fiery-dragon/build/bpftool
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/ashu/fiery-dragon/build/bpftool/ bootstrap
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+...                        libbfd: [ OFF ]
+...               clang-bpf-co-re: [ on  ]
+...                          llvm: [ on  ]
+...                        libcap: [ OFF ]
+make[2]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild bpf/test/load_check.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+clang -g -O2 -target bpf -Wall -Werror -I/home/ashu/fiery-dragon/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+make[2]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild bpf/test/core_smoke.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/core_smoke
+make exit 0
+build/load_check build/empty.bpf.o
+loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+loaded fd_empty_syscall         section syscall                          fd 5
+2 programs accepted by the verifier
+build/core_smoke --attach
+loaded: libbpf v1.7
+child 2821: matched 1, start_ns 10201588682847; seen 1, reserve_failed 0
+smoke exit 0
+ddf0d818946ed0b995e0acb3635a359d38b3736615e4f6ed9350842be6999b7c  /home/ashu/scaffold-vm2.txt
+ashu@p15-dev:~/fiery-dragon$

@@ -43,14 +43,25 @@ This repo is a rebuild designed around those lessons. v3.7 is kept only as a ref
 ```
 .github/        CI workflows, PR template, CODEOWNERS
 docs/           STATE.md, decisions (ADRs), proposals, runbooks, evidence, journal
-schema/         records.yaml (single source of truth) + generator + generated outputs
+schema/         records.toml (single source of truth) + generator + generated outputs (ADR-0008)
 bpf/            kernel-side programs (dual BSD/GPL)
-daemon/         C loader, drain, write-ahead log, shared-memory ring
+daemon/         C loader, self-test, drain, write-ahead log (ADR-0006, ADR-0007)
 python/         analysis tier: reader, decoder, identity, graph, store, exporters
 tests/          kernel behavioural tests, evasion corpus, fixtures
 bench/          event-rate census, loss ramp, overhead harness
 tools/          VM creation, importers, inspectors
-third_party/    vendored, pinned dependencies (libbpf)
+third_party/    pinned submodules: libbpf v1.7.0, bpftool v7.7.0 (ADR-0002)
+```
+
+## Build
+
+Needs clang, gcc, make, pkg-config, libelf-dev, zlib1g-dev and libssl-dev. `make` checks the libraries first and names any missing package. libssl-dev is needed because bpftool v7.7.0 links libcrypto (E-0061).
+
+```bash
+git submodule update --init --recursive   # libbpf v1.7.0, bpftool v7.7.0
+make            # vendored libbpf + bpftool, BPF objects, skeletons, loaders, all under build/
+make check      # unit tests, evidence checksums, vmlinux.h checksum
+sudo make smoke # verifier load + attach smoke test (needs root)
 ```
 
 ## How work happens here

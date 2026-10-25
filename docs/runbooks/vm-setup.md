@@ -133,6 +133,20 @@ apt-mark showhold && uname -r     # the kernel must be unchanged
 
 **Snapshot:** `01-toolchain`.
 
+### 5a. Packages added after `01-toolchain`
+
+| Package | Why | Log |
+|---|---|---|
+| `gcc-multilib` | P8's 32-bit test program (`gcc -m32 -static`) | E-0048, E-0052 |
+| `libssl-dev` | building the vendored bpftool v7.7.0, which links libcrypto | E-0061 |
+
+```bash
+sudo apt install -y gcc-multilib libssl-dev
+apt-mark showhold && uname -r     # the kernel must be unchanged
+```
+
+**Snapshot after both:** `02-dev-deps`.
+
 ## 6. Re-capture the evidence
 
 A rebuilt VM must reproduce files 00–05 in [`docs/evidence/phase0/`](../evidence/phase0/README.md). Any difference is recorded as a new engineering-log row.

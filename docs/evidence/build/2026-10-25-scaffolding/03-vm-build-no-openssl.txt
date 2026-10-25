@@ -1,0 +1,46 @@
+3334b50 build: vendor libbpf v1.7.0 and bpftool v7.7.0, add vmlinux.h and a Makefile
+7.0.0-38-generic
+Ubuntu clang version 21.1.8 (6ubuntu1)
+rm -rf build
+mkdir -p build
+make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/ashu/fiery-dragon/build/libbpf/obj \
+  DESTDIR=/home/ashu/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+mkdir -p /home/ashu/fiery-dragon/build/bpftool
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/ashu/fiery-dragon/build/bpftool/ bootstrap
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+...                        libbfd: [ [31mOFF[m ]
+...               clang-bpf-co-re: [ [32mon[m  ]
+...                          llvm: [ [32mon[m  ]
+...                        libcap: [ [31mOFF[m ]
+make[2]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild bpf/test/load_check.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+clang -g -O2 -target bpf -Wall -Werror -I/home/ashu/fiery-dragon/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+make[2]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+sign.c:16:10: fatal error: openssl/opensslv.h: No such file or directory
+   16 | #include <openssl/opensslv.h>
+      |          ^~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+make[1]: *** [Makefile:252: /home/ashu/fiery-dragon/build/bpftool/bootstrap/sign.o] Error 1
+make[1]: *** Waiting for unfinished jobs....
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+make: *** [Makefile:53: /home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool] Error 2
+make exit 2
+mkdir -p /home/ashu/fiery-dragon/build/bpftool
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/ashu/fiery-dragon/build/bpftool/ bootstrap
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+...                        libbfd: [ [31mOFF[m ]
+...               clang-bpf-co-re: [ [32mon[m  ]
+...                          llvm: [ [32mon[m  ]
+...                        libcap: [ [31mOFF[m ]
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/sign.o
+sign.c:16:10: fatal error: openssl/opensslv.h: No such file or directory
+   16 | #include <openssl/opensslv.h>
+      |          ^~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+make[1]: *** [Makefile:252: /home/ashu/fiery-dragon/build/bpftool/bootstrap/sign.o] Error 1
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+make: *** [Makefile:53: /home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool] Error 2
+smoke exit 2
