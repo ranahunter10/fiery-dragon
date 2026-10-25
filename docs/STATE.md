@@ -43,7 +43,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 9a. ✅ Serial and parallel A/B: no large probe effect (+13-30 %); the census-to-census gap is host drift (E-0035, E-0036). Per-family bisection not needed now.
 10. PR: service workloads (Nginx, Redis, kernel build).
 11. ✅ Hyper-V A-B-A (P12) with `bench/baseline/`; results and warm-up fix in this PR.
-12. **Decide ADR-0012 (measurement protocol):** authoritative host state, and whether security settings may be relaxed for measuring (see Decisions waiting).
+12. ✅ Host state decided: Hyper-V on, relative numbers only (E-0042).
+13. Next: re-measure find/churn tracing overhead with warm-up (Hyper-V on); then the remaining small probes (P6 argv, P8 32-bit compat, P11 wheels; P7 and P9 are covered by census v2), then ADR-0001…0014.
 
 ## Decisions taken, ADR still to write
 
@@ -51,11 +52,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 2. **Swap:** off only while measuring, recorded in each run's conditions. Goes into ADR-0012. *(2026-10-25)*
 3. **Hyper-V:** stays on; a paired on/off experiment decides later. Goes into ADR-0012. *(2026-10-25)*
 4. **Journals:** CSV in the repo. *(2026-10-25)*
+5. **Measurement host state:** Hyper-V on (everyday safe state). Quote relative results only (overhead %, selectivity, loss, class mix, interleaved in one session); no absolute rates from this laptop. Goes into ADR-0012. *(2026-10-25, E-0042)*
 
 ## Decisions waiting
 
-1. **Authoritative measurement host state (ADR-0012).**
-   - (a) Hyper-V **on**, the laptop's everyday state: slower, drifts, safe.
-   - (b) Hyper-V **off** only during measurement sessions: 4-5.5× faster exec, needs Memory integrity off for the session.
-   - (c) A dedicated machine or bare-metal Linux for final numbers.
-   - Evidence: E-0038..E-0041.
+None open right now.
