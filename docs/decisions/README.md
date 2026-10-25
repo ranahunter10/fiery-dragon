@@ -12,6 +12,7 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
+| [0003](0003-hook-policy-btf-checked-attach-points-self-test.md) | Hook policy: BTF-checked attach points, spine on tp_btf sched tracepoints, argv from the kernel's copy, per-pid self-test | proposed | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -21,7 +22,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 |---|---|---|
 | 0001 | Platform: Ubuntu 26.04, GA kernel 7.0, pinned | phase-0 evidence 00/01 imported |
 | 0002 | Toolchain: libbpf + CO-RE, C daemon, no BCC; which libbpf to vendor | phase-0 evidence 01 |
-| 0003 | Hook policy: BTF-checked attach points, tracepoints preferred, load-time self-test | P1, P2 |
 | 0004 | Connect/accept hook layer | P7 |
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
 | 0006 | Transport: two ring buffers, wakeup policy | P10 |
