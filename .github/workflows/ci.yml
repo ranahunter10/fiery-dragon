@@ -58,8 +58,10 @@ jobs:
         run: |
           git submodule status
           build/bpftool/bootstrap/bpftool version
-      - name: C unit tests (record checks, self-test evaluation)
+      - name: C unit tests (record checks, self-test evaluation, WAL writer)
         run: make test-c
+      - name: C unit tests under ASan and UBSan
+        run: make test-c-asan
       - name: Three-way layout check (generator vs BTF vs numpy; ADR-0008)
         run: make layout-check
       - name: Smoke (verifier load; tp_btf attach; spine self-test, ADR-0003)
