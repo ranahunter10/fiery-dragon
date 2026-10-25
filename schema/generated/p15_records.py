@@ -14,6 +14,7 @@ HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
 
 F_TRUNCATED = 1 << 0
+F_READ_FAILED = 1 << 1
 
 HEADER_DTYPE = np.dtype({'names': ['type', 'version', 'len', 'flags', 'ts_ns', 'tgid', 'tid', 'start_ns'], 'formats': ['<u2', '<u2', '<u2', '<u2', '<u8', '<u4', '<u4', '<u8'], 'offsets': [0, 2, 4, 6, 8, 16, 20, 24], 'itemsize': 32})
 

@@ -14,6 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
+#define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
 
 enum p15_type {
 	P15_T_FORK = 1,

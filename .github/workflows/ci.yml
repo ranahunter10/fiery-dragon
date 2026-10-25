@@ -58,7 +58,9 @@ jobs:
         run: |
           git submodule status
           build/bpftool/bootstrap/bpftool version
+      - name: C unit tests (record checks, self-test evaluation)
+        run: make test-c
       - name: Three-way layout check (generator vs BTF vs numpy; ADR-0008)
         run: make layout-check
-      - name: Smoke (verifier load; attach tp_btf, see one exec with its identity)
+      - name: Smoke (verifier load; tp_btf attach; spine self-test, ADR-0003)
         run: sudo make smoke

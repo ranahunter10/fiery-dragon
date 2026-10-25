@@ -22,6 +22,7 @@ Common header of every record, 32 bytes (ADR-0008).
 **Flags** (`flags`):
 
 - bit 0 `TRUNCATED`: at least one variable-length field was cut at its maximum; see its _full and _len
+- bit 1 `READ_FAILED`: a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted
 
 ## FORK (type 1, version 1, class SPINE)
 
