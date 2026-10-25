@@ -35,6 +35,11 @@ name = "TRUNCATED"
 bit = 0
 doc = "at least one variable-length field was cut at its maximum; see its _full and _len"
 
+[[flag]]
+name = "READ_FAILED"
+bit = 1
+doc = "a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted"
+
 # ---- process spine (ADR-0003): SPINE class, never shed (ADR-0006) ----
 
 [[record]]

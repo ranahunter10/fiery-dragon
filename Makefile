@@ -30,16 +30,18 @@ BPFTOOL     := $(abspath $(OUT)/bpftool)/bootstrap/bpftool
 # inside struct aes_key), as the kernel itself is built with -fms-extensions. Without it,
 # clang rejects vmlinux.h (E-0059).
 BPF_CFLAGS := -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) -Wall -Werror \
-              -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -I$(LIBBPF_DIR)
+              -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I$(LIBBPF_DIR)
 CFLAGS     ?= -O2 -g
-CFLAGS     += -std=gnu11 -Wall -Wextra -Werror -I$(LIBBPF_DIR) -I$(OUT)
+CFLAGS     += -std=gnu11 -Wall -Wextra -Werror -I$(LIBBPF_DIR) -I$(OUT) -Ischema/generated -Ibpf/include -Idaemon
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o
+SPINE := $(OUT)/p15-spine $(OUT)/test_selftest
+DAEMON_COMMON := daemon/records.c daemon/selftest.c
 
-.PHONY: all check smoke clean submodules deps schema schema-check layout-check
+.PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
-all: $(SMOKE)
+all: $(SMOKE) $(SPINE)
 
 $(OUT):
 	mkdir -p $@
@@ -89,6 +91,19 @@ layout-check: $(OUT)/p15_layout_probe.bpf.o $(BPFTOOL)
 	$(BPFTOOL) -j btf dump file $< > $(OUT)/layout_btf.json
 	python3 schema/gen/layout_check.py $(OUT)/layout_btf.json
 
+$(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_records.h \
+                bpf/include/p15_counters.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
+
+$(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
+
+$(OUT)/test_selftest: daemon/tests/test_selftest.c $(DAEMON_COMMON) daemon/*.h $(LIBBPF_A) | $(OUT)
+	$(CC) $(CFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $@
+
+test-c: $(OUT)/test_selftest
+	$(OUT)/test_selftest
+
 $(OUT)/%.skel.h: $(OUT)/%.bpf.o $(BPFTOOL)
 	$(BPFTOOL) gen skeleton $< > $@
 
@@ -98,7 +113,7 @@ $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 $(OUT)/load_check: bpf/test/load_check.c $(LIBBPF_A)
 	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
 
-check: all schema-check layout-check
+check: all schema-check layout-check test-c
 	tools/ci/run-tests.sh
 	tools/ci/check-evidence.sh
 	cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
@@ -106,6 +121,7 @@ check: all schema-check layout-check
 smoke: all
 	$(OUT)/load_check $(OUT)/empty.bpf.o
 	$(OUT)/core_smoke --attach
+	$(OUT)/p15-spine selftest
 
 clean:
 	rm -rf $(OUT)

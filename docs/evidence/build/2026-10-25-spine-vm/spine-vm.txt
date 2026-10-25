@@ -1,0 +1,127 @@
+b456050 bpf: the process spine and its load-time self-test
+7.0.0-38-generic
+rm -rf build
+mkdir -p build
+make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/ashu/fiery-dragon/build/libbpf/obj \
+  DESTDIR=/home/ashu/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+mkdir -p /home/ashu/fiery-dragon/build/bpftool
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/ashu/fiery-dragon/build/bpftool/ bootstrap
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+...                        libbfd: [ [31mOFF[m ]
+...               clang-bpf-co-re: [ [32mon[m  ]
+...                          llvm: [ [32mon[m  ]
+...                        libcap: [ [31mOFF[m ]
+make[2]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon bpf/test/load_check.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+clang -g -O2 -target bpf -Wall -Werror -I/home/ashu/fiery-dragon/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/spine.bpf.c -o build/spine.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+make[2]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon bpf/test/core_smoke.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/core_smoke
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon daemon/p15_spine.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+make exit 0
+python3 schema/gen/gen.py --check
+schema check: 4 records, 4 generated files, 0 problems
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c schema/generated/p15_layout_probe.bpf.c -o build/p15_layout_probe.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool -j btf dump file build/p15_layout_probe.bpf.o > build/layout_btf.json
+python3 schema/gen/layout_check.py build/layout_btf.json
+layout check: 5 structs x 3 views, 0 disagreements
+build/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+tools/ci/run-tests.sh
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 12.935s
+ok    bench/census/test_run.py: Ran 25 tests in 0.685s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.050s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.014s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.019s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.002s
+ok    schema/gen/test_gen.py: Ran 29 tests in 0.261s
+8 test files, 0 failed
+tools/ci/check-evidence.sh
+ok    docs/evidence/baseline/2026-10-25-hyperv-ABA/SHA256SUMS
+ok    docs/evidence/baseline/2026-10-25-hyperv-on-warm/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-scaffolding/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-container/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T221732Z-light/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T224617Z-v2/SHA256SUMS
+ok    docs/evidence/phase0/SHA256SUMS
+ok    docs/evidence/platform/2026-10-25-perf-counters/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p11/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p6-p8/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p8-32bit/SHA256SUMS
+11 checksum files, 0 failed
+cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
+ok    bpf/vmlinux/SHA256SUMS
+check exit 0
+build/load_check build/empty.bpf.o
+loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+loaded fd_empty_syscall         section syscall                          fd 5
+2 programs accepted by the verifier
+build/core_smoke --attach
+loaded: libbpf v1.7
+child 4240: matched 1, start_ns 155208484900; seen 1, reserve_failed 0
+build/p15-spine selftest
+p15-spine: libbpf v1.7, 4 programs attached
+selftest: daemon 4244, child 4245, grandchild 4246; 7 records collected, 0 invalid
+  ok    test child exited 0
+  ok    every record passes the length checks (none invalid)
+  ok    no record dropped for lack of memory
+  ok    exactly one FORK of the child by the daemon (found 1)
+  ok      ... as a new process (kind 1)
+  ok    every child record carries the start_ns its FORK announced (ADR-0009)
+  ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+  ok    exactly 2 RENAMEs from the child (found 2)
+  ok      ... first: daemon comm -> "fd-selftest" (prctl)
+  ok      ... second: "fd-selftest" -> "true" (exec)
+  ok    exactly one FORK of the grandchild by the child (found 1)
+  ok      ... a new process with its own start_ns
+  ok    exactly one EXEC from the child (found 1)
+  ok      ... filename "/bin/true", not truncated
+  ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+  ok      ... no flags; old_tid is the child
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=155273030247 tgid=4244 tid=4244 start=155219263030 flags=0x0 child=4245/4245 child_start=155273020402 kind=process
+    RENAME ts=155274437289 tgid=4245 tid=4245 start=155273020402 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=155274785331 tgid=4245 tid=4245 start=155273020402 flags=0x0 child=4246/4246 child_start=155274780331 kind=process
+    EXIT   ts=155275193844 tgid=4246 tid=4246 start=155274780331 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=155276710703 tgid=4245 tid=4245 start=155273020402 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=155276858132 tgid=4245 tid=4245 start=155273020402 flags=0x0 old_tid=4245 exe=8388610:526290 gen=3505084858 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+    EXIT   ts=155280093395 tgid=4245 tid=4245 start=155273020402 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  read_failed  truncated
+          FORK        2        2               0            0          0
+          EXEC        1        1               0            0          0
+          EXIT        2        2               0            0          0
+          RENAME      2        2               0            0          0
+smoke exit 0
+  ok      ... no flags; old_tid is the child
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=155799891327 tgid=4251 tid=4251 start=155761576196 flags=0x0 child=4252/4252 child_start=155799884750 kind=process
+    RENAME ts=155800391898 tgid=4252 tid=4252 start=155799884750 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=155800547971 tgid=4252 tid=4252 start=155799884750 flags=0x0 child=4253/4253 child_start=155800545072 kind=process
+    EXIT   ts=155800775241 tgid=4253 tid=4253 start=155800545072 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=155802427274 tgid=4252 tid=4252 start=155799884750 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=155802532698 tgid=4252 tid=4252 start=155799884750 flags=0x0 old_tid=4252 exe=8388610:526290 gen=3505084858 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+    EXIT   ts=155805624015 tgid=4252 tid=4252 start=155799884750 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+dump: 0 records, 0 invalid
+counters: type    seen  emitted  reserve_failed  read_failed  truncated
+          FORK        2        2               0            0          0
+          EXEC        1        1               0            0          0
+          EXIT        2        2               0            0          0
+          RENAME      2        2               0            0          0
