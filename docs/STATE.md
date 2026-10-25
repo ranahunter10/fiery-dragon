@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25 (UTC), PR "research: measurement across platforms and design inputs"
+**Last updated:** 2026-10-25 (UTC), PR "adr: proposed 0017-0019 (flood resilience, measurement v2, engineering gates)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -59,7 +59,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     3. ✅ spine BPF programs and the load-time self-test (ADR-0003, ADR-0009): pass in the dev container (E-0064) and **on the target VM**: 4 programs attached, self-test 21/21 twice, `reserve_failed` 0, `seen == emitted` (E-0065); other processes captured, EXEC inode matches `stat`, process end = EXIT with `group_dead=1`, which may be a non-leader thread (E-0066). [VM runs](evidence/build/2026-10-25-spine-vm/README.md). PR #26 + #27;
     4. `p15d` drain and WAL writer (ADR-0006, ADR-0007), in three PRs:
        1. 🔧 the P15W v1.0 format spec and the C writer: batches with CRC32C, rotation, `fdatasync` interval, torn-tail recovery (E-0068, this PR);
-       2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown;
+       2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown. If ADR-0017/0019 are accepted, also: exact-size EXEC, the writer thread and queue, the drain priority, GAP records, STATS, canary, one error path;
        3. the `bpf_iter/task` process snapshot at each segment open;
     5. Python WAL reader and process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
@@ -80,16 +80,23 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **Knee baseline for the Phase-1 gate** (the 9.4 k rec/s was measured on kernel 5.4, 2 vCPU, Python reader; ADR-0012 quotes knees only against a same-session baseline). Recommend: a VM probe of whether v3.7 loads on 7.0; if yes, both knees in one session; if not, a new ADR rewrites the gate wording.
-2. **Phase-1 scope:** the blueprint's Phase 1 also lists caps-minimal and the P15R importer. Recommend: the importer joins Phase 1 (the oracle diff needs it); caps-minimal moves to Phase 4 beside `CAP_*`.
-3. **Self-hosted CI runner on the VM.** Recommend not now (a public repo lets fork PRs run code on it); revisit for Phase 6.
-4. **Two refinements in the P15W spec beyond ADR-0007's text** (PR #28): a zero-filled tail counts as torn (crash behaviour of file systems); a segment cut inside its own header is reported, not truncated. Recommend accepting both.
-5. **CRC32C in the Python reader (step 5):** the standard library has none. Binary wheels for 3.14 exist for `google-crc32c` 1.9.0 and `crc32c` 2.9. Recommend `google-crc32c`, pinned, with no pure-Python fallback.
-6. **Measurement and design inputs** ([research note](research/2026-10-25-measurement-and-design-inputs.md), asked for on 2026-10-26): seven decisions, listed at the end of that note:
-   - dimensionless headline metrics;
-   - a same-host ring-buffer ceiling from the kernel's `bench`;
-   - a superseding ADR to 0012 for the statistics;
-   - the L7 workload set shared with Nitro, NoDrop and eAudit;
-   - a super-producer row for the spine;
-   - Phase-2 inputs (two-level buffering, record size, in-kernel filtering);
-   - a tamper-evident WAL option for ADR-0013.
+The maintainer's questions of 2026-10-26 (flood weakness, real workloads, statistics, engineering standards) are answered by three proposed ADRs. Accepting them closes the research note's decisions 1–5 (PR #29); its Phase-2 inputs (B2–B5, B7) go into ADR-0005, 0010 and 0013 as considered options when those are written.
+
+1. **Accept ADR-0017, spine flood resilience.**
+   - Exact-size EXEC (MEAS: a fixed reservation takes 1,344 B whatever the length; exact ways take 88–1,088 B);
+   - a writer thread so `fdatasync` never stalls the drain;
+   - a `SCHED_FIFO` 1 drain;
+   - GAP records that locate any loss;
+   - a ring size set from a measured storm;
+   - admission control documented as a deployer policy, off.
+2. **Accept ADR-0018, measurement protocol v2.**
+   - Dimensionless headlines;
+   - raw costs with intervals beside every paired effect (Hodges–Lehmann + Wilcoxon), 10 rounds;
+   - the knee against the same-host ring-buffer ceiling;
+   - one workload set for functional, performance and adversarial runs (PostgreSQL, Nginx, Redis among them).
+   - **The maintainer sets the gate value:** proposed ≥ 50 % of the same-host ceiling if v3.7 can't run on 7.0.
+3. **Accept ADR-0019, engineering gates:** typed boundaries from one source, `P15_MUST_CHECK` + one fatal path + a run state machine, hardening flags, fuzzing and analyzers in CI, STATS records + a textfile + a canary, a fixed module layout.
+4. **Phase-1 scope:** the P15R importer joins Phase 1 (the oracle diff needs it); caps-minimal moves to Phase 4.
+5. **Self-hosted CI runner on the VM:** not now (a public repo lets fork PRs run code on it).
+6. **The two P15W spec refinements in PR #28:** accept.
+7. **CRC32C in the Python reader:** `google-crc32c`, pinned, no fallback.
