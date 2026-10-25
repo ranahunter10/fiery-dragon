@@ -37,7 +37,7 @@ CFLAGS     ?= -O2 -g
 CFLAGS     += -std=gnu11 -Wall -Wextra -Werror -I$(LIBBPF_DIR) -I$(OUT) -Ischema/generated -Ibpf/include -Idaemon
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
-SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o
+SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
@@ -130,6 +130,9 @@ $(OUT)/%.skel.h: $(OUT)/%.bpf.o $(BPFTOOL)
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
 
+$(OUT)/rb_size: bpf/test/rb_size.c $(OUT)/rb_size.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
+
 $(OUT)/load_check: bpf/test/load_check.c $(LIBBPF_A)
 	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
 
@@ -141,6 +144,7 @@ check: all schema-check layout-check test-c
 smoke: all
 	$(OUT)/load_check $(OUT)/empty.bpf.o
 	$(OUT)/core_smoke --attach
+	$(OUT)/rb_size 200
 	$(OUT)/p15-spine selftest
 
 clean:

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted; rules 1 and 4 superseded by ADR-0017
 date: 2026-10-25
 owner: Ashish Rana
 consulted: [capture blueprint v1 §0.4, §5.1–5.2, §5.6 (2026-10-21), Linux v7.0 Documentation/bpf/ringbuf.rst, census E-0025, v3.7 G3 loss study]
