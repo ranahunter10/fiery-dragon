@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: MIT
+#
+# Fiery Dragon record schema: the single source of truth for every record
+# layout (ADR-0008). Generated from this file, never edited by hand:
+#   schema/generated/p15_records.h          C structs + static asserts (BPF and daemon)
+#   schema/generated/p15_records.py         numpy dtypes (analysis tier)
+#   schema/generated/RECORDS.md             reference
+#   schema/generated/p15_layout_probe.bpf.c BTF probe for the three-way layout check
+# Regenerate: python3 schema/gen/gen.py      Check: python3 schema/gen/gen.py --check
+#
+# Rules the generator enforces:
+#  - fields are laid out in the order written, with natural alignment and NO implicit
+#    padding: a misaligned field is an error (add an explicit pad field);
+#  - each variable-length field ("var") gets generated metadata in the fixed part:
+#    <name>_full (u32, full length; P15_LEN_UNKNOWN if not known) and <name>_len
+#    (u16, bytes copied); its bytes follow the fixed part, in the order declared;
+#  - the fixed part is padded to 8 bytes; a whole record is padded to 8 bytes;
+#  - changing a (type, version) layout needs a version bump (schema/lock.json).
+
+[header]
+doc = "Common header of every record, 32 bytes (ADR-0008)."
+fields = [
+  { name = "type",     c = "u16", doc = "record type (the [[record]] type number)" },
+  { name = "version",  c = "u16", doc = "layout version of that type" },
+  { name = "len",      c = "u16", doc = "total record length in bytes, header and variable tails included, padded to 8" },
+  { name = "flags",    c = "u16", doc = "P15_F_* flags" },
+  { name = "ts_ns",    c = "u64", doc = "event time, CLOCK_BOOTTIME ns (bpf_ktime_get_boot_ns)" },
+  { name = "tgid",     c = "u32", doc = "thread-group id, init pid namespace (ADR-0009)" },
+  { name = "tid",      c = "u32", doc = "thread id, init pid namespace" },
+  { name = "start_ns", c = "u64", doc = "group_leader->start_boottime: with tgid and the segment's boot_id, the process identity (ADR-0009)" },
+]
+
+[[flag]]
+name = "TRUNCATED"
+bit = 0
+doc = "at least one variable-length field was cut at its maximum; see its _full and _len"
+
+# ---- process spine (ADR-0003): SPINE class, never shed (ADR-0006) ----
+
+[[record]]
+name = "FORK"
+type = 1
+version = 1
+class = "SPINE"
+doc = "A task created a new task (tp_btf/sched_process_fork). The header names the parent; the fields name the child."
+fields = [
+  { name = "child_start_ns",      c = "u64", doc = "child's group_leader->start_boottime: equals the parent's start_ns for a thread, the child's own for a process" },
+  { name = "child_task_start_ns", c = "u64", doc = "child task's own start_boottime (thread identity, ADR-0009)" },
+  { name = "child_tgid",          c = "u32", doc = "child's thread-group id" },
+  { name = "child_tid",           c = "u32", doc = "child's thread id" },
+  { name = "kind",                c = "u32", doc = "1 = new process (child_tgid != tgid), 2 = new thread" },
+]
+
+[[record]]
+name = "EXEC"
+type = 2
+version = 1
+class = "SPINE"
+doc = "A process replaced its program image (tp_btf/sched_process_exec). The header names the process after the exec; argv is the kernel's copy on the new stack (ADR-0003, E-0049)."
+fields = [
+  { name = "exe_ino",  c = "u64", doc = "bprm->file inode number" },
+  { name = "exe_dev",  c = "u32", doc = "bprm->file superblock s_dev (kernel encoding, not st_dev)" },
+  { name = "exe_gen",  c = "u32", doc = "bprm->file inode i_generation" },
+  { name = "old_tid",  c = "u32", doc = "the exec'ing thread's tid before exec (differs from tgid after a non-leader exec)" },
+]
+var = [
+  { name = "filename", max = 256,  doc = "bprm->filename: the path as passed to execve, or /dev/fd/N for execveat (not resolved; the resolved path joins from FILE_OPEN, Phase 2). The 256 cap is an inference, revisited with data; truncation is counted" },
+  { name = "argv",     max = 1024, doc = "mm->arg_start..arg_end at sched_process_exec, NUL-separated. The 1024 cap is an inference, revisited with data; truncation is counted" },
+]
+
+[[record]]
+name = "EXIT"
+type = 3
+version = 1
+class = "SPINE"
+doc = "A task exited (tp_btf/sched_process_exit). Fires per thread; group_dead = 1 on the thread that ends the process."
+fields = [
+  { name = "exit_code",  c = "i32", doc = "task->exit_code (wait status encoding)" },
+  { name = "group_dead", c = "u32", doc = "1 if this exit ends the thread group" },
+]
+
+[[record]]
+name = "RENAME"
+type = 4
+version = 1
+class = "SPINE"
+doc = "A task's comm changed (tp_btf/task_rename), including the rename every exec does."
+fields = [
+  { name = "old_comm", c = "char[16]", doc = "comm before" },
+  { name = "new_comm", c = "char[16]", doc = "comm after" },
+]

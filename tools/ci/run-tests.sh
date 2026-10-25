@@ -12,6 +12,6 @@ while IFS= read -r t; do
     else
         echo "FAIL  $t"; printf '%s\n' "$out" | tail -30; fail=$((fail + 1))
     fi
-done < <(find bench tools -name 'test_*.py' -not -path '*/testdata/*' | sort)
+done < <(find bench tools schema -name 'test_*.py' -not -path '*/testdata/*' | sort)
 echo "$n test files, $fail failed"
 [ "$n" -gt 0 ] && [ "$fail" -eq 0 ]
