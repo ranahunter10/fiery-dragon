@@ -12,6 +12,7 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
+| [0006](0006-transport-two-bpf-ring-buffers.md) | Two BPF ring buffers (spine never shed, bulk counted), self-paced wakeups, one C drain thread | proposed | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -24,7 +25,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 | 0003 | Hook policy: BTF-checked attach points, tracepoints preferred, load-time self-test | P1, P2 |
 | 0004 | Connect/accept hook layer | P7 |
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
-| 0006 | Transport: two ring buffers, wakeup policy | P10 |
 | 0007 | Write-ahead log format and durability | P5, P10 |
 | 0008 | Schema and versioning | — |
 | 0009 | Identity model (process, file, endpoint incl. transport) | — |
