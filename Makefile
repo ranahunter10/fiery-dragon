@@ -9,6 +9,8 @@
 #   make smoke      load the smoke objects (needs root: sudo make smoke)
 #   make schema       regenerate schema/generated/ from schema/records.toml (ADR-0008)
 #   make layout-check three-way layout check: generator vs BTF vs numpy
+#   make test-c-asan  the C unit tests under ASan and UBSan
+#   make mutate-wal   mutation sweep of the WAL writer
 #   make clean
 #
 # Build dependencies: clang, gcc, make, pkg-config, libelf-dev, zlib1g-dev, libssl-dev.
@@ -36,10 +38,11 @@ CFLAGS     += -std=gnu11 -Wall -Wextra -Werror -I$(LIBBPF_DIR) -I$(OUT) -Ischema
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o
-SPINE := $(OUT)/p15-spine $(OUT)/test_selftest
+SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
+WAL_SRC := daemon/wal.c daemon/crc32c.c
 
-.PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c
+.PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -101,8 +104,25 @@ $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.sk
 $(OUT)/test_selftest: daemon/tests/test_selftest.c $(DAEMON_COMMON) daemon/*.h $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
-test-c: $(OUT)/test_selftest
+$(OUT)/test_wal: daemon/tests/test_wal.c $(WAL_SRC) daemon/wal.h daemon/crc32c.h | $(OUT)
+	$(CC) $(CFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $@
+
+test-c: $(OUT)/test_selftest $(OUT)/test_wal
 	$(OUT)/test_selftest
+	$(OUT)/test_wal
+
+# The same C tests under AddressSanitizer and UndefinedBehaviorSanitizer: any leak,
+# out-of-bounds access or undefined behaviour fails the run.
+ASAN := -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
+test-c-asan: $(LIBBPF_A) | $(OUT)
+	mkdir -p $(OUT)/asan
+	$(CC) $(CFLAGS) $(ASAN) daemon/tests/test_wal.c $(WAL_SRC) -o $(OUT)/asan/test_wal
+	$(CC) $(CFLAGS) $(ASAN) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $(OUT)/asan/test_selftest
+	$(OUT)/asan/test_wal
+	$(OUT)/asan/test_selftest
+
+mutate-wal:
+	python3 daemon/tests/mutate_wal.py
 
 $(OUT)/%.skel.h: $(OUT)/%.bpf.o $(BPFTOOL)
 	$(BPFTOOL) gen skeleton $< > $@
