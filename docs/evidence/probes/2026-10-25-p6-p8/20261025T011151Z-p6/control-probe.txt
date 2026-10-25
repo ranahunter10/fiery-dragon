@@ -1,0 +1,7 @@
+/home/ashu/fiery-dragon/bench/probes/p6_argv/argv.bt:35:2-20: WARNING: Return value discarded.
+    delete(@want[pid]);
+    ~~~~~~~~~~~~~~~~~~
+P6 start
+P6 end
+
+

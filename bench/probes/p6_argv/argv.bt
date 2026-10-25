@@ -1,0 +1,42 @@
+#!/usr/bin/env bpftrace
+// SPDX-License-Identifier: MIT
+/*
+ * argv.bt: read argv[1] of every execve by p6-racer from two places
+ * (phase-0 probe P6).
+ *
+ *  ENTER: raw_syscalls:sys_enter for execve (id 59), reading the caller's
+ *         user memory through the argv pointer. This is what a tracer on
+ *         syscall entry sees. (syscalls:sys_enter_execve would be the
+ *         natural hook, but it delivers no events to BPF on 7.0, E-0022.)
+ *  EXEC:  sched:sched_process_exec, reading the new program's stack at
+ *         mm->arg_start. The kernel itself wrote this copy, and the new
+ *         program hasn't run yet, so it is what the program will receive.
+ *
+ * p6-racer passes argv[0] = "echo", so argv[1] starts at arg_start + 5.
+ * An empty string means the read failed; run.py counts those separately.
+ */
+
+BEGIN
+{
+	printf("P6 start\n");
+}
+
+tracepoint:raw_syscalls:sys_enter /args->id == 59 && comm == "p6-racer"/
+{
+	$argv = (uint64 *)args->args[1];
+	$a1 = (int8 *)*uptr($argv + 1);
+	printf("ENTER %d %s\n", pid, str(uptr($a1)));
+	@want[pid] = 1;
+}
+
+tracepoint:sched:sched_process_exec /@want[pid]/
+{
+	printf("EXEC %d %s\n", pid, str(uptr((int8 *)(curtask->mm->arg_start + 5))));
+	delete(@want[pid]);
+}
+
+END
+{
+	clear(@want);
+	printf("P6 end\n");
+}

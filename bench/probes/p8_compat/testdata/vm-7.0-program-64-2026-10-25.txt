@@ -1,0 +1,6 @@
+OP native_read x64 0 1111
+OP compat_open int80 5 3
+OP compat_read int80 3 2222
+OP compat_open_w int80 5 3
+OP compat_write int80 4 3333
+OP compat_execve int80 11 pending

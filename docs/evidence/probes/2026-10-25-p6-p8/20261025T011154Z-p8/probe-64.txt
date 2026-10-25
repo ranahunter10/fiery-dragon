@@ -1,0 +1,7 @@
+/home/ashu/fiery-dragon/bench/probes/p8_compat/compat.bt:48:2-20: WARNING: Return value discarded.
+    delete(@mine[pid]);
+    ~~~~~~~~~~~~~~~~~~
+P8 start
+P8 end
+
+

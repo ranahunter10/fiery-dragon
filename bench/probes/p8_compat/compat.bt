@@ -1,0 +1,55 @@
+#!/usr/bin/env bpftrace
+// SPDX-License-Identifier: MIT
+/*
+ * compat.bt: what the capture hooks see when a program uses the 32-bit
+ * (compat) syscall ABI (phase-0 probe P8).
+ *
+ * For p8-compat64 and p8-compat32 only, print every
+ *   SYS        raw_syscalls:sys_enter: syscall number as the hook sees it
+ *   VFS_READ   fexit vfs_read: return value (bytes)
+ *   VFS_WRITE  fexit vfs_write: return value (bytes)
+ *   OPEN       fexit security_file_open: return value and file name
+ *   EXEC       sched_process_exec after any of their execs: new file name
+ * each with the TS_COMPAT bit (task->thread_info.status & 0x2), which the
+ * kernel sets on every compat syscall entry (arch/x86/entry/syscall_32.c,
+ * syscall_32_enter, v7.0).
+ */
+
+BEGIN
+{
+	printf("P8 start\n");
+}
+
+tracepoint:raw_syscalls:sys_enter /comm == "p8-compat64" || comm == "p8-compat32"/
+{
+	printf("SYS %d %d %d\n", tid, args->id, curtask->thread_info.status & 2);
+	@mine[pid] = 1;
+}
+
+fexit:vmlinux:vfs_read /comm == "p8-compat64" || comm == "p8-compat32"/
+{
+	printf("VFS_READ %d %d %d\n", tid, retval, curtask->thread_info.status & 2);
+}
+
+fexit:vmlinux:vfs_write /comm == "p8-compat64" || comm == "p8-compat32"/
+{
+	printf("VFS_WRITE %d %d %d\n", tid, retval, curtask->thread_info.status & 2);
+}
+
+fexit:vmlinux:security_file_open /comm == "p8-compat64" || comm == "p8-compat32"/
+{
+	printf("OPEN %d %d %d %s\n", tid, retval, curtask->thread_info.status & 2,
+	       str(args->file->f_path.dentry->d_name.name));
+}
+
+tracepoint:sched:sched_process_exec /@mine[pid]/
+{
+	printf("EXEC %d %d %s\n", pid, curtask->thread_info.status & 2, str(args->filename));
+	delete(@mine[pid]);
+}
+
+END
+{
+	clear(@mine);
+	printf("P8 end\n");
+}
