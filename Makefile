@@ -13,7 +13,9 @@
 #   make mutate-wal   mutation sweep of the WAL writer
 #   make exit-check   no exit()/_exit()/abort() in daemon/ outside the marked sites (ADR-0019 G2)
 #   make hardening-check  the daemon binaries carry the ADR-0019 G3.3 hardening
-#   make mutate-checks    mutation sweep of the two checkers above
+#   make mutate-py        mutation sweep of the Python gates and harnesses (checkers, summarizers)
+#   make bench-exec-cost  EXEC cost per way, bpf_stats (root; ADR-0017 layer 1)
+#   make mutate-spine     mutation sweep of the spine's EXEC program through the self-test (root)
 #   make CC=clang OUT=build-clang test-c   the same build and tests with clang (-Werror clean)
 #   make clean
 #
@@ -49,12 +51,12 @@ LDFLAGS    += -pie -Wl,-z,relro,-z,now
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size
-SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes
+SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/exec_cost
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 
 .PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
-        exit-check hardening-check must-check-test mutate-checks
+        exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -162,11 +164,34 @@ hardening-check: $(OUT)/p15-spine
 mutate-wal:
 	python3 daemon/tests/mutate_wal.py
 
-mutate-checks:
-	python3 tools/ci/mutate_checks.py
+mutate-py:
+	python3 tools/ci/mutate_py.py
+
+# root: each mutant of the spine's EXEC program is loaded and must fail the self-test
+mutate-spine: all
+	python3 bpf/test/mutate_spine_exec.py
 
 $(OUT)/%.skel.h: $(OUT)/%.bpf.o $(BPFTOOL)
 	$(BPFTOOL) gen skeleton $< > $@
+
+# ADR-0017 layer 1 cost harness: the spine built with each EXEC way (bench/rb_cost/README.md).
+EXEC_WAYS := fixed output dynptr
+WAY_fixed := 0
+WAY_output := 1
+WAY_dynptr := 2
+$(OUT)/bench/spine-%.bpf.o: bpf/progs/spine.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_records.h \
+                            bpf/include/p15_counters.h $(LIBBPF_A) | $(OUT)
+	mkdir -p $(OUT)/bench
+	$(CLANG) $(BPF_CFLAGS) -DP15_EXEC_WAY=$(WAY_$*) -c $< -o $@
+
+$(OUT)/exec_cost: bench/rb_cost/exec_cost.c $(DAEMON_COMMON) daemon/*.h $(LIBBPF_A) \
+                  $(foreach w,$(EXEC_WAYS),$(OUT)/bench/spine-$(w).bpf.o)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/rb_cost/exec_cost.c $(DAEMON_COMMON) $(LDLIBS) -o $@
+
+# root; about 2 min in the dev container. The raw lines go to $(OUT)/exec_cost.txt.
+bench-exec-cost: $(OUT)/exec_cost
+	$(OUT)/exec_cost $(OUT)/bench $(or $(ROUNDS),10) $(or $(EXECS),1000) 20 200 1000 | tee $(OUT)/exec_cost.txt
+	python3 bench/rb_cost/summarize.py $(OUT)/exec_cost.txt
 
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@

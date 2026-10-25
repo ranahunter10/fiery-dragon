@@ -6,7 +6,8 @@
  *   p15-spine dump SECONDS    run the self-test, then print every spine record for SECONDS
  *
  * This is the Phase-1 step-3 tool; the drain-and-WAL daemon (p15d, step 4) reuses its parts.
- * Counters are printed at the end with the accounting check SEEN == EMITTED + RESERVE_FAILED.
+ * Counters are printed at the end, after detaching: any RESERVE_FAILED or BUILD_FAILED, or
+ * SEEN != EMITTED + RESERVE_FAILED + BUILD_FAILED for any type, fails the run.
  */
 #include <errno.h>
 #include <signal.h>
@@ -59,7 +60,7 @@ static int on_dump(void *ctx, void *data, size_t size)
 	return 0;
 }
 
-/* Sum the per-CPU counters. Returns 0 if the reserve-failure and accounting checks hold. */
+/* Sum the per-CPU counters. Returns 0 if no spine record was lost and every type's books close. */
 static int print_counters(struct spine_bpf *skel)
 {
 	static const char *types[] = { "?", "FORK", "EXEC", "EXIT", "RENAME" };
@@ -77,18 +78,19 @@ static int print_counters(struct spine_bpf *skel)
 			sum[k] += vals[c];
 	}
 	free(vals);
-	printf("counters: type    seen  emitted  reserve_failed  read_failed  truncated\n");
+	printf("counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated\n");
 	for (int t = 1; t <= 4; t++) {
 		__u64 seen = sum[P15_CTR_INDEX(t, P15_CK_SEEN)], em = sum[P15_CTR_INDEX(t, P15_CK_EMITTED)],
-		      rf = sum[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)];
+		      rf = sum[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)], bf = sum[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)];
 
-		printf("          %-6s %6llu %8llu %15llu %12llu %10llu%s\n", types[t], (unsigned long long)seen,
-		       (unsigned long long)em, (unsigned long long)rf,
+		printf("          %-6s %6llu %8llu %15llu %13llu %12llu %10llu%s\n", types[t], (unsigned long long)seen,
+		       (unsigned long long)em, (unsigned long long)rf, (unsigned long long)bf,
 		       (unsigned long long)sum[P15_CTR_INDEX(t, P15_CK_READ_FAILED)],
 		       (unsigned long long)sum[P15_CTR_INDEX(t, P15_CK_TRUNCATED)],
-		       rf ? "   <- spine records lost: run invalid" : "");
-		/* in-flight events can make seen run ahead by a few while reading; equality is checked at quiescence */
-		bad |= rf != 0;
+		       rf || bf ? "   <- spine records lost: run invalid" :
+		       seen != em + rf + bf ? "   <- seen != emitted + reserve_failed + build_failed" : "");
+		/* read after detach (quiescent), so the books must close exactly (ADR-0006 rule 6) */
+		bad |= rf != 0 || bf != 0 || seen != em + rf + bf;
 	}
 	return bad;
 }
@@ -142,6 +144,8 @@ int main(int argc, char **argv)
 	}
 	rc = 0;
 out_counters:
+	/* detaching unregisters the tracepoints synchronously: no program runs after it returns */
+	spine_bpf__detach(skel);
 	if (print_counters(skel))
 		rc = 1;
 out:

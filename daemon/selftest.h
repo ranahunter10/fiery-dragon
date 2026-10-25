@@ -24,6 +24,7 @@ struct p15_rec_list {
 	void **recs;
 	size_t invalid;      /* records that failed p15_rec_check; never stored */
 	size_t dropped_oom;  /* records not stored for lack of memory; makes the test fail */
+	size_t size_not_len; /* stored records whose ring size is not their len (ADR-0017 layer 1) */
 };
 
 /* Copy a record that passes p15_rec_check. 0 (an invalid record is counted, not stored) or -ENOMEM (counted). */

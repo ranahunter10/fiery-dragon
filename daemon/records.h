@@ -11,7 +11,8 @@
 /*
  * Check that `size` bytes at `data` hold one well-formed record of a known
  * type and version: header present, len <= size, len a multiple of 8,
- * len >= the type's fixed part, and every variable field inside len.
+ * len >= the type's fixed part, every variable field inside len, and for EXEC: len exactly
+ * the fields' padded size (unless READ_FAILED) and every byte after the fields zero.
  * Returns 0, or -EINVAL with *why set to a static reason.
  */
 P15_MUST_CHECK int p15_rec_check(const void *data, size_t size, const char **why);
