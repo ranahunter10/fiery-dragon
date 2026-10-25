@@ -12,6 +12,7 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
+| [0001](0001-platform-ubuntu-26-04-kernel-7-0-pinned.md) | Develop and measure on Ubuntu 26.04 LTS with the GA kernel 7.0.0-38, held | accepted | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -19,7 +20,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 
 | ADR | Topic | Evidence needed first |
 |---|---|---|
-| 0001 | Platform: Ubuntu 26.04, GA kernel 7.0, pinned | phase-0 evidence 00/01 imported |
 | 0002 | Toolchain: libbpf + CO-RE, C daemon, no BCC; which libbpf to vendor | phase-0 evidence 01 |
 | 0003 | Hook policy: BTF-checked attach points, tracepoints preferred, load-time self-test | P1, P2 |
 | 0004 | Connect/accept hook layer | P7 |
