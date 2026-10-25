@@ -21,7 +21,7 @@
 | P9: io_uring completion path | ⏳ open (needs `liburing-dev`) | — |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
-| P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead method must change first (decision 1 below)** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
+| P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead protocol decided (E-0046); to implement** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
 | Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
 | ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/README.md` (planned list) |
@@ -44,7 +44,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 10. PR: service workloads (Nginx, Redis, kernel build).
 11. ✅ Hyper-V A-B-A (P12) with `bench/baseline/`; results and warm-up fix in this PR.
 12. ✅ Host state decided: Hyper-V on, relative numbers only (E-0042).
-13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; method change proposed (decision 1).
+13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; new protocol decided (E-0046).
 14. Small probes built, waiting for the VM run: P6 argv and P8 compat (branch `bench/probes-p6-p8`), P11 wheels (branch `bench/probe-p11-wheels`). P7 and P9 are covered by census v2.
 15. Then ADR-0001…0014.
 
@@ -56,13 +56,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 4. **Journals:** CSV in the repo. *(2026-10-25)*
 5. **Measurement host state:** Hyper-V on (everyday safe state). Quote relative results only (overhead %, selectivity, loss, class mix, interleaved in one session); no absolute rates from this laptop. Goes into ADR-0012. *(2026-10-25, E-0042)*
 
+6. **Overhead protocol:** each round runs traced and untraced back to back, plus an A/A control arm (a second untraced run). Report the median and range of the per-round paired ratios, use at least 7 rounds, and claim an effect only above that run's own A/A noise floor. CV stays as a drift indicator only. Goes into ADR-0012. *(2026-10-25, E-0046)*
+7. **Census-probe overhead is no longer measured.** The next overhead number comes from the Phase-1 probe. *(2026-10-25, E-0047)*
+8. **`gcc-multilib` is installed on the VM** after a snapshot, for P8's 32-bit variant. *(2026-10-25, E-0048)*
+
 ## Decisions waiting
 
-1. **Overhead measurement protocol (ADR-0012).** Replace "3 rounds, mean, CV ≤ 10 %" with:
-   - per-round paired ratios (traced vs untraced, adjacent), reported as median and range;
-   - an A/A control arm (a second untraced config each round) that measures the run's own noise floor;
-   - ≥ 7 rounds, and an effect claimed only above the A/A floor (7 of 7 pairs gives sign-test p = 0.016).
-   - CV stays as the drift indicator.
-   - **Recommendation: yes.** Evidence: E-0043 (every row CV 12–29 % with 3 rounds; back-to-back runs differ 1.6×); the v3.5 tracepoint-tax study made a 16 ns effect readable with exactly this paired-plus-control design.
-2. **Stop measuring census-probe overhead.** The next overhead number comes from the Phase-1 product probe. **Recommendation: yes.** Evidence: E-0045 (the census attaches `raw_syscalls` on every syscall, which the product design does not).
-3. **Install `gcc-multilib` on the VM** (after a snapshot), so that P8's true 32-bit variant runs. **Recommendation: yes.** It is dev-only and leaves the kernel untouched. Without it, the claim that the vDSO compat entry behaves like `int $0x80` stays INF.
+None open right now.

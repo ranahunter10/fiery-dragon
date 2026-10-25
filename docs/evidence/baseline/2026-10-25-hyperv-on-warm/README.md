@@ -7,7 +7,7 @@
 **Conditions:**
 - Started 2026-10-25 00:56:53 UTC, about 30 minutes after A2 started.
 - Host state as noted by the operator: "Hyper-V ON (everyday safe state), warm-up on, plugged in, Best performance, no other apps".
-- **The VM had been freshly booted:** the PID counter in `loadavg_before` was 1573. Whether the laptop also restarted after A2 is not recorded.
+- **The VM had been freshly booted:** the PID counter in `loadavg_before` was 1573. Whether the laptop also restarted after A2 is not known: the operator thinks it may have, but is not sure.
 - Swap was off during the run.
 
 **Integrity:**
