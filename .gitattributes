@@ -18,6 +18,8 @@
 schema/generated/** linguist-generated=true
 bpf/vmlinux/*.h     linguist-generated=true
 
-# Raw evidence and raw test fixtures are committed byte for byte: no whitespace rules.
-docs/evidence/** -whitespace
-bench/**/testdata/** -whitespace
+# Raw evidence and raw test fixtures are committed byte for byte: no line-ending conversion
+# (-text; a CRLF terminal transcript was silently rewritten to LF, breaking its SHA256SUMS)
+# and no whitespace rules.
+docs/evidence/** -text -whitespace
+bench/**/testdata/** -text -whitespace
