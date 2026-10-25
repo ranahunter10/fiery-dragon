@@ -48,7 +48,7 @@ jobs:
           uname -r; clang --version | head -1; dpkg-query -W libbpf-dev
       - name: Build (clang -Werror, BTF)
         run: |
-          clang -O2 -g -Wall -Werror -target bpf -c bpf/test/empty.bpf.c -o empty.bpf.o
+          clang -O2 -g -Wall -Werror -target bpf -I/usr/include/$(uname -m)-linux-gnu -c bpf/test/empty.bpf.c -o empty.bpf.o
           llvm-objdump -h empty.bpf.o | grep -E 'tp_btf/sched_process_exec|syscall|\.BTF '
           gcc -O2 -Wall -Wextra -Werror -o load_check bpf/test/load_check.c -lbpf
       - name: Verifier (load every program with libbpf, attach nothing)
