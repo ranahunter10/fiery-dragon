@@ -139,6 +139,20 @@ A rebuilt VM must reproduce files 00–05 in [`docs/evidence/phase0/`](../eviden
 
 **Known gap:** the exact commands that produced those files were run interactively and are not yet in the repo. The next PR adds them as scripts under `tools/vm/`. Until then, this step cannot be reproduced from the repo alone.
 
+## 6a. Turning the Windows hypervisor off for a measurement session (and back on)
+
+The Hyper-V A-B-A runs ([evidence](../evidence/baseline/2026-10-25-hyperv-ABA/README.md)) showed process creation 4–5.5× faster with the Windows hypervisor off. **On Windows 11 the boot setting alone is not enough**: while Memory integrity (HVCI) is on, Windows still loads the hypervisor.
+
+| Step | Off (for measuring) | Back on (always, afterwards) |
+|---|---|---|
+| 1 | VM: `sudo poweroff` | VM: `sudo poweroff` |
+| 2 | Windows Security → Device security → Core isolation → **Memory integrity Off** (or registry `…\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity` `Enabled=0`) | **Memory integrity On** (or `Enabled=1`) |
+| 3 | admin: `bcdedit /set hypervisorlaunchtype off` | admin: `bcdedit /set hypervisorlaunchtype auto` |
+| 4 | **Restart** (not Shut down) | **Restart** |
+| 5 | Verify: `HypervisorPresent` = **False**, `Win32_DeviceGuard.VirtualizationBasedSecurityStatus` = **0**; VBox.log shows `HM: Using VT-x implementation` | Verify: **True**, **2**, `Enabled` = **1**, `hypervisorlaunchtype Auto` |
+
+**Before step 4, check BitLocker** (`manage-bde -status C:`). If protection is on, have the recovery key at hand. **Install nothing** while Memory integrity is off. WSL2 and Docker Desktop don't work until the hypervisor is back.
+
 ## 7. Before deleting a VM
 
 Export it first, then record the hash:

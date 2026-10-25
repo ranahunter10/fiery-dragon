@@ -21,7 +21,7 @@
 | P9: io_uring completion path | ⏳ open (needs `liburing-dev`) | — |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
-| P12: untraced baselines | 🔧 tool built (E-0037); **Hyper-V A1/B/A2 runs next** | [`bench/baseline/`](../bench/baseline/README.md) |
+| P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41): hypervisor makes exec 4-5.5x slower; tracing +1-11 % on exec; absolute rates drift 26-63 % even with no change. Tool fixed (warm-up, E-0039); **find/churn overhead to re-measure** | [Hyper-V runs](evidence/baseline/2026-10-25-hyperv-ABA/README.md) |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
 | Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
 | ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/README.md` (planned list) |
@@ -42,7 +42,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 9. ✅ This PR: census v2 (META, NET intent, capability), known-ops self-check, attach pre-flight; VM run: all 20 hooks deliver (E-0032); the rate drop vs v1 is not caused by the v2 hooks (E-0035, correcting E-0033).
 9a. ✅ Serial and parallel A/B: no large probe effect (+13-30 %); the census-to-census gap is host drift (E-0035, E-0036). Per-family bisection not needed now.
 10. PR: service workloads (Nginx, Redis, kernel build).
-11. **Next measurement:** Hyper-V A1 (on) / B (off) / A2 (on) with `bench/baseline/` (P12), because host drift now limits every rate (E-0029, E-0036). Tool: ✅ this PR.
+11. ✅ Hyper-V A-B-A (P12) with `bench/baseline/`; results and warm-up fix in this PR.
+12. **Decide ADR-0012 (measurement protocol):** authoritative host state, and whether security settings may be relaxed for measuring (see Decisions waiting).
 
 ## Decisions taken, ADR still to write
 
@@ -53,4 +54,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-None open right now.
+1. **Authoritative measurement host state (ADR-0012).**
+   - (a) Hyper-V **on**, the laptop's everyday state: slower, drifts, safe.
+   - (b) Hyper-V **off** only during measurement sessions: 4-5.5× faster exec, needs Memory integrity off for the session.
+   - (c) A dedicated machine or bare-metal Linux for final numbers.
+   - Evidence: E-0038..E-0041.

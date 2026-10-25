@@ -1,0 +1,406 @@
+{
+  "results": [
+    {
+      "round": 1,
+      "config": "none",
+      "job": "find-serial",
+      "value": 17.609551096999994,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "none",
+      "job": "find-parallel",
+      "value": 0.25213574999999366,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "none",
+      "job": "exec",
+      "value": 28.886393176999988,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "none",
+      "job": "churn",
+      "value": 10904.4,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "none",
+      "job": "disk",
+      "value": 117.858727,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "traced",
+      "job": "find-serial",
+      "value": 2.0575626849999935,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "traced",
+      "job": "find-parallel",
+      "value": 1.5196011079999892,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "traced",
+      "job": "exec",
+      "value": 31.29199343099998,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "traced",
+      "job": "churn",
+      "value": 7538.2,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 1,
+      "config": "traced",
+      "job": "disk",
+      "value": 111.001983,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "traced",
+      "job": "find-serial",
+      "value": 2.241227835999979,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "traced",
+      "job": "find-parallel",
+      "value": 1.5393898600000284,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "traced",
+      "job": "exec",
+      "value": 29.983940906999976,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "traced",
+      "job": "churn",
+      "value": 10986.1,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "traced",
+      "job": "disk",
+      "value": 111.536195,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "none",
+      "job": "find-serial",
+      "value": 1.6185213410000188,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "none",
+      "job": "find-parallel",
+      "value": 0.9860028639999996,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "none",
+      "job": "exec",
+      "value": 28.58379936099999,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "none",
+      "job": "churn",
+      "value": 13097.9,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 2,
+      "config": "none",
+      "job": "disk",
+      "value": 116.578335,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "none",
+      "job": "find-serial",
+      "value": 1.5339013369999748,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "none",
+      "job": "find-parallel",
+      "value": 0.9179878410000128,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "none",
+      "job": "exec",
+      "value": 26.72222566900001,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "none",
+      "job": "churn",
+      "value": 14133.3,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "none",
+      "job": "disk",
+      "value": 121.709246,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "traced",
+      "job": "find-serial",
+      "value": 1.7793795100000125,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "traced",
+      "job": "find-parallel",
+      "value": 1.60915847199999,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "traced",
+      "job": "exec",
+      "value": 29.76618121499996,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "traced",
+      "job": "churn",
+      "value": 7362.0,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    },
+    {
+      "round": 3,
+      "config": "traced",
+      "job": "disk",
+      "value": 152.469776,
+      "skipped": null,
+      "exit_code": 0,
+      "killed": false
+    }
+  ],
+  "summary": [
+    {
+      "job": "find-serial",
+      "config": "none",
+      "unit": "s",
+      "better": "lower",
+      "n": 3,
+      "mean": 6.920657924999996,
+      "sd": 9.256949717271363,
+      "cv_pct": 133.75823249162207,
+      "min": 1.5339013369999748,
+      "max": 17.609551096999994,
+      "tracing_slowdown_pct": -70.7245077136218
+    },
+    {
+      "job": "find-serial",
+      "config": "traced",
+      "unit": "s",
+      "better": "lower",
+      "n": 3,
+      "mean": 2.026056676999995,
+      "sd": 0.23253051512073591,
+      "cv_pct": 11.476999521308874,
+      "min": 1.7793795100000125,
+      "max": 2.241227835999979,
+      "tracing_slowdown_pct": -70.7245077136218
+    },
+    {
+      "job": "find-parallel",
+      "config": "none",
+      "unit": "s",
+      "better": "lower",
+      "n": 3,
+      "mean": 0.7187088183333353,
+      "sd": 0.4054927026580306,
+      "cv_pct": 56.4196086529669,
+      "min": 0.25213574999999366,
+      "max": 0.9860028639999996,
+      "tracing_slowdown_pct": 116.50629206717812
+    },
+    {
+      "job": "find-parallel",
+      "config": "traced",
+      "unit": "s",
+      "better": "lower",
+      "n": 3,
+      "mean": 1.5560498133333358,
+      "sd": 0.04704567881812475,
+      "cv_pct": 3.0234044189976492,
+      "min": 1.5196011079999892,
+      "max": 1.60915847199999,
+      "tracing_slowdown_pct": 116.50629206717812
+    },
+    {
+      "job": "exec",
+      "config": "none",
+      "unit": "s",
+      "better": "lower",
+      "n": 3,
+      "mean": 28.06413940233333,
+      "sd": 1.1719386098050462,
+      "cv_pct": 4.175929263334574,
+      "min": 26.72222566900001,
+      "max": 28.886393176999988,
+      "tracing_slowdown_pct": 8.13576506278617
+    },
+    {
+      "job": "exec",
+      "config": "traced",
+      "unit": "s",
+      "better": "lower",
+      "n": 3,
+      "mean": 30.347371850999973,
+      "sd": 0.8252801148193679,
+      "cv_pct": 2.719445093536738,
+      "min": 29.76618121499996,
+      "max": 31.29199343099998,
+      "tracing_slowdown_pct": 8.13576506278617
+    },
+    {
+      "job": "churn",
+      "config": "none",
+      "unit": "ops/s",
+      "better": "higher",
+      "n": 3,
+      "mean": 12711.866666666667,
+      "sd": 1648.7010351586891,
+      "cv_pct": 12.96977917084317,
+      "min": 10904.4,
+      "max": 14133.3,
+      "tracing_slowdown_pct": 47.319624666329304
+    },
+    {
+      "job": "churn",
+      "config": "traced",
+      "unit": "ops/s",
+      "better": "higher",
+      "n": 3,
+      "mean": 8628.766666666666,
+      "sd": 2043.4106154498988,
+      "cv_pct": 23.681375269349797,
+      "min": 7362.0,
+      "max": 10986.1,
+      "tracing_slowdown_pct": 47.319624666329304
+    },
+    {
+      "job": "disk",
+      "config": "none",
+      "unit": "MB/s",
+      "better": "higher",
+      "n": 3,
+      "mean": 118.715436,
+      "sd": 2.6705850773736803,
+      "cv_pct": 2.249568520620756,
+      "min": 116.578335,
+      "max": 121.709246,
+      "tracing_slowdown_pct": -5.0296655841065245
+    },
+    {
+      "job": "disk",
+      "config": "traced",
+      "unit": "MB/s",
+      "better": "higher",
+      "n": 3,
+      "mean": 125.00265133333333,
+      "sd": 23.788727345234175,
+      "cv_pct": 19.030578224936136,
+      "min": 111.001983,
+      "max": 152.469776,
+      "tracing_slowdown_pct": -5.0296655841065245
+    }
+  ]
+}
