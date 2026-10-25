@@ -16,11 +16,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import probelib as P  # noqa: E402
 
 
+# A real passwd entry for a made-up user 'u' (name, passwd placeholder, uid, gid, gecos, home, shell).
+USER_U = P.pwd.struct_passwd(("u", "x", 1000, 1000, "", "/home/u", "/bin/sh"))
+
+
 class RunAsTest(unittest.TestCase):
     def test_runuser_is_called_by_absolute_path(self):
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(P.shutil, "which", return_value="/usr/sbin/runuser"), \
-                mock.patch.object(P.pwd, "getpwnam", return_value=mock.Mock(pw_dir="/home/u")), \
+                mock.patch.object(P.pwd, "getpwnam", return_value=USER_U), \
                 mock.patch.object(P.subprocess, "run", return_value=mock.Mock(returncode=0)) as run:
             self.assertEqual(P.run_as("u", ["/x/prog", "1"], Path(d) / "o", 5, Path(d)), 0)
         self.assertEqual(run.call_args.args[0], ["/usr/sbin/runuser", "-u", "u", "--", "/x/prog", "1"])
