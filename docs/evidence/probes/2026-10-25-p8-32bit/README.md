@@ -2,9 +2,13 @@
 
 **What:** `sudo apt install -y gcc-multilib` (decision E-0048), then `bench/probes/p8_compat/run.py` at commit `2ec3326`. That commit includes the TS_COMPAT normalization fix (E-0051).
 
-**Raw output:**
-- [`terminal.txt`](terminal.txt) is the operator's terminal transcript, as attached, byte for byte (`SHA256SUMS`).
-- The run directory on the VM is `/var/tmp/fd-probes/20261025T013114Z-p8`; its raw probe output is to be added.
+**Raw output** (all byte for byte, `SHA256SUMS`, 12 files):
+- [`terminal.txt`](terminal.txt) is the operator's terminal transcript, as attached.
+- [`20261025T013114Z-p8/`](20261025T013114Z-p8/index.md) is the run directory, from `p8-32.tgz` (received sha256 `b1061ec4cb07b24a3f289651a2709692d717e4c4cd71f22918cae56205fb13d0`; the VM-side hash was not pasted).
+- **Not kept**, with their sha256:
+  - the built binaries `p8-compat32` `414577fd…d642` and `p8-compat64` `5e7b6d32…b41b` (the same 64-bit build as the first run);
+  - the scratch files in `work-32/` and `work-64/`, identical to the first run: `p8-src.dat` `4a12b181…c422`, `p8-dst.dat` `463f2432…ae80`.
+- The 32-bit probe and program output are also a test fixture (`bench/probes/p8_compat/testdata/`).
 
 **Conditions:**
 - **Installed:** 21 packages: `gcc-multilib`, `libc6-dev-i386`, the lib32/libx32 runtimes, and so on.

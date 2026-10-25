@@ -1,0 +1,311 @@
+{
+  "results": {
+    "64": {
+      "variant": "64",
+      "records": 74,
+      "unknown_lines": 0,
+      "preamble_lines": 3,
+      "ops": {
+        "native_read": "1111",
+        "compat_open": "3",
+        "compat_read": "2222",
+        "compat_open_w": "3",
+        "compat_write": "3333",
+        "compat_execve": "pending"
+      },
+      "op_problems": [],
+      "checks": [
+        {
+          "op": "native_read",
+          "kind": "SYS",
+          "want": {
+            "id": 0,
+            "compat": 0
+          },
+          "seen": 2
+        },
+        {
+          "op": "native_read",
+          "kind": "VFS_READ",
+          "want": {
+            "ret": 1111,
+            "compat": 0
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_open",
+          "kind": "SYS",
+          "want": {
+            "id": 5,
+            "compat": 1
+          },
+          "seen": 2
+        },
+        {
+          "op": "compat_open",
+          "kind": "OPEN",
+          "want": {
+            "ret": 0,
+            "compat": 1,
+            "name": "p8-src.dat"
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_read",
+          "kind": "SYS",
+          "want": {
+            "id": 3,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_read",
+          "kind": "VFS_READ",
+          "want": {
+            "ret": 2222,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_open_w",
+          "kind": "SYS",
+          "want": {
+            "id": 5,
+            "compat": 1
+          },
+          "seen": 2
+        },
+        {
+          "op": "compat_open_w",
+          "kind": "OPEN",
+          "want": {
+            "ret": 0,
+            "compat": 1,
+            "name": "p8-dst.dat"
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_write",
+          "kind": "SYS",
+          "want": {
+            "id": 4,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_write",
+          "kind": "VFS_WRITE",
+          "want": {
+            "ret": 3333,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_execve",
+          "kind": "SYS",
+          "want": {
+            "id": 11,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_execve",
+          "kind": "EXEC",
+          "want": {
+            "name": "/bin/true"
+          },
+          "seen": 1
+        }
+      ],
+      "missed": [],
+      "native_exec_ids_seen": 0,
+      "compat_ids_seen": [
+        3,
+        4,
+        5,
+        6,
+        11
+      ],
+      "x64_misreading": {
+        "3": "read would read as close",
+        "4": "write would read as stat",
+        "5": "open would read as fstat",
+        "6": "close would read as lstat",
+        "11": "execve would read as munmap"
+      },
+      "exec_compat_bit": [
+        0
+      ],
+      "program_exit": 0,
+      "probe_clean_stop": true
+    },
+    "32": {
+      "variant": "32",
+      "records": 51,
+      "unknown_lines": 0,
+      "preamble_lines": 3,
+      "ops": {
+        "native_read": "1111",
+        "compat_open": "3",
+        "compat_read": "2222",
+        "compat_open_w": "3",
+        "compat_write": "3333",
+        "compat_execve": "pending"
+      },
+      "op_problems": [],
+      "checks": [
+        {
+          "op": "native_read",
+          "kind": "SYS",
+          "want": {
+            "id": 3,
+            "compat": 1
+          },
+          "seen": 2
+        },
+        {
+          "op": "native_read",
+          "kind": "VFS_READ",
+          "want": {
+            "ret": 1111,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_open",
+          "kind": "SYS",
+          "want": {
+            "id": 5,
+            "compat": 1
+          },
+          "seen": 2
+        },
+        {
+          "op": "compat_open",
+          "kind": "OPEN",
+          "want": {
+            "ret": 0,
+            "compat": 1,
+            "name": "p8-src.dat"
+          },
+          "seen": 3
+        },
+        {
+          "op": "compat_read",
+          "kind": "SYS",
+          "want": {
+            "id": 3,
+            "compat": 1
+          },
+          "seen": 2
+        },
+        {
+          "op": "compat_read",
+          "kind": "VFS_READ",
+          "want": {
+            "ret": 2222,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_open_w",
+          "kind": "SYS",
+          "want": {
+            "id": 5,
+            "compat": 1
+          },
+          "seen": 2
+        },
+        {
+          "op": "compat_open_w",
+          "kind": "OPEN",
+          "want": {
+            "ret": 0,
+            "compat": 1,
+            "name": "p8-dst.dat"
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_write",
+          "kind": "SYS",
+          "want": {
+            "id": 4,
+            "compat": 1
+          },
+          "seen": 8
+        },
+        {
+          "op": "compat_write",
+          "kind": "VFS_WRITE",
+          "want": {
+            "ret": 3333,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_execve",
+          "kind": "SYS",
+          "want": {
+            "id": 11,
+            "compat": 1
+          },
+          "seen": 1
+        },
+        {
+          "op": "compat_execve",
+          "kind": "EXEC",
+          "want": {
+            "name": "/bin/true"
+          },
+          "seen": 1
+        }
+      ],
+      "missed": [],
+      "native_exec_ids_seen": 0,
+      "compat_ids_seen": [
+        3,
+        4,
+        5,
+        6,
+        11,
+        45,
+        125,
+        191,
+        192,
+        243,
+        258,
+        295,
+        305,
+        311,
+        355,
+        383,
+        386
+      ],
+      "x64_misreading": {
+        "3": "read would read as close",
+        "4": "write would read as stat",
+        "5": "open would read as fstat",
+        "6": "close would read as lstat",
+        "11": "execve would read as munmap"
+      },
+      "exec_compat_bit": [
+        0
+      ],
+      "program_exit": 0,
+      "probe_clean_stop": true
+    }
+  },
+  "skipped": {}
+}

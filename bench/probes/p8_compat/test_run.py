@@ -56,6 +56,20 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(r["preamble_lines"], 3)          # bpftrace's delete() warning
         self.assertEqual(r["exec_compat_bit"], [0])
 
+    def test_real_vm_output_32bit_passes(self):
+        # Raw output of the i386 build (vDSO entry) after gcc-multilib, same VM and kernel.
+        td = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata")
+        with open(os.path.join(td, "vm-7.0-probe-32-2026-10-25.txt")) as p, \
+                open(os.path.join(td, "vm-7.0-program-32-2026-10-25.txt")) as o:
+            r = R.analyze("32", p.read(), o.read())
+        self.assertEqual(r["missed"], [])
+        self.assertEqual(r["op_problems"], [])
+        self.assertEqual(r["native_exec_ids_seen"], 0)
+        self.assertEqual(len(r["compat_ids_seen"]), 17)   # every syscall of an i386 program is compat
+        # the same output read as a 64-bit run must fail: the native read is compat here
+        self.assertNotEqual(R.analyze("64", open(os.path.join(td, "vm-7.0-probe-32-2026-10-25.txt")).read(),
+                                      open(os.path.join(td, "vm-7.0-program-32-2026-10-25.txt")).read())["missed"], [])
+
     def test_compat_bit_value_two_counts_as_set(self):
         recs, _, _ = R.parse_probe(probe(["SYS 7 3 2", "VFS_READ 7 2222 2", "SYS 7 0 0"]))
         self.assertEqual([r["compat"] for r in recs], [1, 1, 0])
