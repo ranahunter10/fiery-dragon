@@ -2,8 +2,8 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "docs: Phase 0 audit"
-**Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
+**Last updated:** 2026-10-25, PR "docs: STATE after the Phase-1 ADRs and CI"
+**Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
 
@@ -24,9 +24,10 @@
 | P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead protocol decided (E-0046); to implement** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
 | Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
-| ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/README.md` (planned list) |
+| ADRs the spine needs | ✅ accepted 2026-10-25: 0001 platform, 0002 toolchain, 0003 hook policy, 0006 transport, 0007 WAL, 0008 schema, 0009 process identity, 0012 quantification (E-0058) | [`docs/decisions/`](decisions/README.md) |
+| Remaining ADRs: 0004 connect/accept, 0005 filtering, 0010 record classes, 0011 test adequacy, 0013 threat model, 0015 file identity, 0016 endpoint identity | ⏳ planned, each before the phase that needs it | [planned list](decisions/README.md) |
 | ADR-0014: "capture v1 is enough for Layer 3" cut line | ⏳ open | — |
-| CI skeleton (lint / unit / veristat on an empty program) | ⏳ open (audit A2) | — |
+| CI skeleton | ✅ PR #15: ruff, all unit tests, evidence checksums, clang build + libbpf verifier load of an empty tp_btf/syscall program. veristat comes with the vendored libbpf (Phase 1) | [`ci.yml`](../.github/workflows/ci.yml) |
 | Phase 0 audit | ✅ done: ready for the Phase-1 spine after its ADRs + CI; full gate not met | [audit](audits/2026-10-25-phase0.md) |
 
 Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte for byte with `SHA256SUMS`.
@@ -50,20 +51,28 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 14. ✅ P6 done; P8 done for both `int $0x80` and a real i386 program (E-0050, E-0052); P11 done (E-0053).
 14a. Optional: take VM snapshot `02-multilib` (the `gcc-multilib` install was not snapshotted).
 15. ✅ Phase 0 audit ([audit](audits/2026-10-25-phase0.md)).
-16. Next: the ADRs the spine needs (platform, toolchain, spine hooks, record format, ring buffer + WAL, self-test, measurement protocol), and a CI skeleton. Then Phase 1 spine code.
+16. ✅ The spine's ADRs accepted (PRs #16–#23) and the CI skeleton merged (PR #15).
 17. Before later phases: sizing projection and OPEN record size (Phase 2), P7 rest (Phase 3), P9 rest (Phase 4), overhead protocol implemented (Phase 6); re-capture the E-0022 diagnostic as a script (E-0056).
+18. **Next, Phase 1 in single-purpose PRs:**
+    1. build scaffolding: libbpf v1.7.0 and bpftool v7.7.0 submodules, `vmlinux.h` from the VM's BTF, Makefile (ADR-0002);
+    2. schema generator and the spine record types (ADR-0008);
+    3. spine BPF programs and the load-time self-test (ADR-0003, ADR-0009);
+    4. `p15d` drain and WAL writer (ADR-0006, ADR-0007);
+    5. Python WAL reader and process tree;
+    6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
 
-## Decisions taken, ADR still to write
+## Decisions taken (now recorded in ADRs where noted)
 
-1. **libbpf:** vendor the latest 1.7.x tag (matches bpftool 7.7, which generates our skeletons). Goes into ADR-0002. *(2026-10-25, E-0013)*
-2. **Swap:** off only while measuring, recorded in each run's conditions. Goes into ADR-0012. *(2026-10-25)*
-3. **Hyper-V:** stays on; a paired on/off experiment decides later. Goes into ADR-0012. *(2026-10-25)*
+1. **libbpf:** vendor the latest 1.7.x tag (matches bpftool 7.7, which generates our skeletons). → ADR-0002 (v1.7.0). *(2026-10-25, E-0013)*
+2. **Swap:** off only while measuring, recorded in each run's conditions. → ADR-0012. *(2026-10-25)*
+3. **Hyper-V:** stays on; a paired on/off experiment decides later. → ADR-0012. *(2026-10-25)*
 4. **Journals:** CSV in the repo. *(2026-10-25)*
-5. **Measurement host state:** Hyper-V on (everyday safe state). Quote relative results only (overhead %, selectivity, loss, class mix, interleaved in one session); no absolute rates from this laptop. Goes into ADR-0012. *(2026-10-25, E-0042)*
-6. **Overhead protocol:** each round runs traced and untraced back to back, plus an A/A control arm (a second untraced run). Report the median and range of the per-round paired ratios, use at least 7 rounds, and claim an effect only above that run's own A/A noise floor. CV stays as a drift indicator only. Goes into ADR-0012. *(2026-10-25, E-0046)*
-7. **Census-probe overhead is no longer measured.** The next overhead number comes from the Phase-1 probe. *(2026-10-25, E-0047)*
+5. **Measurement host state:** Hyper-V on (everyday safe state). Quote relative results only (overhead %, selectivity, loss, class mix, interleaved in one session); no absolute rates from this laptop. → ADR-0012. *(2026-10-25, E-0042)*
+6. **Overhead protocol:** each round runs traced and untraced back to back, plus an A/A control arm (a second untraced run). Report the median and range of the per-round paired ratios, use at least 7 rounds, and claim an effect only above that run's own A/A noise floor. CV stays as a drift indicator only. → ADR-0012. *(2026-10-25, E-0046)*
+7. **Census-probe overhead is no longer measured.** The next overhead number comes from the Phase-1 probe. → ADR-0012. *(2026-10-25, E-0047)*
 8. **`gcc-multilib` is installed on the VM** after a snapshot, for P8's 32-bit variant. *(2026-10-25, E-0048)*
-9. **Analysis-tier Python (Q-D3):** the VM's own Python 3.14 in a project venv, torch from the PyTorch CPU index; no 3.12 environment. Reopens if the first analysis code fails to import or run on 3.14. *(2026-10-25, E-0054)*
+9. **Analysis-tier Python (Q-D3):** the VM's own Python 3.14 in a project venv, torch from the PyTorch CPU index; no 3.12 environment. Reopens if the first analysis code fails to import or run on 3.14. → ADR-0002. *(2026-10-25, E-0054)*
+10. **ADRs 0001, 0002, 0003, 0006, 0007, 0008, 0009, 0012 accepted**, including the choices inside them: C daemon (Q-D2), revising D2 (Q-A2), TOML schema, CLOCK_BOOTTIME timestamps, kernel-native process identity, default ring-buffer wakeups, deferred shm ring, 1 s durability window, the timing quote rule. *(2026-10-25, E-0058)*
 
 ## Decisions waiting
 

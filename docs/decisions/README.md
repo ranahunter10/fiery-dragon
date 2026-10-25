@@ -33,3 +33,5 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 | 0011 | Test strategy and adequacy (coverage matrix + evasion catalogue) | — |
 | 0013 | Threat model: declared limits | — |
 | 0014 | Cut line: "capture v1 is enough for Layer 3" | 0001–0013 |
+| 0015 | File identity (device, inode, generation; kernel-resolved path) — split from 0009 | Phase 2 start |
+| 0016 | Network-endpoint identity, transport included — split from 0009 | P7 rest, Phase 3 start |
