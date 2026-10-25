@@ -16,6 +16,7 @@ To write a new one:
 | [0002](0002-toolchain-libbpf-co-re-c-daemon.md) | Build with libbpf v1.7.0 + CO-RE skeletons and a C daemon; Python only after the WAL | accepted | 2026-10-25 |
 | [0003](0003-hook-policy-btf-checked-attach-points-self-test.md) | Hook policy: BTF-checked attach points, the spine on `tp_btf` sched tracepoints, argv from the kernel's copy, and a per-pid load-time self-test | accepted | 2026-10-25 |
 | [0006](0006-transport-two-bpf-ring-buffers.md) | Two BPF ring buffers (spine never shed, bulk counted), self-paced wakeups, one C drain thread | accepted | 2026-10-25 |
+| [0007](0007-wal-segmented-crc-batches-snapshot.md) | Write-ahead log P15W v1: segment files with a self-describing header, a process snapshot, CRC-checked batches, and fdatasync every second | accepted | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -25,7 +26,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 |---|---|---|
 | 0004 | Connect/accept hook layer | P7 |
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
-| 0007 | Write-ahead log format and durability | P5, P10 |
 | 0008 | Schema and versioning | — |
 | 0009 | Identity model (process, file, endpoint incl. transport) | — |
 | 0010 | Record classes; PERMIT optional | — |
