@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include <linux/types.h>
 
+#include "compiler.h"
+
 #define P15_ST_NAME "fd-selftest"      /* the test child's comm and argv[1] */
 #define P15_ST_EXE "/bin/true"
 #define P15_ST_GRANDCHILD_EXIT 7
@@ -22,9 +24,11 @@ struct p15_rec_list {
 	void **recs;
 	size_t invalid;      /* records that failed p15_rec_check; never stored */
 	size_t dropped_oom;  /* records not stored for lack of memory; makes the test fail */
+	size_t size_not_len; /* stored records whose ring size is not their len (ADR-0017 layer 1) */
 };
 
-int p15_rec_list_add(struct p15_rec_list *l, const void *data, size_t size);
+/* Copy a record that passes p15_rec_check. 0 (an invalid record is counted, not stored) or -ENOMEM (counted). */
+P15_MUST_CHECK int p15_rec_list_add(struct p15_rec_list *l, const void *data, size_t size);
 void p15_rec_list_free(struct p15_rec_list *l);
 
 struct p15_selftest_expect {
@@ -35,13 +39,13 @@ struct p15_selftest_expect {
 };
 
 /* Judge collected records. One line per check to `log`; returns the number of failed checks. */
-int p15_selftest_eval(const struct p15_rec_list *l, const struct p15_selftest_expect *e, FILE *log);
+P15_MUST_CHECK int p15_selftest_eval(const struct p15_rec_list *l, const struct p15_selftest_expect *e, FILE *log);
 
 /*
  * Fork the test child and collect records from the spine ring until the child and its child
  * are reaped and the ring has been quiet for a grace period. Then evaluate.
- * Returns the number of failed checks, or -1 if the test could not be run.
+ * Returns the number of failed checks, or -errno if the test could not be run.
  */
-int p15_selftest_run(int spine_rb_fd, FILE *log);
+P15_MUST_CHECK int p15_selftest_run(int spine_rb_fd, FILE *log);
 
 #endif

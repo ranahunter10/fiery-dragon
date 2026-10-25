@@ -16,6 +16,8 @@
 #include <sys/uio.h>
 #include <time.h>
 
+#include "compiler.h"
+
 #define P15W_PREFIX_LEN    32u
 #define P15W_BATCH_HDR_LEN 40u
 #define P15W_MAX_PAYLOAD   (16u << 20)
@@ -62,7 +64,7 @@ struct p15w_stats {
 };
 
 /* Create segment 0 in opts->dir. Returns 0 or -errno; *out is NULL on failure. */
-int p15w_open(struct p15w **out, const struct p15w_opts *opts);
+P15_MUST_CHECK int p15w_open(struct p15w **out, const struct p15w_opts *opts);
 
 /*
  * Append one batch: `count` records, `len` bytes, all from `ring`. The records must
@@ -70,13 +72,13 @@ int p15w_open(struct p15w **out, const struct p15w_opts *opts);
  * numbers. Returns 0, -EINVAL (bad batch, counted, nothing written) or -errno from I/O.
  * After an I/O error every call returns -EIO: the run is invalid (ADR-0006 rule 6).
  */
-int p15w_append(struct p15w *w, unsigned ring, uint32_t count, const void *payload, uint32_t len);
+P15_MUST_CHECK int p15w_append(struct p15w *w, unsigned ring, uint32_t count, const void *payload, uint32_t len);
 
 /* Rotate by age and fdatasync by interval, if due. Call it from the drain loop. */
-int p15w_tick(struct p15w *w);
+P15_MUST_CHECK int p15w_tick(struct p15w *w);
 
 /* fdatasync and close. Returns the first error the writer saw, or 0. Frees w. */
-int p15w_close(struct p15w *w);
+P15_MUST_CHECK int p15w_close(struct p15w *w);
 
 const struct p15w_stats *p15w_stats(const struct p15w *w);
 unsigned p15w_segment_index(const struct p15w *w);
@@ -91,16 +93,16 @@ struct p15w_batch {
 	uint64_t rejected;               /* records refused by p15w_batch_add for a bad len */
 };
 
-int p15w_batch_init(struct p15w_batch *b, unsigned ring, uint32_t cap);
+P15_MUST_CHECK int p15w_batch_init(struct p15w_batch *b, unsigned ring, uint32_t cap);
 void p15w_batch_free(struct p15w_batch *b);
 /*
  * Copy one record. `size` is the bytes available at `rec`; the record's own len
  * (u16 at offset 4) is what is copied. Returns 0, -ENOSPC if it does not fit
  * (flush, then add again), or -EINVAL if len < 32, len % 8, or len > size (counted).
  */
-int p15w_batch_add(struct p15w_batch *b, const void *rec, size_t size);
+P15_MUST_CHECK int p15w_batch_add(struct p15w_batch *b, const void *rec, size_t size);
 /* Append the batch if it holds records, then empty it. Returns p15w_append's result. */
-int p15w_batch_flush(struct p15w *w, struct p15w_batch *b);
+P15_MUST_CHECK int p15w_batch_flush(struct p15w *w, struct p15w_batch *b);
 
 /* ---- scanner: the reader's rules of §4, used for recovery and by tests ---- */
 
@@ -119,16 +121,16 @@ struct p15w_scan {
  * Scan a segment held in memory. Returns 0 (see s->stop), or -EBADMSG if the
  * header itself fails its checks (s->stop says which).
  */
-int p15w_scan_buf(const uint8_t *buf, size_t n, struct p15w_scan *s);
+P15_MUST_CHECK int p15w_scan_buf(const uint8_t *buf, size_t n, struct p15w_scan *s);
 
 /* Copy the value of `key` from a valid header into out (NUL-terminated). 0, -ENOENT or -ENOSPC. */
-int p15w_header_get(const uint8_t *buf, size_t n, const char *key, char *out, size_t outlen);
+P15_MUST_CHECK int p15w_header_get(const uint8_t *buf, size_t n, const char *key, char *out, size_t outlen);
 
 /*
  * Recovery: scan the segment at path; if it ends in a torn tail, truncate it at the
  * last valid batch and set *cut to the bytes removed. Corruption is never truncated:
  * returns -EUCLEAN with *why set. Returns 0 when the file is clean or was cut.
  */
-int p15w_recover(const char *path, uint64_t *cut, const char **why);
+P15_MUST_CHECK int p15w_recover(const char *path, uint64_t *cut, const char **why);
 
 #endif

@@ -1,0 +1,7 @@
+$ sed -i "s/P15_MUST_CHECK int p15w_tick/int p15w_tick/" daemon/wal.h && make must-check-test
+FAIL  ignoring a P15_MUST_CHECK result compiled
+make: *** [Makefile:152: must-check-test] Error 1
+[exit 2]
+$ (attribute restored) make must-check-test
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+[exit 0]
