@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: MIT
+# CI skeleton (blueprint v1 §10, Phase 0 gate: "lint / unit / verifier on an empty program").
+# Runs on every PR and on pushes to main. The runner's kernel is NOT the target
+# (7.0.0-38 on the VM): the bpf job proves the toolchain and the verifier path only.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: lint, unit tests, evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2          # the whitespace check diffs against the first parent
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.14"  # the VM's Python (E-0054)
+      - name: Tools
+        run: python -m pip install ruff==0.16.9 packaging==26.3
+      - name: Lint (syntax errors and pyflakes)
+        run: ruff check --select E9,F --output-format github .
+      - name: Whitespace (evidence and fixtures are exempt via .gitattributes)
+        run: git diff --check HEAD^1 HEAD
+      - name: Unit tests (every test file on its own)
+        run: tools/ci/run-tests.sh
+      - name: Evidence checksums
+        run: tools/ci/check-evidence.sh
+
+  bpf:
+    name: BPF build and verifier smoke (runner kernel, not the target)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Toolchain
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang llvm libbpf-dev gcc
+          uname -r; clang --version | head -1; dpkg-query -W libbpf-dev
+      - name: Build (clang -Werror, BTF)
+        run: |
+          clang -O2 -g -Wall -Werror -target bpf -I/usr/include/$(uname -m)-linux-gnu -c bpf/test/empty.bpf.c -o empty.bpf.o
+          llvm-objdump -h empty.bpf.o | grep -E 'tp_btf/sched_process_exec|syscall|\.BTF '
+          gcc -O2 -Wall -Wextra -Werror -o load_check bpf/test/load_check.c -lbpf
+      - name: Verifier (load every program with libbpf, attach nothing)
+        run: sudo ./load_check empty.bpf.o
