@@ -12,6 +12,7 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
+| [0012](0012-quantification-protocol.md) | Quantification protocol: host-independent metrics first; relative timing only, by paired rounds with an A/A control | proposed | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -30,6 +31,5 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 | 0009 | Identity model (process, file, endpoint incl. transport) | — |
 | 0010 | Record classes; PERMIT optional | — |
 | 0011 | Test strategy and adequacy (coverage matrix + evasion catalogue) | — |
-| 0012 | Quantification protocol (runs, conditions, swap, Hyper-V) | P5, P12 |
 | 0013 | Threat model: declared limits | — |
 | 0014 | Cut line: "capture v1 is enough for Layer 3" | 0001–0013 |
