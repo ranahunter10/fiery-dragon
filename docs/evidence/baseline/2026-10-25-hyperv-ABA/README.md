@@ -30,6 +30,8 @@
 
 ## Findings
 
+> **Correction (2026-10-25, E-0044).** Finding 1 claimed a cause too strongly. The [warm-up re-run](../2026-10-25-hyperv-on-warm/README.md), with Hyper-V on as in A1 and A2, took **10.1–12.8 s** for the same 2,000 execs. So runs in the same stated host state differ by up to 3.3×, almost as much as the on/off ratio. The per-run numbers below stand. "Hyper-V **makes** process creation 4–5.5× slower" does **not**: A-B-A did not control for whatever else changes between boots. B is still the fastest run measured. The original text is kept so the history stays honest.
+
 1. **Hyper-V makes process creation 4–5.5× slower** (MEAS, stable: exec CV ≤ 7.4 % in every configuration).
    - Untraced, 2,000 execs: A1 37.8 s, **B 6.9 s**, A2 28.1 s. That's 53 → 292 → 71 execs/s.
    - This explains E-0029: the low exec rate is the platform, not the probes.
