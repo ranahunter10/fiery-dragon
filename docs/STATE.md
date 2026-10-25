@@ -56,9 +56,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 18. **Next, Phase 1 in single-purpose PRs:**
     1. ✅ build scaffolding: libbpf v1.7.0 and bpftool v7.7.0 submodules, `vmlinux.h` from the VM's BTF, Makefile; builds and attaches on the VM (E-0059..E-0062, PR #25);
     2. ✅ schema generator and the spine record types FORK/EXEC/EXIT/RENAME (ADR-0008, E-0063). The Python decoder with no defaults and the length checks comes with the WAL reader (step 5);
-    3. ✅ spine BPF programs and the load-time self-test (ADR-0003, ADR-0009): pass in the dev container (E-0064) and **on the target VM**: 4 programs attached, self-test 21/21 twice, `reserve_failed` 0, `seen == emitted` (E-0065, [VM run](evidence/build/2026-10-25-spine-vm/README.md)). OPEN: capture of processes the tool did not create is not yet observed on the target (the 5 s dump on the idle VM saw none);
+    3. ✅ spine BPF programs and the load-time self-test (ADR-0003, ADR-0009): pass in the dev container (E-0064) and **on the target VM**: 4 programs attached, self-test 21/21 twice, `reserve_failed` 0, `seen == emitted` (E-0065); other processes captured, EXEC inode matches `stat`, process end = EXIT with `group_dead=1`, which may be a non-leader thread (E-0066). [VM runs](evidence/build/2026-10-25-spine-vm/README.md). PR #26 + #27;
     4. `p15d` drain and WAL writer (ADR-0006, ADR-0007);
-    5. Python WAL reader and process tree;
+    5. Python WAL reader and process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
 
 ## Decisions taken (now recorded in ADRs where noted)
@@ -73,10 +73,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 8. **`gcc-multilib` is installed on the VM** after a snapshot, for P8's 32-bit variant. *(2026-10-25, E-0048)*
 9. **Analysis-tier Python (Q-D3):** the VM's own Python 3.14 in a project venv, torch from the PyTorch CPU index; no 3.12 environment. Reopens if the first analysis code fails to import or run on 3.14. → ADR-0002. *(2026-10-25, E-0054)*
 10. **ADRs 0001, 0002, 0003, 0006, 0007, 0008, 0009, 0012 accepted**, including the choices inside them: C daemon (Q-D2), revising D2 (Q-A2), TOML schema, CLOCK_BOOTTIME timestamps, kernel-native process identity, default ring-buffer wakeups, deferred shm ring, 1 s durability window, the timing quote rule. *(2026-10-25, E-0058)*
+11. **PR #26 (schema) and PR #27 (spine) merged**; #27 accepted as one PR at 1,110 lines (the programs, their self-test and its tests are one checkable unit). VM snapshot `02-dev-deps` to be taken by the maintainer. *(2026-10-26, "all decisions are good to go", E-0066)*
 
 ## Decisions waiting
 
-1. **Merge PR #26 (schema).** Recommend yes: CI green; on the VM the schema check and the three-way layout check pass (E-0065).
-2. **Merge PR #27 (spine)**, stacked on #26. Recommend: after one short VM run that shows records from processes the tool did not create (the OPEN item in step 3). Alternative: merge now and leave it to the step-6 tests.
-3. **PR #27 size (1,110 lines vs ~400).** Recommend accepting it as one unit: the BPF programs, the self-test that judges them and the tests of that self-test are not separately checkable.
-4. **VM snapshot `02-dev-deps`** (now with `gcc-multilib`, `libssl-dev`, `python3-numpy`). Recommend yes.
+None open right now.

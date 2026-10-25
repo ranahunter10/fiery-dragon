@@ -8,6 +8,7 @@
 |---|---|
 | [`spine-vm.txt`](spine-vm.txt) | the run, as written by `tee` on the VM. sha256 `0bbaef8d…5b29` matches the checksum the maintainer printed there. bpftool's colour codes are kept. |
 | [`terminal.txt`](terminal.txt) | the whole terminal, including the `python3-numpy` install and the `sha256sum` line (CRLF from the copy). |
+| [`dump-terminal.txt`](dump-terminal.txt) | a second run, pasted into chat (2026-10-26 02:47 IST): `dump 6` in the background while the shell runs `/bin/true` three times and `sh -c 'exit 3'`, then `stat` of `/bin/true`. Shows the last 25 matching lines of `~/spine-dump.txt` and its sha256 (`9e5b82bc…762a`); the file itself was not attached, so the first record, the self-test lines and the counters are not in the evidence. |
 
 ## Findings (MEAS, target)
 
@@ -29,9 +30,14 @@
 5. **`dump 5` recorded 0 records after the self-test.**
    - The counters after it are the self-test's own 7 events. So the programs did not fire at all in those 5 s. The records were not dropped (the counters count before the reserve).
    - The VM was idle (one ssh session, nothing scheduled).
-   - The programs have no PID filter (SRC: `bpf/progs/spine.bpf.c`), and the self-test's processes are ordinary processes. But **capture of processes the tool did not create has not yet been observed on the target: OPEN.**
+   - The programs have no PID filter (SRC: `bpf/progs/spine.bpf.c`). The second run closes the question (finding 6).
+6. **Other processes are captured** (`dump-terminal.txt`, 25 records, 0 invalid).
+   - For each of the three `/bin/true`: FORK by the shell (tgid 1408), RENAME `bash` → `true`, EXEC (`/bin/true` 9/9, argv `/bin/true\0` 10/10), EXIT status 0. All four records carry the start time the FORK announced.
+   - `sh -c 'exit 3'`: EXEC of `/usr/bin/sh`, argv `sh\0-c\0exit 3\0` 13/13, EXIT `exit_code=768` (3 << 8).
+   - Unrelated system activity was captured too: a FORK by systemd (tgid 1) and by kthreadd (tgid 2).
+7. **The EXEC file identity matches `stat`.** `stat -L /bin/true` gives inode 526290 and device 2050 (0x802: major 8, minor 2 in the user-space encoding). The record has inode 526290 and device 8388610, the kernel's internal encoding of the same major 8, minor 2 (`MKDEV`, 20-bit minor). The decoder must convert one to the other before comparing with user-space tools.
+8. **The last thread to exit, not the leader, carries `group_dead=1`.** A 4-thread process (tgid 1591) exited: threads 1592, 1594, then the leader 1591, all with `group_dead=0`, then thread 1593 with `group_dead=1`. So the end of a process is the EXIT with `group_dead=1`, whatever its tid, and a leader's EXIT is not the end of its process. The process tree (step 5) must use this rule, and the step-6 tests must cover it.
 
 ## Notes (INF, not results)
 
-- `exit_code=1792` is the kernel's wait status, 7 << 8, for the grandchild's `_exit(7)`. The self-test decodes it as status 7.
-- `exe=8388610:526290`: 8388610 is the kernel's internal `dev_t` for major 8, minor 2 (`MKDEV`, 20-bit minor), and 526290 the inode of `/bin/true`. Neither has been compared with `stat` on the VM yet.
+- `exit_code` is the kernel's wait status: 1792 = 7 << 8 for the grandchild's `_exit(7)`, 768 = 3 << 8 for `exit 3`. The 15 on tgid 1591's threads fits death by signal 15 (SIGTERM) in the same encoding. Which process 1591 was is not known.

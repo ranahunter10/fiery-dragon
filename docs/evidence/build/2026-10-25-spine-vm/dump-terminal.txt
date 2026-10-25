@@ -1,0 +1,35 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && sudo -v && {
+  sudo build/p15-spine dump 6 > ~/spine-dump.txt 2>&1 &
+  sleep 3; for i in 1 2 3; do /bin/true; done; sh -c 'exit 3'; wait
+  stat -L -c 'true: ino %i dev %d' /bin/true
+}; grep -E '^(FORK|EXEC|EXIT|RENAME) |selftest:|dump:' ~/spine-dump.txt | tail -25; sha256sum ~/spine-dump.txt
+[1] 4351
+[1]+  Done                       sudo build/p15-spine dump 6 > ~/spine-dump.txt 2>&1
+true: ino 526290 dev 2050
+FORK   ts=410923225149 tgid=1408 tid=1408 start=67049739514 flags=0x0 child=4358/4358 child_start=410923215504 kind=process
+RENAME ts=410925876353 tgid=4358 tid=4358 start=410923215504 flags=0x0 old="bash" new="true"
+EXEC   ts=410926721495 tgid=4358 tid=4358 start=410923215504 flags=0x0 old_tid=4358 exe=8388610:526290 gen=3505084858 file="/bin/true" (9/9) argv="/bin/true " (10/10)
+EXIT   ts=410934382535 tgid=4358 tid=4358 start=410923215504 flags=0x0 exit_code=0 group_dead=1
+FORK   ts=410938150416 tgid=1408 tid=1408 start=67049739514 flags=0x0 child=4359/4359 child_start=410938141861 kind=process
+RENAME ts=410941512921 tgid=4359 tid=4359 start=410938141861 flags=0x0 old="bash" new="true"
+EXEC   ts=410942906891 tgid=4359 tid=4359 start=410938141861 flags=0x0 old_tid=4359 exe=8388610:526290 gen=3505084858 file="/bin/true" (9/9) argv="/bin/true " (10/10)
+EXIT   ts=410949908335 tgid=4359 tid=4359 start=410938141861 flags=0x0 exit_code=0 group_dead=1
+FORK   ts=410950888449 tgid=1408 tid=1408 start=67049739514 flags=0x0 child=4360/4360 child_start=410950883512 kind=process
+RENAME ts=410952879579 tgid=4360 tid=4360 start=410950883512 flags=0x0 old="bash" new="true"
+EXEC   ts=410953615877 tgid=4360 tid=4360 start=410950883512 flags=0x0 old_tid=4360 exe=8388610:526290 gen=3505084858 file="/bin/true" (9/9) argv="/bin/true " (10/10)
+EXIT   ts=410959221325 tgid=4360 tid=4360 start=410950883512 flags=0x0 exit_code=0 group_dead=1
+FORK   ts=410960929215 tgid=1408 tid=1408 start=67049739514 flags=0x0 child=4361/4361 child_start=410960919666 kind=process
+RENAME ts=410964648835 tgid=4361 tid=4361 start=410960919666 flags=0x0 old="bash" new="sh"
+EXEC   ts=410965654015 tgid=4361 tid=4361 start=410960919666 flags=0x0 old_tid=4361 exe=8388610:524695 gen=2010804290 file="/usr/bin/sh" (11/11) argv="sh -c exit 3 " (13/13)
+EXIT   ts=410973131809 tgid=4361 tid=4361 start=410960919666 flags=0x0 exit_code=768 group_dead=1
+EXIT   ts=411015846957 tgid=1591 tid=1592 start=104893021726 flags=0x0 exit_code=15 group_dead=0
+EXIT   ts=411015991991 tgid=1591 tid=1594 start=104893021726 flags=0x0 exit_code=15 group_dead=0
+EXIT   ts=411016062702 tgid=1591 tid=1591 start=104893021726 flags=0x0 exit_code=15 group_dead=0
+EXIT   ts=411016229655 tgid=1591 tid=1593 start=104893021726 flags=0x0 exit_code=15 group_dead=1
+FORK   ts=411030283588 tgid=1 tid=1 start=897886588 flags=0x0 child=4362/4362 child_start=411030272743 kind=process
+RENAME ts=411032177395 tgid=4362 tid=4362 start=411030272743 flags=0x0 old="systemd" new="(sd-close)"
+EXIT   ts=411032741201 tgid=4362 tid=4362 start=411030272743 flags=0x0 exit_code=0 group_dead=1
+FORK   ts=411038781437 tgid=2 tid=2 start=897886588 flags=0x0 child=4363/4363 child_start=411038770662 kind=process
+dump: 25 records, 0 invalid
+9e5b82bc5650f473fcf90adf8223c94662896a7e30bd37e96bea3cfccdb1762a  /home/ashu/spine-dump.txt
+ashu@p15-dev:~/fiery-dragon$
