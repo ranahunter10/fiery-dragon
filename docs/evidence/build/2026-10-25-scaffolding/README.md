@@ -7,6 +7,7 @@
 | [`01-vmlinux-needs-ms-extensions.txt`](01-vmlinux-needs-ms-extensions.txt) | clang rejects the 7.0 `vmlinux.h` without `-fms-extensions` |
 | [`02-build-and-smoke.txt`](02-build-and-smoke.txt) | the full build from clean with the vendored libbpf v1.7.0 and bpftool v7.7.0, and both smoke programs passing |
 | [`03-vm-build-no-openssl.txt`](03-vm-build-no-openssl.txt) | **the first VM build** (commit 3334b50, kernel 7.0.0-38, clang 21.1.8): the bpftool bootstrap fails, because OpenSSL headers are missing |
+| [`04-vm-build-and-smoke.txt`](04-vm-build-and-smoke.txt) | **the passing VM run** (commit d9d5492) after `apt install libssl-dev`: the full build and both smoke tests on the target kernel |
 
 ## Findings (MEAS, dev container)
 
@@ -35,3 +36,17 @@
    - The file's sha256 starts `a8bb14713cfd1c52abcf`, which matches the 29 hex digits of the VM's `sha256sum` pasted in chat. The paste was cut off.
 5. **On the VM, clang 21.1.8 built `vmlinux-7.0.0-38.h` and `core_smoke.bpf.o` without errors**, with `-fms-extensions` in the flags. libbpf v1.7.0 also built.
    - Whether clang 21 would fail *without* the flag was not tried there.
+6. **On the target kernel, the build and both smoke tests pass** (commit `d9d5492`, 7.0.0-38-generic, clang 21.1.8, after installing `libssl-dev` 3.5.5-1ubuntu3.7):
+   - `make exit 0`;
+   - the verifier accepted both empty programs;
+   - `core_smoke --attach` saw the child's exec with its tgid and a non-zero `group_leader->start_boottime` (`matched 1 … seen 1, reserve_failed 0`);
+   - `smoke exit 0`.
+
+   This is the **first program of our own, built with the vendored libbpf, that loaded and attached on the target kernel**. It confirms there:
+   - `tp_btf/sched_process_exec` delivers through libbpf (ADR-0003);
+   - CO-RE relocations against the 7.0 BTF work for the identity fields (ADR-0009);
+   - the ring buffer delivers (ADR-0006).
+
+   After the install, the kernel packages are still held and `uname -r` is unchanged.
+   - `04-vm-build-and-smoke.txt` is the operator's terminal transcript, as attached.
+   - The VM-side `sha256sum` printed in it (`ddf0d818…`) is of `~/scaffold-vm2.txt`, a subset of this transcript, so it can't be checked against this file.
