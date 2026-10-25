@@ -139,13 +139,14 @@ apt-mark showhold && uname -r     # the kernel must be unchanged
 |---|---|---|
 | `gcc-multilib` | P8's 32-bit test program (`gcc -m32 -static`) | E-0048, E-0052 |
 | `libssl-dev` | building the vendored bpftool v7.7.0, which links libcrypto | E-0061 |
+| `python3-numpy` | `make check`: the three-way layout check reads the generated numpy dtypes | E-0065 |
 
 ```bash
-sudo apt install -y gcc-multilib libssl-dev
+sudo apt install -y gcc-multilib libssl-dev python3-numpy
 apt-mark showhold && uname -r     # the kernel must be unchanged
 ```
 
-**Snapshot after both:** `02-dev-deps`.
+**Snapshot after all three:** `02-dev-deps`.
 
 ## 6. Re-capture the evidence
 
