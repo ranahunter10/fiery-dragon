@@ -1,0 +1,48 @@
+{
+  "control": {
+    "trials": 1000,
+    "echo_failed": 0,
+    "unknown_lines": 0,
+    "duplicate_reads": 0,
+    "preamble_lines": 3,
+    "ENTER": {
+      "match": 1000,
+      "mismatch": 0,
+      "missing": 0,
+      "empty": 0,
+      "unmatched_events": 0
+    },
+    "EXEC": {
+      "match": 1000,
+      "mismatch": 0,
+      "missing": 0,
+      "empty": 0,
+      "unmatched_events": 0
+    },
+    "truth_all_A": 1000,
+    "problems": []
+  },
+  "race": {
+    "trials": 1000,
+    "echo_failed": 0,
+    "unknown_lines": 0,
+    "duplicate_reads": 0,
+    "preamble_lines": 3,
+    "ENTER": {
+      "match": 45,
+      "mismatch": 955,
+      "missing": 0,
+      "empty": 0,
+      "unmatched_events": 0
+    },
+    "EXEC": {
+      "match": 1000,
+      "mismatch": 0,
+      "missing": 0,
+      "empty": 0,
+      "unmatched_events": 0
+    },
+    "truth_all_A": 93,
+    "problems": []
+  }
+}

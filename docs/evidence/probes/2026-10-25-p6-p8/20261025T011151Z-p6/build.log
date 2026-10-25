@@ -1,0 +1,2 @@
+gcc -O2 -Wall -Wextra -pthread -o /var/tmp/fd-probes/20261025T011151Z-p6/p6-racer /home/ashu/fiery-dragon/bench/probes/p6_argv/racer.c
+exit 0

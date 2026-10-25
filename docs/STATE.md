@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench/baseline: warm-up re-run on Hyper-V on"
+**Last updated:** 2026-10-25, PR "bench/probes: P6 argv and P8 compat probes, with VM results"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -15,10 +15,10 @@
 | P3: LSM / lockdown | ✅ done | [`00`](evidence/phase0/00-vm-baseline.txt) |
 | P4: clocksource | ✅ done | [`00`](evidence/phase0/00-vm-baseline.txt) |
 | P5: disk bandwidth | ✅ done: min 63.7 MB/s, ±25 % under Hyper-V | [`05`](evidence/phase0/05-p5-disk.txt) |
-| P6: argv source at exec | ⏳ open | — |
-| P7: connect/accept hook layer | ⏳ open | — |
-| P8: 32-bit compat I/O visible to fexit | ⏳ open (needs `gcc-multilib`) | — |
-| P9: io_uring completion path | ⏳ open (needs `liburing-dev`) | — |
+| P6: argv source at exec | ✅ done: under a race, syscall-entry argv matched what ran 45/1000; `sched_process_exec` 1000/1000 (E-0049) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md) |
+| P7: connect/accept hook layer | ✅ covered by census v2 (`__sys_connect_file`, `do_accept`; E-0032) | [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
+| P8: 32-bit compat I/O visible to fexit | ✅ done: both `int $0x80` and a real i386 program (vDSO entry) pass all 12 checks; `raw_syscalls` reports i386 ids with TS_COMPAT set (E-0050, E-0052) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md), [32-bit run](evidence/probes/2026-10-25-p8-32bit/README.md) |
+| P9: io_uring completion path | ✅ covered by census (io_uring bypasses vfs_read/write; `io_uring_complete` delivers; E-0027) | [v1](evidence/census/2026-10-24T221732Z-light/README.md) |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P11: Python wheels on 3.14 | ⏳ open | — |
 | P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead protocol decided (E-0046); to implement** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
@@ -45,7 +45,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 11. ✅ Hyper-V A-B-A (P12) with `bench/baseline/`; results and warm-up fix in this PR.
 12. ✅ Host state decided: Hyper-V on, relative numbers only (E-0042).
 13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; new protocol decided (E-0046).
-14. Small probes built, waiting for the VM run: P6 argv and P8 compat (branch `bench/probes-p6-p8`), P11 wheels (branch `bench/probe-p11-wheels`). P7 and P9 are covered by census v2.
+14. ✅ P6 done; P8 `int $0x80` variant done (this PR). P11 results filed in the next PR (stacked on this one).
+14a. ✅ `gcc-multilib` installed; P8 32-bit variant passes (E-0052). Optional: take VM snapshot `02-multilib`.
 15. Then ADR-0001…0014.
 
 ## Decisions taken, ADR still to write
