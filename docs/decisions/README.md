@@ -12,7 +12,12 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
-| [0009](0009-process-identity-tgid-leader-start-time.md) | Identify a process by (boot id, tgid, the thread-group leader's start_boottime) | proposed | 2026-10-25 |
+| [0001](0001-platform-ubuntu-26-04-kernel-7-0-pinned.md) | Develop and measure on Ubuntu 26.04 LTS with the GA kernel 7.0.0-38, held | accepted | 2026-10-25 |
+| [0002](0002-toolchain-libbpf-co-re-c-daemon.md) | Build with libbpf v1.7.0 + CO-RE skeletons and a C daemon; Python only after the WAL | accepted | 2026-10-25 |
+| [0003](0003-hook-policy-btf-checked-attach-points-self-test.md) | Hook policy: BTF-checked attach points, the spine on `tp_btf` sched tracepoints, argv from the kernel's copy, and a per-pid load-time self-test | accepted | 2026-10-25 |
+| [0006](0006-transport-two-bpf-ring-buffers.md) | Two BPF ring buffers (spine never shed, bulk counted), self-paced wakeups, one C drain thread | accepted | 2026-10-25 |
+| [0007](0007-wal-segmented-crc-batches-snapshot.md) | Write-ahead log P15W v1: segment files with a self-describing header, a process snapshot, CRC-checked batches, and fdatasync every second | accepted | 2026-10-25 |
+| [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte common header on the boot clock | accepted | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -20,18 +25,11 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 
 | ADR | Topic | Evidence needed first |
 |---|---|---|
-| 0001 | Platform: Ubuntu 26.04, GA kernel 7.0, pinned | phase-0 evidence 00/01 imported |
-| 0002 | Toolchain: libbpf + CO-RE, C daemon, no BCC; which libbpf to vendor | phase-0 evidence 01 |
-| 0003 | Hook policy: BTF-checked attach points, tracepoints preferred, load-time self-test | P1, P2 |
 | 0004 | Connect/accept hook layer | P7 |
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
-| 0006 | Transport: two ring buffers, wakeup policy | P10 |
-| 0007 | Write-ahead log format and durability | P5, P10 |
-| 0008 | Schema and versioning | — |
+| 0009 | Identity model (process, file, endpoint incl. transport) | — |
 | 0010 | Record classes; PERMIT optional | — |
 | 0011 | Test strategy and adequacy (coverage matrix + evasion catalogue) | — |
 | 0012 | Quantification protocol (runs, conditions, swap, Hyper-V) | P5, P12 |
 | 0013 | Threat model: declared limits | — |
 | 0014 | Cut line: "capture v1 is enough for Layer 3" | 0001–0013 |
-| 0015 | File identity (device, inode, generation; kernel-resolved path) — split from 0009 | Phase 2 start |
-| 0016 | Network-endpoint identity, transport included — split from 0009 | P7 rest, Phase 3 start |
