@@ -1,0 +1,35 @@
+$ git submodule status
+ 4222ef1c8cdb0a1ea03c7a8c650ec334b782902d third_party/bpftool (v7.7.0)
+ f5dcbae736e5d7f83a35718e01be1a8e3010fa39 third_party/libbpf (v1.7.0)
+
+$ make -j4  (build log filtered to the non-compile lines)
+mkdir -p build
+make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/claude/fiery-dragon/build/libbpf/obj \
+  DESTDIR=/home/claude/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+mkdir -p /home/claude/fiery-dragon/build/bpftool
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/claude/fiery-dragon/build/bpftool/ bootstrap
+...                        libbfd: [ [31mOFF[m ]
+...               clang-bpf-co-re: [ [32mon[m  ]
+...                          llvm: [ [31mOFF[m ]
+...                        libcap: [ [31mOFF[m ]
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -I/home/claude/fiery-dragon/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/claude/fiery-dragon/build/libbpf -Ibuild bpf/test/load_check.c /home/claude/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+clang -g -O2 -target bpf -Wall -Werror -I/home/claude/fiery-dragon/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+/home/claude/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Werror -I/home/claude/fiery-dragon/build/libbpf -Ibuild bpf/test/core_smoke.c /home/claude/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/core_smoke
+exit 0
+
+$ build/bpftool/bootstrap/bpftool version
+bpftool v7.7.0
+using libbpf v1.7
+features: skeletons, bootstrap
+
+$ make smoke   (as root, dev container)
+build/load_check build/empty.bpf.o
+loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+loaded fd_empty_syscall         section syscall                          fd 5
+2 programs accepted by the verifier
+build/core_smoke --attach
+loaded: libbpf v1.7
+child 4750: matched 1, start_ns 850908999613; seen 1, reserve_failed 0
+exit 0
