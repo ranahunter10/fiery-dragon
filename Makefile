@@ -7,6 +7,8 @@
 #   make            build everything
 #   make check      unit tests, evidence and vmlinux checksums, build
 #   make smoke      load the smoke objects (needs root: sudo make smoke)
+#   make schema       regenerate schema/generated/ from schema/records.toml (ADR-0008)
+#   make layout-check three-way layout check: generator vs BTF vs numpy
 #   make clean
 #
 # Build dependencies: clang, gcc, make, pkg-config, libelf-dev, zlib1g-dev, libssl-dev.
@@ -28,14 +30,14 @@ BPFTOOL     := $(abspath $(OUT)/bpftool)/bootstrap/bpftool
 # inside struct aes_key), as the kernel itself is built with -fms-extensions. Without it,
 # clang rejects vmlinux.h (E-0059).
 BPF_CFLAGS := -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) -Wall -Werror \
-              -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -I$(LIBBPF_DIR)
+              -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -I$(LIBBPF_DIR)
 CFLAGS     ?= -O2 -g
 CFLAGS     += -std=gnu11 -Wall -Wextra -Werror -I$(LIBBPF_DIR) -I$(OUT)
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o
 
-.PHONY: all check smoke clean submodules deps
+.PHONY: all check smoke clean submodules deps schema schema-check layout-check
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE)
 
@@ -70,6 +72,23 @@ $(OUT)/%.bpf.o: bpf/test/%.bpf.c bpf/vmlinux/vmlinux.h $(LIBBPF_A) | $(OUT)
 $(OUT)/empty.bpf.o: bpf/test/empty.bpf.c $(LIBBPF_A) | $(OUT)
 	$(CLANG) -g -O2 -target bpf -Wall -Werror -I$(LIBBPF_DIR) -I/usr/include/$(shell uname -m)-linux-gnu -c $< -o $@
 
+SCHEMA_GEN := schema/generated/p15_records.h schema/generated/p15_records.py \
+              schema/generated/RECORDS.md schema/generated/p15_layout_probe.bpf.c
+
+schema:
+	python3 schema/gen/gen.py
+
+schema-check:
+	python3 schema/gen/gen.py --check
+
+$(OUT)/p15_layout_probe.bpf.o: schema/generated/p15_layout_probe.bpf.c schema/generated/p15_records.h \
+                               bpf/vmlinux/vmlinux.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
+
+layout-check: $(OUT)/p15_layout_probe.bpf.o $(BPFTOOL)
+	$(BPFTOOL) -j btf dump file $< > $(OUT)/layout_btf.json
+	python3 schema/gen/layout_check.py $(OUT)/layout_btf.json
+
 $(OUT)/%.skel.h: $(OUT)/%.bpf.o $(BPFTOOL)
 	$(BPFTOOL) gen skeleton $< > $@
 
@@ -79,7 +98,7 @@ $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 $(OUT)/load_check: bpf/test/load_check.c $(LIBBPF_A)
 	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
 
-check: all
+check: all schema-check layout-check
 	tools/ci/run-tests.sh
 	tools/ci/check-evidence.sh
 	cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"

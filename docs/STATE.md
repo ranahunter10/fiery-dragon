@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "build: vendor libbpf v1.7.0 and bpftool v7.7.0, add vmlinux.h and a Makefile"
+**Last updated:** 2026-10-25, PR "schema: generator, lock and three-way layout check; the spine records"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -55,7 +55,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 17. Before later phases: sizing projection and OPEN record size (Phase 2), P7 rest (Phase 3), P9 rest (Phase 4), overhead protocol implemented (Phase 6); re-capture the E-0022 diagnostic as a script (E-0056).
 18. **Next, Phase 1 in single-purpose PRs:**
     1. ✅ build scaffolding: libbpf v1.7.0 and bpftool v7.7.0 submodules, `vmlinux.h` from the VM's BTF, Makefile; builds and attaches on the VM (E-0059..E-0062, PR #25);
-    2. schema generator and the spine record types (ADR-0008);
+    2. ✅ schema generator and the spine record types FORK/EXEC/EXIT/RENAME (ADR-0008, E-0063). The Python decoder with no defaults and the length checks comes with the WAL reader (step 5);
     3. spine BPF programs and the load-time self-test (ADR-0003, ADR-0009);
     4. `p15d` drain and WAL writer (ADR-0006, ADR-0007);
     5. Python WAL reader and process tree;
