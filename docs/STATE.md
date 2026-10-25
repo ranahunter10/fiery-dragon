@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25 (UTC), step 4b stack, PR 2 of 5 (exact-size EXEC records)
+**Last updated:** 2026-10-25 (UTC), step 4b stack, PR 3 of 5 (daemon records in the schema)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -62,7 +62,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
        2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown. Per ADR-0017/0019, also: exact-size EXEC, the writer thread and queue, the drain priority, GAP records, STATS, canary, one error path. A stack of single-purpose PRs:
           1. 🔧 ADR-0019 G2/G3 on the existing code: `P15_MUST_CHECK` on every fallible function (an ignored result fails the build, gcc and clang), the hardening and warning flags (checked in the binary), `daemon/exitcodes.h`, the exit-call check (E-0074). In review;
           2. 🔧 exact-size EXEC records (ADR-0017 layer 1): built in per-CPU scratch, `bpf_ringbuf_output` of `len`; the self-test (now 22 checks) fails if any record's ring size is not its `len`; `p15_rec_check` refuses slack and stale bytes; `bpf_stats` harness for the three ways (E-0075, E-0076). In review;
-          3. the daemon records STATS, GAP, END, CLOCK_SYNC in the schema;
+          3. 🔧 the daemon records CLOCK_SYNC (32), STATS (33), GAP (34), END (35) in the schema, version 1, each field tied to an ADR line; the schema hash for the WAL header; `p15_rec_check` knows them and requires fixed-size records to have exactly their size (E-0077). In review;
           4. the bounded SPSC batch queue, under ThreadSanitizer;
           5. `p15d` itself: loader, drain, writer, stats, config, the run state machine, `p15_fail`, and the L4 tests (forced overflow, drain stall);
        3. the `bpf_iter/task` process snapshot at each segment open;
@@ -98,3 +98,5 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 3. **Scope of the hardening flags:** applied to every userspace binary, the loaders in `bpf/test/` and the C tests included, not only the daemon. Recommendation: accept; one flag set, and the tests then run the code as it ships. Evidence: [build run](evidence/build/2026-10-25-daemon-hardening-container/README.md).
 4. **How EXEC takes exactly its `len` (ADR-0017 layer 1 leaves `output` or `dynptr` to a `bpf_stats` measurement).** Implemented: `output` (per-CPU scratch, then `bpf_ringbuf_output`). Recommendation: keep `output`. Evidence: in two 10-round sessions the two ways' CPU cost is not resolved on this host (paired medians 12–124 ns apart, sign changing between sessions); `output` needs only a helper since 5.8 while `dynptr` needs two kfuncs from 6.16+ (present on the target per its BTF, SRC) and two more error paths; `fixed` is 51–379 ns cheaper at ≥ 200 B of argv but takes 1,344 B per exec (E-0076, [cost run](evidence/probes/2026-10-25-exec-cost-container/README.md)). The two other ways stay in `spine.bpf.c` behind `-DP15_EXEC_WAY` until the VM repeats the run; then they can go.
 5. **Stricter EXEC checks in `p15_rec_check`:** `len` must be exactly the fields' padded size unless `READ_FAILED`, and every byte after the fields must be zero; a record that breaks either is refused and counted, which makes the run invalid. Recommendation: accept; the scratch buffer is reused, so a padding bug would otherwise leak an earlier command line into a record silently. Evidence: the unit tests and sweep (E-0075).
+6. **Where the daemon records go.** ADR-0006 rule 1 lists clock-sync and drop summaries among the *spine* ring's contents; ADR-0017 layer 4 puts GAP in the *daemon* ring; P15W has ring 2 for daemon records. Only BPF can write into the spine ring, so this PR's records are written by `p15d` into WAL ring 2 (daemon), all four of them, and readers merge rings by `ts_ns` (ADR-0006 rule 5). Recommendation: accept ring 2 for every daemon-written record, and record it in the ADR that next touches transport. Evidence: the ADR texts; the schema comment.
+7. **STATS shape:** counters cumulative from the run's start; four fields per interval since the previous STATS (`poll_gap_max_ns`, `spine_fill_max`, `queue_depth_max`, `wal_fsync_max_ns`), with `interval_ns` saying how long that was. Classes: STATS for STATS, MARKER for the other three; type numbers from 32, so the BPF counter types 0–7 stay apart. Recommendation: accept. Evidence: `schema/records.toml`.

@@ -203,6 +203,12 @@ def lock_entries(s: Schema) -> dict[str, str]:
     return out
 
 
+def schema_hash(s: Schema) -> str:
+    """One hash for the whole schema: of every layout's hash. It names the schema in each WAL
+    segment header (ADR-0007), and changes whenever any record layout does."""
+    return hashlib.sha256(json.dumps(lock_entries(s), sort_keys=True).encode()).hexdigest()
+
+
 def check_lock(s: Schema, lock: dict[str, str]) -> list[str]:
     """Problems with the lock: a locked layout changed, or a layout is not locked yet."""
     probs = []
@@ -225,7 +231,9 @@ def emit_c(s: Schema) -> str:
          "#ifndef __VMLINUX_H__", "#include <linux/types.h>", "#endif", "",
          "#define P15_ASSERT(c, m) _Static_assert(c, m)",
          "#define P15_OFFSETOF(t, f) __builtin_offsetof(t, f)", "",
-         f"#define P15_HEADER_SIZE {HEADER_SIZE}", f"#define P15_LEN_UNKNOWN 0x{LEN_UNKNOWN:X}u", ""]
+         f"#define P15_HEADER_SIZE {HEADER_SIZE}", f"#define P15_LEN_UNKNOWN 0x{LEN_UNKNOWN:X}u", "",
+         "/* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */",
+         f'#define P15_SCHEMA_HASH "{schema_hash(s)}"', ""]
     for name, bit, doc in s.flags:
         L.append(f"#define P15_F_{name} (1u << {bit})   /* {doc} */")
     L.append("")
@@ -284,7 +292,8 @@ def emit_py(s: Schema) -> str:
          "fields follow it in the order of `var`, each `<name>_len` bytes long. Decoders must never read",
          'past the header\'s len (ADR-0008 rule 5)."""', "",
          "from typing import NamedTuple", "", "import numpy as np", "",
-         f"HEADER_SIZE = {HEADER_SIZE}", f"LEN_UNKNOWN = 0x{LEN_UNKNOWN:X}", ""]
+         f"HEADER_SIZE = {HEADER_SIZE}", f"LEN_UNKNOWN = 0x{LEN_UNKNOWN:X}",
+         f'SCHEMA_HASH = "{schema_hash(s)}"   # the WAL header\'s schema.hash (ADR-0007)', ""]
     for name, bit, _ in s.flags:
         L.append(f"F_{name} = 1 << {bit}")
     L += ["", f"HEADER_DTYPE = {_np_dtype_expr(s.header, HEADER_SIZE, False)}", "", "",

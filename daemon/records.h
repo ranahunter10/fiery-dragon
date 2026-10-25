@@ -11,11 +11,15 @@
 /*
  * Check that `size` bytes at `data` hold one well-formed record of a known
  * type and version: header present, len <= size, len a multiple of 8,
- * len >= the type's fixed part, every variable field inside len, and for EXEC: len exactly
- * the fields' padded size (unless READ_FAILED) and every byte after the fields zero.
+ * len == the fixed size for a fixed-size type; for EXEC and END, every variable field
+ * inside len, len exactly the fields' padded size (EXEC: unless READ_FAILED) and every
+ * byte after the fields zero.
  * Returns 0, or -EINVAL with *why set to a static reason.
  */
 P15_MUST_CHECK int p15_rec_check(const void *data, size_t size, const char **why);
+
+/* "FORK", "EXEC", ..., or "?" for a type this build does not know. */
+const char *p15_type_name(__u16 type);
 
 /* One line of text for a checked record. Returns the length written (snprintf rules). */
 int p15_rec_format(const void *data, char *buf, size_t n);

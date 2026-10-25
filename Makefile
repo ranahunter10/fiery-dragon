@@ -11,6 +11,7 @@
 #   make layout-check three-way layout check: generator vs BTF vs numpy
 #   make test-c-asan  the C unit tests under ASan and UBSan
 #   make mutate-wal   mutation sweep of the WAL writer
+#   make mutate-records  mutation sweep of the record checks (daemon/records.c), under ASan
 #   make exit-check   no exit()/_exit()/abort() in daemon/ outside the marked sites (ADR-0019 G2)
 #   make hardening-check  the daemon binaries carry the ADR-0019 G3.3 hardening
 #   make mutate-py        mutation sweep of the Python gates and harnesses (checkers, summarizers)
@@ -51,12 +52,13 @@ LDFLAGS    += -pie -Wl,-z,relro,-z,now
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size
-SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/exec_cost
+SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
+         $(OUT)/exec_cost
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 
 .PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
-        exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine
+        exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -124,10 +126,14 @@ $(OUT)/test_wal: daemon/tests/test_wal.c $(WAL_SRC) daemon/wal.h daemon/crc32c.h
 $(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
 
-test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes must-check-test
+$(OUT)/test_records: daemon/tests/test_records.c daemon/records.c daemon/records.h schema/generated/p15_records.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $@
+
+test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records must-check-test
 	$(OUT)/test_selftest
 	$(OUT)/test_wal
 	$(OUT)/test_exitcodes
+	$(OUT)/test_records
 
 # The same C tests under AddressSanitizer and UndefinedBehaviorSanitizer: any leak,
 # out-of-bounds access or undefined behaviour fails the run. FORTIFY is off here: its checked
@@ -138,9 +144,11 @@ test-c-asan: $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $(OUT)/asan/test_wal
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $(OUT)/asan/test_selftest
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_exitcodes.c -o $(OUT)/asan/test_exitcodes
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $(OUT)/asan/test_records
 	$(OUT)/asan/test_wal
 	$(OUT)/asan/test_selftest
 	$(OUT)/asan/test_exitcodes
+	$(OUT)/asan/test_records
 
 # ADR-0019 G2.2: no exit(), _exit() or abort() in daemon/ outside the sites marked "exit-ok".
 exit-check:
@@ -163,6 +171,9 @@ hardening-check: $(OUT)/p15-spine
 
 mutate-wal:
 	python3 daemon/tests/mutate_wal.py
+
+mutate-records: $(LIBBPF_A)
+	python3 daemon/tests/mutate_records.py
 
 mutate-py:
 	python3 tools/ci/mutate_py.py

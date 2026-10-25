@@ -7,6 +7,7 @@ Phase-1 steps 3–4: the spine loader, record checks, the load-time self-test, a
 | [`records.c`](records.c) | `p15_rec_check`: a record is used only if its header, `len` and variable fields are all inside the bytes received (ADR-0008 rule 5). For EXEC, also: `len` is exactly the fields' padded size (unless `READ_FAILED`) and the bytes after the fields are zero, since EXEC is built in a reused scratch buffer (ADR-0017). Also `p15_rec_format`: one line per record |
 | [`selftest.c`](selftest.c) | The load-time self-test (ADR-0003). A test child renames itself, forks a grandchild that exits 7, and execs `/bin/true fd-selftest`. **Only records attributed to the child, the grandchild and the daemon's fork of the child are judged, with exact counts and field values.** 22 checks, including that every record takes exactly its `len` in the ring (ADR-0017 layer 1) |
 | [`p15_spine.c`](p15_spine.c) | `p15-spine selftest` / `p15-spine dump SECONDS`: attach the spine, run the self-test, optionally print records, then detach and print the per-cause counters. Fails if any record was lost or a type's books do not close (`seen = emitted + reserve_failed + build_failed`) |
+| [`tests/test_records.c`](tests/test_records.c), [`tests/mutate_records.py`](tests/mutate_records.py) | The record checks on every type: exact sizes, END's reason, EXEC's slack rules, buffers of exactly `len` under ASan; and the formatter. The sweep plants 20 bugs in `records.c` and runs the tests under ASan |
 | [`tests/test_selftest.c`](tests/test_selftest.c) | Unit tests on synthetic records: each failure the self-test must catch, injected one at a time |
 | [`wal.c`](wal.c), [`wal.h`](wal.h) | The P15W v1.0 writer (ADR-0007, format in [`docs/formats/p15w-v1.md`](../docs/formats/p15w-v1.md)): segments with a self-describing header, one `writev` per batch with CRC32C, per-ring sequence numbers, rotation by size and age, `fdatasync` every interval. Also the batch builder (copies each record at its own `len`), the scanner (the reader's rules) and torn-tail recovery. Time and writes go through injectable functions, so tests drive them exactly |
 | [`crc32c.c`](crc32c.c) | CRC32C (Castagnoli), table-driven |
@@ -19,6 +20,7 @@ Phase-1 steps 3–4: the spine loader, record checks, the load-time self-test, a
 make test-c                    # unit tests, no root
 make test-c-asan               # the same under ASan and UBSan
 make mutate-wal                # mutation sweep of the WAL writer
+make mutate-records            # mutation sweep of the record checks, under ASan
 make exit-check                # no exit()/_exit()/abort() outside sites marked "exit-ok: <reason>"
 make hardening-check           # the binaries really are PIE, full RELRO, NX, canaries, FORTIFY, CET
 sudo build/p15-spine selftest  # the real self-test (root)

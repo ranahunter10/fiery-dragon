@@ -48,7 +48,7 @@ class RealSchemaTest(unittest.TestCase):
         self.assertEqual(self.s.header[-1].offset + self.s.header[-1].size, 32)
 
     def test_spine_records_present(self):
-        self.assertEqual([(r.name, r.type, r.version) for r in self.s.records],
+        self.assertEqual([(r.name, r.type, r.version) for r in self.s.records][:4],
                          [("FORK", 1, 1), ("EXEC", 2, 1), ("EXIT", 3, 1), ("RENAME", 4, 1)])
 
     def test_exec_var_metadata_and_sizes(self):
@@ -62,6 +62,26 @@ class RealSchemaTest(unittest.TestCase):
     def test_every_fixed_part_is_a_multiple_of_8(self):
         for r in self.s.records:
             self.assertEqual(r.fixed_size % 8, 0, r.name)
+
+    def test_daemon_records_present(self):
+        names = {r.name: (r.type, r.version, r.cls) for r in self.s.records}
+        self.assertEqual({k: names[k] for k in ("CLOCK_SYNC", "STATS", "GAP", "END")},
+                         {"CLOCK_SYNC": (32, 1, "MARKER"), "STATS": (33, 1, "STATS"), "GAP": (34, 1, "MARKER"),
+                          "END": (35, 1, "MARKER")})
+        end = next(r for r in self.s.records if r.name == "END")
+        self.assertEqual([(v.name, v.max) for v in end.var], [("reason", 256)])
+
+    def test_schema_hash_is_emitted_and_follows_every_layout(self):
+        h = gen.schema_hash(self.s)
+        files = gen.render(self.s)
+        self.assertIn(f'#define P15_SCHEMA_HASH "{h}"', files["p15_records.h"])
+        self.assertIn(f'SCHEMA_HASH = "{h}"', files["p15_records.py"])
+        self.assertEqual(len(h), 64)
+        a = gen.load(schema(rec()))
+        b = gen.load(schema(rec(fields='{ name = "y", c = "u64" }')))
+        c = gen.load(schema(rec() + rec(name="B", type_=2)))
+        self.assertEqual(len({gen.schema_hash(a), gen.schema_hash(b), gen.schema_hash(c)}), 3)
+        self.assertEqual(gen.schema_hash(a), gen.schema_hash(gen.load(schema(rec()))))
 
     def test_lock_matches_the_committed_lock(self):
         self.assertEqual(gen.check_lock(self.s, json.loads(gen.LOCK.read_text())), [])
