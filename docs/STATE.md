@@ -55,7 +55,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 3. **Hyper-V:** stays on; a paired on/off experiment decides later. Goes into ADR-0012. *(2026-10-25)*
 4. **Journals:** CSV in the repo. *(2026-10-25)*
 5. **Measurement host state:** Hyper-V on (everyday safe state). Quote relative results only (overhead %, selectivity, loss, class mix, interleaved in one session); no absolute rates from this laptop. Goes into ADR-0012. *(2026-10-25, E-0042)*
-
 6. **Overhead protocol:** each round runs traced and untraced back to back, plus an A/A control arm (a second untraced run). Report the median and range of the per-round paired ratios, use at least 7 rounds, and claim an effect only above that run's own A/A noise floor. CV stays as a drift indicator only. Goes into ADR-0012. *(2026-10-25, E-0046)*
 7. **Census-probe overhead is no longer measured.** The next overhead number comes from the Phase-1 probe. *(2026-10-25, E-0047)*
 8. **`gcc-multilib` is installed on the VM** after a snapshot, for P8's 32-bit variant. *(2026-10-25, E-0048)*
