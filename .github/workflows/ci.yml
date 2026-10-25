@@ -32,6 +32,8 @@ jobs:
         run: git diff --check HEAD^1 HEAD
       - name: Schema (generated files current, layouts locked; ADR-0008)
         run: python schema/gen/gen.py --check
+      - name: One fatal path (no exit/_exit/abort in daemon/ outside marked sites; ADR-0019 G2)
+        run: python tools/ci/check_exits.py daemon
       - name: Unit tests (every test file on its own)
         run: tools/ci/run-tests.sh
       - name: Evidence checksums
@@ -58,8 +60,12 @@ jobs:
         run: |
           git submodule status
           build/bpftool/bootstrap/bpftool version
-      - name: C unit tests (record checks, self-test evaluation, WAL writer)
+      - name: Hardening present in the daemon binaries (PIE, RELRO, NX, canary, FORTIFY, CET; ADR-0019 G3)
+        run: make hardening-check
+      - name: C unit tests (record checks, self-test evaluation, WAL writer, exit codes, must-check gate)
         run: make test-c
+      - name: Clang build and C tests, -Werror (ADR-0019 G3)
+        run: make CC=clang OUT=build-clang -j"$(nproc)" all test-c
       - name: C unit tests under ASan and UBSan
         run: make test-c-asan
       - name: Three-way layout check (generator vs BTF vs numpy; ADR-0008)

@@ -200,7 +200,13 @@ int p15_selftest_eval(const struct p15_rec_list *l, const struct p15_selftest_ex
 
 static int on_record(void *ctx, void *data, size_t size)
 {
-	p15_rec_list_add(ctx, data, size);
+	int rc = p15_rec_list_add(ctx, data, size);
+
+	/*
+	 * A record not stored is already counted (dropped_oom) and fails the test. Returning
+	 * the error would only stop libbpf early: it has consumed the record either way.
+	 */
+	(void)rc;
 	return 0;
 }
 
@@ -219,12 +225,12 @@ static void child_main(int wfd)
 	prctl(PR_SET_NAME, P15_ST_NAME);
 	g = fork();
 	if (g == 0)
-		_exit(P15_ST_GRANDCHILD_EXIT);
+		_exit(P15_ST_GRANDCHILD_EXIT);   /* exit-ok: self-test grandchild */
 	if (g < 0 || write(wfd, &g, sizeof(g)) != sizeof(g))
-		_exit(120);
+		_exit(120);                      /* exit-ok: self-test child */
 	waitpid(g, NULL, 0);
 	execl(P15_ST_EXE, "true", P15_ST_NAME, (char *)NULL);
-	_exit(127);
+	_exit(127);                              /* exit-ok: self-test child, exec failed */
 }
 
 int p15_selftest_run(int spine_rb_fd, FILE *log)
@@ -232,7 +238,7 @@ int p15_selftest_run(int spine_rb_fd, FILE *log)
 	struct p15_rec_list l = { 0 };
 	struct p15_selftest_expect e = { 0 };
 	struct ring_buffer *rb;
-	int p[2], st, failed;
+	int p[2], st, failed, rc;
 	pid_t child, g = 0;
 	double quiet_since, deadline;
 	size_t last_n;
@@ -240,31 +246,37 @@ int p15_selftest_run(int spine_rb_fd, FILE *log)
 
 	rb = ring_buffer__new(spine_rb_fd, on_record, &l, NULL);
 	if (!rb) {
-		fprintf(log, "selftest: ring_buffer__new failed: %s\n", strerror(errno));
-		return -1;
+		rc = -errno;
+		fprintf(log, "selftest: ring_buffer__new failed: %s\n", strerror(-rc));
+		return rc;
 	}
 	ring_buffer__consume(rb);          /* forget records from before the test */
 	p15_rec_list_free(&l);
 	e.daemon_tgid = getpid();
 	f = fopen("/proc/self/comm", "r");
 	if (!f || !fgets(e.daemon_comm, sizeof(e.daemon_comm), f)) {
+		rc = f ? -EIO : -errno;
 		fprintf(log, "selftest: cannot read /proc/self/comm\n");
 		if (f)
 			fclose(f);
 		ring_buffer__free(rb);
-		return -1;
+		return rc;
 	}
 	fclose(f);
 	e.daemon_comm[strcspn(e.daemon_comm, "\n")] = '\0';
 
 	if (pipe2(p, O_CLOEXEC) < 0) {
+		rc = -errno;
 		ring_buffer__free(rb);
-		return -1;
+		return rc;
 	}
 	child = fork();
 	if (child < 0) {
+		rc = -errno;
+		close(p[0]);
+		close(p[1]);
 		ring_buffer__free(rb);
-		return -1;
+		return rc;
 	}
 	if (child == 0) {
 		close(p[0]);
