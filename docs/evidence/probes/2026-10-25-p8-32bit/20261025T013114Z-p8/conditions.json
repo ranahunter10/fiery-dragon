@@ -1,0 +1,22 @@
+{
+  "utc_start": "2026-10-25T01:31:14+00:00",
+  "kernel": "7.0.0-38-generic",
+  "cmdline": "BOOT_IMAGE=/boot/vmlinuz-7.0.0-38-generic root=UUID=ce504169-24a8-4802-a731-caed4999a308 ro crashkernel=2G-4G:320M,4G-32G:512M,32G-64G:1024M,64G-128G:2048M,128G-:4096M",
+  "kconfig_ia32": [
+    "CONFIG_IA32_EMULATION=y",
+    "# CONFIG_IA32_EMULATION_DEFAULT_DISABLED is not set"
+  ],
+  "bpftrace": "bpftrace v0.25.0",
+  "gcc": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+  "git_commit": "2ec332612480bd1e8493cccfa93dd8abd7132d88",
+  "git_dirty": false,
+  "sha256": {
+    "compat.c": "5450031a0f2650cf0f8b348bb99c6240cb99f592727b3ea2db62a2a6f5ca3dc8",
+    "compat.bt": "28c594417ce6c489fb32364e2d990a583676c565a48fc442fe5e3835ea356373",
+    "run.py": "2891c40f3bfe0ca20c49b8a0ca0e713af92af81b032c5090d5a9b983a4e76721",
+    "probelib.py": "aab92678352a15a8898551f372810358142ad819205cb48f98221678c4957f9c"
+  },
+  "cpus": 4,
+  "loadavg_before": "0.46 0.14 0.14 1/177 29884",
+  "user": "ashu"
+}

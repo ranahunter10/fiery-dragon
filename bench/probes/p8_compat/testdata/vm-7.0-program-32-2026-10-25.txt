@@ -1,0 +1,6 @@
+OP native_read i386 3 1111
+OP compat_open i386 5 3
+OP compat_read i386 3 2222
+OP compat_open_w i386 5 3
+OP compat_write i386 4 3333
+OP compat_execve i386 11 pending
