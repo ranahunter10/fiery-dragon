@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25 (UTC), PR "wal: P15W v1.0 format and the C writer"
+**Last updated:** 2026-10-25 (UTC), PR "research: measurement across platforms and design inputs"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -83,5 +83,13 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 1. **Knee baseline for the Phase-1 gate** (the 9.4 k rec/s was measured on kernel 5.4, 2 vCPU, Python reader; ADR-0012 quotes knees only against a same-session baseline). Recommend: a VM probe of whether v3.7 loads on 7.0; if yes, both knees in one session; if not, a new ADR rewrites the gate wording.
 2. **Phase-1 scope:** the blueprint's Phase 1 also lists caps-minimal and the P15R importer. Recommend: the importer joins Phase 1 (the oracle diff needs it); caps-minimal moves to Phase 4 beside `CAP_*`.
 3. **Self-hosted CI runner on the VM.** Recommend not now (a public repo lets fork PRs run code on it); revisit for Phase 6.
-4. **Two refinements in the P15W spec beyond ADR-0007's text** (this PR): a zero-filled tail counts as torn (crash behaviour of file systems); a segment cut inside its own header is reported, not truncated. Recommend accepting both.
+4. **Two refinements in the P15W spec beyond ADR-0007's text** (PR #28): a zero-filled tail counts as torn (crash behaviour of file systems); a segment cut inside its own header is reported, not truncated. Recommend accepting both.
 5. **CRC32C in the Python reader (step 5):** the standard library has none. Binary wheels for 3.14 exist for `google-crc32c` 1.9.0 and `crc32c` 2.9. Recommend `google-crc32c`, pinned, with no pure-Python fallback.
+6. **Measurement and design inputs** ([research note](research/2026-10-25-measurement-and-design-inputs.md), asked for on 2026-10-26): seven decisions, listed at the end of that note:
+   - dimensionless headline metrics;
+   - a same-host ring-buffer ceiling from the kernel's `bench`;
+   - a superseding ADR to 0012 for the statistics;
+   - the L7 workload set shared with Nitro, NoDrop and eAudit;
+   - a super-producer row for the spine;
+   - Phase-2 inputs (two-level buffering, record size, in-kernel filtering);
+   - a tamper-evident WAL option for ADR-0013.
