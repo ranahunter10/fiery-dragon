@@ -1,0 +1,7 @@
+ashu@p15-dev:~$ sudo perf stat -e instructions,cycles -- /bin/true 2>&1 | tail -6; sysctl kernel.bpf_stats_enabled
+[sudo: authenticate] Password:
+Error:
+No supported events found.
+The instructions event is not supported.
+kernel.bpf_stats_enabled = 0
+ashu@p15-dev:~$
