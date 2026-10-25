@@ -1,0 +1,12 @@
+# Verbatim terminal output, VM p15-dev-2604, 2026-10-25 (~04:53 IST), pasted by the maintainer.
+# Fixed work: 5 concurrent `find /usr` processes (the census super-producer shape), wall time of all five.
+# Probes: v1 = bench/census/census.bt at 8594df0; v2 = at a812d1b. Swap off. Page cache warmed first. 4 vCPU.
+round 1  none: 1.57 s
+round 1  v1: 1.94 s
+round 1  v2: 1.93 s
+round 2  none: 1.60 s
+round 2  v1: 1.59 s
+round 2  v2: 2.08 s
+round 3  none: 1.59 s
+round 3  v1: 2.03 s
+round 3  v2: 2.17 s
