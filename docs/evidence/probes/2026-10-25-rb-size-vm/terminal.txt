@@ -1,0 +1,23 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && git checkout -q main && git pull -q && make -s && sudo build/rb_size 20 && sudo build/rb_size 200 && sudo build/rb_size 1000
+warning: unable to rmdir 'third_party/bpftool': Directory not empty
+warning: unable to rmdir 'third_party/libbpf': Directory not empty
+[sudo: authenticate] Password:
+libbpf v1.7; child argv bytes 20
+mode                      rec len     ring bytes
+fixed (reserve max)            88           1344
+output (exact len)             88             88
+dynptr (exact len)             88             88
+ok: all three modes delivered
+libbpf v1.7; child argv bytes 200
+mode                      rec len     ring bytes
+fixed (reserve max)           264           1344
+output (exact len)            264            264
+dynptr (exact len)            264            264
+ok: all three modes delivered
+libbpf v1.7; child argv bytes 1000
+mode                      rec len     ring bytes
+fixed (reserve max)          1064           1344
+output (exact len)           1064           1064
+dynptr (exact len)           1064           1064
+ok: all three modes delivered
+ashu@p15-dev:~/fiery-dragon$

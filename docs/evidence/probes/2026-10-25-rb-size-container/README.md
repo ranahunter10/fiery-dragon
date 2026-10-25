@@ -1,6 +1,6 @@
 # Ring-buffer space per variable-length record, three ways (dev container, 2026-10-25)
 
-**Where:** the cloud dev container (kernel 6.18.44, clang 18.1.3, root). **Not the target kernel**; the VM run of `sudo make smoke` repeats it (`rb_size 200` is part of smoke).
+**Where:** the cloud dev container (kernel 6.18.44, clang 18.1.3, root). **Not the target kernel.** The target run gives the same sizes: [VM run](../2026-10-25-rb-size-vm/README.md).
 
 **What:** [`bpf/test/rb_size.bpf.c`](../../../../bpf/test/rb_size.bpf.c) attaches three programs to `tp_btf/sched_process_exec`. On every exec, each emits one record of `len = 64 + argv bytes (≤ 1024)`, rounded up to 8, into its own ring:
 
