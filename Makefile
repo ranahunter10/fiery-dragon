@@ -11,6 +11,10 @@
 #   make layout-check three-way layout check: generator vs BTF vs numpy
 #   make test-c-asan  the C unit tests under ASan and UBSan
 #   make mutate-wal   mutation sweep of the WAL writer
+#   make exit-check   no exit()/_exit()/abort() in daemon/ outside the marked sites (ADR-0019 G2)
+#   make hardening-check  the daemon binaries carry the ADR-0019 G3.3 hardening
+#   make mutate-checks    mutation sweep of the two checkers above
+#   make CC=clang OUT=build-clang test-c   the same build and tests with clang (-Werror clean)
 #   make clean
 #
 # Build dependencies: clang, gcc, make, pkg-config, libelf-dev, zlib1g-dev, libssl-dev.
@@ -33,16 +37,24 @@ BPFTOOL     := $(abspath $(OUT)/bpftool)/bootstrap/bpftool
 # clang rejects vmlinux.h (E-0059).
 BPF_CFLAGS := -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) -Wall -Werror \
               -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I$(LIBBPF_DIR)
+# ADR-0019 G3.3: every userspace binary (daemon, its tests, the loaders) is built hardened and
+# with the full warning set, -Werror. -U first: Ubuntu's compilers predefine _FORTIFY_SOURCE,
+# and redefining it warns.
+HARDEN     := -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection \
+              -fcf-protection -fPIE
+WARN       := -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror
 CFLAGS     ?= -O2 -g
-CFLAGS     += -std=gnu11 -Wall -Wextra -Werror -I$(LIBBPF_DIR) -I$(OUT) -Ischema/generated -Ibpf/include -Idaemon
+CFLAGS     += -std=gnu11 $(WARN) $(HARDEN) -I$(LIBBPF_DIR) -I$(OUT) -Ischema/generated -Ibpf/include -Idaemon
+LDFLAGS    += -pie -Wl,-z,relro,-z,now
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size
-SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal
+SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 
-.PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal
+.PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+        exit-check hardening-check must-check-test mutate-checks
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -99,44 +111,73 @@ $(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_rec
 	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
-	$(CC) $(CFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
 $(OUT)/test_selftest: daemon/tests/test_selftest.c $(DAEMON_COMMON) daemon/*.h $(LIBBPF_A) | $(OUT)
-	$(CC) $(CFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
 $(OUT)/test_wal: daemon/tests/test_wal.c $(WAL_SRC) daemon/wal.h daemon/crc32c.h | $(OUT)
-	$(CC) $(CFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $@
 
-test-c: $(OUT)/test_selftest $(OUT)/test_wal
+$(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
+
+test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes must-check-test
 	$(OUT)/test_selftest
 	$(OUT)/test_wal
+	$(OUT)/test_exitcodes
 
 # The same C tests under AddressSanitizer and UndefinedBehaviorSanitizer: any leak,
-# out-of-bounds access or undefined behaviour fails the run.
-ASAN := -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
+# out-of-bounds access or undefined behaviour fails the run. FORTIFY is off here: its checked
+# string functions would bypass ASan's interceptors.
+ASAN := -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
 test-c-asan: $(LIBBPF_A) | $(OUT)
 	mkdir -p $(OUT)/asan
-	$(CC) $(CFLAGS) $(ASAN) daemon/tests/test_wal.c $(WAL_SRC) -o $(OUT)/asan/test_wal
-	$(CC) $(CFLAGS) $(ASAN) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $(OUT)/asan/test_selftest
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $(OUT)/asan/test_wal
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $(OUT)/asan/test_selftest
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_exitcodes.c -o $(OUT)/asan/test_exitcodes
 	$(OUT)/asan/test_wal
 	$(OUT)/asan/test_selftest
+	$(OUT)/asan/test_exitcodes
+
+# ADR-0019 G2.2: no exit(), _exit() or abort() in daemon/ outside the sites marked "exit-ok".
+exit-check:
+	python3 tools/ci/check_exits.py daemon
+
+# ADR-0019 G2.1, the gate itself: ignoring a P15_MUST_CHECK result must fail the build, and the
+# same code with the result used must compile (so the failure is the attribute, nothing else).
+MUSTCHK_SRC := \#include "wal.h"\nint f(struct p15w *w);\nint f(struct p15w *w) { %s return 0; }\n
+must-check-test:
+	@printf '$(MUSTCHK_SRC)' 'if (p15w_tick(w)) return 1;' | $(CC) $(CFLAGS) -x c -c - -o /dev/null || \
+	  { echo "FAIL  the must-check probe does not compile with its result used"; exit 1; }
+	@if printf '$(MUSTCHK_SRC)' 'p15w_tick(w);' | $(CC) $(CFLAGS) -x c -c - -o /dev/null 2>/dev/null; then \
+	  echo "FAIL  ignoring a P15_MUST_CHECK result compiled"; exit 1; fi
+	@echo "ok    ignoring a P15_MUST_CHECK result fails the build ($(CC))"
+
+# ADR-0019 G3.3: the daemon binaries really carry PIE, full RELRO, NX stack, canaries,
+# FORTIFY and CET, whatever the compiler's defaults.
+hardening-check: $(OUT)/p15-spine
+	python3 tools/ci/check_hardening.py $^
 
 mutate-wal:
 	python3 daemon/tests/mutate_wal.py
+
+mutate-checks:
+	python3 tools/ci/mutate_checks.py
 
 $(OUT)/%.skel.h: $(OUT)/%.bpf.o $(BPFTOOL)
 	$(BPFTOOL) gen skeleton $< > $@
 
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
-	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
 $(OUT)/rb_size: bpf/test/rb_size.c $(OUT)/rb_size.skel.h $(LIBBPF_A)
-	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
 $(OUT)/load_check: bpf/test/load_check.c $(LIBBPF_A)
-	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
-check: all schema-check layout-check test-c
+check: all schema-check layout-check test-c exit-check hardening-check
 	tools/ci/run-tests.sh
 	tools/ci/check-evidence.sh
 	cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
