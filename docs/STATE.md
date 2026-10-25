@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench/probes: P6 argv and P8 compat probes, with VM results"
+**Last updated:** 2026-10-25, PR "bench/probes: P11 wheel check, with VM results"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -20,7 +20,7 @@
 | P8: 32-bit compat I/O visible to fexit | 🔧 `int $0x80` variant done: all hooks fire; `raw_syscalls` reports i386 ids with TS_COMPAT (E-0050). 32-bit vDSO variant waits for `gcc-multilib` (E-0048) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md) |
 | P9: io_uring completion path | ✅ covered by census (io_uring bypasses vfs_read/write; `io_uring_complete` delivers; E-0027) | [v1](evidence/census/2026-10-24T221732Z-light/README.md) |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
-| P11: Python wheels on 3.14 | ⏳ open | — |
+| P11: Python wheels on 3.14 | ✅ done: every analysis package and its whole closure installs as binaries on 3.14.4; 33 packages with the CPU torch index, 52 (19 GPU) without (E-0052) | [P11 run](evidence/probes/2026-10-25-p11/README.md) |
 | P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead protocol decided (E-0046); to implement** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
 | Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
@@ -45,7 +45,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 11. ✅ Hyper-V A-B-A (P12) with `bench/baseline/`; results and warm-up fix in this PR.
 12. ✅ Host state decided: Hyper-V on, relative numbers only (E-0042).
 13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; new protocol decided (E-0046).
-14. ✅ P6 done; P8 `int $0x80` variant done (this PR). P11 results filed in the next PR (stacked on this one).
+14. ✅ P6 done; P8 `int $0x80` variant done (this PR). P11 done (E-0052).
 14a. VM: install `gcc-multilib` after a snapshot, re-run P8 for the 32-bit variant.
 15. Then ADR-0001…0014.
 
@@ -62,4 +62,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-None open right now.
+1. **Analysis-tier Python (blueprint Q-D3).** Use the VM's own Python 3.14 in a project venv, with torch from the PyTorch CPU index; no separate 3.12 environment. **Recommendation: yes.** Evidence: E-0052. Every package and its closure resolves as binaries on 3.14.4, with 33 packages and no GPU runtime. Not yet checked: import-and-run on 3.14, which the first analysis code settles; a failure there reopens this decision.

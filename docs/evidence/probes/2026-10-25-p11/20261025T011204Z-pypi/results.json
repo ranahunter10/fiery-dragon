@@ -1,0 +1,110 @@
+[
+  {
+    "package": "torch",
+    "latest": "2.14.1",
+    "last_serial": 41651588,
+    "latest_skipped": {
+      "yanked": 0,
+      "not_wheel": 0,
+      "bad_filename": 0,
+      "requires_python": 0,
+      "no_matching_tag": 23
+    },
+    "latest_files": 24,
+    "latest_best_wheel": "torch-2.14.1-cp314-cp314-manylinux_2_28_x86_64.whl",
+    "newest_installable": "2.14.1",
+    "newest_installable_wheel": "torch-2.14.1-cp314-cp314-manylinux_2_28_x86_64.whl",
+    "latest_has_sdist": false,
+    "verdict": "binary (latest)"
+  },
+  {
+    "package": "torch-geometric",
+    "latest": "2.8.1",
+    "last_serial": 42129976,
+    "latest_skipped": {
+      "yanked": 0,
+      "not_wheel": 1,
+      "bad_filename": 0,
+      "requires_python": 0,
+      "no_matching_tag": 0
+    },
+    "latest_files": 2,
+    "latest_best_wheel": "torch_geometric-2.8.1-py3-none-any.whl",
+    "newest_installable": "2.8.1",
+    "newest_installable_wheel": "torch_geometric-2.8.1-py3-none-any.whl",
+    "latest_has_sdist": true,
+    "verdict": "binary (latest)"
+  },
+  {
+    "package": "numpy",
+    "latest": "2.5.4",
+    "last_serial": 42069282,
+    "latest_skipped": {
+      "yanked": 0,
+      "not_wheel": 1,
+      "bad_filename": 0,
+      "requires_python": 0,
+      "no_matching_tag": 64
+    },
+    "latest_files": 66,
+    "latest_best_wheel": "numpy-2.5.4-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    "newest_installable": "2.5.4",
+    "newest_installable_wheel": "numpy-2.5.4-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    "latest_has_sdist": true,
+    "verdict": "binary (latest)"
+  },
+  {
+    "package": "duckdb",
+    "latest": "2.0.0",
+    "last_serial": 42582004,
+    "latest_skipped": {
+      "yanked": 0,
+      "not_wheel": 1,
+      "bad_filename": 0,
+      "requires_python": 0,
+      "no_matching_tag": 13
+    },
+    "latest_files": 15,
+    "latest_best_wheel": "duckdb-2.0.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    "newest_installable": "2.0.0",
+    "newest_installable_wheel": "duckdb-2.0.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    "latest_has_sdist": true,
+    "verdict": "binary (latest)"
+  },
+  {
+    "package": "hypothesis",
+    "latest": "6.170.9",
+    "last_serial": 42663816,
+    "latest_skipped": {
+      "yanked": 0,
+      "not_wheel": 1,
+      "bad_filename": 0,
+      "requires_python": 0,
+      "no_matching_tag": 80
+    },
+    "latest_files": 83,
+    "latest_best_wheel": "hypothesis-6.170.9-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+    "newest_installable": "6.170.9",
+    "newest_installable_wheel": "hypothesis-6.170.9-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+    "latest_has_sdist": true,
+    "verdict": "binary (latest)"
+  },
+  {
+    "package": "atheris",
+    "latest": "3.1.0",
+    "last_serial": 38113553,
+    "latest_skipped": {
+      "yanked": 0,
+      "not_wheel": 0,
+      "bad_filename": 0,
+      "requires_python": 0,
+      "no_matching_tag": 2
+    },
+    "latest_files": 3,
+    "latest_best_wheel": "atheris-3.1.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+    "newest_installable": "3.1.0",
+    "newest_installable_wheel": "atheris-3.1.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+    "latest_has_sdist": false,
+    "verdict": "binary (latest)"
+  }
+]

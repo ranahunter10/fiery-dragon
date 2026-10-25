@@ -1,0 +1,2 @@
+/var/tmp/fd-p11-venv/bin/python -m pip install --dry-run --ignore-installed --only-binary=:all: --quiet --report /var/tmp/fd-p11/20261025T011204Z-cpu/resolve.json --extra-index-url https://download.pytorch.org/whl/cpu torch torch-geometric numpy duckdb hypothesis atheris
+
