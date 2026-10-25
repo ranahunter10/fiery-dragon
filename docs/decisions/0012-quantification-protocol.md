@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-10-25          # proposed; set to the merge date on acceptance
+status: accepted
+date: 2026-10-25
 owner: Ashish Rana
 consulted: [capture blueprint v1 §6 (2026-10-21), research note quantification.md (Houssel et al., eAudit, ProvMark, Mao et al., Falco, Tetragon), E-0013, E-0039, E-0042..E-0047, E-0057, Phase 0 audit]
 supersedes: none
