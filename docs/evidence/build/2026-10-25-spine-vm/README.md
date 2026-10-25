@@ -8,7 +8,8 @@
 |---|---|
 | [`spine-vm.txt`](spine-vm.txt) | the run, as written by `tee` on the VM. sha256 `0bbaef8d…5b29` matches the checksum the maintainer printed there. bpftool's colour codes are kept. |
 | [`terminal.txt`](terminal.txt) | the whole terminal, including the `python3-numpy` install and the `sha256sum` line (CRLF from the copy). |
-| [`dump-terminal.txt`](dump-terminal.txt) | a second run, pasted into chat (2026-10-26 02:47 IST): `dump 6` in the background while the shell runs `/bin/true` three times and `sh -c 'exit 3'`, then `stat` of `/bin/true`. Shows the last 25 matching lines of `~/spine-dump.txt` and its sha256 (`9e5b82bc…762a`); the file itself was not attached, so the first record, the self-test lines and the counters are not in the evidence. |
+| [`dump-terminal.txt`](dump-terminal.txt) | a second run, pasted into chat (2026-10-26 02:47 IST): `dump 6` in the background while the shell runs `/bin/true` three times and `sh -c 'exit 3'`, then `stat` of `/bin/true`. Shows the last 25 matching lines of `~/spine-dump.txt` and its sha256 (`9e5b82bc…762a`). |
+| [`spine-dump.txt`](spine-dump.txt) | that run's full output, attached by the maintainer; its sha256 matches the one printed on the VM. Self-test, all 25 records, counters. |
 
 ## Findings (MEAS, target)
 
@@ -35,6 +36,8 @@
    - For each of the three `/bin/true`: FORK by the shell (tgid 1408), RENAME `bash` → `true`, EXEC (`/bin/true` 9/9, argv `/bin/true\0` 10/10), EXIT status 0. All four records carry the start time the FORK announced.
    - `sh -c 'exit 3'`: EXEC of `/usr/bin/sh`, argv `sh\0-c\0exit 3\0` 13/13, EXIT `exit_code=768` (3 << 8).
    - Unrelated system activity was captured too: a FORK by systemd (tgid 1) and by kthreadd (tgid 2).
+   - **The books close exactly** (`spine-dump.txt`). The counters say the programs saw FORK 8, EXEC 5, EXIT 12, RENAME 7: 32 events, all emitted, none lost. The output holds 32 records: the self-test's 7 and the dump's 25, which by type are FORK 2 + 6, EXEC 1 + 4, EXIT 2 + 10, RENAME 2 + 5.
+   - The dump's first record is an EXIT of tgid 4352 with no FORK in the output: a process that started before the programs attached. Such processes need the start-up snapshot (step 4).
 7. **The EXEC file identity matches `stat`.** `stat -L /bin/true` gives inode 526290 and device 2050 (0x802: major 8, minor 2 in the user-space encoding). The record has inode 526290 and device 8388610, the kernel's internal encoding of the same major 8, minor 2 (`MKDEV`, 20-bit minor). The decoder must convert one to the other before comparing with user-space tools.
 8. **The last thread to exit, not the leader, carries `group_dead=1`.** A 4-thread process (tgid 1591) exited: threads 1592, 1594, then the leader 1591, all with `group_dead=0`, then thread 1593 with `group_dead=1`. So the end of a process is the EXIT with `group_dead=1`, whatever its tid, and a leader's EXIT is not the end of its process. The process tree (step 5) must use this rule, and the step-6 tests must cover it.
 
