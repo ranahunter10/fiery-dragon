@@ -12,6 +12,7 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
+| [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte header on the boot clock | proposed | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -26,7 +27,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
 | 0006 | Transport: two ring buffers, wakeup policy | P10 |
 | 0007 | Write-ahead log format and durability | P5, P10 |
-| 0008 | Schema and versioning | — |
 | 0009 | Identity model (process, file, endpoint incl. transport) | — |
 | 0010 | Record classes; PERMIT optional | — |
 | 0011 | Test strategy and adequacy (coverage matrix + evasion catalogue) | — |
