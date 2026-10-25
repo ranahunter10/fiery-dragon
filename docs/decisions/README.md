@@ -18,6 +18,7 @@ To write a new one:
 | [0006](0006-transport-two-bpf-ring-buffers.md) | Two BPF ring buffers (spine never shed, bulk counted), self-paced wakeups, one C drain thread | accepted | 2026-10-25 |
 | [0007](0007-wal-segmented-crc-batches-snapshot.md) | Write-ahead log P15W v1: segment files with a self-describing header, a process snapshot, CRC-checked batches, and fdatasync every second | accepted | 2026-10-25 |
 | [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte common header on the boot clock | accepted | 2026-10-25 |
+| [0009](0009-process-identity-tgid-leader-start-time.md) | Identify a process by (boot id, tgid, the thread-group leader's start_boottime) | accepted | 2026-10-25 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
@@ -27,7 +28,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 |---|---|---|
 | 0004 | Connect/accept hook layer | P7 |
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
-| 0009 | Identity model (process, file, endpoint incl. transport) | — |
 | 0010 | Record classes; PERMIT optional | — |
 | 0011 | Test strategy and adequacy (coverage matrix + evasion catalogue) | — |
 | 0012 | Quantification protocol (runs, conditions, swap, Hyper-V) | P5, P12 |
