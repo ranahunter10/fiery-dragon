@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench/probes: P11 wheel check, with VM results"
+**Last updated:** 2026-10-25, PR "docs: Phase 0 audit"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -16,9 +16,9 @@
 | P4: clocksource | ✅ done | [`00`](evidence/phase0/00-vm-baseline.txt) |
 | P5: disk bandwidth | ✅ done: min 63.7 MB/s, ±25 % under Hyper-V | [`05`](evidence/phase0/05-p5-disk.txt) |
 | P6: argv source at exec | ✅ done: under a race, syscall-entry argv matched what ran 45/1000; `sched_process_exec` 1000/1000 (E-0049) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md) |
-| P7: connect/accept hook layer | ✅ covered by census v2 (`__sys_connect_file`, `do_accept`; E-0032) | [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
+| P7: connect/accept hook layer | 🔧 partial: 64-bit connect/accept seen at `__sys_connect_file`/`do_accept` (E-0032). Not tested: 32-bit `socketcall`, io_uring connect/accept. Needed before Phase 3 (audit A1, E-0055) | [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P8: 32-bit compat I/O visible to fexit | ✅ done: both `int $0x80` and a real i386 program (vDSO entry) pass all 12 checks; `raw_syscalls` reports i386 ids with TS_COMPAT set (E-0050, E-0052) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md), [32-bit run](evidence/probes/2026-10-25-p8-32bit/README.md) |
-| P9: io_uring completion path | ✅ covered by census (io_uring bypasses vfs_read/write; `io_uring_complete` delivers; E-0027) | [v1](evidence/census/2026-10-24T221732Z-light/README.md) |
+| P9: io_uring completion path | 🔧 partial: io_uring bypasses vfs_read/write; `io_uring_complete` fires for fio (E-0027). Not tested: `CQE_SKIP`, `SQPOLL`. Needed before Phase 4 (audit A1, E-0055) | [v1](evidence/census/2026-10-24T221732Z-light/README.md) |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
 | P11: Python wheels on 3.14 | ✅ done: every analysis package and its whole closure installs as binaries on 3.14.4; 33 packages with the CPU torch index, 52 (19 GPU) without (E-0053) | [P11 run](evidence/probes/2026-10-25-p11/README.md) |
 | P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead protocol decided (E-0046); to implement** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
@@ -26,6 +26,8 @@
 | Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
 | ADR-0001…0013 written and reviewed | ⏳ open | `docs/decisions/README.md` (planned list) |
 | ADR-0014: "capture v1 is enough for Layer 3" cut line | ⏳ open | — |
+| CI skeleton (lint / unit / veristat on an empty program) | ⏳ open (audit A2) | — |
+| Phase 0 audit | ✅ done: ready for the Phase-1 spine after its ADRs + CI; full gate not met | [audit](audits/2026-10-25-phase0.md) |
 
 Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte for byte with `SHA256SUMS`.
 
@@ -47,7 +49,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; new protocol decided (E-0046).
 14. ✅ P6 done; P8 done for both `int $0x80` and a real i386 program (E-0050, E-0052); P11 done (E-0053).
 14a. Optional: take VM snapshot `02-multilib` (the `gcc-multilib` install was not snapshotted).
-15. Then ADR-0001…0014.
+15. ✅ Phase 0 audit ([audit](audits/2026-10-25-phase0.md)).
+16. Next: the ADRs the spine needs (platform, toolchain, spine hooks, record format, ring buffer + WAL, self-test, measurement protocol), and a CI skeleton. Then Phase 1 spine code.
+17. Before later phases: sizing projection and OPEN record size (Phase 2), P7 rest (Phase 3), P9 rest (Phase 4), overhead protocol implemented (Phase 6); re-capture the E-0022 diagnostic as a script (E-0056).
 
 ## Decisions taken, ADR still to write
 
