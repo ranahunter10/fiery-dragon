@@ -44,17 +44,12 @@ jobs:
       - name: Toolchain
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q clang llvm libbpf-dev linux-tools-common "linux-tools-$(uname -r)"
-          uname -r; clang --version | head -1; bpftool version
+          sudo apt-get install -y -q clang llvm libbpf-dev gcc
+          uname -r; clang --version | head -1; dpkg-query -W libbpf-dev
       - name: Build (clang -Werror, BTF)
         run: |
           clang -O2 -g -Wall -Werror -target bpf -c bpf/test/empty.bpf.c -o empty.bpf.o
           llvm-objdump -h empty.bpf.o | grep -E 'tp_btf/sched_process_exec|syscall|\.BTF '
-      - name: Verifier (load without attaching)
-        run: |
-          sudo bpftool prog loadall empty.bpf.o /sys/fs/bpf/fd-empty
-          sudo bpftool prog show pinned /sys/fs/bpf/fd-empty/fd_empty_exec
-          sudo bpftool prog show pinned /sys/fs/bpf/fd-empty/fd_empty_syscall
-      - name: Clean up pins
-        if: always()
-        run: sudo rm -rf /sys/fs/bpf/fd-empty
+          gcc -O2 -Wall -Wextra -Werror -o load_check bpf/test/load_check.c -lbpf
+      - name: Verifier (load every program with libbpf, attach nothing)
+        run: sudo ./load_check empty.bpf.o
