@@ -1,0 +1,108 @@
+{
+  "utc": "2026-10-25T01:12:05Z",
+  "target": "this interpreter: CPython 3.14.4 x86_64 glibc 2.43",
+  "target_python": "3.14.4",
+  "checker_python": "3.14.4",
+  "packaging": "26.3",
+  "n_tags": 1350,
+  "first_tag": "cp314-cp314-linux_x86_64",
+  "packages": [
+    "torch",
+    "torch-geometric",
+    "numpy",
+    "duckdb",
+    "hypothesis",
+    "atheris"
+  ],
+  "pypi": {
+    "torch": {
+      "bytes": 870628,
+      "sha256": "cad63dc8aa6714ea2133a44b64985d87b3e4ebea217657f1e02e35481fa33b61",
+      "last_serial": 41651588
+    },
+    "torch-geometric": {
+      "bytes": 110348,
+      "sha256": "81d851398fa37ef25ceace8f20f4fd6105c28be70aa6f1352633593197d3c44a",
+      "last_serial": 42129976
+    },
+    "numpy": {
+      "bytes": 3729087,
+      "sha256": "04d4e3541780ecbe4ba1db99fd3250f11bb69693e0366a134fb59b18237fc69a",
+      "last_serial": 42069282
+    },
+    "duckdb": {
+      "bytes": 4298747,
+      "sha256": "2d5fd58c2d49447b63d6cc5413a0f7cb829c976a399744c5631b2fa46cf3dab0",
+      "last_serial": 42582004
+    },
+    "hypothesis": {
+      "bytes": 6519253,
+      "sha256": "dac6da635ec84bd7f9b837a17c33a10fe1a5d9c7b9d02a89f1364233c3b651a1",
+      "last_serial": 42663816
+    },
+    "atheris": {
+      "bytes": 172831,
+      "sha256": "a06dd29f652b71d82049afdb82b34acd012232483e01c2d599cddeee8239d34b",
+      "last_serial": 38113553
+    }
+  },
+  "resolve": {
+    "exit_code": 0,
+    "installs": [
+      "Jinja2==3.1.6",
+      "MarkupSafe==3.0.4",
+      "aiohappyeyeballs==2.7.1",
+      "aiohttp==3.14.5",
+      "aiosignal==1.4.0",
+      "atheris==3.1.0",
+      "attrs==26.1.0",
+      "certifi==2026.10.23",
+      "charset-normalizer==3.5.2",
+      "cuda-bindings==13.4.4",
+      "cuda-pathfinder==1.8.4",
+      "cuda-toolkit==13.0.3.0",
+      "duckdb==2.0.0",
+      "filelock==4.2.4",
+      "frozenlist==1.8.0",
+      "fsspec==2026.9.0",
+      "hypothesis==6.170.9",
+      "idna==3.20",
+      "mpmath==1.3.0",
+      "multidict==7.2.1",
+      "networkx==3.7",
+      "numpy==2.5.4",
+      "nvidia-cublas==13.1.1.3",
+      "nvidia-cuda-cupti==13.0.85",
+      "nvidia-cuda-nvrtc==13.0.88",
+      "nvidia-cuda-runtime==13.0.96",
+      "nvidia-cudnn-cu13==9.24.0.43",
+      "nvidia-cufft==12.0.0.61",
+      "nvidia-cufile==1.15.1.6",
+      "nvidia-curand==10.4.0.35",
+      "nvidia-cusolver==12.0.4.66",
+      "nvidia-cusparse==12.6.3.3",
+      "nvidia-cusparselt-cu13==0.8.1",
+      "nvidia-nccl-cu13==2.30.7",
+      "nvidia-nvjitlink==13.4.92",
+      "nvidia-nvshmem-cu13==3.4.5",
+      "nvidia-nvtx==13.0.85",
+      "propcache==0.5.4",
+      "psutil==7.2.2",
+      "pyparsing==3.3.3",
+      "requests==2.34.2",
+      "setuptools==84.2.1",
+      "sortedcontainers==2.4.0",
+      "sympy==1.14.0",
+      "torch-geometric==2.8.1",
+      "torch==2.14.1",
+      "tqdm==4.70.1",
+      "triton==3.8.0",
+      "typing_extensions==4.16.0",
+      "urllib3==2.8.0",
+      "xxhash==4.0.2",
+      "yarl==1.25.1"
+    ],
+    "pip": "26.2.2",
+    "extra_index_urls": []
+  }
+}

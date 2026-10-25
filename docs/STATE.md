@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25, PR "bench/probes: P6 argv and P8 compat probes, with VM results"
+**Last updated:** 2026-10-25, PR "bench/probes: P11 wheel check, with VM results"
 **Phase:** 0, ground truth (platform fixed and measured; decisions written as ADRs; no product code yet)
 
 ## Phase 0 gate
@@ -20,7 +20,7 @@
 | P8: 32-bit compat I/O visible to fexit | ✅ done: both `int $0x80` and a real i386 program (vDSO entry) pass all 12 checks; `raw_syscalls` reports i386 ids with TS_COMPAT set (E-0050, E-0052) | [P6/P8 runs](evidence/probes/2026-10-25-p6-p8/README.md), [32-bit run](evidence/probes/2026-10-25-p8-32bit/README.md) |
 | P9: io_uring completion path | ✅ covered by census (io_uring bypasses vfs_read/write; `io_uring_complete` delivers; E-0027) | [v1](evidence/census/2026-10-24T221732Z-light/README.md) |
 | **P10: event-rate census** | 🔧 v1 light set (E-0025/26); **v2: all 20 new hooks verified** (E-0032); rates varied 0.17-0.70x between runs from **host drift**, not from the hooks or concurrency (A/B serial E-0035, parallel E-0036). Tracing cost on fixed work: +13-30 %. Next: Hyper-V on/off + interleaved untraced baselines, then projected rates = untraced syscalls × selectivity | [v1](evidence/census/2026-10-24T221732Z-light/README.md), [v2](evidence/census/2026-10-24T224617Z-v2/README.md) |
-| P11: Python wheels on 3.14 | ⏳ open | — |
+| P11: Python wheels on 3.14 | ✅ done: every analysis package and its whole closure installs as binaries on 3.14.4; 33 packages with the CPU torch index, 52 (19 GPU) without (E-0053) | [P11 run](evidence/probes/2026-10-25-p11/README.md) |
 | P12: untraced baselines | 🔧 Hyper-V A-B-A done (E-0038..41). Warm-up re-run (E-0043..45): warm-up fix works, but every row CV 12-29 %; same-state exec runs differ up to 3.3x, so the Hyper-V attribution is withdrawn (E-0044 corrects E-0038). Census probe slows `find` in every pair, size not measurable. **Overhead protocol decided (E-0046); to implement** | [A-B-A](evidence/baseline/2026-10-25-hyperv-ABA/README.md), [warm re-run](evidence/baseline/2026-10-25-hyperv-on-warm/README.md) |
 | ADR process (ADR-0000, template, index) | ✅ done | `docs/decisions/` |
 | Fresh journals: engineering log, research register | ✅ started | `docs/journal/`, `docs/research/` |
@@ -45,8 +45,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 11. ✅ Hyper-V A-B-A (P12) with `bench/baseline/`; results and warm-up fix in this PR.
 12. ✅ Host state decided: Hyper-V on, relative numbers only (E-0042).
 13. ✅ Warm-up re-run (this PR): no quotable overhead on this host with 3 rounds; new protocol decided (E-0046).
-14. ✅ P6 done; P8 `int $0x80` variant done (this PR). P11 results filed in the next PR (stacked on this one).
-14a. ✅ `gcc-multilib` installed; P8 32-bit variant passes (E-0052). Optional: take VM snapshot `02-multilib`.
+14. ✅ P6 done; P8 done for both `int $0x80` and a real i386 program (E-0050, E-0052); P11 done (E-0053).
+14a. Optional: take VM snapshot `02-multilib` (the `gcc-multilib` install was not snapshotted).
 15. Then ADR-0001…0014.
 
 ## Decisions taken, ADR still to write
@@ -59,6 +59,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 6. **Overhead protocol:** each round runs traced and untraced back to back, plus an A/A control arm (a second untraced run). Report the median and range of the per-round paired ratios, use at least 7 rounds, and claim an effect only above that run's own A/A noise floor. CV stays as a drift indicator only. Goes into ADR-0012. *(2026-10-25, E-0046)*
 7. **Census-probe overhead is no longer measured.** The next overhead number comes from the Phase-1 probe. *(2026-10-25, E-0047)*
 8. **`gcc-multilib` is installed on the VM** after a snapshot, for P8's 32-bit variant. *(2026-10-25, E-0048)*
+9. **Analysis-tier Python (Q-D3):** the VM's own Python 3.14 in a project venv, torch from the PyTorch CPU index; no 3.12 environment. Reopens if the first analysis code fails to import or run on 3.14. *(2026-10-25, E-0054)*
 
 ## Decisions waiting
 
