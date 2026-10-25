@@ -46,7 +46,7 @@ jobs:
       - name: Toolchain
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q clang llvm gcc make pkg-config libelf-dev zlib1g-dev
+          sudo apt-get install -y -q clang llvm gcc make pkg-config libelf-dev zlib1g-dev libssl-dev
           uname -r; clang --version | head -1
       - name: vmlinux.h checksum
         run: cd bpf/vmlinux && sha256sum -c SHA256SUMS

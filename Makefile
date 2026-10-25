@@ -9,6 +9,8 @@
 #   make smoke      load the smoke objects (needs root: sudo make smoke)
 #   make clean
 #
+# Build dependencies: clang, gcc, make, pkg-config, libelf-dev, zlib1g-dev, libssl-dev.
+#
 # First checkout: git submodule update --init --recursive
 
 OUT       ?= build
@@ -33,22 +35,31 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o
 
-.PHONY: all check smoke clean submodules
+.PHONY: all check smoke clean submodules deps
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE)
 
 $(OUT):
 	mkdir -p $@
 
+# Build dependencies, checked up front so a missing one fails with the package name.
+# bpftool v7.7.0 links libcrypto unconditionally (program signing, sign.c), so libssl-dev
+# is required (E-0061).
+DEP_HEADERS := libelf.h:libelf-dev zlib.h:zlib1g-dev openssl/opensslv.h:libssl-dev
+deps:
+	@missing=; for d in $(DEP_HEADERS); do h=$${d%%:*}; p=$${d##*:}; \
+	  echo "#include <$$h>" | $(CC) -E -x c - >/dev/null 2>&1 || missing="$$missing $$p"; done; \
+	  if [ -n "$$missing" ]; then echo "missing build dependencies, install:$$missing"; exit 1; fi
+
 submodules:
 	@test -f $(LIBBPF_SRC)/libbpf.h && test -f $(BPFTOOL_SRC)/main.c || \
 	  { echo "submodules missing: git submodule update --init --recursive"; exit 1; }
 
-$(LIBBPF_A): | submodules
+$(LIBBPF_A): | deps submodules
 	$(MAKE) -C $(LIBBPF_SRC) BUILD_STATIC_ONLY=1 OBJDIR=$(LIBBPF_DIR)/obj \
 	  DESTDIR=$(LIBBPF_DIR) INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
 
-$(BPFTOOL): | submodules
+$(BPFTOOL): | deps submodules
 	mkdir -p $(abspath $(OUT)/bpftool)
 	$(MAKE) -C $(BPFTOOL_SRC) ARCH= CROSS_COMPILE= OUTPUT=$(abspath $(OUT)/bpftool)/ bootstrap
 

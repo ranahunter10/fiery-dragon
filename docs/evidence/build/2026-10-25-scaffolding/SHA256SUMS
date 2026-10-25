@@ -1,2 +1,3 @@
 8ff76315c0e9a43e6b3aa3c1f1d9b4baa253e1c6518a68ff75c78c97cecbccf9  01-vmlinux-needs-ms-extensions.txt
 401a8d5fb2481dd699e85d149edc7b6f837d8f44b3131ad410d25ed0375650d3  02-build-and-smoke.txt
+a8bb14713cfd1c52abcfa4d485494a52780ce42a8e21b0a88346b0d8595014b8  03-vm-build-no-openssl.txt

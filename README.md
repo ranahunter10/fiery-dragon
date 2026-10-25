@@ -55,7 +55,7 @@ third_party/    pinned submodules: libbpf v1.7.0, bpftool v7.7.0 (ADR-0002)
 
 ## Build
 
-Needs clang, gcc, make, pkg-config, libelf-dev and zlib1g-dev (all on the VM per the runbook).
+Needs clang, gcc, make, pkg-config, libelf-dev, zlib1g-dev and libssl-dev. `make` checks the libraries first and names any missing package. libssl-dev is needed because bpftool v7.7.0 links libcrypto (E-0061).
 
 ```bash
 git submodule update --init --recursive   # libbpf v1.7.0, bpftool v7.7.0
