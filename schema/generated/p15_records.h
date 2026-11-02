@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "f2e7ee07c17d0e146a7692cb288ee5633ceecdc2592ab1ed9440ff21d5349aca"
+#define P15_SCHEMA_HASH "92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -24,10 +24,12 @@ enum p15_type {
 	P15_T_EXEC = 2,
 	P15_T_EXIT = 3,
 	P15_T_RENAME = 4,
+	P15_T_NET = 5,
 	P15_T_CLOCK_SYNC = 32,
 	P15_T_STATS = 33,
 	P15_T_GAP = 34,
 	P15_T_END = 35,
+	P15_T_NET_STATS = 36,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -312,6 +314,70 @@ P15_ASSERT(P15_OFFSETOF(struct p15_end_v1, _pad) == 54, "p15_end_v1._pad offset"
 #define P15_END_V1_MAX_SIZE 312
 #define P15_END_V1_REASON_MAX 256
 
+/* NET v1 (NET): One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted. */
+struct p15_net_v1 {
+	struct p15_hdr h;
+	__u64 sock_cookie;
+	__u64 peer_cookie;
+	char laddr[16];
+	char raddr[16];
+	__u32 netns;
+	__s32 ret;
+	__u16 op;
+	__u16 family;
+	__u16 proto;
+	__u16 lport;
+	__u16 rport;
+	char _pad[6];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_net_v1) == 104, "p15_net_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, h) == 0, "p15_net_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, sock_cookie) == 32, "p15_net_v1.sock_cookie offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, peer_cookie) == 40, "p15_net_v1.peer_cookie offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, laddr) == 48, "p15_net_v1.laddr offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, raddr) == 64, "p15_net_v1.raddr offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, netns) == 80, "p15_net_v1.netns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, ret) == 84, "p15_net_v1.ret offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, op) == 88, "p15_net_v1.op offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, family) == 90, "p15_net_v1.family offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, proto) == 92, "p15_net_v1.proto offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, lport) == 94, "p15_net_v1.lport offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, rport) == 96, "p15_net_v1.rport offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, _pad) == 98, "p15_net_v1._pad offset");
+
+#define P15_NET_V1_MAX_SIZE 104
+
+/* NET_STATS v1 (STATS): The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval. */
+struct p15_net_stats_v1 {
+	struct p15_hdr h;
+	__u64 net_seen;
+	__u64 net_emitted;
+	__u64 net_reserve_failed;
+	__u64 net_excluded;
+	__u64 net_drained;
+	__u64 net_invalid;
+	__u64 net_written;
+	__u64 net_drain_lost;
+	__u64 bulk_fill_max;
+	__u32 bulk_ring_bytes;
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_net_stats_v1) == 112, "p15_net_stats_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, h) == 0, "p15_net_stats_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_seen) == 32, "p15_net_stats_v1.net_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_emitted) == 40, "p15_net_stats_v1.net_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_reserve_failed) == 48, "p15_net_stats_v1.net_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_excluded) == 56, "p15_net_stats_v1.net_excluded offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_drained) == 64, "p15_net_stats_v1.net_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_invalid) == 72, "p15_net_stats_v1.net_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_written) == 80, "p15_net_stats_v1.net_written offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, net_drain_lost) == 88, "p15_net_stats_v1.net_drain_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, bulk_fill_max) == 96, "p15_net_stats_v1.bulk_fill_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, bulk_ring_bytes) == 104, "p15_net_stats_v1.bulk_ring_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, _pad) == 108, "p15_net_stats_v1._pad offset");
+
+#define P15_NET_STATS_V1_MAX_SIZE 112
+
 /* The current version of each record type: what the BPF programs emit. */
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
@@ -340,5 +406,11 @@ P15_ASSERT(P15_OFFSETOF(struct p15_end_v1, _pad) == 54, "p15_end_v1._pad offset"
 #define p15_end p15_end_v1
 #define P15_END_MAX_SIZE P15_END_V1_MAX_SIZE
 #define P15_END_REASON_MAX P15_END_V1_REASON_MAX
+#define P15_NET_VERSION 1
+#define p15_net p15_net_v1
+#define P15_NET_MAX_SIZE P15_NET_V1_MAX_SIZE
+#define P15_NET_STATS_VERSION 1
+#define p15_net_stats p15_net_stats_v1
+#define P15_NET_STATS_MAX_SIZE P15_NET_STATS_V1_MAX_SIZE
 
 #endif /* P15_RECORDS_H */

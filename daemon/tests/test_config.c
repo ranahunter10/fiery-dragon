@@ -36,7 +36,7 @@ int main(void)
 	EXPECT(parse(&c, err, 2, "--wal-dir", "/tmp/x") == 0, "minimal");
 	EXPECT(c.stats_ms == 1000 && c.sync_ms == 1000 && c.rotate_mb == 64 && c.rotate_s == 60 &&
 	       c.spine_ring_kb == 4096 && c.queue_batches == 64 && c.batch_kb == 256 && c.realtime == 1 &&
-	       c.duration_s == 0 && !c.textfile, "defaults (ADR-0006, ADR-0007, ADR-0017)");
+	       c.duration_s == 0 && !c.textfile && c.net == 1, "defaults (ADR-0006, ADR-0007, ADR-0017)");
 	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--bogus") != 0 && strstr(err, "unknown"), "unknown flag refused");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--stats-ms", "99") != 0 && strstr(err, "out of range"), "below range");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--stats-ms", "60001") != 0, "above range");
@@ -52,9 +52,11 @@ int main(void)
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
 	n = p15_config_meta(&c, kv, vals, 16);
-	EXPECT(n == 11, "every setting echoed");
+	EXPECT(n == 12, "every setting echoed");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
-	EXPECT(!strcmp(kv[n - 1].key, "config.realtime") && !strcmp(kv[n - 1].value, "yes"), "realtime echoed");
+	EXPECT(!strcmp(kv[n - 2].key, "config.realtime") && !strcmp(kv[n - 2].value, "yes"), "realtime echoed");
+	EXPECT(!strcmp(kv[n - 1].key, "config.net") && !strcmp(kv[n - 1].value, "yes"), "net echoed");
+	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--no-net") == 0 && c.net == 0, "--no-net");
 	EXPECT(p15_config_meta(&c, kv, vals, 3) == 3, "bounded by the caller's array");
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;

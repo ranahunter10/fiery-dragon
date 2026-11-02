@@ -102,11 +102,11 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
 | [`crc32c.c`](../daemon/crc32c.c) | Table-driven CRC32C, one byte per step. | `p15_crc32c` |
 | [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c` |
-| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_init`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
-| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record, copies it at its own len into a queue batch, and publishes batches to the writer. | `p15_drain_init`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
+| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
+| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record, copies it at its own len into a queue batch, and publishes batches to the writer. | `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
-| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free` |
-| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd` |
+| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_detach`, `p15_loader_free` |
+| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd` |
 | [`p15_spine.c`](../daemon/p15_spine.c) | load and attach the spine programs (ADR-0003), then p15-spine selftest run the load-time self-test once; exit 0 only if it passes p15-spine dump SECONDS run the self-test, then ... |  |
 | [`p15d.c`](../daemon/p15d.c) | the capture daemon (Phase 1 step 4b; ADR-0006, 0007, 0017, 0019). |  |
 | [`p15w_inspect.c`](../daemon/p15w_inspect.c) | check and summarise a P15W run directory or segment files (ADR-0007 "tools/wal-inspect"). |  |

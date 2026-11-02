@@ -27,7 +27,8 @@ struct p15_run {
 	struct p15_config cfg;
 	uint32_t tgid;
 	uint64_t start_ns;          /* the daemon's ADR-0009 identity start time (from the self-test) */
-	uint32_t spine_ring_bytes;
+	uint32_t spine_ring_bytes, bulk_ring_bytes;
+	int net;                    /* the network-intent programs are loaded (ADR-0004) */
 	struct p15q q;
 
 	_Atomic int state;          /* enum p15_run_state; only moves towards INVALID */
@@ -48,8 +49,13 @@ struct p15_run {
 	_Atomic uint64_t poll_gap_max_ns;        /* interval field: the writer takes and resets it */
 	_Atomic uint64_t spine_fill_max;         /* interval field */
 
+	_Atomic uint64_t bulk[P15_CTR_MAX];      /* the bulk (NET) counters, as bpf[] for the spine */
+	uint64_t bulk_base[P15_CTR_MAX];
+	_Atomic uint64_t net_drained, net_invalid;
+	_Atomic uint64_t bulk_fill_max;          /* interval field */
+
 	/* writer side */
-	_Atomic uint64_t spine_written, spine_drain_lost;
+	_Atomic uint64_t spine_written, spine_drain_lost, net_written, net_drain_lost;
 	_Atomic int invariant;                   /* enum p15_invariant, set at the end */
 };
 

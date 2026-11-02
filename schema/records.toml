@@ -216,3 +216,44 @@ fields = [
 var = [
   { name = "reason", max = 256, doc = "why the run ended, one line of text; 'stop requested' on an orderly stop" },
 ]
+
+# ---- network intent (ADR-0004): NET class, on the bulk ring, counted loss (ADR-0004 rule 4) ----
+# Type 5 keeps NET inside the BPF counter table (types 0..7, bpf/include/p15_counters.h).
+[[record]]
+name = "NET"
+type = 5
+version = 1
+class = "NET"
+doc = "One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted."
+fields = [
+  { name = "sock_cookie", c = "u64", doc = "bpf_get_socket_cookie of the socket; for accept, of the new connection. (boot_id, cookie) names a socket for the run (ADR-0004 rule 5)" },
+  { name = "peer_cookie", c = "u64", doc = "accept: the listening socket's cookie, which links the connection to its listener; otherwise 0" },
+  { name = "laddr",       c = "char[16]", doc = "local address after the operation; IPv4 in the first 4 bytes, network order" },
+  { name = "raddr",       c = "char[16]", doc = "remote address: for connect the requested one (kernel copy), for accept the peer; zero for listen and bind" },
+  { name = "netns",       c = "u32", doc = "network namespace inode (as in /proc/PID/ns/net)" },
+  { name = "ret",         c = "i32", doc = "the hook's return value: 0, -EINPROGRESS, -ECONNREFUSED, -EADDRINUSE, ... (ADR-0004 rule 3)" },
+  { name = "op",          c = "u16", doc = "1 CONNECT, 2 ACCEPT, 3 LISTEN, 4 BIND" },
+  { name = "family",      c = "u16", doc = "AF_INET 2 or AF_INET6 10" },
+  { name = "proto",       c = "u16", doc = "IPPROTO_TCP 6 or IPPROTO_UDP 17" },
+  { name = "lport",       c = "u16", doc = "local port, host order" },
+  { name = "rport",       c = "u16", doc = "remote port, host order" },
+]
+
+[[record]]
+name = "NET_STATS"
+type = 36
+version = 1
+class = "STATS"
+doc = "The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval."
+fields = [
+  { name = "net_seen",           c = "u64", doc = "NET hook runs, cumulative" },
+  { name = "net_emitted",        c = "u64", doc = "NET records submitted to the bulk ring, cumulative" },
+  { name = "net_reserve_failed", c = "u64", doc = "NET records lost to a full bulk ring (run DEGRADED), cumulative" },
+  { name = "net_excluded",       c = "u64", doc = "hook runs not recorded by policy: failed accepts, non-IP sockets, no sock (ADR-0004 rule 3), cumulative" },
+  { name = "net_drained",        c = "u64", doc = "NET records the drain copied into a batch, cumulative" },
+  { name = "net_invalid",        c = "u64", doc = "bulk records refused by p15_rec_check, never written, cumulative" },
+  { name = "net_written",        c = "u64", doc = "bulk records in batches the writer appended, cumulative" },
+  { name = "net_drain_lost",     c = "u64", doc = "drained bulk records the writer could not append, cumulative" },
+  { name = "bulk_fill_max",      c = "u64", doc = "the most bytes waiting in the bulk ring at a poll, this interval" },
+  { name = "bulk_ring_bytes",    c = "u32", doc = "the bulk ring's size" },
+]

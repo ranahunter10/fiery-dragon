@@ -63,6 +63,8 @@ static void test_fixed_sizes(void)
 		{ P15_T_CLOCK_SYNC, sizeof(struct p15_clock_sync_v1), "CLOCK_SYNC" },
 		{ P15_T_STATS, sizeof(struct p15_stats_v1), "STATS" },
 		{ P15_T_GAP, sizeof(struct p15_gap_v1), "GAP" },
+		{ P15_T_NET, sizeof(struct p15_net_v1), "NET" },
+		{ P15_T_NET_STATS, sizeof(struct p15_net_stats_v1), "NET_STATS" },
 	};
 
 	for (size_t i = 0; i < sizeof(t) / sizeof(t[0]); i++) {
@@ -81,8 +83,8 @@ static void test_fixed_sizes(void)
 		EXPECT(!strcmp(p15_type_name(t[i].type), t[i].name), what);
 	}
 	EXPECT(!strcmp(p15_type_name(P15_T_EXEC), "EXEC") && !strcmp(p15_type_name(P15_T_END), "END"), "var types named");
-	EXPECT(!strcmp(p15_type_name(5), "?") && !strcmp(p15_type_name(36), "?"), "unknown types");
-	mk(36, 32);
+	EXPECT(!strcmp(p15_type_name(6), "?") && !strcmp(p15_type_name(37), "?"), "unknown types");
+	mk(37, 32);
 	EXPECT(!ok(), "unknown type refused");
 	mk(P15_T_GAP, sizeof(struct p15_gap_v1));
 	EXPECT(ok_exact(sizeof(struct p15_gap_v1)), "GAP accepted from a buffer of exactly its size");
@@ -209,12 +211,40 @@ static void test_format(void)
 	       strstr(line, "CLOCK_SYNC ") && strstr(line, "boot=1 mono=2 real=3 spread=4"), "CLOCK_SYNC formatted");
 }
 
+static void test_net_format(void)
+{
+	struct p15_net *r = (void *)mk(P15_T_NET, sizeof(struct p15_net));
+	char line[400];
+
+	r->op = 2;
+	r->proto = 6;
+	r->family = 2;
+	r->ret = 0;
+	memcpy(r->laddr, "\x7f\x00\x00\x01", 4);
+	memcpy(r->raddr, "\x0a\x00\x00\x05", 4);
+	r->lport = 8080;
+	r->rport = 41000;
+	r->sock_cookie = 3;
+	r->peer_cookie = 1;
+	r->netns = 4026531840u;
+	EXPECT(ok(), "NET accepted");
+	p15_rec_format(r, line, sizeof(line));
+	EXPECT(strstr(line, "op=ACCEPT proto=tcp ret=0 local=127.0.0.1:8080 remote=10.0.0.5:41000 cookie=3 peer=1 netns=4026531840") != NULL,
+	       "NET formatted: op, endpoints, cookies, netns");
+	r->family = 10;
+	memset(r->laddr, 0, 16);
+	r->laddr[15] = 1;
+	p15_rec_format(r, line, sizeof(line));
+	EXPECT(strstr(line, "local=[::1]:8080") != NULL, "IPv6 endpoints in brackets");
+}
+
 int main(void)
 {
 	test_fixed_sizes();
 	test_end();
 	test_exec_slack_rules();
 	test_format();
+	test_net_format();
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }
