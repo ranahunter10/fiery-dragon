@@ -1,0 +1,202 @@
+2026-11-02T11:21:33.4092878Z ##[group]Run sudo P15_IT_NET=1 make it-p15d
+2026-11-02T11:21:33.4093162Z [36;1msudo P15_IT_NET=1 make it-p15d[0m
+2026-11-02T11:21:33.4110137Z shell: /usr/bin/bash -e {0}
+2026-11-02T11:21:33.4110343Z ##[endgroup]
+2026-11-02T11:21:33.4584782Z daemon/tests/it_p15d.sh build
+2026-11-02T11:21:33.5680704Z network capture: on
+2026-11-02T11:21:33.5681059Z case 1: a 4 s run with 200 short processes
+2026-11-02T11:21:38.2136423Z p15d level=info code=start run_dir=/tmp/p15d-it-CgIQ91/c1/20261102T112134Z-339d2d4b sched="SCHED_FIFO 1" spine_ring=4194304 net=on
+2026-11-02T11:21:38.2137057Z p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+2026-11-02T11:21:38.2149591Z /tmp/p15d-it-CgIQ91/c1/20261102T112134Z-339d2d4b//seg-00000000.p15w: segment 0, 94232 bytes, 746 batches, 850 records, valid to the end
+2026-11-02T11:21:38.2150112Z   run.id = 20261102T112134Z-339d2d4b
+2026-11-02T11:21:38.2150365Z   kernel.release = 7.0.0-1017-azure
+2026-11-02T11:21:38.2150744Z   schema.hash = 92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3
+2026-11-02T11:21:38.2151253Z records: spine 806, bulk 0, daemon 44; invalid 0
+2026-11-02T11:21:38.2151551Z   FORK       202
+2026-11-02T11:21:38.2151710Z   EXEC       201
+2026-11-02T11:21:38.2151865Z   EXIT       202
+2026-11-02T11:21:38.2152011Z   RENAME     201
+2026-11-02T11:21:38.2152161Z   CLOCK_SYNC 3
+2026-11-02T11:21:38.2152317Z   STATS      20
+2026-11-02T11:21:38.2152472Z   END        1
+2026-11-02T11:21:38.2152660Z   NET_STATS  20
+2026-11-02T11:21:38.2152937Z END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+2026-11-02T11:21:38.2153299Z   ok   exit 0 (valid run)
+2026-11-02T11:21:38.2153682Z   ok   p15w-inspect: every segment valid, every record passes, END present
+2026-11-02T11:21:38.2164963Z   ok   END: exit 0, RUNNING, invariant closed
+2026-11-02T11:21:38.2201615Z   ok   at least 200 EXEC records (got 201)
+2026-11-02T11:21:38.2201913Z   ok   a STATS record every 200 ms (got 20)
+2026-11-02T11:21:38.2224568Z   ok   Prometheus textfile written
+2026-11-02T11:21:38.2236983Z   ok   hook manifest in the header
+2026-11-02T11:21:38.2237331Z case 2: stop by SIGTERM
+2026-11-02T11:21:40.2935680Z END: exit 0, state 0, invariant 1, signal 15, reason "stop requested"
+2026-11-02T11:21:40.2937977Z   ok   exit 0, WAL valid
+2026-11-02T11:21:40.2958795Z   ok   END records signal 15
+2026-11-02T11:21:40.2960278Z case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+2026-11-02T11:21:46.1829673Z p15d level=info code=start run_dir=/tmp/p15d-it-CgIQ91/c3/20261102T112140Z-339d2d4b sched="normal (--no-rt)" spine_ring=4096 net=on
+2026-11-02T11:21:46.1830304Z p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+2026-11-02T11:21:46.1841312Z records: spine 119, bulk 4, daemon 16; invalid 0
+2026-11-02T11:21:46.1841616Z   FORK       32
+2026-11-02T11:21:46.1841783Z   EXEC       28
+2026-11-02T11:21:46.1841943Z   EXIT       29
+2026-11-02T11:21:46.1842092Z   RENAME     30
+2026-11-02T11:21:46.1842311Z   NET        4
+2026-11-02T11:21:46.1842565Z   CLOCK_SYNC 1
+2026-11-02T11:21:46.1842792Z   STATS      6
+2026-11-02T11:21:46.1843018Z   GAP        2
+2026-11-02T11:21:46.1843235Z   END        1
+2026-11-02T11:21:46.1843461Z   NET_STATS  6
+2026-11-02T11:21:46.1843838Z END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)"
+2026-11-02T11:21:46.1863782Z   ok   exit 4 (INVALID)
+2026-11-02T11:21:46.1864441Z   ok   the WAL itself is still valid
+2026-11-02T11:21:46.1865081Z   ok   GAP records locate the loss (got 2)
+2026-11-02T11:21:46.1877417Z   ok   END: INVALID, and the books still close (loss is counted)
+2026-11-02T11:21:46.1878496Z case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect
+2026-11-02T11:21:52.7362195Z [1] NET    ts=112750570342 tgid=4969 tid=4969 start=112735100324 flags=0x0 op=BIND proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4105 peer=0 netns=4026531833
+2026-11-02T11:21:52.7363884Z [1] NET    ts=112750592495 tgid=4969 tid=4969 start=112735100324 flags=0x0 op=LISTEN proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4105 peer=0 netns=4026531833
+2026-11-02T11:21:52.7367768Z [1] NET    ts=113254484918 tgid=4971 tid=4971 start=113237120342 flags=0x0 op=CONNECT proto=tcp ret=0 local=127.0.0.1:41508 remote=127.0.0.1:18077 cookie=4106 peer=0 netns=4026531833
+2026-11-02T11:21:52.7368728Z [1] NET    ts=113254498253 tgid=4969 tid=4969 start=112735100324 flags=0x0 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:41508 cookie=8201 peer=4105 netns=4026531833
+2026-11-02T11:21:52.7369731Z [1] NET    ts=113274312913 tgid=4972 tid=4972 start=113257843312 flags=0x0 op=CONNECT proto=tcp ret=0 local=127.0.0.1:41524 remote=127.0.0.1:18077 cookie=4107 peer=0 netns=4026531833
+2026-11-02T11:21:52.7370977Z [1] NET    ts=113274325277 tgid=4969 tid=4969 start=112735100324 flags=0x0 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:41524 cookie=8202 peer=4105 netns=4026531833
+2026-11-02T11:21:52.7372392Z [1] NET    ts=113292388764 tgid=4973 tid=4973 start=113277861032 flags=0x0 op=CONNECT proto=tcp ret=-111 local=0.0.0.0:0 remote=127.0.0.1:18078 cookie=4108 peer=0 netns=4026531833
+2026-11-02T11:21:52.7377542Z records: spine 26, bulk 14, daemon 27; invalid 0
+2026-11-02T11:21:52.7377933Z   FORK       7
+2026-11-02T11:21:52.7378171Z   EXEC       5
+2026-11-02T11:21:52.7378401Z   EXIT       8
+2026-11-02T11:21:52.7378631Z   RENAME     6
+2026-11-02T11:21:52.7378837Z   NET        14
+2026-11-02T11:21:52.7378998Z   CLOCK_SYNC 2
+2026-11-02T11:21:52.7379152Z   STATS      12
+2026-11-02T11:21:52.7379309Z   END        1
+2026-11-02T11:21:52.7379460Z   NET_STATS  12
+2026-11-02T11:21:52.7379699Z END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+2026-11-02T11:21:52.7403514Z   ok   exit 0, WAL valid
+2026-11-02T11:21:52.7403956Z   ok   the server's LISTEN on port 18077, with its socket cookie (4105)
+2026-11-02T11:21:52.7421097Z   ok   two ACCEPTs whose peer cookie is the listener's
+2026-11-02T11:21:52.7437422Z   ok   two CONNECTs to port 18077, ret 0
+2026-11-02T11:21:52.7450986Z   ok   the refused connect, ret -111 (ECONNREFUSED)
+2026-11-02T11:21:52.7462864Z   ok   NET_STATS records written
+2026-11-02T11:21:52.7463120Z case 4: a bad flag
+2026-11-02T11:21:52.7473776Z   ok   exit 64 (usage)
+2026-11-02T11:21:52.7501689Z it_p15d: PASS (0 failed checks)
+2026-11-02T11:21:52.7552773Z ##[group]Run uname -r && sudo make smoke-net
+2026-11-02T11:21:52.7553061Z [36;1muname -r && sudo make smoke-net[0m
+2026-11-02T11:21:52.7572584Z shell: /usr/bin/bash -e {0}
+2026-11-02T11:21:52.7572798Z ##[endgroup]
+2026-11-02T11:21:52.7612660Z 7.0.0-1017-azure
+2026-11-02T11:21:52.8051096Z build/net_probe
+2026-11-02T11:21:52.9118986Z net_probe: libbpf v1.7, 6 programs attached
+2026-11-02T11:21:52.9119361Z TCP over IPv4: listener port 60619, client port 43148
+2026-11-02T11:21:52.9119742Z     bind    fam=2  proto=6  ret=0    local=127.0.0.1:60619 remote=0.0.0.0:0 cookie=12289 lcookie=0
+2026-11-02T11:21:52.9120192Z     listen  fam=2  proto=6  ret=0    local=127.0.0.1:60619 remote=0.0.0.0:0 cookie=12289 lcookie=0
+2026-11-02T11:21:52.9120674Z     connect fam=2  proto=6  ret=0    local=127.0.0.1:43148 remote=127.0.0.1:60619 cookie=12290 lcookie=0
+2026-11-02T11:21:52.9121316Z     accept  fam=2  proto=6  ret=0    local=127.0.0.1:60619 remote=127.0.0.1:43148 cookie=12291 lcookie=12289
+2026-11-02T11:21:52.9121940Z   ok   exactly one bind, listen, connect and accept
+2026-11-02T11:21:52.9122351Z   ok   bind: family, TCP, ret 0, local loopback:port
+2026-11-02T11:21:52.9123192Z   ok   listen: ret 0, same port, same socket cookie as bind
+2026-11-02T11:21:52.9123684Z   ok   connect: ret 0, remote = listener, local = the client's port, its own cookie
+2026-11-02T11:21:52.9124413Z   ok   accept: local = listener port, remote = client, lcookie = the listener, new cookie
+2026-11-02T11:21:52.9124785Z TCP over IPv6: listener port 47285, client port 45478
+2026-11-02T11:21:52.9129559Z     bind    fam=10 proto=6  ret=0    local=::1:47285 remote=:::0 cookie=12292 lcookie=0
+2026-11-02T11:21:52.9129998Z     listen  fam=10 proto=6  ret=0    local=::1:47285 remote=:::0 cookie=12292 lcookie=0
+2026-11-02T11:21:52.9130404Z     connect fam=10 proto=6  ret=0    local=::1:45478 remote=::1:47285 cookie=12293 lcookie=0
+2026-11-02T11:21:52.9130834Z     accept  fam=10 proto=6  ret=0    local=::1:47285 remote=::1:45478 cookie=12294 lcookie=12292
+2026-11-02T11:21:52.9131185Z   ok   exactly one bind, listen, connect and accept
+2026-11-02T11:21:52.9131471Z   ok   bind: family, TCP, ret 0, local loopback:port
+2026-11-02T11:21:52.9131762Z   ok   listen: ret 0, same port, same socket cookie as bind
+2026-11-02T11:21:52.9132108Z   ok   connect: ret 0, remote = listener, local = the client's port, its own cookie
+2026-11-02T11:21:52.9132514Z   ok   accept: local = listener port, remote = client, lcookie = the listener, new cookie
+2026-11-02T11:21:52.9132838Z   ok   UDP connect succeeds
+2026-11-02T11:21:52.9133115Z UDP connect to 127.0.0.1:9
+2026-11-02T11:21:52.9133542Z     connect fam=2  proto=17 ret=0    local=127.0.0.1:34392 remote=127.0.0.1:9 cookie=12295 lcookie=0
+2026-11-02T11:21:52.9134239Z   ok   UDP connect: proto UDP, ret 0, remote port 9, local port assigned
+2026-11-02T11:21:52.9134770Z TCP connect to a closed port 34015 (connect returned -1, errno 111)
+2026-11-02T11:21:52.9135386Z     connect fam=2  proto=6  ret=-111 local=0.0.0.0:0 remote=127.0.0.1:34015 cookie=12297 lcookie=0
+2026-11-02T11:21:52.9135936Z   ok   refused connect: ret -ECONNREFUSED recorded
+2026-11-02T11:21:52.9136357Z non-blocking TCP connect to 192.0.2.1:80 (TEST-NET-1)
+2026-11-02T11:21:52.9136923Z     connect fam=2  proto=6  ret=-115 local=10.1.0.158:57928 remote=192.0.2.1:80 cookie=12298 lcookie=0
+2026-11-02T11:21:52.9137537Z   ok   non-blocking connect: ret -EINPROGRESS (or -ENETUNREACH without a route)
+2026-11-02T11:21:52.9137943Z   ok   AF_UNIX connect: no record (unix sockets are outside these hooks)
+2026-11-02T11:21:52.9138335Z   ok   no record lost by this probe's buffer
+2026-11-02T11:21:52.9138636Z counters:  op       seen  emitted  excluded  reserve_failed
+2026-11-02T11:21:52.9138923Z            connect      5        5         0               0
+2026-11-02T11:21:52.9139192Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T11:21:52.9139448Z            accept       2        2         0               0
+2026-11-02T11:21:52.9139949Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T11:21:52.9140204Z            listen       2        2         0               0
+2026-11-02T11:21:52.9140459Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T11:21:52.9140710Z            bind         3        3         0               0
+2026-11-02T11:21:52.9140956Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T11:21:52.9141197Z net_probe: PASS (0 failed checks)
+2026-11-02T11:21:52.9229318Z Post job cleanup.
+2026-11-02T11:21:52.9978153Z [command]/usr/bin/git version
+2026-11-02T11:21:53.0006235Z git version 2.56.0
+2026-11-02T11:21:53.0036317Z Temporarily overriding HOME='/home/runner/work/_temp/5593a91b-880c-4030-9c4d-0c3e16bad834' before making global git config changes
+2026-11-02T11:21:53.0037494Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-02T11:21:53.0041992Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/fiery-dragon/fiery-dragon
+2026-11-02T11:21:53.0070375Z Removing SSH command configuration
+2026-11-02T11:21:53.0075850Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-02T11:21:53.0111258Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-02T11:21:53.0323249Z Entering 'third_party/bpftool'
+2026-11-02T11:21:53.0352852Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T11:21:53.0398632Z Entering 'third_party/libbpf'
+2026-11-02T11:21:53.0452399Z Removing HTTP extra header
+2026-11-02T11:21:53.0465021Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-02T11:21:53.0507662Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-02T11:21:53.0786433Z Entering 'third_party/bpftool'
+2026-11-02T11:21:53.0824779Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T11:21:53.0869146Z Entering 'third_party/libbpf'
+2026-11-02T11:21:53.0918838Z Removing includeIf entries pointing to credentials config files
+2026-11-02T11:21:53.0925243Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T11:21:53.0960530Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path
+2026-11-02T11:21:53.0961159Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path
+2026-11-02T11:21:53.0961539Z includeif.gitdir:/github/workspace/.git.path
+2026-11-02T11:21:53.0961831Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-02T11:21:53.0968137Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path
+2026-11-02T11:21:53.0998461Z /home/runner/work/_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.1008057Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.1057227Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path
+2026-11-02T11:21:53.1086805Z /home/runner/work/_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.1094408Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.1132971Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-02T11:21:53.1162083Z /github/runner_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.1168128Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.2477460Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-02T11:21:53.2512442Z /github/runner_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.2519090Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.2560743Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T11:21:53.2756804Z Entering 'third_party/bpftool'
+2026-11-02T11:21:53.2774330Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config	remote.origin.url
+2026-11-02T11:21:53.2789925Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T11:21:53.2808345Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config	remote.origin.url
+2026-11-02T11:21:53.2827551Z Entering 'third_party/libbpf'
+2026-11-02T11:21:53.2845266Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config	remote.origin.url
+2026-11-02T11:21:53.2873931Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T11:21:53.2904833Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path
+2026-11-02T11:21:53.2905604Z includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool.path
+2026-11-02T11:21:53.2910728Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path
+2026-11-02T11:21:53.2940106Z /home/runner/work/_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.2946861Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path \/home\/runner\/work\/_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.2986026Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --get-all includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool.path
+2026-11-02T11:21:53.3014712Z /github/runner_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.3021590Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --unset includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool.path \/github\/runner_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.3060284Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T11:21:53.3088701Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T11:21:53.3089570Z includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T11:21:53.3094893Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T11:21:53.3123110Z /home/runner/work/_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.3130819Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path \/home\/runner\/work\/_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.3170840Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --get-all includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T11:21:53.3198318Z /github/runner_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.3206040Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --unset includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path \/github\/runner_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.3244898Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T11:21:53.3273489Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path
+2026-11-02T11:21:53.3274394Z includeif.gitdir:/github/workspace/.git/modules/third_party/libbpf.path
+2026-11-02T11:21:53.3280865Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path
+2026-11-02T11:21:53.3312208Z /home/runner/work/_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.3319965Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path \/home\/runner\/work\/_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.3359406Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --get-all includeif.gitdir:/github/workspace/.git/modules/third_party/libbpf.path
+2026-11-02T11:21:53.3393284Z /github/runner_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config
+2026-11-02T11:21:53.3400595Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --unset includeif.gitdir:/github/workspace/.git/modules/third_party/libbpf.path \/github\/runner_temp\/git\-credentials\-06894500\-b731\-47ed\-b27d\-563d64813a57\.config
+2026-11-02T11:21:53.3584907Z Removing credentials config '/home/runner/work/_temp/git-credentials-06894500-b731-47ed-b27d-563d64813a57.config'
+2026-11-02T11:21:53.3735949Z Cleaning up orphan processes
