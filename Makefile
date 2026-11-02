@@ -62,7 +62,7 @@ P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/dra
 GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
-.PHONY: all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+.PHONY: codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
         exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
@@ -210,6 +210,10 @@ must-check-test:
 # FORTIFY and CET, whatever the compiler's defaults.
 hardening-check: $(OUT)/p15-spine $(OUT)/p15d
 	python3 tools/ci/check_hardening.py $^
+
+# docs/CODEMAP.md: one row per source file, regenerated here and checked current by CI
+codemap:
+	python3 tools/codemap.py
 
 mutate-wal:
 	python3 daemon/tests/mutate_wal.py

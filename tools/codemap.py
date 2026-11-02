@@ -49,15 +49,21 @@ def job(text: str, path: str) -> str:
             if body and ln.rstrip().endswith('"""') and len(body) >= 1 and not ln.strip() == '"""':
                 break
             continue
-        if s.startswith(("/*", "*", "//", "#")):
+        hash_comment = path.endswith((".py", ".sh", ".toml")) and s.startswith("#")
+        if s.startswith("#") and not hash_comment:
+            continue                      # C preprocessor line
+        if s.startswith(("/*", "*", "//")) or hash_comment:
             s = s.lstrip("/*# ").rstrip("*/ ").strip()
             if s:
                 body.append(s)
             continue
         break
-    first = " ".join(body)
-    m = re.match(r"(.+?[.:])(\s|$)", first)
-    return (m.group(1) if m else first)[:180] or "(no header comment)"
+    first = re.sub(r"\s+", " ", " ".join(body))
+    # drop a leading "name:" label (e.g. "spine.bpf.c:" or "p6-racer:"), then take the first sentence
+    first = re.sub(r"^[\w.\-/ ]{1,40}:\s+", "", first, count=1) if re.match(r"^[\w.\-/ ]{1,40}:\s", first) else first
+    m = re.match(r"(.+?\.)(\s|$)", first)
+    out = (m.group(1) if m else first).strip()
+    return (out[:177] + "...") if len(out) > 180 else (out or "(no header comment)")
 
 
 def names(text: str, path: str) -> list[str]:

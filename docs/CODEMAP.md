@@ -88,7 +88,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`empty.bpf.c`](../bpf/test/empty.bpf.c) | the CI skeleton's BPF smoke test. | `tp_btf/sched_process_exec`, `syscall` |
 | [`load_check.c`](../bpf/test/load_check.c) | open a BPF object with libbpf and load every program in it, so the kernel's verifier judges them. |  |
 | [`mutate_spine_exec.py`](../bpf/test/mutate_spine_exec.py) | Mutation sweep for the spine's EXEC program, the way it is built (OUTPUT, ADR-0017 layer 1), and the counter books (CONTRIBUTING §6). | `build_and_test` |
-| [`net_probe.bpf.c`](../bpf/test/net_probe.bpf.c) | the ADR-0004 candidate hooks for network intent, and what each one can see. | `fexit/__sys_connect_file → net_connect`, `fexit/do_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
+| [`net_probe.bpf.c`](../bpf/test/net_probe.bpf.c) | the ADR-0004 candidate hooks for network intent, and what each one can see. | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
 | [`net_probe.c`](../bpf/test/net_probe.c) | attach the ADR-0004 candidate hooks, make known network calls from this process, and check every record against what the calls did. |  |
 | [`rb_size.bpf.c`](../bpf/test/rb_size.bpf.c) | how much ring space a variable-length record takes, three ways (flood-resilience ADR input). | `tp_btf/sched_process_exec → fixed`, `tp_btf/sched_process_exec → output`, `tp_btf/sched_process_exec → dynptr` |
 | [`rb_size.c`](../bpf/test/rb_size.c) | load the three record-sizing programs, exec /bin/true with an argv of known length, and print the size each mode's record occupies in its ring. |  |
@@ -98,25 +98,44 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
+| [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_config_meta` |
+| [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
 | [`crc32c.c`](../daemon/crc32c.c) | Table-driven CRC32C, one byte per step. | `p15_crc32c` |
 | [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c` |
+| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_init`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
+| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record, copies it at its own len into a queue batch, and publishes batches to the writer. | `p15_drain_init`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
+| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free` |
+| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd` |
 | [`p15_spine.c`](../daemon/p15_spine.c) | load and attach the spine programs (ADR-0003), then p15-spine selftest run the load-time self-test once; exit 0 only if it passes p15-spine dump SECONDS run the self-test, then ... |  |
+| [`p15d.c`](../daemon/p15d.c) | the capture daemon (Phase 1 step 4b; ADR-0006, 0007, 0017, 0019). |  |
+| [`p15w_inspect.c`](../daemon/p15w_inspect.c) | check and summarise a P15W run directory or segment files (ADR-0007 "tools/wal-inspect"). |  |
+| [`queue.c`](../daemon/queue.c) | Bounded SPSC batch queue (ADR-0017 layer 2). | `p15q_init`, `p15q_free`, `p15q_acquire`, `p15q_publish`, `p15q_peek`, `p15q_release`, `p15q_wait`, `p15q_depth`, `p15q_kick` |
+| [`queue.h`](../daemon/queue.h) | Bounded single-producer/single-consumer queue of batches between the drain thread and the WAL writer thread (ADR-0017 layer 2). | `p15q_init`, `p15q_free`, `p15q_acquire`, `p15q_publish`, `p15q_peek`, `p15q_release`, `p15q_wait`, `p15q_depth`, `p15q_kick` |
 | [`records.c`](../daemon/records.c) | (no header comment) | `p15_rec_check`, `p15_exec_filename`, `p15_exec_argv`, `p15_type_name`, `p15_rec_format` |
 | [`records.h`](../daemon/records.h) | Checking and printing records (ADR-0008 rule 5: never read past len). | `p15_rec_check`, `p15_type_name`, `p15_rec_format`, `p15_exec_filename`, `p15_exec_argv` |
-| [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run` |
-| [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run` |
-| [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf`, `p15w_recover` |
-| [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_stats`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_scan_buf` (+2) |
+| [`run.c`](../daemon/run.c) | The run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code` |
+| [`run.h`](../daemon/run.h) | everything p15d's two threads share, the run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code`, `p15_boot_ns`, `p15_mono_ns` |
+| [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run_ex`, `p15_selftest_run` |
+| [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
+| [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_take_fsync_max`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf`, `p15w_recover` |
+| [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush` (+3) |
+| [`writer.c`](../daemon/writer.c) | The WAL writer thread (ADR-0017 layer 2, ADR-0019 G4.1). | `p15_invariant_check`, `p15_writer_main` |
+| [`writer.h`](../daemon/writer.h) | The WAL writer thread (ADR-0017 layer 2): the only code that touches the disk. | `p15_writer_main`, `p15_invariant_check` |
 
 ## daemon/tests
 
 | File | Job | Public names |
 |---|---|---|
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect. | `ok`, `bad`, `check`, `inspect`, `storm` |
+| [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
 | [`mutate_wal.py`](../daemon/tests/mutate_wal.py) | Mutation sweep for the WAL writer (CONTRIBUTING: every gate is checked by mutation sweeps). |  |
+| [`test_config.c`](../daemon/tests/test_config.c) | Unit tests for p15d's strict configuration parser (daemon/config.c, ADR-0019 G1). |  |
 | [`test_exitcodes.c`](../daemon/tests/test_exitcodes.c) | The exit-code table (daemon/exitcodes.h, ADR-0019 G2.2): every code is distinct, documented, and outside the values the runtime and the shell use (1, 2, 126 and above). |  |
+| [`test_queue.c`](../daemon/tests/test_queue.c) | Unit tests for the SPSC batch queue (daemon/queue.c), single-threaded and with a real producer and consumer thread. |  |
 | [`test_records.c`](../daemon/tests/test_records.c) | Unit tests for p15_rec_check and p15_rec_format on the daemon records (CLOCK_SYNC, STATS, GAP, END) and the fixed-size rule for every type. |  |
+| [`test_run.c`](../daemon/tests/test_run.c) | Unit tests for the run state machine, the exit code and the accounting invariant (daemon/run.c, daemon/writer.c p15_invariant_check; ADR-0006 rule 6, ADR-0019 G2). |  |
 | [`test_selftest.c`](../daemon/tests/test_selftest.c) | Unit tests for the record checks and the self-test evaluation, on synthetic records. |  |
 | [`test_wal.c`](../daemon/tests/test_wal.c) | Unit tests for the P15W writer, batch builder, scanner and recovery (docs/formats/p15w-v1.md). |  |
 
