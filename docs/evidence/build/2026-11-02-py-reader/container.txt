@@ -1,0 +1,127 @@
+# 2026-11-02T11:45:59Z 6.18.44-fc-v185 Python 3.13.16 commit-base e4a9e67 (+ this PR's working tree)
+numpy 2.5.4 google-crc32c impl c
+$ make it-pyreader
+rm -rf build/wal_fixture_run && mkdir -p build/wal_fixture_run
+build/wal_fixture build/wal_fixture_run
+P15_WAL_FIXTURE=build/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
+test_daemon (python.tests.it_wal_c.CWriterRun.test_daemon) ... ok
+test_merged_by_time (python.tests.it_wal_c.CWriterRun.test_merged_by_time) ... ok
+test_net (python.tests.it_wal_c.CWriterRun.test_net) ... ok
+test_run_shape (python.tests.it_wal_c.CWriterRun.test_run_shape) ... ok
+test_sequences_per_ring (python.tests.it_wal_c.CWriterRun.test_sequences_per_ring) ... ok
+test_spine (python.tests.it_wal_c.CWriterRun.test_spine) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.003s
+
+OK
+$ python3 -m unittest -v python/tests/test_wal.py python/tests/test_records.py
+test_collected_and_the_walk_goes_on (python.tests.test_wal.BadRecords.test_collected_and_the_walk_goes_on) ... ok
+test_corruption_fails_the_summary (python.tests.test_wal.BadRecords.test_corruption_fails_the_summary) ... ok
+test_strict (python.tests.test_wal.BadRecords.test_strict) ... ok
+test_summary_and_exit (python.tests.test_wal.BadRecords.test_summary_and_exit) ... ok
+test_causes_and_verdicts (python.tests.test_wal.Batches.test_causes_and_verdicts) ... ok
+test_describe (python.tests.test_wal.Batches.test_describe) ... ok
+test_valid_to_the_end (python.tests.test_wal.Batches.test_valid_to_the_end) ... ok
+test_zero_tail_is_torn (python.tests.test_wal.Batches.test_zero_tail_is_torn) ... ok
+test_c_implementation (python.tests.test_wal.Crc.test_c_implementation) ... ok
+test_check_value (python.tests.test_wal.Crc.test_check_value) ... ok
+test_random_flips (python.tests.test_wal.Damage.test_random_flips) ... ok
+test_entries (python.tests.test_wal.Header.test_entries) ... ok
+test_index_must_match_the_name (python.tests.test_wal.Header.test_index_must_match_the_name) ... ok
+test_prefix (python.tests.test_wal.Header.test_prefix) ... ok
+test_valid (python.tests.test_wal.Header.test_valid) ... ok
+test_empty_dir (python.tests.test_wal.Runs.test_empty_dir) ... ok
+test_identity_must_hold_across_segments (python.tests.test_wal.Runs.test_identity_must_hold_across_segments) ... ok
+test_merge_by_time (python.tests.test_wal.Runs.test_merge_by_time) ... ok
+test_missing_segment (python.tests.test_wal.Runs.test_missing_segment) ... ok
+test_schema_must_be_this_readers (python.tests.test_wal.Runs.test_schema_must_be_this_readers) ... ok
+test_seq_next_must_continue (python.tests.test_wal.Runs.test_seq_next_must_continue) ... ok
+test_sequence_crosses_segments (python.tests.test_wal.Runs.test_sequence_crosses_segments) ... ok
+test_stops_are_reported (python.tests.test_wal.Runs.test_stops_are_reported) ... ok
+test_char_fields_keep_every_byte (python.tests.test_records.Decoding.test_char_fields_keep_every_byte) ... ok
+test_every_type_round_trips (python.tests.test_records.Decoding.test_every_type_round_trips) ... ok
+test_no_defaults (python.tests.test_records.Decoding.test_no_defaults) ... ok
+test_comm_and_argv (python.tests.test_records.Helpers.test_comm_and_argv) ... ok
+test_kdev (python.tests.test_records.Helpers.test_kdev) ... ok
+test_every_refusal (python.tests.test_records.Refusals.test_every_refusal) ... ok
+test_offset_and_wording (python.tests.test_records.Refusals.test_offset_and_wording) ... ok
+test_slack_after_a_failed_read (python.tests.test_records.Refusals.test_slack_after_a_failed_read) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 1.619s
+
+OK
+$ python3 tools/ci/mutate_py.py
+killed    0 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    1 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    2 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    3 check_exits.py MARK = re.compile(r"exit-ok:\s*[A-Za-z]")
+killed    4 check_exits.py if c == "/" and nxt == "/":
+killed    5 check_exits.py if c == "/" and nxt == "*":
+killed    6 check_exits.py if c in "\"'":
+killed    7 check_exits.py if state == "line":
+killed    8 check_exits.py state, i = "code", i + 2
+killed    9 check_exits.py if CALL.search(code):
+killed    10 check_exits.py return 1 if bad else 0
+killed    11 check_exits.py (ok if MARK.search(line) else bad)
+killed    12 check_exits.py if c == "\\":
+killed    13 check_hardening.py bool(re.search(r"Type:\s+DYN", h)) and
+killed    14 check_hardening.py and bool(re.search(r"FLAGS_1\).*\bPIE\b", d)),
+killed    15 check_hardening.py "relro": "GNU_RELRO" in lw,
+killed    16 check_hardening.py or bool(re.search(r"FLAGS_1\).*\bNOW\b", d)),
+killed    17 check_hardening.py "nx-stack": bool(stack) and "E" not in stack.group(1),
+killed    18 check_hardening.py "canary": bool(re.search(r"\b__stack_chk_fail\b", syms)),
+killed    19 check_hardening.py "fortify": bool(re.search(r"\b__\w+_chk\b", syms)),
+killed    20 check_hardening.py \bIBT\b.*\bSHSTK\b
+killed    21 summarize.py if word not in ("row", "nullsys", "selftest"):
+killed    22 summarize.py if set(kv) != set(ROW_KEYS) or kv["way"] not in WAYS:
+killed    23 summarize.py if row["run_cnt"] <= 0:
+killed    24 summarize.py if kv["way"] not in WAYS or verdict not in ("PASS", "FAIL"):
+killed    25 summarize.py if r["ours"] != r["execs"] or r["invalid"]
+killed    26 summarize.py or r["wrong_size"] or r["wrong_argv"]:
+killed    27 summarize.py if any(s != sets[0] for s in sets):
+killed    28 summarize.py return r["run_time_ns"] / r["run_cnt"]
+killed    29 summarize.py diffs = sorted(by[(argv, w)][k] - base[k]
+killed    30 summarize.py below = sum(x < 0 for x in diffs)
+killed    31 summarize.py ratio = f"{m / nmed:.1f}"
+killed    32 summarize.py foreign = sum(r["foreign"] for r in d["rows"])
+killed    33 summarize.py return 1 if probs else 0
+killed    34 wal.py if magic != SEG_MAGIC:
+killed    35 wal.py if (major, minor) != (MAJOR, MINOR):
+killed    36 wal.py if hlen < PREFIX.size or hlen % 8 or hlen > len(buf):
+killed    37 wal.py zeroed[16:20] = b"\0\0\0\0"
+killed    38 wal.py if any(buf[end:padded]):
+killed    39 wal.py if k in meta:
+killed    40 wal.py if p != hlen:
+killed    41 wal.py elif crc32c(buf[p:p + 32]) != hcrc:
+killed    42 wal.py elif flags or rsv1 or rsv2 or ring > 2:
+killed    43 wal.py plen < R.HEADER_SIZE * count or
+killed    44 wal.py if crc32c(payload) != pcrc:
+killed    45 wal.py elif not _tiles(payload, count):
+killed    46 wal.py elif first != seg.seq_next[ring]:
+killed    47 wal.py torn = (cause in (1, 6) or
+killed    48 wal.py (cause == 7 and end_of_batch == len(buf))
+killed    49 wal.py or not any(buf[p:]))
+killed    50 wal.py seg.seq_next[ring] = first + count
+killed    51 wal.py if seq_expect is not None and hdr_next != seq_expect:
+killed    52 wal.py if out and s.meta[k] != out[0].meta[k]:
+killed    53 wal.py if meta["schema.hash"] != R.SCHEMA_HASH:
+killed    54 wal.py if int(SEG_RE.match(p.name).group(1)) != i:
+killed    55 wal.py yield (r.h["ts_ns"], ring, r.seq), r
+killed    56 wal.py p += struct.unpack_from("<H", b.payload, p + 4)[0]
+killed    57 wal.py return 1 if problems else 0
+killed    58 wal.py return lines, len(errors) + sum(1 for _, st in run.stops if 
+killed    59 records.py if size < HEADER_SIZE:
+killed    60 records.py if n > size:
+killed    61 records.py if n % 8:
+killed    62 records.py if n < lay.fixed_size:
+killed    63 records.py if vl > vmax:
+killed    64 records.py if lay.fixed_size + used > n:
+killed    65 records.py slack_ok = lay.cls == "SPINE" and bool(h["flags"] & F_READ_F
+killed    66 records.py if any(bytes(buf[p:off + n])):
+killed    67 records.py elif n != lay.fixed_size:
+killed    68 records.py bytes(buf[off + o:off + o + dt.itemsize]) if
+killed    69 records.py return (kernel_dev >> 20,
+killed    70 records.py if a.endswith(b"\0"):
+mutation sweep: 71/71 killed

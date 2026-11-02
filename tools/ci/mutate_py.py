@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Mutation sweep for the Python gates and harnesses (CONTRIBUTING §6: every gate is checked by a
-mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, bench/rb_cost/summarize.py.
+mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, bench/rb_cost/summarize.py,
+and the WAL reader, python/p15/wal.py and records.py.
 
 Each mutant plants one bug in a file and expects that file's unit tests (test_<name>.py next to
-it) to fail. The file is restored after every mutant, also on error or Ctrl-C.
+it, or in python/tests/ for the python/p15 package) to fail. The file is restored after every mutant, also on error or Ctrl-C.
 
     python3 tools/ci/mutate_py.py        (or: make mutate-py)
 
-Exit 0 only if every mutant is killed. Left out as equivalent: none.
+Exit 0 only if every mutant is killed. Left out as untestable here: wal.py's refusal of
+google-crc32c's pure-Python fallback (the pinned wheel is always the C one; the guard is three
+lines at import).
 """
 import os
 import pathlib
@@ -18,6 +21,8 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 EXITS, HARD, SUMM = "tools/ci/check_exits.py", "tools/ci/check_hardening.py", "bench/rb_cost/summarize.py"
+WAL, REC = "python/p15/wal.py", "python/p15/records.py"
+TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py"}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -54,6 +59,43 @@ M = [
  (SUMM, 'ratio = f"{m / nmed:.1f}"', 'ratio = f"{m / null[0]:.1f}"'),
  (SUMM, 'foreign = sum(r["foreign"] for r in d["rows"])', 'foreign = 0'),
  (SUMM, 'return 1 if probs else 0', 'return 0'),
+ (WAL, "if magic != SEG_MAGIC:", "if False:"),
+ (WAL, "if (major, minor) != (MAJOR, MINOR):", "if major != MAJOR:"),
+ (WAL, "if hlen < PREFIX.size or hlen % 8 or hlen > len(buf):", "if hlen > len(buf):"),
+ (WAL, 'zeroed[16:20] = b"\\0\\0\\0\\0"', "pass"),
+ (WAL, "if any(buf[end:padded]):", "if False:"),
+ (WAL, "if k in meta:", "if False:"),
+ (WAL, "if p != hlen:", "if False:"),
+ (WAL, "elif crc32c(buf[p:p + 32]) != hcrc:", "elif False:"),
+ (WAL, "elif flags or rsv1 or rsv2 or ring > 2:", "elif flags or ring > 2:"),
+ (WAL, "plen < R.HEADER_SIZE * count or ", ""),
+ (WAL, "if crc32c(payload) != pcrc:", "if False:"),
+ (WAL, "elif not _tiles(payload, count):", "elif False:"),
+ (WAL, "elif first != seg.seq_next[ring]:", "elif False:"),
+ (WAL, "torn = (cause in (1, 6) or", "torn = (cause in (1,) or"),
+ (WAL, "(cause == 7 and end_of_batch == len(buf))", "(cause == 7)"),
+ (WAL, "or not any(buf[p:]))", "or False)"),
+ (WAL, "seg.seq_next[ring] = first + count", "seg.seq_next[ring] = first"),
+ (WAL, "if seq_expect is not None and hdr_next != seq_expect:", "if False:"),
+ (WAL, "if out and s.meta[k] != out[0].meta[k]:", "if False:"),
+ (WAL, 'if meta["schema.hash"] != R.SCHEMA_HASH:', "if False:"),
+ (WAL, "if int(SEG_RE.match(p.name).group(1)) != i:", "if False:"),
+ (WAL, 'yield (r.h["ts_ns"], ring, r.seq), r', 'yield (r.seq, ring, r.h["ts_ns"]), r'),
+ (WAL, 'p += struct.unpack_from("<H", b.payload, p + 4)[0]', "p += 32"),
+ (WAL, "return 1 if problems else 0", "return 0"),
+ (WAL, "return lines, len(errors) + sum(1 for _, st in run.stops if not st.torn)", "return lines, len(errors)"),
+ (REC, "if size < HEADER_SIZE:", "if size < 8:"),
+ (REC, "if n > size:", "if False:"),
+ (REC, "if n % 8:", "if False:"),
+ (REC, "if n < lay.fixed_size:", "if False:"),
+ (REC, "if vl > vmax:", "if False:"),
+ (REC, "if lay.fixed_size + used > n:", "if False:"),
+ (REC, 'slack_ok = lay.cls == "SPINE" and bool(h["flags"] & F_READ_FAILED)', 'slack_ok = bool(h["flags"] & F_READ_FAILED)'),
+ (REC, "if any(bytes(buf[p:off + n])):", "if False:"),
+ (REC, "elif n != lay.fixed_size:", "elif False:"),
+ (REC, "bytes(buf[off + o:off + o + dt.itemsize]) if", "bytes(row[name]) if"),
+ (REC, "return (kernel_dev >> 20,", "return (kernel_dev >> 8,"),
+ (REC, 'if a.endswith(b"\\0"):', "if False:"),
 ]
 
 
@@ -63,6 +105,7 @@ def main() -> int:
     # within the same second as an earlier one of the same size would run the stale code.
     for f in originals:
         shutil.rmtree((ROOT / f).parent / "__pycache__", ignore_errors=True)
+    shutil.rmtree(ROOT / "python" / "tests" / "__pycache__", ignore_errors=True)
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     killed = 0
     try:
@@ -71,7 +114,7 @@ def main() -> int:
                 print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep")
                 return 2
             (ROOT / f).write_text(originals[f].replace(old, new))
-            test = (ROOT / f).parent / f"test_{(ROOT / f).name}"
+            test = ROOT / TESTS[f] if f in TESTS else (ROOT / f).parent / f"test_{(ROOT / f).name}"
             r = subprocess.run([sys.executable, "-B", "-m", "unittest", str(test)], capture_output=True, text=True,
                                env=env)
             (ROOT / f).write_text(originals[f])

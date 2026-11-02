@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect.
+# End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and
+# by the Python reader.
 #   daemon/tests/it_p15d.sh BUILD_DIR          (make it-p15d)
 # Cases: a timed run with a workload; a stop by SIGTERM; a forced spine overflow (ADR-0017
 # confirmation: INVALID and a GAP record); a bad flag (exit 64). Exit 0 only if all pass.
@@ -8,10 +9,25 @@ set -u
 B=${1:-build}
 T=$(mktemp -d /tmp/p15d-it-XXXXXX)
 fail=0
+PY=${P15_PYTHON:-python3}   # sudo resets PATH: CI passes its Python 3.14 here
 ok()  { echo "  ok   $1"; }
 bad() { echo "  FAIL $1"; fail=$((fail + 1)); }
 check() { if eval "$1"; then ok "$2"; else bad "$2"; fi; }
-inspect() { "$B/p15w-inspect" "$@" "$(ls -d "$RUN"/*/ | head -1)"; }
+# Every run is read by both readers: the C p15w-inspect and the Python one (python/p15/wal.py).
+# Their record counts must agree line for line (ADR-0007: one format, readers kept in step).
+counts() { sed -n '/^records:/,/^[^ r]/p' | grep -E '^(records:|  [A-Z_]+ +[0-9]+$)'; }
+inspect() {
+    local d rc pc; d=$(ls -d "$RUN"/*/ | head -1)
+    "$B/p15w-inspect" "$@" "$d"; rc=$?
+    if ! pc=$(PYTHONPATH=python "$PY" -m p15.wal "$d" 2>&1); then
+        echo "python reader: $pc" >&2; bad "the Python reader accepts $RUN" >&2
+    elif [ "$(printf '%s\n' "$pc" | counts)" != "$("$B/p15w-inspect" "$d" | counts)" ]; then
+        bad "the Python reader's counts equal p15w-inspect's ($RUN)" >&2
+    else
+        ok "the Python reader's counts equal p15w-inspect's ($(basename "$RUN"))" >&2
+    fi
+    return $rc
+}
 
 # Network capture (ADR-0004) needs fentry/fexit, which some hosts refuse (the cloud dev
 # container: E-0078). P15_IT_NET=1 (CI, the VM) makes that a failure instead of a skip.

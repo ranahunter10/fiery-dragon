@@ -63,7 +63,7 @@ P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/dra
 GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
-.PHONY: codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+.PHONY: it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
         exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
@@ -152,6 +152,16 @@ $(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
 
 $(OUT)/test_records: daemon/tests/test_records.c daemon/records.c daemon/records.h schema/generated/p15_records.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $@
+
+# The C writer's output, for the Python reader's cross-check (python/tests/it_wal_c.py).
+$(OUT)/wal_fixture: daemon/tests/wal_fixture.c $(WAL_SRC) daemon/wal.h schema/generated/p15_records.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/wal_fixture.c $(WAL_SRC) -o $@
+
+# The Python reader decodes, field by field, a run the C writer wrote (no root, no BPF).
+it-pyreader: $(OUT)/wal_fixture
+	rm -rf $(OUT)/wal_fixture_run && mkdir -p $(OUT)/wal_fixture_run
+	$(OUT)/wal_fixture $(OUT)/wal_fixture_run
+	P15_WAL_FIXTURE=$(OUT)/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
 
 test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records $(OUT)/test_queue \
         $(OUT)/test_config $(OUT)/test_run must-check-test
@@ -267,7 +277,7 @@ $(OUT)/rb_size: bpf/test/rb_size.c $(OUT)/rb_size.skel.h $(LIBBPF_A)
 $(OUT)/load_check: bpf/test/load_check.c $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
-check: all schema-check layout-check test-c exit-check hardening-check
+check: all schema-check layout-check test-c exit-check hardening-check it-pyreader
 	tools/ci/run-tests.sh
 	tools/ci/check-evidence.sh
 	cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
