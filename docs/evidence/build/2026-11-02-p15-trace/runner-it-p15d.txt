@@ -1,0 +1,114 @@
+# CI job 125263939170 (run 41441418812), PR #40 at 5f3f6c9: the step 'p15d end to end, network capture required', job-log lines 874 to the PASS line, unedited. Runner kernel: 7.0.0-1014-aws (job-log line 384: uname -r), not the target.
+2026-11-02T12:03:36.9391673Z ##[group]Run sudo P15_PYTHON="$(command -v python3)" P15_IT_NET=1 P15_IT_KEEP=build/it-runs make it-p15d
+2026-11-02T12:03:36.9392579Z [36;1msudo P15_PYTHON="$(command -v python3)" P15_IT_NET=1 P15_IT_KEEP=build/it-runs make it-p15d[0m
+2026-11-02T12:03:36.9418729Z shell: /usr/bin/bash -e {0}
+2026-11-02T12:03:36.9419012Z env:
+2026-11-02T12:03:36.9419305Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.8/x64
+2026-11-02T12:03:36.9419682Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib/pkgconfig
+2026-11-02T12:03:36.9420059Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+2026-11-02T12:03:36.9420438Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+2026-11-02T12:03:36.9420764Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+2026-11-02T12:03:36.9421146Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib
+2026-11-02T12:03:36.9421443Z ##[endgroup]
+2026-11-02T12:03:36.9807649Z daemon/tests/it_p15d.sh build
+2026-11-02T12:03:37.0278579Z network capture: on
+2026-11-02T12:03:37.0278975Z case 1: a 4 s run with 200 short processes
+2026-11-02T12:03:41.5930544Z   ok   the Python reader's counts equal p15w-inspect's (c1)
+2026-11-02T12:03:41.5936260Z p15d level=info code=start run_dir=/tmp/p15d-it-Q6f0X6/c1/20261102T120337Z-b8ab3857 sched="SCHED_FIFO 1" spine_ring=4194304 net=on
+2026-11-02T12:03:41.5937067Z p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+2026-11-02T12:03:41.5944976Z /tmp/p15d-it-Q6f0X6/c1/20261102T120337Z-b8ab3857//seg-00000000.p15w: segment 0, 95824 bytes, 771 batches, 853 records, valid to the end
+2026-11-02T12:03:41.5945966Z   run.id = 20261102T120337Z-b8ab3857
+2026-11-02T12:03:41.5946426Z   kernel.release = 7.0.0-1014-aws
+2026-11-02T12:03:41.5946933Z   schema.hash = 92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3
+2026-11-02T12:03:41.5947447Z records: spine 807, bulk 0, daemon 46; invalid 0
+2026-11-02T12:03:41.5947816Z   FORK       202
+2026-11-02T12:03:41.5948045Z   EXEC       201
+2026-11-02T12:03:41.5948314Z   EXIT       203
+2026-11-02T12:03:41.5948531Z   RENAME     201
+2026-11-02T12:03:41.5948747Z   CLOCK_SYNC 3
+2026-11-02T12:03:41.5949028Z   STATS      21
+2026-11-02T12:03:41.5949234Z   END        1
+2026-11-02T12:03:41.5949465Z   NET_STATS  21
+2026-11-02T12:03:41.5949746Z END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+2026-11-02T12:03:41.5950081Z   ok   exit 0 (valid run)
+2026-11-02T12:03:41.5950428Z   ok   p15w-inspect: every segment valid, every record passes, END present
+2026-11-02T12:03:41.5955217Z   ok   END: exit 0, RUNNING, invariant closed
+2026-11-02T12:03:41.5983107Z   ok   at least 200 EXEC records (got 201)
+2026-11-02T12:03:41.5983549Z   ok   a STATS record every 200 ms (got 21)
+2026-11-02T12:03:41.6000019Z   ok   Prometheus textfile written
+2026-11-02T12:03:41.6009233Z   ok   hook manifest in the header
+2026-11-02T12:03:41.6009556Z case 2: stop by SIGTERM
+2026-11-02T12:03:43.7168266Z   ok   the Python reader's counts equal p15w-inspect's (c2)
+2026-11-02T12:03:43.7175056Z END: exit 0, state 0, invariant 1, signal 15, reason "stop requested"
+2026-11-02T12:03:43.7176148Z   ok   exit 0, WAL valid
+2026-11-02T12:03:43.7185211Z   ok   END records signal 15
+2026-11-02T12:03:43.7185693Z case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+2026-11-02T12:03:49.4573240Z   ok   the Python reader's counts equal p15w-inspect's (c3)
+2026-11-02T12:03:49.4579152Z p15d level=info code=start run_dir=/tmp/p15d-it-Q6f0X6/c3/20261102T120344Z-b8ab3857 sched="normal (--no-rt)" spine_ring=4096 net=on
+2026-11-02T12:03:49.4580016Z p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+2026-11-02T12:03:49.4587331Z records: spine 116, bulk 1, daemon 16; invalid 0
+2026-11-02T12:03:49.4587688Z   FORK       42
+2026-11-02T12:03:49.4587998Z   EXEC       24
+2026-11-02T12:03:49.4588201Z   EXIT       24
+2026-11-02T12:03:49.4588471Z   RENAME     26
+2026-11-02T12:03:49.4588703Z   NET        1
+2026-11-02T12:03:49.4589128Z   CLOCK_SYNC 1
+2026-11-02T12:03:49.4589347Z   STATS      6
+2026-11-02T12:03:49.4589538Z   GAP        2
+2026-11-02T12:03:49.4589723Z   END        1
+2026-11-02T12:03:49.4589955Z   NET_STATS  6
+2026-11-02T12:03:49.4590233Z END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)"
+2026-11-02T12:03:49.4603830Z   ok   exit 4 (INVALID)
+2026-11-02T12:03:49.4604254Z   ok   the WAL itself is still valid
+2026-11-02T12:03:49.4604605Z   ok   GAP records locate the loss (got 2)
+2026-11-02T12:03:49.4613068Z   ok   END: INVALID, and the books still close (loss is counted)
+2026-11-02T12:03:49.4614577Z case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect
+2026-11-02T12:03:56.1444497Z   ok   the Python reader's counts equal p15w-inspect's (c5)
+2026-11-02T12:03:56.1455181Z [1] NET    ts=147892205083 tgid=5162 tid=5162 start=147878431822 flags=0x0 op=BIND proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=12289 peer=0 netns=4026531833
+2026-11-02T12:03:56.1456285Z [1] NET    ts=147892212380 tgid=5162 tid=5162 start=147878431822 flags=0x0 op=LISTEN proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=12289 peer=0 netns=4026531833
+2026-11-02T12:03:56.1457077Z [1] NET    ts=148394964072 tgid=5164 tid=5164 start=148379792714 flags=0x0 op=CONNECT proto=tcp ret=0 local=127.0.0.1:59152 remote=127.0.0.1:18077 cookie=12290 peer=0 netns=4026531833
+2026-11-02T12:03:56.1457862Z [1] NET    ts=148395029810 tgid=5162 tid=5162 start=147878431822 flags=0x0 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:59152 cookie=4110 peer=12289 netns=4026531833
+2026-11-02T12:03:56.1458838Z [1] NET    ts=148412100906 tgid=5165 tid=5165 start=148398120866 flags=0x0 op=CONNECT proto=tcp ret=0 local=127.0.0.1:59154 remote=127.0.0.1:18077 cookie=12291 peer=0 netns=4026531833
+2026-11-02T12:03:56.1459593Z [1] NET    ts=148412134316 tgid=5162 tid=5162 start=147878431822 flags=0x0 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:59154 cookie=4111 peer=12289 netns=4026531833
+2026-11-02T12:03:56.1460409Z [1] NET    ts=148426914873 tgid=5166 tid=5166 start=148415018911 flags=0x0 op=CONNECT proto=tcp ret=-111 local=0.0.0.0:0 remote=127.0.0.1:18078 cookie=12292 peer=0 netns=4026531833
+2026-11-02T12:03:56.1463437Z records: spine 26, bulk 7, daemon 27; invalid 0
+2026-11-02T12:03:56.1463826Z   FORK       7
+2026-11-02T12:03:56.1464082Z   EXEC       5
+2026-11-02T12:03:56.1464352Z   EXIT       8
+2026-11-02T12:03:56.1464641Z   RENAME     6
+2026-11-02T12:03:56.1464869Z   NET        7
+2026-11-02T12:03:56.1465124Z   CLOCK_SYNC 2
+2026-11-02T12:03:56.1465411Z   STATS      12
+2026-11-02T12:03:56.1465712Z   END        1
+2026-11-02T12:03:56.1465940Z   NET_STATS  12
+2026-11-02T12:03:56.1466241Z END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+2026-11-02T12:03:56.1483009Z   ok   exit 0, WAL valid
+2026-11-02T12:03:56.1483498Z   ok   the server's LISTEN on port 18077, with its socket cookie (12289)
+2026-11-02T12:03:56.1495155Z   ok   two ACCEPTs whose peer cookie is the listener's
+2026-11-02T12:03:56.1507633Z   ok   two CONNECTs to port 18077, ret 0
+2026-11-02T12:03:56.1517415Z   ok   the refused connect, ret -111 (ECONNREFUSED)
+2026-11-02T12:03:56.1525877Z   ok   NET_STATS records written
+2026-11-02T12:03:56.3593501Z Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+2026-11-02T12:03:56.3595818Z 
+2026-11-02T12:03:56.3596201Z Listeners on port 18077
+2026-11-02T12:03:56.3597149Z   127.0.0.1:18077 tcp  cookie 12289  listening from 12:03:51.976 (t+1.976s)  by python3 (5162) ← pid 4438 [started before the capture]
+2026-11-02T12:03:56.3597677Z 
+2026-11-02T12:03:56.3597832Z Connections accepted on port 18077
+2026-11-02T12:03:56.3598386Z   12:03:52.479 (t+2.479s)  127.0.0.1:59152 -> 127.0.0.1:18077  accepted by python3 (pid 5162)  (listener cookie 12289)
+2026-11-02T12:03:56.3599247Z       client: python3 (5164) ← pid 4438 [started before the capture]  (matched by endpoints, connect at t+2.479s)
+2026-11-02T12:03:56.3600205Z   12:03:52.496 (t+2.496s)  127.0.0.1:59154 -> 127.0.0.1:18077  accepted by python3 (pid 5162)  (listener cookie 12289)
+2026-11-02T12:03:56.3601060Z       client: python3 (5165) ← pid 4438 [started before the capture]  (matched by endpoints, connect at t+2.496s)
+2026-11-02T12:03:56.3601520Z 
+2026-11-02T12:03:56.3601641Z Connects to port 18077
+2026-11-02T12:03:56.3602598Z   12:03:52.479 (t+2.479s)  127.0.0.1:59152 -> 127.0.0.1:18077 tcp  ok                      by python3 (5164) ← pid 4438 [started before the capture]
+2026-11-02T12:03:56.3603352Z   12:03:52.496 (t+2.496s)  127.0.0.1:59154 -> 127.0.0.1:18077 tcp  ok                      by python3 (5165) ← pid 4438 [started before the capture]
+2026-11-02T12:03:56.3603990Z   ok   p15-trace: text and HTML reports made
+2026-11-02T12:03:56.3614206Z   ok   p15-trace: 1 listener, 2 accepts, both clients found on this host
+2026-11-02T12:03:56.3623471Z   ok   p15-trace: the listener is the server process (5162), cookie 12289
+2026-11-02T12:03:56.3635034Z   ok   p15-trace: each accept joined to its client process and that process's parent
+2026-11-02T12:03:56.3643584Z   ok   p15-trace: the refused connect to port 18078, with its process
+2026-11-02T12:03:56.3671681Z case 4: a bad flag
+2026-11-02T12:03:56.3679253Z   ok   exit 64 (usage)
+2026-11-02T12:03:56.3693147Z it_p15d: PASS (0 failed checks)
+2026-11-02T12:03:57.2495187Z shell: /usr/bin/bash -e {0}
+2026-11-02T12:03:57.2495518Z env:
