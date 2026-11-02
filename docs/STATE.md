@@ -124,3 +124,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 8. **Accept ADR-0004, network intent:** fexit on the proto_ops (not the syscall layer), NET on the bulk ring, socket-cookie identity, the declared v1 limits (AF_UNIX, unconnected UDP, MPTCP/SCTP/raw).
    - Recommendation: accept.
    - Evidence: the probe passes all checks on the runner's 7.0 (E-0079); the syscall-layer draft was refused by the verifier (E-0079); SRC rows 1–4 of the ADR.
+9. **Analysis-tier packages pinned by hash** (`python/requirements.txt`, PR #39): google-crc32c 1.9.0 and numpy 2.5.4, binary wheels for x86-64 CPython 3.13 (the dev container) and 3.14 (the VM, CI) only, installed with `--require-hashes --only-binary=:all:`. Another Python or architecture fails to install, loudly. The alternative is version pins without hashes, which accept any file PyPI serves under that version.
+   - Recommendation: accept; extend the hash list when the analysis tier adds torch and the rest (P11's list).
+   - Evidence: the wheels' SHA-256s in the file; the CI install step.
