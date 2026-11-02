@@ -15,6 +15,7 @@ To write a new one:
 | [0001](0001-platform-ubuntu-26-04-kernel-7-0-pinned.md) | Develop and measure on Ubuntu 26.04 LTS with the GA kernel 7.0.0-38, held | accepted | 2026-10-25 |
 | [0002](0002-toolchain-libbpf-co-re-c-daemon.md) | Build with libbpf v1.7.0 + CO-RE skeletons and a C daemon; Python only after the WAL | accepted | 2026-10-25 |
 | [0003](0003-hook-policy-btf-checked-attach-points-self-test.md) | Hook policy: BTF-checked attach points, the spine on `tp_btf` sched tracepoints, argv from the kernel's copy, and a per-pid load-time self-test | accepted | 2026-10-25 |
+| [0004](0004-network-intent-hooks.md) | Network intent: fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; one NET record on the bulk ring, keyed by socket cookie | proposed | — |
 | [0006](0006-transport-two-bpf-ring-buffers.md) | Two BPF ring buffers (spine never shed, bulk counted), self-paced wakeups, one C drain thread | accepted; rules 1 and 4 superseded by 0017 | 2026-10-25 |
 | [0007](0007-wal-segmented-crc-batches-snapshot.md) | Write-ahead log P15W v1: segment files with a self-describing header, a process snapshot, CRC-checked batches, and fdatasync every second | accepted | 2026-10-25 |
 | [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte common header on the boot clock | accepted | 2026-10-25 |
@@ -30,7 +31,6 @@ These numbers are reserved. Each becomes a PR when its evidence is ready.
 
 | ADR | Topic | Evidence needed first |
 |---|---|---|
-| 0004 | Connect/accept hook layer | P7 |
 | 0005 | In-kernel filtering: who/what-kind only, no in-kernel dedup in v1 | **P10 census**, P5 |
 | 0010 | Record classes; PERMIT optional | — |
 | 0011 | Test strategy and adequacy (coverage matrix + evasion catalogue) | — |
