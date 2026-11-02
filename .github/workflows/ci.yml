@@ -72,3 +72,5 @@ jobs:
         run: make layout-check
       - name: Smoke (verifier load; tp_btf attach; spine self-test, ADR-0003)
         run: sudo make smoke
+      - name: Network-intent probe (fexit hooks of ADR-0004; runner kernel, not the target)
+        run: uname -r && sudo make smoke-net
