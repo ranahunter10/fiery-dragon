@@ -110,6 +110,19 @@ check "[ \$(grep -cE \"op=ACCEPT .*local=127.0.0.1:$PORT .*peer=$lc \" $T/c5.txt
 check "[ \$(grep -cE \"op=CONNECT proto=tcp ret=0 .*remote=127.0.0.1:$PORT \" $T/c5.txt) -eq 2 ]" "two CONNECTs to port $PORT, ret 0"
 check "grep -qE \"op=CONNECT proto=tcp ret=-111 .*remote=127.0.0.1:$((PORT + 1)) \" $T/c5.txt" "the refused connect, ret -111 (ECONNREFUSED)"
 check "grep -q 'NET_STATS' $T/c5.txt" "NET_STATS records written"
+# the demo query (STATE 19.4) on the same real run: p15-trace, text and HTML
+d5=$(ls -d "$T"/c5/*/ | head -1)
+PYTHONPATH=python "$PY" -m p15.trace --port $PORT "$d5" --html "$T/c5-$PORT.html" >"$T/c5-trace.txt" 2>&1; trc=$?
+PYTHONPATH=python "$PY" -m p15.trace --port $((PORT + 1)) "$d5" >"$T/c5-trace-refused.txt" 2>&1; trc2=$?
+sed -n '/^Summary/,/^Processes/p' "$T/c5-trace.txt" | head -14
+check "[ $trc -eq 0 ] && [ $trc2 -eq 0 ] && head -c 15 $T/c5-$PORT.html | grep -q '<!doctype html>'" "p15-trace: text and HTML reports made"
+check "grep -q 'Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused' $T/c5-trace.txt" "p15-trace: 1 listener, 2 accepts, both clients found on this host"
+check "grep -qE '^  127.0.0.1:$PORT tcp  cookie $lc  listening from .* by python3 \\($srv\\)' $T/c5-trace.txt" "p15-trace: the listener is the server process ($srv), cookie $lc"
+check "[ \$(grep -cE 'client: python3 \\([0-9]+\\) ← ' $T/c5-trace.txt) -eq 2 ]" "p15-trace: each accept joined to its client process and that process's parent"
+check "grep -qE 'ECONNREFUSED \\(-111\\) +by python3' $T/c5-trace-refused.txt" "p15-trace: the refused connect to port $((PORT + 1)), with its process"
+if [ -n "${P15_IT_KEEP:-}" ]; then     # CI keeps the real run and its reports as an artifact
+    mkdir -p "$P15_IT_KEEP" && cp -r "$d5" "$P15_IT_KEEP/" && cp "$T"/c5-trace*.txt "$T/c5-$PORT.html" "$T/c5.txt" "$P15_IT_KEEP/"
+fi
 else
 echo "case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)"
 fi

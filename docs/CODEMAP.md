@@ -148,7 +148,11 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`__init__.py`](../python/p15/__init__.py) | Fiery Dragon's analysis tier: reading what the capture wrote (README "python/"). |  |
+| [`net.py`](../python/p15/net.py) | Network intent of a run (ADR-0004): the NET records, and what happened on one port. | `Event`, `event`, `Listener`, `Conn`, `PortReport`, `port_report` |
+| [`proctree.py`](../python/p15/proctree.py) | The process tree of a run, from the spine records (ADR-0003, ADR-0009). | `Image`, `Proc`, `Gap`, `Tree`, `build` |
 | [`records.py`](../python/p15/records.py) | The ADR-0008 records, decoded from the generated layouts (schema/generated/p15_records.py). | `RecordError`, `Record`, `decode`, `kdev`, `net_addr`, `endpoint`, `comm`, `argv` |
+| [`report_html.py`](../python/p15/report_html.py) | The HTML form of p15-trace's port report: one self-contained page (no scripts, fonts or images from anywhere else), so it can be mailed, archived next to the evidence and opened... | `connection_map`, `timeline`, `render` |
+| [`trace.py`](../python/p15/trace.py) | what happened on a port, from one capture run (STATE 19.4). | `Context`, `load`, `proc_line`, `chain`, `involved`, `proc_block`, `text_report` |
 | [`wal.py`](../python/p15/wal.py) | segments and runs (docs/formats/p15w-v1.md, ADR-0007). | `crc32c`, `HeaderError`, `RunError`, `Batch`, `Stop`, `Segment`, `parse_header`, `read_segment`, `Run`, `read_run`, `summary` |
 
 ## python/tests
@@ -157,7 +161,9 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_wal_c.py`](../python/tests/it_wal_c.py) | decode, field by field, the run that daemon/tests/wal_fixture.c wrote through daemon/wal.c. | `CWriterRun` |
 | [`p15w_build.py`](../python/tests/p15w_build.py) | build P15W segments and ADR-0008 records in memory, with every field open to being broken on purpose. | `rec`, `batch`, `header`, `meta_for`, `write_run` |
+| [`scenario.py`](../python/tests/scenario.py) | a small synthetic p15d run with a known story, for the process tree, the port query and the reports. | `fork`, `exe`, `ren`, `ex`, `net`, `build` |
 | [`test_records.py`](../python/tests/test_records.py) | Tests for the record decoder (python/p15/records.py): every refusal p15_rec_check makes (daemon/records.c, same wording), no defaults, and the field helpers. | `dec`, `Refusals`, `Decoding`, `Helpers` |
+| [`test_trace.py`](../python/tests/test_trace.py) | Tests for the process tree (proctree.py), the port query (net.py) and p15-trace's two reports (trace.py, report_html.py), on the synthetic run of scenario.py, whose story is known. | `Base`, `Tree`, `Port`, `TextReport`, `Html`, `Checker`, `Cli` |
 | [`test_wal.py`](../python/tests/test_wal.py) | Tests for the P15W reader (python/p15/wal.py) against docs/formats/p15w-v1.md: every header check, every §4 stop cause and its torn/corrupt verdict, the run rules, and random da... | `Tmp`, `Crc`, `Header`, `Batches`, `Runs`, `BadRecords`, `Damage` |
 
 ## schema

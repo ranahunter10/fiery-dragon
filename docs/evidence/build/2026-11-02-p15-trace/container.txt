@@ -1,0 +1,129 @@
+# 2026-11-02T12:00:20Z 6.18.44-fc-v185 Python 3.13.16, dev container; synthetic run (python/tests/scenario.py), no capture
+$ python3 -m unittest -v python/tests/test_trace.py
+test_main (python.tests.test_trace.Cli.test_main) ... ok
+test_not_a_p15d_run (python.tests.test_trace.Cli.test_not_a_p15d_run) ... ok
+test_content (python.tests.test_trace.Html.test_content) ... ok
+test_escapes_what_the_run_says (python.tests.test_trace.Html.test_escapes_what_the_run_says) ... ok
+test_self_contained_and_well_formed (python.tests.test_trace.Html.test_self_contained_and_well_formed) ... ok
+test_trust_colour (python.tests.test_trace.Html.test_trust_colour) ... ok
+test_18077 (python.tests.test_trace.Port.test_18077) ... ok
+test_4444_refused (python.tests.test_trace.Port.test_4444_refused) ... ok
+test_accept_whose_listener_is_not_in_the_run (python.tests.test_trace.Port.test_accept_whose_listener_is_not_in_the_run) ... ok
+test_endpoint_join_rules (python.tests.test_trace.Port.test_endpoint_join_rules) ... ok
+test_in_progress_is_not_a_failure (python.tests.test_trace.Port.test_in_progress_is_not_a_failure) ... ok
+test_udp_bind_and_failed_bind (python.tests.test_trace.Port.test_udp_bind_and_failed_bind) ... ok
+test_unknown_port (python.tests.test_trace.Port.test_unknown_port) ... ok
+test_18077 (python.tests.test_trace.TextReport.test_18077) ... ok
+test_4444 (python.tests.test_trace.TextReport.test_4444) ... ok
+test_trust_lines (python.tests.test_trace.TextReport.test_trust_lines) ... ok
+test_wall_clock_uses_the_nearest_anchor (python.tests.test_trace.TextReport.test_wall_clock_uses_the_nearest_anchor) ... ok
+test_gap_marks_processes_alive_then (python.tests.test_trace.Tree.test_gap_marks_processes_alive_then) ... ok
+test_identity_checks_count (python.tests.test_trace.Tree.test_identity_checks_count) ... ok
+test_missing_fork_vs_pre_existing (python.tests.test_trace.Tree.test_missing_fork_vs_pre_existing) ... ok
+test_signal_exit_text (python.tests.test_trace.Tree.test_signal_exit_text) ... ok
+test_story (python.tests.test_trace.Tree.test_story) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.075s
+
+OK
+$ python3 tools/ci/mutate_py.py
+killed    0 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    1 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    2 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    3 check_exits.py MARK = re.compile(r"exit-ok:\s*[A-Za-z]")
+killed    4 check_exits.py if c == "/" and nxt == "/":
+killed    5 check_exits.py if c == "/" and nxt == "*":
+killed    6 check_exits.py if c in "\"'":
+killed    7 check_exits.py if state == "line":
+killed    8 check_exits.py state, i = "code", i + 2
+killed    9 check_exits.py if CALL.search(code):
+killed    10 check_exits.py return 1 if bad else 0
+killed    11 check_exits.py (ok if MARK.search(line) else bad)
+killed    12 check_exits.py if c == "\\":
+killed    13 check_hardening.py bool(re.search(r"Type:\s+DYN", h)) and
+killed    14 check_hardening.py and bool(re.search(r"FLAGS_1\).*\bPIE\b", d)),
+killed    15 check_hardening.py "relro": "GNU_RELRO" in lw,
+killed    16 check_hardening.py or bool(re.search(r"FLAGS_1\).*\bNOW\b", d)),
+killed    17 check_hardening.py "nx-stack": bool(stack) and "E" not in stack.group(1),
+killed    18 check_hardening.py "canary": bool(re.search(r"\b__stack_chk_fail\b", syms)),
+killed    19 check_hardening.py "fortify": bool(re.search(r"\b__\w+_chk\b", syms)),
+killed    20 check_hardening.py \bIBT\b.*\bSHSTK\b
+killed    21 summarize.py if word not in ("row", "nullsys", "selftest"):
+killed    22 summarize.py if set(kv) != set(ROW_KEYS) or kv["way"] not in WAYS:
+killed    23 summarize.py if row["run_cnt"] <= 0:
+killed    24 summarize.py if kv["way"] not in WAYS or verdict not in ("PASS", "FAIL"):
+killed    25 summarize.py if r["ours"] != r["execs"] or r["invalid"]
+killed    26 summarize.py or r["wrong_size"] or r["wrong_argv"]:
+killed    27 summarize.py if any(s != sets[0] for s in sets):
+killed    28 summarize.py return r["run_time_ns"] / r["run_cnt"]
+killed    29 summarize.py diffs = sorted(by[(argv, w)][k] - base[k]
+killed    30 summarize.py below = sum(x < 0 for x in diffs)
+killed    31 summarize.py ratio = f"{m / nmed:.1f}"
+killed    32 summarize.py foreign = sum(r["foreign"] for r in d["rows"])
+killed    33 summarize.py return 1 if probs else 0
+killed    34 wal.py if magic != SEG_MAGIC:
+killed    35 wal.py if (major, minor) != (MAJOR, MINOR):
+killed    36 wal.py if hlen < PREFIX.size or hlen % 8 or hlen > len(buf):
+killed    37 wal.py zeroed[16:20] = b"\0\0\0\0"
+killed    38 wal.py if any(buf[end:padded]):
+killed    39 wal.py if k in meta:
+killed    40 wal.py if p != hlen:
+killed    41 wal.py elif crc32c(buf[p:p + 32]) != hcrc:
+killed    42 wal.py elif flags or rsv1 or rsv2 or ring > 2:
+killed    43 wal.py plen < R.HEADER_SIZE * count or
+killed    44 wal.py if crc32c(payload) != pcrc:
+killed    45 wal.py elif not _tiles(payload, count):
+killed    46 wal.py elif first != seg.seq_next[ring]:
+killed    47 wal.py torn = (cause in (1, 6) or
+killed    48 wal.py (cause == 7 and end_of_batch == len(buf))
+killed    49 wal.py or not any(buf[p:]))
+killed    50 wal.py seg.seq_next[ring] = first + count
+killed    51 wal.py if seq_expect is not None and hdr_next != seq_expect:
+killed    52 wal.py if out and s.meta[k] != out[0].meta[k]:
+killed    53 wal.py if meta["schema.hash"] != R.SCHEMA_HASH:
+killed    54 wal.py if int(SEG_RE.match(p.name).group(1)) != i:
+killed    55 wal.py yield (r.h["ts_ns"], ring, r.seq), r
+killed    56 wal.py p += struct.unpack_from("<H", b.payload, p + 4)[0]
+killed    57 wal.py return 1 if problems else 0
+killed    58 wal.py return lines, len(errors) + sum(1 for _, st in run.stops if 
+killed    59 records.py if size < HEADER_SIZE:
+killed    60 records.py if n > size:
+killed    61 records.py if n % 8:
+killed    62 records.py if n < lay.fixed_size:
+killed    63 records.py if vl > vmax:
+killed    64 records.py if lay.fixed_size + used > n:
+killed    65 records.py slack_ok = lay.cls == "SPINE" and bool(h["flags"] & F_READ_F
+killed    66 records.py if any(bytes(buf[p:off + n])):
+killed    67 records.py elif n != lay.fixed_size:
+killed    68 records.py bytes(buf[off + o:off + o + dt.itemsize]) if
+killed    69 records.py return (kernel_dev >> 20,
+killed    70 records.py if a.endswith(b"\0"):
+killed    71 proctree.py if r.f["kind"] != 1:
+killed    72 proctree.py if c.fork_ns is not None:
+                counts["fork_twice
+killed    73 proctree.py if not r.f["group_dead"]:
+killed    74 proctree.py if p.exit_ns is not None:
+                counts["exit_twice
+killed    75 proctree.py if start is not None and p.key[1] < start:
+killed    76 proctree.py p.in_gap = any(g.from_ns <= died and born <= g.to_ns for g i
+killed    77 proctree.py return f"exited {st >> 8}"
+killed    78 proctree.py k = self.procs[k].parent
+killed    79 net.py return self.ret == 0 or (self.op == "CONNECT" and self.ret =
+killed    80 net.py if e.op in ("BIND", "LISTEN") and e.lport == port and e.ok:
+killed    81 net.py lst = by_cookie.get(e.peer_cookie)
+killed    82 net.py k.local == e.remote and k.remote == e.local
+killed    83 net.py and k.netns == e.netns and k.ts_ns <= e.ts_ns
+killed    84 net.py and k.netns == e.netns and k.ts_ns <= e.ts_ns
+killed    85 net.py c.connect = max(cands, key=lambda k: (k.ts_ns, k.seq))
+killed    86 net.py refused = [e for e in connects if e.rport == port and not e.
+killed    87 trace.py i = max(0, bisect.bisect_right(self.anchors, (ts, 1 << 64)) 
+killed    88 trace.py if not self.net_on:
+            out.append(
+killed    89 trace.py if self.end is None:
+            out.append(
+killed    90 trace.py run.meta["config.net"] == "yes"
+killed    91 report_html.py def _e(s) -> str:
+    return escape(str(s), quote=True)
+killed    92 report_html.py if ctx.end is None or ctx.end.f["run_state"] == 2 or not ctx
+mutation sweep: 93/93 killed

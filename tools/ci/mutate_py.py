@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Mutation sweep for the Python gates and harnesses (CONTRIBUTING §6: every gate is checked by a
 mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, bench/rb_cost/summarize.py,
-and the WAL reader, python/p15/wal.py and records.py.
+the WAL reader (python/p15/wal.py, records.py) and the port query (proctree.py, net.py,
+trace.py, report_html.py).
 
 Each mutant plants one bug in a file and expects that file's unit tests (test_<name>.py next to
 it, or in python/tests/ for the python/p15 package) to fail. The file is restored after every mutant, also on error or Ctrl-C.
@@ -22,7 +23,9 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 EXITS, HARD, SUMM = "tools/ci/check_exits.py", "tools/ci/check_hardening.py", "bench/rb_cost/summarize.py"
 WAL, REC = "python/p15/wal.py", "python/p15/records.py"
-TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py"}
+TREE, NET, TRACE, HTML = "python/p15/proctree.py", "python/p15/net.py", "python/p15/trace.py", "python/p15/report_html.py"
+TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: "python/tests/test_trace.py",
+         NET: "python/tests/test_trace.py", TRACE: "python/tests/test_trace.py", HTML: "python/tests/test_trace.py"}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -96,6 +99,28 @@ M = [
  (REC, "bytes(buf[off + o:off + o + dt.itemsize]) if", "bytes(row[name]) if"),
  (REC, "return (kernel_dev >> 20,", "return (kernel_dev >> 8,"),
  (REC, 'if a.endswith(b"\\0"):', "if False:"),
+ (TREE, 'if r.f["kind"] != 1:', "if False:"),
+ (TREE, "if c.fork_ns is not None:\n                counts[\"fork_twice\"]", "if False:\n                counts[\"fork_twice\"]"),
+ (TREE, 'if not r.f["group_dead"]:', "if False:"),
+ (TREE, "if p.exit_ns is not None:\n                counts[\"exit_twice\"]", "if False:\n                counts[\"exit_twice\"]"),
+ (TREE, "if start is not None and p.key[1] < start:", "if start is not None and p.key[1] <= 0:"),
+ (TREE, "p.in_gap = any(g.from_ns <= died and born <= g.to_ns for g in gaps)", "p.in_gap = any(g.from_ns <= born <= g.to_ns for g in gaps)"),
+ (TREE, 'return f"exited {st >> 8}"', 'return f"exited {st}"'),
+ (TREE, "k = self.procs[k].parent", "k = None"),
+ (NET, "return self.ret == 0 or (self.op == \"CONNECT\" and self.ret == -EINPROGRESS)", "return self.ret == 0"),
+ (NET, "if e.op in (\"BIND\", \"LISTEN\") and e.lport == port and e.ok:", "if e.op in (\"BIND\", \"LISTEN\") and e.ok:"),
+ (NET, "lst = by_cookie.get(e.peer_cookie)", "lst = by_cookie.get(e.cookie)"),
+ (NET, "k.local == e.remote and k.remote == e.local", "k.local == e.remote"),
+ (NET, "and k.netns == e.netns and k.ts_ns <= e.ts_ns", "and k.ts_ns <= e.ts_ns"),
+ (NET, "and k.netns == e.netns and k.ts_ns <= e.ts_ns", "and k.netns == e.netns"),
+ (NET, "c.connect = max(cands, key=lambda k: (k.ts_ns, k.seq))", "c.connect = min(cands, key=lambda k: (k.ts_ns, k.seq))"),
+ (NET, "refused = [e for e in connects if e.rport == port and not e.ok]", "refused = []"),
+ (TRACE, "i = max(0, bisect.bisect_right(self.anchors, (ts, 1 << 64)) - 1)", "i = 0"),
+ (TRACE, 'if not self.net_on:\n            out.append(', 'if False:\n            out.append('),
+ (TRACE, 'if self.end is None:\n            out.append(', 'if False:\n            out.append('),
+ (TRACE, 'run.meta["config.net"] == "yes"', 'True'),
+ (HTML, "def _e(s) -> str:\n    return escape(str(s), quote=True)", "def _e(s) -> str:\n    return str(s)"),
+ (HTML, 'if ctx.end is None or ctx.end.f["run_state"] == 2 or not ctx.net_on:', 'if ctx.end is None:'),
 ]
 
 

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# p15-trace: what happened on a port, from one capture run (python/p15/trace.py).
+#   tools/p15-trace --port 18077 /var/lib/p15/<run-id> [--html report.html]
+# Uses $P15_PYTHON if set (the VM's venv), else python3.
+here=$(cd "$(dirname "$0")/.." && pwd)
+PYTHONPATH="$here/python${PYTHONPATH:+:$PYTHONPATH}" exec "${P15_PYTHON:-python3}" -m p15.trace "$@"

@@ -86,6 +86,16 @@ jobs:
       - name: The Python reader decodes what the C writer wrote, field by field
         run: make it-pyreader
       - name: p15d end to end, network capture required (runner kernel, not the target)
-        run: sudo P15_PYTHON="$(command -v python3)" P15_IT_NET=1 make it-p15d
+        run: sudo P15_PYTHON="$(command -v python3)" P15_IT_NET=1 P15_IT_KEEP=build/it-runs make it-p15d
+      - name: Keep the network run and its p15-trace reports (raw evidence for the PR)
+        if: always()
+        run: sudo chmod -R a+rX build/it-runs 2>/dev/null || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        if: always()
+        with:
+          name: it-p15d-net-run
+          path: build/it-runs
+          if-no-files-found: warn
+          retention-days: 30
       - name: Network-intent probe (fexit hooks of ADR-0004; runner kernel, not the target)
         run: uname -r && sudo make smoke-net
