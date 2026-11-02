@@ -88,7 +88,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report.
        1. 🔧 the reader: `python/p15/wal.py` and `records.py`, with packages pinned by hash. It decodes a C-written run of all 10 types field by field, and its counts equal p15w-inspect's on every end-to-end run. 31 unit tests pass and 71/71 planted bugs are caught (E-0084). PR #39;
        2. 🔧 `p15-trace --port N` (`tools/p15-trace`): the process tree (ADR-0009 keys, `group_dead`, pre-existing processes and GAP windows flagged, never guessed), listeners and accepts joined by cookie (exact), clients joined by endpoints (an inference, labelled), refused connects, a text report and a self-contained HTML one. 22 tests and 93/93 planted bugs on a synthetic run (E-0085); `it_p15d.sh` case 5 runs it on a real capture in CI and keeps the run as an artifact. PR #40. Next: the VM run, then the demo scenario (item 5);
-    5. a scripted demo scenario on the VM, with evidence, plus rehearsal notes.
+    5. 🔧 a scripted demo scenario on the VM, with evidence, plus rehearsal notes. `tools/demo/run_demo.sh` plays the story on loopback: a catcher on 4444; a web app with a command-injection bug on 8080; ordinary requests; one injected `nc` to 4444; a scan of closed ports. It then runs p15-trace on 8080, 4444 and 4442. [Rehearsal notes](demo/README.md). The container dry run (spine only) captured the chain `nc ← sh ← python3 webapp` (E-0087). PR #41. Next: the VM run, with NET (maintainer).
 
 ## Decisions taken (now recorded in ADRs where noted)
 

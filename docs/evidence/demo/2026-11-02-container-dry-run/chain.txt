@@ -1,0 +1,11 @@
+# processes named nc, sh, getent or curl in the dry run, with their lineage (p15.trace.chain)
+nc (31904) ← pid 31891 [started before the capture] | nc -l 127.0.0.1 4444
+curl (31919) ← pid 31891 [started before the capture] | curl -s http://127.0.0.1:8080/
+curl (31924) ← pid 31891 [started before the capture] | curl -s http://127.0.0.1:8080/about
+curl (31930) ← pid 31891 [started before the capture] | curl -s http://127.0.0.1:8080/lookup?name=localhost
+sh (31931) ← python3 (31908) ← pid 31891 [started before the capture] | /bin/sh -c getent hosts localhost
+getent (31932) ← sh (31931) ← python3 (31908) ← pid 31891 [started before the capture] | getent hosts localhost
+curl (31937) ← pid 31891 [started before the capture] | curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C/dev/null
+sh (31938) ← python3 (31908) ← pid 31891 [started before the capture] | /bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null
+getent (31939) ← sh (31938) ← python3 (31908) ← pid 31891 [started before the capture] | getent hosts localhost
+nc (31940) ← sh (31938) ← python3 (31908) ← pid 31891 [started before the capture] | nc -w1 127.0.0.1 4444

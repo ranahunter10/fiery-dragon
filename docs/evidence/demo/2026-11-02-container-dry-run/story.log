@@ -1,0 +1,12 @@
+12:03:07.219 p15d: start (30 s, network capture on)
+12:03:10.226 1. listener on 4444: nc pid 31904
+12:03:10.230 2. web app on 8080: pid 31908
+12:03:11.262 3. curl /: done
+12:03:11.786 3. curl /about: done
+12:03:12.314 3. curl /lookup?name=localhost: done
+12:03:13.840 4. injected request sent: the app's shell ran nc to 4444
+12:03:14.855 5. scan of port 4441: refused, as expected
+12:03:14.864 5. scan of port 4442: refused, as expected
+12:03:14.872 5. scan of port 4443: refused, as expected
+12:03:15.882 p15d: waiting for the end of its 30 s
+12:03:37.669 p15d: exit 0

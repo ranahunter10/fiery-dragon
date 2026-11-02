@@ -197,3 +197,10 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`run-tests.sh`](../tools/ci/run-tests.sh) | Run every unit-test file on its own (several share module names, e.g. |  |
 | [`test_check_exits.py`](../tools/ci/test_check_exits.py) | Tests for tools/ci/check_exits.py (ADR-0019 G2.2). | `run`, `CheckExits` |
 | [`test_check_hardening.py`](../tools/ci/test_check_hardening.py) | Tests for tools/ci/check_hardening.py, on readelf/nm lines copied from build/p15-spine. | `verdict`, `CheckHardening` |
+
+## tools/demo
+
+| File | Job | Public names |
+|---|---|---|
+| [`run_demo.sh`](../tools/demo/run_demo.sh) | The capture demo (STATE 19.5; docs/demo/README.md). | `log` |
+| [`webapp.py`](../tools/demo/webapp.py) | A deliberately vulnerable little web app for the capture demo (docs/demo/README.md). | `App` |
