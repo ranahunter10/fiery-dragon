@@ -32,6 +32,10 @@
    - One mutant didn't build under `-Werror`. It was replaced by one that does, so no build failure counts as a kill.
 5. **The first draft's books did not close** ("emitted 813 != drained 806"). The difference was the self-test's own 7 records, which the self-test consumes itself. The run's counters now start after the self-test (`bpf_base`), and `test_run.c` checks that.
 
+## Also on the CI runner (MEAS, kernel 7.0.0-1017-azure, not the target)
+
+[`runner-it-p15d.txt`](runner-it-p15d.txt): the same end-to-end test in PR #36's CI job passes all four cases, including the forced overflow (exit 4, a GAP record, books closed). That is the daemon on a 7.0 kernel.
+
 ## Not shown here
 
 - The drain-stall test of ADR-0017's Confirmation (a writer slowed in `fdatasync`) is not written yet.
