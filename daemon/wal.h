@@ -56,6 +56,7 @@ struct p15w_stats {
 	uint64_t rotations_size, rotations_time;
 	uint64_t batches, records, payload_bytes, file_bytes;
 	uint64_t fsyncs, dir_fsyncs;
+	uint64_t fsync_max_ns;           /* the slowest fdatasync since the last p15w_take_fsync_max (real clock) */
 	uint64_t short_writes;           /* writev returned less than asked; the rest was written after */
 	uint64_t oversize_batches;       /* larger than max_bytes: written alone in a segment */
 	uint64_t rejected_batches;       /* refused by p15w_append's checks (bad arguments, not I/O) */
@@ -81,6 +82,8 @@ P15_MUST_CHECK int p15w_tick(struct p15w *w);
 P15_MUST_CHECK int p15w_close(struct p15w *w);
 
 const struct p15w_stats *p15w_stats(const struct p15w *w);
+/* The slowest fdatasync since the previous call, then reset (STATS wal_fsync_max_ns, ADR-0017). */
+uint64_t p15w_take_fsync_max(struct p15w *w);
 unsigned p15w_segment_index(const struct p15w *w);
 int p15w_fd(const struct p15w *w);       /* diagnostics and tests only */
 

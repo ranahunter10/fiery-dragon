@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-02 (UTC), PR #35 (ADR-0004 network intent, proposed; probe passes on the CI runner's 7.0)
+**Last updated:** 2026-11-02 (UTC), PR "daemon: p15d, the capture daemon"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -70,7 +70,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
 19. **Demo track (maintainer, 2026-11-02): "given a port, show what happened".** It pulls a network-intent slice of Phase 3 forward. Nothing here is demo-only: each item is a Phase-1 or Phase-3 deliverable.
     1. 🔧 ADR-0004 (proposed): fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; a NET record on the bulk ring, keyed by socket cookie. The probe passes on the CI runner's 7.0.0-1017-azure (E-0079); the VM run is pending. PR #35;
-    2. `p15d` (step 4b PRs 4–5): the SPSC queue, drain and writer threads, WAL header, STATS/GAP/END. It drains the bulk ring too;
+    2. 🔧 `p15d` (step 4b PRs 4–5 in one): the SPSC queue, drain and writer threads, WAL header, STATS/CLOCK_SYNC/GAP/END, run state and invariant, textfile, strict config; `p15w-inspect`. The end-to-end test passes all 4 cases in the dev container, including the forced overflow (INVALID with GAP records, books closed); 17/17 planted bugs caught (E-0080). Not yet: the drain-stall test, the bulk ring (with item 3);
     3. NET records in the schema, the production NET programs, and the self-test extension (ADR-0004 rule 6);
     4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report;
     5. a scripted demo scenario on the VM, with evidence, plus rehearsal notes.

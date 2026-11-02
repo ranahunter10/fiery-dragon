@@ -53,11 +53,16 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
-         $(OUT)/exec_cost
+         $(OUT)/exec_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
+P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
+            $(DAEMON_COMMON) $(WAL_SRC)
+# provenance for the WAL header (ADR-0007): the daemon's commit and the vendored bpftool's tag
+GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
+BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
-.PHONY: all check smoke smoke-net clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+.PHONY: all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
         exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
@@ -117,6 +122,24 @@ $(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_rec
 $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
+$(OUT)/p15d: $(P15D_SRC) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) -DP15_GIT_COMMIT='"$(GIT_COMMIT)"' -DP15_BPFTOOL_VERSION='"$(BPFTOOL_TAG)"' $(LDFLAGS) \
+	  $(P15D_SRC) $(LDLIBS) -lpthread -o $@
+
+$(OUT)/p15w-inspect: daemon/p15w_inspect.c daemon/records.c $(WAL_SRC) daemon/*.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/p15w_inspect.c daemon/records.c $(WAL_SRC) -o $@
+
+$(OUT)/test_queue: daemon/tests/test_queue.c daemon/queue.c daemon/queue.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_queue.c daemon/queue.c -lpthread -o $@
+
+$(OUT)/test_run: daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c daemon/config.c \
+                 daemon/records.c $(WAL_SRC) daemon/*.h $(LIBBPF_A) | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+	  daemon/config.c daemon/records.c $(WAL_SRC) $(LDLIBS) -lpthread -o $@
+
+$(OUT)/test_config: daemon/tests/test_config.c daemon/config.c daemon/config.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_config.c daemon/config.c -o $@
+
 $(OUT)/test_selftest: daemon/tests/test_selftest.c $(DAEMON_COMMON) daemon/*.h $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
@@ -129,11 +152,26 @@ $(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
 $(OUT)/test_records: daemon/tests/test_records.c daemon/records.c daemon/records.h schema/generated/p15_records.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $@
 
-test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records must-check-test
+test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records $(OUT)/test_queue \
+        $(OUT)/test_config $(OUT)/test_run must-check-test
 	$(OUT)/test_selftest
 	$(OUT)/test_wal
 	$(OUT)/test_exitcodes
 	$(OUT)/test_records
+	$(OUT)/test_queue
+	$(OUT)/test_config
+	$(OUT)/test_run
+
+# The queue's producer and consumer threads under ThreadSanitizer (ADR-0017 layer 2, ADR-0019 G3.4).
+test-c-tsan: | $(OUT)
+	mkdir -p $(OUT)/tsan
+	$(CC) $(CFLAGS) -U_FORTIFY_SOURCE -fsanitize=thread -O1 $(LDFLAGS) daemon/tests/test_queue.c daemon/queue.c \
+	  -lpthread -o $(OUT)/tsan/test_queue
+	$(OUT)/tsan/test_queue
+
+# p15d end to end (root): a short run with a workload, then the WAL checked by p15w-inspect.
+it-p15d: $(OUT)/p15d $(OUT)/p15w-inspect
+	daemon/tests/it_p15d.sh $(OUT)
 
 # The same C tests under AddressSanitizer and UndefinedBehaviorSanitizer: any leak,
 # out-of-bounds access or undefined behaviour fails the run. FORTIFY is off here: its checked
@@ -145,6 +183,10 @@ test-c-asan: $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $(OUT)/asan/test_selftest
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_exitcodes.c -o $(OUT)/asan/test_exitcodes
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $(OUT)/asan/test_records
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_queue.c daemon/queue.c -lpthread -o $(OUT)/asan/test_queue
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_config.c daemon/config.c -o $(OUT)/asan/test_config
+	$(OUT)/asan/test_queue
+	$(OUT)/asan/test_config
 	$(OUT)/asan/test_wal
 	$(OUT)/asan/test_selftest
 	$(OUT)/asan/test_exitcodes
@@ -166,11 +208,15 @@ must-check-test:
 
 # ADR-0019 G3.3: the daemon binaries really carry PIE, full RELRO, NX stack, canaries,
 # FORTIFY and CET, whatever the compiler's defaults.
-hardening-check: $(OUT)/p15-spine
+hardening-check: $(OUT)/p15-spine $(OUT)/p15d
 	python3 tools/ci/check_hardening.py $^
 
 mutate-wal:
 	python3 daemon/tests/mutate_wal.py
+
+# root: the drain/writer mutants run the end-to-end test
+mutate-p15d: all
+	python3 daemon/tests/mutate_p15d.py
 
 mutate-records: $(LIBBPF_A)
 	python3 daemon/tests/mutate_records.py
