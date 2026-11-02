@@ -42,7 +42,9 @@ struct p15_run {
 	/* drain side */
 	_Atomic uint64_t bpf[P15_CTR_MAX];       /* the last read of the BPF per-CPU counters, summed */
 	uint64_t bpf_base[P15_CTR_MAX];          /* their values when the drain started, after the self-test:
-						  * every count the run reports is relative to it */
+						  * every count STATS reports is relative to it */
+	uint64_t spine_selftest_consumed;        /* records the self-tests took from the rings before the drain */
+	uint64_t net_selftest_consumed;          /* started: the invariant counts them (absolute counters) */
 	_Atomic uint64_t drained[P15_SPINE_TYPES];
 	_Atomic uint64_t spine_invalid, gap_records, spine_seq_next;
 	_Atomic uint64_t poll_hist[P15_POLL_BUCKETS];

@@ -34,6 +34,7 @@ static void books(uint64_t seen, uint64_t emitted, uint64_t reserve_failed, uint
 		r.drained[t] = drained;
 	}
 	r.spine_written = written * (P15_SPINE_TYPES - 1);
+	r.spine_selftest_consumed = 90 * (P15_SPINE_TYPES - 1);   /* the emitted base: taken by the self-test */
 }
 
 int main(void)
@@ -57,7 +58,9 @@ int main(void)
 	reset();
 	books(50, 45, 5, 45, 45);
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED && r.invariant == P15_INV_CLOSED &&
-	       r.state == P15_RUN_RUNNING, "consistent books close, relative to the base; state unchanged");
+	       r.state == P15_RUN_RUNNING, "consistent books close, the self-test's records counted; state unchanged");
+	r.spine_selftest_consumed -= 1;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN, "one record the self-test took, uncounted: broken");
 	reset();
 	books(50, 45, 4, 45, 45);
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN && strstr(why, "seen") &&
@@ -78,6 +81,24 @@ int main(void)
 	books(50, 45, 5, 45, 44);
 	r.spine_drain_lost = 4;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "drain_lost closes the last side");
+	/* NET books (ADR-0004 rule 4): seen = emitted + reserve_failed + excluded; emitted = drained + self-test + invalid */
+	reset();
+	books(50, 45, 5, 45, 45);
+	r.net = 1;
+	r.bulk[P15_CTR_INDEX(P15_T_NET, P15_CK_SEEN)] = 30;
+	r.bulk[P15_CTR_INDEX(P15_T_NET, P15_CK_EMITTED)] = 20;
+	r.bulk[P15_CTR_INDEX(P15_T_NET, P15_CK_RESERVE_FAILED)] = 4;
+	r.bulk[P15_CTR_INDEX(P15_T_NET, P15_CK_EXCLUDED)] = 6;
+	r.net_selftest_consumed = 5;
+	r.net_drained = 15;
+	r.net_written = 15;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "NET books close");
+	r.bulk[P15_CTR_INDEX(P15_T_NET, P15_CK_EXCLUDED)] = 5;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN && strstr(why, "NET: seen"), "NET seen side broken");
+	r.bulk[P15_CTR_INDEX(P15_T_NET, P15_CK_EXCLUDED)] = 6;
+	r.state = P15_RUN_RUNNING;
+	r.net_written = 14;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN && strstr(why, "NET: emitted"), "NET written side broken");
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }

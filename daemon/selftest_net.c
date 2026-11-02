@@ -20,6 +20,7 @@ struct coll {
 	struct p15_net r[MAXR];
 	int n, other, invalid;
 	unsigned me;
+	unsigned long long total;   /* every record taken from the ring */
 };
 
 static int on_rec(void *ctx, void *data, size_t size)
@@ -28,6 +29,7 @@ static int on_rec(void *ctx, void *data, size_t size)
 	const struct p15_hdr *h = data;
 	const char *why;
 
+	c->total++;
 	if (p15_rec_check(data, size, &why) || h->type != P15_T_NET) {
 		c->invalid++;
 		return 0;
@@ -64,7 +66,7 @@ static int check(FILE *log, int ok, const char *what)
 	return !ok;
 }
 
-int p15_selftest_net(int bulk_rb_fd, FILE *log)
+int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed)
 {
 	struct coll c;
 	struct ring_buffer *rb;
@@ -141,5 +143,6 @@ out:
 	if (us >= 0)
 		close(us);
 	ring_buffer__free(rb);
+	*consumed = c.total;
 	return rc ? rc : failed;
 }

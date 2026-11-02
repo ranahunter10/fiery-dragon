@@ -21,6 +21,8 @@ struct p15_loader {
 	int selftest_failed;       /* failed checks, or -errno if it could not run */
 	int net_selftest_failed;
 	__u64 daemon_start_ns;     /* from the self-test (ADR-0009 identity of p15d) */
+	__u64 spine_consumed;      /* records the self-tests took from the rings: part of the run's books */
+	unsigned long long net_consumed;
 	char manifest[1024];       /* the attached hooks, for the WAL header */
 };
 

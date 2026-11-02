@@ -40,13 +40,23 @@ int p15_invariant_check(struct p15_run *r, char *why, size_t n)
 	return inv;
 }
 
+/*
+ * ADR-0006 rule 6, exactly: absolute counters since load, with the records the self-tests took
+ * from the rings counted on the drain side. (A base taken after the self-test would race with
+ * records emitted before it and drained after it.)
+ */
+static uint64_t abs_c(_Atomic uint64_t *a, int type, int kind)
+{
+	return atomic_load(&a[P15_CTR_INDEX(type, kind)]);
+}
+
 static int invariant(struct p15_run *r, char *why, size_t n)
 {
-	uint64_t emitted = 0, drained = 0;
+	uint64_t emitted = 0, drained = r->spine_selftest_consumed;
 
 	for (int t = 1; t < P15_SPINE_TYPES; t++) {
-		uint64_t seen = bpfc(r, t, P15_CK_SEEN), em = bpfc(r, t, P15_CK_EMITTED);
-		uint64_t lost = bpfc(r, t, P15_CK_RESERVE_FAILED) + bpfc(r, t, P15_CK_BUILD_FAILED);
+		uint64_t seen = abs_c(r->bpf, t, P15_CK_SEEN), em = abs_c(r->bpf, t, P15_CK_EMITTED);
+		uint64_t lost = abs_c(r->bpf, t, P15_CK_RESERVE_FAILED) + abs_c(r->bpf, t, P15_CK_BUILD_FAILED);
 
 		if (seen != em + lost) {
 			snprintf(why, n, "type %d: seen %llu != emitted %llu + lost %llu", t, (unsigned long long)seen,
@@ -57,10 +67,12 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		drained += atomic_load(&r->drained[t]);
 	}
 	if (emitted != drained + atomic_load(&r->spine_invalid)) {
-		snprintf(why, n, "emitted %llu != drained %llu + invalid %llu", (unsigned long long)emitted,
-			 (unsigned long long)drained, (unsigned long long)atomic_load(&r->spine_invalid));
+		snprintf(why, n, "emitted %llu != drained %llu (incl. %llu by the self-test) + invalid %llu",
+			 (unsigned long long)emitted, (unsigned long long)drained,
+			 (unsigned long long)r->spine_selftest_consumed, (unsigned long long)atomic_load(&r->spine_invalid));
 		return P15_INV_BROKEN;
 	}
+	drained -= r->spine_selftest_consumed;
 	if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost)) {
 		snprintf(why, n, "drained %llu != written %llu + drain_lost %llu", (unsigned long long)drained,
 			 (unsigned long long)atomic_load(&r->spine_written),
@@ -68,18 +80,19 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		return P15_INV_BROKEN;
 	}
 	if (r->net) {
-		uint64_t seen = netc(r, P15_CK_SEEN), em = netc(r, P15_CK_EMITTED);
-		uint64_t out = netc(r, P15_CK_RESERVE_FAILED) + netc(r, P15_CK_EXCLUDED);
+		uint64_t seen = abs_c(r->bulk, P15_T_NET, P15_CK_SEEN), em = abs_c(r->bulk, P15_T_NET, P15_CK_EMITTED);
+		uint64_t out = abs_c(r->bulk, P15_T_NET, P15_CK_RESERVE_FAILED) + abs_c(r->bulk, P15_T_NET, P15_CK_EXCLUDED);
+		uint64_t nd = atomic_load(&r->net_drained);
 
 		if (seen != em + out) {
 			snprintf(why, n, "NET: seen %llu != emitted %llu + reserve_failed/excluded %llu",
 				 (unsigned long long)seen, (unsigned long long)em, (unsigned long long)out);
 			return P15_INV_BROKEN;
 		}
-		if (em != atomic_load(&r->net_drained) + atomic_load(&r->net_invalid) ||
-		    atomic_load(&r->net_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
-			snprintf(why, n, "NET: emitted %llu, drained %llu, invalid %llu, written %llu, drain_lost %llu",
-				 (unsigned long long)em, (unsigned long long)atomic_load(&r->net_drained),
+		if (em != nd + r->net_selftest_consumed + atomic_load(&r->net_invalid) ||
+		    nd != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
+			snprintf(why, n, "NET: emitted %llu, drained %llu + %llu by the self-test, invalid %llu, written %llu, drain_lost %llu",
+				 (unsigned long long)em, (unsigned long long)nd, (unsigned long long)r->net_selftest_consumed,
 				 (unsigned long long)atomic_load(&r->net_invalid),
 				 (unsigned long long)atomic_load(&r->net_written),
 				 (unsigned long long)atomic_load(&r->net_drain_lost));

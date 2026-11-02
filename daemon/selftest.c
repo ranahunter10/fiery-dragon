@@ -237,8 +237,10 @@ static void child_main(int wfd)
 	_exit(127);                              /* exit-ok: self-test child, exec failed */
 }
 
-int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns)
+int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns, __u64 *consumed)
 {
+	__u64 before;
+
 	struct p15_rec_list l = { 0 };
 	struct p15_selftest_expect e = { 0 };
 	struct ring_buffer *rb;
@@ -254,7 +256,8 @@ int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns)
 		fprintf(log, "selftest: ring_buffer__new failed: %s\n", strerror(-rc));
 		return rc;
 	}
-	ring_buffer__consume(rb);          /* forget records from before the test */
+	ring_buffer__consume(rb);          /* forget records from before the test (counted in *consumed) */
+	before = l.n + l.invalid + l.dropped_oom;
 	p15_rec_list_free(&l);
 	e.daemon_tgid = getpid();
 	f = fopen("/proc/self/comm", "r");
@@ -325,6 +328,8 @@ int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns)
 			fprintf(log, "    %s\n", line);
 		}
 	}
+	if (consumed)                      /* every record this test took from the ring: the run's books need it */
+		*consumed = before + l.n + l.invalid + l.dropped_oom;
 	if (daemon_start_ns) {
 		*daemon_start_ns = 0;
 		for (size_t i = 0; i < l.n; i++) {
@@ -343,5 +348,5 @@ int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns)
 
 int p15_selftest_run(int spine_rb_fd, FILE *log)
 {
-	return p15_selftest_run_ex(spine_rb_fd, log, NULL);
+	return p15_selftest_run_ex(spine_rb_fd, log, NULL, NULL);
 }

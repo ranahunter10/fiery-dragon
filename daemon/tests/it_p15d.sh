@@ -79,7 +79,8 @@ sleep 0.5
 for _ in 1 2; do python3 -c "import socket; socket.create_connection(('127.0.0.1', $PORT)).close()"; done
 python3 -c "
 import socket
-try: socket.create_connection(('127.0.0.1', $((PORT + 1))), timeout=1)
+s = socket.socket()          # blocking: the refusal comes back from connect itself
+try: s.connect(('127.0.0.1', $((PORT + 1))))
 except OSError: pass
 "
 wait $srv; wait $pid; rc=$?

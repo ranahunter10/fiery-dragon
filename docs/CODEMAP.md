@@ -77,6 +77,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`net.bpf.c`](../bpf/progs/net.bpf.c) | network intent (ADR-0004). | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
 | [`spine.bpf.c`](../bpf/progs/spine.bpf.c) | the process spine (ADR-0003). | `tp_btf/sched_process_fork → spine_fork`, `tp_btf/sched_process_exec → spine_exec`, `tp_btf/sched_process_exit → spine_exit`, `tp_btf/task_rename → spine_rename` |
 
 ## bpf/test
@@ -118,6 +119,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`run.h`](../daemon/run.h) | everything p15d's two threads share, the run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code`, `p15_boot_ns`, `p15_mono_ns` |
 | [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run_ex`, `p15_selftest_run` |
 | [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
+| [`selftest_net.c`](../daemon/selftest_net.c) | The network-intent self-test (ADR-0004 rule 6). | `p15_selftest_net` |
+| [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). | `p15_selftest_net` |
 | [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_take_fsync_max`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf`, `p15w_recover` |
 | [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush` (+3) |
 | [`writer.c`](../daemon/writer.c) | The WAL writer thread (ADR-0017 layer 2, ADR-0019 G4.1). | `p15_invariant_check`, `p15_writer_main` |

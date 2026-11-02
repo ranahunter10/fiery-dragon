@@ -77,7 +77,7 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 	}
 	null = fopen("/dev/null", "w");
 	l->selftest_failed = p15_selftest_run_ex(bpf_map__fd(l->spine->maps.spine_rb), null ? null : stderr,
-						 &l->daemon_start_ns);
+						 &l->daemon_start_ns, &l->spine_consumed);
 	if (null)
 		fclose(null);
 	if (l->selftest_failed != 0 || !l->daemon_start_ns) {
@@ -87,7 +87,8 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 	}
 	if (l->net) {
 		null = fopen("/dev/null", "w");
-		l->net_selftest_failed = p15_selftest_net(bpf_map__fd(l->net->maps.bulk_rb), null ? null : stderr);
+		l->net_selftest_failed = p15_selftest_net(bpf_map__fd(l->net->maps.bulk_rb), null ? null : stderr,
+						    &l->net_consumed);
 		if (null)
 			fclose(null);
 		if (l->net_selftest_failed != 0) {

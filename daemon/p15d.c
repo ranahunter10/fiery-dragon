@@ -123,6 +123,8 @@ int main(int argc, char **argv)
 		return code;
 	}
 	run.start_ns = ld.daemon_start_ns;
+	run.spine_selftest_consumed = ld.spine_consumed;
+	run.net_selftest_consumed = ld.net_consumed;
 	sched = raise_priority(run.cfg.realtime);
 
 	/* the run directory: <wal-dir>/<UTC time>-<boot id prefix> (ADR-0007 rule 1) */
