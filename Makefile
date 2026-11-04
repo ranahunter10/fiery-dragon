@@ -63,7 +63,7 @@ P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/dra
 GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
-.PHONY: it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+.PHONY: probe-recursion it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
         exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
@@ -270,6 +270,13 @@ $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 
 $(OUT)/net_probe: bpf/test/net_probe.c $(OUT)/net_probe.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
+
+# E-0089: which hook / wake-up design avoids the kernel's recursion misses (root; the VM and CI)
+$(OUT)/recur_probe: bpf/test/recur_probe.c $(OUT)/recur_probe.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -lpthread -o $@
+
+probe-recursion: $(OUT)/recur_probe
+	P15_UNAME="$$(uname -r)" $(OUT)/recur_probe $(or $(ROUNDS),3) $(or $(EXECS),2000)
 
 $(OUT)/rb_size: bpf/test/rb_size.c $(OUT)/rb_size.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@

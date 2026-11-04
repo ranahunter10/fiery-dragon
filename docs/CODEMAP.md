@@ -93,6 +93,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`net_probe.c`](../bpf/test/net_probe.c) | attach the ADR-0004 candidate hooks, make known network calls from this process, and check every record against what the calls did. |  |
 | [`rb_size.bpf.c`](../bpf/test/rb_size.bpf.c) | how much ring space a variable-length record takes, three ways (flood-resilience ADR input). | `tp_btf/sched_process_exec → fixed`, `tp_btf/sched_process_exec → output`, `tp_btf/sched_process_exec → dynptr` |
 | [`rb_size.c`](../bpf/test/rb_size.c) | load the three record-sizing programs, exec /bin/true with an argv of known length, and print the size each mode's record occupies in its ring. |  |
+| [`recur_probe.bpf.c`](../bpf/test/recur_probe.bpf.c) | which hook and wake-up design keeps the kernel from skipping our programs (E-0089). | `tp_btf/sched_process_exec → btf_exec`, `tp_btf/sched_process_exit → btf_exit`, `tp_btf/sched_process_exec → btfp_exec`, `tp_btf/sched_process_exit → btfp_exit`, `tracepoint/sched/sched_process_exec`, `tracepoint/sched/sched_process_exit` |
+| [`recur_probe.c`](../bpf/test/recur_probe.c) | measure how many of our own children's exec and exit events the kernel skips (bpf_prog_info.recursion_misses, E-0089) for each hook type and wake-up design, under the same fork/... |  |
 
 ## daemon
 
