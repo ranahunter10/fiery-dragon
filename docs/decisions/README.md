@@ -12,7 +12,7 @@ To write a new one:
 | ADR | Title | Status | Date |
 |---|---|---|---|
 | [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs in the repository | accepted | 2026-10-25 |
-| [0001](0001-platform-ubuntu-26-04-kernel-7-0-pinned.md) | Develop and measure on Ubuntu 26.04 LTS with the GA kernel 7.0.0-38, held | accepted | 2026-10-25 |
+| [0001](0001-platform-ubuntu-26-04-kernel-7-0-pinned.md) | Develop and measure on Ubuntu 26.04 LTS with the GA kernel 7.0.0-38, held | accepted; VM row to be superseded by 0021 | 2026-10-25 |
 | [0002](0002-toolchain-libbpf-co-re-c-daemon.md) | Build with libbpf v1.7.0 + CO-RE skeletons and a C daemon; Python only after the WAL | accepted | 2026-10-25 |
 | [0003](0003-hook-policy-btf-checked-attach-points-self-test.md) | Hook policy: BTF-checked attach points, the spine on `tp_btf` sched tracepoints, argv from the kernel's copy, and a per-pid load-time self-test | accepted | 2026-10-25 |
 | [0004](0004-network-intent-hooks.md) | Network intent: fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; one NET record on the bulk ring, keyed by socket cookie | proposed | — |
@@ -25,6 +25,7 @@ To write a new one:
 | [0018](0018-measurement-protocol-v2.md) | Measurement protocol v2: dimensionless headlines, rates against a same-host ceiling, paired timing reported with its raw costs, one shared workload set (supersedes ADR-0012's timing rules) | accepted | 2026-10-25 |
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
 | [0020](0020-kernel-skipped-events.md) | Events the kernel skips: spine exec/exit/rename on classic tracepoints, wake-ups only at a high-water mark, every skip (`recursion_misses`) counted and located (supersedes ADR-0003 rule 1 for those hooks, ADR-0006 rule 3) | proposed | — |
+| [0021](0021-vm-three-vcpus.md) | The VM runs with 3 vCPUs (supersedes ADR-0001's VM row) | proposed | — |
 
 ## Planned (from capture blueprint v1, §8.3)
 

@@ -303,6 +303,7 @@ int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns, __u6
 	last_n = 0;
 	while (now_s() < deadline) {
 		ring_buffer__poll(rb, 50);
+		ring_buffer__consume(rb);   /* records don't wake the reader below the high-water mark (ADR-0020) */
 		if (l.n + l.invalid != last_n) {
 			last_n = l.n + l.invalid;
 			quiet_since = now_s();

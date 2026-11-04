@@ -89,8 +89,27 @@ static void test_fixed_sizes(void)
 	mk(P15_T_GAP, sizeof(struct p15_gap_v1));
 	EXPECT(ok_exact(sizeof(struct p15_gap_v1)), "GAP accepted from a buffer of exactly its size");
 	EXPECT(!ok_exact(sizeof(struct p15_gap_v1) - 8), "GAP refused from a buffer 8 bytes short");
-	mk(P15_T_STATS, sizeof(struct p15_stats_v1))->version = 2;
+	mk(P15_T_STATS, sizeof(struct p15_stats_v2))->version = 3;
 	EXPECT(!ok(), "unknown STATS version refused");
+	/* version 2 of STATS, GAP and NET_STATS (ADR-0020): accepted at their own size only */
+	{
+		static const struct { unsigned type, size, v1; const char *name; } t2[] = {
+			{ P15_T_STATS, sizeof(struct p15_stats_v2), sizeof(struct p15_stats_v1), "STATS v2" },
+			{ P15_T_GAP, sizeof(struct p15_gap_v2), sizeof(struct p15_gap_v1), "GAP v2" },
+			{ P15_T_NET_STATS, sizeof(struct p15_net_stats_v2), sizeof(struct p15_net_stats_v1), "NET_STATS v2" },
+		};
+
+		for (size_t i = 0; i < sizeof(t2) / sizeof(t2[0]); i++) {
+			char what[96];
+
+			mk(t2[i].type, t2[i].size)->version = 2;
+			snprintf(what, sizeof(what), "%s at its size accepted", t2[i].name);
+			EXPECT(ok(), what);
+			mk(t2[i].type, t2[i].v1)->version = 2;
+			snprintf(what, sizeof(what), "%s at the v1 size refused", t2[i].name);
+			EXPECT(!ok(), what);
+		}
+	}
 }
 
 static void end_with(const char *reason)

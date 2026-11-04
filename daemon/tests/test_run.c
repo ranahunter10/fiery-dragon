@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "drain.h"
 #include "exitcodes.h"
 #include "p15_records.h"
 #include "run.h"
@@ -37,8 +38,33 @@ static void books(uint64_t seen, uint64_t emitted, uint64_t reserve_failed, uint
 	r.spine_selftest_consumed = 90 * (P15_SPINE_TYPES - 1);   /* the emitted base: taken by the self-test */
 }
 
+/* ADR-0020 rule 3: a change in any spine type's ring loss, build loss or kernel skip calls for a GAP */
+static void test_loss_changed(void)
+{
+	uint64_t pc[P15_CTR_MAX] = { 0 }, nc[P15_CTR_MAX] = { 0 }, pm[P15_SPINE_TYPES] = { 0 }, nm[P15_SPINE_TYPES] = { 0 };
+
+	EXPECT(!p15_spine_loss_changed(pc, nc, pm, nm), "no change: no GAP");
+	nc[P15_CTR_INDEX(P15_T_EXEC, P15_CK_SEEN)] = 5;
+	nc[P15_CTR_INDEX(P15_T_EXEC, P15_CK_EMITTED)] = 5;
+	EXPECT(!p15_spine_loss_changed(pc, nc, pm, nm), "records seen and emitted are not a loss");
+	for (int t = 1; t < P15_SPINE_TYPES; t++) {
+		nm[t] = 1;
+		EXPECT(p15_spine_loss_changed(pc, nc, pm, nm), "a kernel skip of any spine type calls for a GAP");
+		nm[t] = 0;
+		nc[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)] = 1;
+		EXPECT(p15_spine_loss_changed(pc, nc, pm, nm), "a reserve failure of any spine type calls for a GAP");
+		nc[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)] = 0;
+		nc[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)] = 1;
+		EXPECT(p15_spine_loss_changed(pc, nc, pm, nm), "a build failure of any spine type calls for a GAP");
+		nc[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)] = 0;
+	}
+	nm[0] = 7;   /* index 0 is not a spine type */
+	EXPECT(!p15_spine_loss_changed(pc, nc, pm, nm), "slot 0 is ignored");
+}
+
 int main(void)
 {
+	test_loss_changed();
 	char why[200];
 
 	reset();

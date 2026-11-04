@@ -38,6 +38,15 @@ struct {
 	__type(value, __u64);
 } bulk_counters SEC(".maps");
 
+/* The bulk ring's high-water mark (ADR-0020 rule 2): the loader sets a quarter of the ring. */
+const volatile __u64 bulk_wake_bytes = 1 << 20;
+
+static __always_inline __u64 wake(void)
+{
+	return bpf_ringbuf_query(&bulk_rb, BPF_RB_AVAIL_DATA) > bulk_wake_bytes ? BPF_RB_FORCE_WAKEUP
+										 : BPF_RB_NO_WAKEUP;
+}
+
 static __always_inline void count(__u32 kind)
 {
 	__u32 k = P15_CTR_INDEX(P15_T_NET, kind);
@@ -109,11 +118,11 @@ static __always_inline int fill(struct p15_net *r, struct sock *sk, int remote)
 static __always_inline int finish(struct p15_net *r, int ok)
 {
 	if (!ok) {
-		bpf_ringbuf_discard(r, 0);
+		bpf_ringbuf_discard(r, BPF_RB_NO_WAKEUP);
 		count(P15_CK_EXCLUDED);
 		return 0;
 	}
-	bpf_ringbuf_submit(r, 0);
+	bpf_ringbuf_submit(r, wake());
 	count(P15_CK_EMITTED);
 	return 0;
 }

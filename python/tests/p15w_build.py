@@ -17,13 +17,16 @@ from p15 import wal as W  # noqa: E402
 BASE_META = {"run.id": "r1", "boot_id": "b1", "schema.hash": R.SCHEMA_HASH}
 
 
-def rec(name: str, var: dict | None = None, length: int | None = None, **fields) -> bytes:
-    """One record of type `name`: header fields as h_<name>, others by name, var tails in order."""
+def rec(name: str, var: dict | None = None, length: int | None = None, version: int | None = None,
+        **fields) -> bytes:
+    """One record of type `name` (its latest version unless given): header fields as h_<name>,
+    others by name, var tails in order."""
     t = R.TYPES[name]
-    lay = R.gen.RECORDS[(t, 1)]
+    v = version or max(ver for (tt, ver) in R.gen.RECORDS if tt == t)
+    lay = R.gen.RECORDS[(t, v)]
     a = np.zeros(1, lay.dtype)
     a["h"]["type"] = t
-    a["h"]["version"] = 1
+    a["h"]["version"] = v
     for k, v in fields.items():
         if k.startswith("h_"):
             a["h"][k[2:]] = v

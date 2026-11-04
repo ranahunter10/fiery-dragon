@@ -31,7 +31,9 @@ M = [
  ("if (h->len % 8) {", "if (h->len % 4) {"),
  ("if (h->len < fixed) {", "if (h->len + 8 < fixed) {"),
  ("case P15_T_STATS:  return version == 1 ?", "case P15_T_STATS:  return version >= 1 ?"),
- ("case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : 0;", "case P15_T_GAP:    return 0;"),
+ ("case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;", "case P15_T_GAP:    return 0;"),
+ ("version == 2 ? sizeof(struct p15_stats_v2) : 0;", "version == 2 ? sizeof(struct p15_stats_v1) : 0;"),
+ ("version == 2 ? sizeof(struct p15_net_stats_v2) : 0;", "0;"),
  ("\t} else if (h->len != fixed) {", "\t} else if (0) {"),
  # the variable-field tail rules (EXEC and END)
  ("if (fixed + used > h->len) {", "if (fixed + used > h->len + 8) {"),

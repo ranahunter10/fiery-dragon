@@ -97,6 +97,40 @@ static int on_bulk(void *ctx, void *data, size_t size)
 
 static int read_map(struct p15_drain *d, int fd, uint64_t sum[P15_CTR_MAX]);
 
+/* The kernel's skip count of one program (bpf_prog_info.recursion_misses, ADR-0020 rule 3). */
+static int prog_misses(int fd, uint64_t *out)
+{
+	struct bpf_prog_info info;
+	__u32 len = sizeof(info);
+
+	memset(&info, 0, sizeof(info));
+	if (bpf_prog_get_info_by_fd(fd, &info, &len))
+		return -errno;
+	*out = info.recursion_misses;
+	return 0;
+}
+
+/* Every program's skips, absolute: spine by record type, the network programs summed. */
+static int read_misses(const struct p15_run *r, uint64_t spine[P15_SPINE_TYPES], uint64_t *net)
+{
+	int rc;
+
+	for (int t = 0; t < P15_SPINE_TYPES; t++) {
+		spine[t] = 0;
+		if (r->miss_fd[t] > 0 && (rc = prog_misses(r->miss_fd[t], &spine[t])))
+			return rc;
+	}
+	*net = 0;
+	for (int i = 0; i < r->n_net_miss; i++) {
+		uint64_t v;
+
+		if ((rc = prog_misses(r->net_miss_fd[i], &v)))
+			return rc;
+		*net += v;
+	}
+	return 0;
+}
+
 int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
 		   int bulk_ctr_fd)
 {
@@ -137,6 +171,15 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 
 		if (rc)
 			return rc;
+		rc = read_misses(run, d->prev_missed, &d->prev_net_missed);
+		if (rc)
+			return rc;
+		for (int t = 0; t < P15_SPINE_TYPES; t++) {
+			run->missed_base[t] = d->prev_missed[t];
+			atomic_store(&run->missed[t], d->prev_missed[t]);
+		}
+		run->net_missed_base = d->prev_net_missed;
+		atomic_store(&run->net_missed, d->prev_net_missed);
 		for (int k = 0; k < P15_CTR_MAX; k++) {
 			run->bpf_base[k] = d->prev_ctr[k];
 			atomic_store(&run->bpf[k], d->prev_ctr[k]);
@@ -179,7 +222,7 @@ static int read_counters(struct p15_drain *d, uint64_t sum[P15_CTR_MAX])
 	return read_map(d, d->ctr_fd, sum);
 }
 
-static void emit_gap(struct p15_drain *d, uint64_t from, uint64_t to, const uint64_t *now_ctr)
+static void emit_gap(struct p15_drain *d, uint64_t from, uint64_t to, const uint64_t *now_ctr, const uint64_t *now_missed)
 {
 	struct p15_gap g;
 	uint64_t lost = 0;
@@ -195,15 +238,21 @@ static void emit_gap(struct p15_drain *d, uint64_t from, uint64_t to, const uint
 	g.exit_build_failed = DELTA(P15_T_EXIT, P15_CK_BUILD_FAILED);
 	g.rename_build_failed = DELTA(P15_T_RENAME, P15_CK_BUILD_FAILED);
 #undef DELTA
+	g.fork_missed = now_missed[P15_T_FORK] - d->prev_missed[P15_T_FORK];
+	g.exec_missed = now_missed[P15_T_EXEC] - d->prev_missed[P15_T_EXEC];
+	g.exit_missed = now_missed[P15_T_EXIT] - d->prev_missed[P15_T_EXIT];
+	g.rename_missed = now_missed[P15_T_RENAME] - d->prev_missed[P15_T_RENAME];
 	lost = g.fork_reserve_failed + g.exec_reserve_failed + g.exit_reserve_failed + g.rename_reserve_failed +
-	       g.fork_build_failed + g.exec_build_failed + g.exit_build_failed + g.rename_build_failed;
+	       g.fork_build_failed + g.exec_build_failed + g.exit_build_failed + g.rename_build_failed +
+	       g.fork_missed + g.exec_missed + g.exit_missed + g.rename_missed;
 	if (!lost)
 		return;
 	p15_daemon_hdr(d->run, &g, P15_T_GAP, P15_GAP_VERSION, sizeof(g));
 	g.from_ns = from;
 	g.to_ns = to;
 	g.spine_seq = atomic_load(&d->run->spine_seq_next);
-	p15_run_set_state(d->run, P15_RUN_INVALID, "spine records lost (GAP)");
+	p15_run_set_state(d->run, P15_RUN_INVALID, g.fork_missed + g.exec_missed + g.exit_missed + g.rename_missed
+			  ? "spine events skipped by the kernel (recursion misses, GAP)" : "spine records lost (GAP)");
 	/* a GAP must not wait behind a full queue silently: if no batch is free, retry next poll */
 	if (put(d, P15W_RING_DAEMON, &g, sizeof(g))) {
 		d->queue_full_now = 1;
@@ -212,6 +261,7 @@ static void emit_gap(struct p15_drain *d, uint64_t from, uint64_t to, const uint
 	publish(d);
 	atomic_fetch_add(&d->run->gap_records, 1);
 	memcpy(d->prev_ctr, now_ctr, sizeof(d->prev_ctr));
+	memcpy(d->prev_missed, now_missed, sizeof(d->prev_missed));
 }
 
 static void note_poll_gap(struct p15_drain *d, uint64_t now)
@@ -228,9 +278,21 @@ static void note_poll_gap(struct p15_drain *d, uint64_t now)
 	d->last_poll_ns = now;
 }
 
+int p15_spine_loss_changed(const uint64_t *prev_ctr, const uint64_t *now_ctr, const uint64_t *prev_missed,
+			   const uint64_t *now_missed)
+{
+	int any = 0;
+
+	for (int t = 1; t < P15_SPINE_TYPES; t++)
+		any |= now_ctr[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)] != prev_ctr[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)] ||
+		       now_ctr[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)] != prev_ctr[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)] ||
+		       now_missed[t] != prev_missed[t];
+	return any;
+}
+
 static int after_poll(struct p15_drain *d)
 {
-	uint64_t now_ctr[P15_CTR_MAX], from = d->prev_read_ns, to, fill, m;
+	uint64_t now_ctr[P15_CTR_MAX], now_missed[P15_SPINE_TYPES], now_net_missed, from = d->prev_read_ns, to, fill, m;
 	int rc;
 
 	publish(d);
@@ -240,9 +302,17 @@ static int after_poll(struct p15_drain *d)
 		;
 	d->prev_read_ns = p15_boot_ns();
 	rc = read_counters(d, now_ctr);
+	if (!rc)
+		rc = read_misses(d->run, now_missed, &now_net_missed);
 	to = p15_boot_ns();
 	if (rc)
 		return rc;
+	for (int t = 0; t < P15_SPINE_TYPES; t++)
+		atomic_store(&d->run->missed[t], now_missed[t]);
+	atomic_store(&d->run->net_missed, now_net_missed);
+	if (now_net_missed != d->prev_net_missed)   /* network skips: counted, DEGRADED (ADR-0020 rule 3) */
+		p15_run_set_state(d->run, P15_RUN_DEGRADED, "NET events skipped by the kernel (recursion misses)");
+	d->prev_net_missed = now_net_missed;
 	for (int k = 0; k < P15_CTR_MAX; k++)
 		atomic_store(&d->run->bpf[k], now_ctr[k]);
 	if (d->bulk) {
@@ -261,15 +331,12 @@ static int after_poll(struct p15_drain *d)
 		memcpy(d->prev_bulk, b, sizeof(b));
 	}
 	{
-		int any = 0;
-
-		for (int t = 1; t < P15_SPINE_TYPES; t++)
-			any |= now_ctr[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)] != d->prev_ctr[P15_CTR_INDEX(t, P15_CK_RESERVE_FAILED)] ||
-			       now_ctr[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)] != d->prev_ctr[P15_CTR_INDEX(t, P15_CK_BUILD_FAILED)];
-		if (any)
-			emit_gap(d, from, to, now_ctr);
-		else
+		if (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_missed)) {
+			emit_gap(d, from, to, now_ctr, now_missed);
+		} else {
 			memcpy(d->prev_ctr, now_ctr, sizeof(d->prev_ctr));
+			memcpy(d->prev_missed, now_missed, sizeof(d->prev_missed));
+		}
 	}
 	return 0;
 }
@@ -280,6 +347,9 @@ int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 
 	d->queue_full_now = 0;
 	n = ring_buffer__poll(d->rb, timeout_ms);
+	/* below the high-water mark records don't wake us, and poll only reads rings that woke it */
+	if (n >= 0 || n == -EINTR)
+		n = ring_buffer__consume(d->rb);
 	note_poll_gap(d, p15_boot_ns());
 	if (n < 0 && n != -ENOSPC && n != -EINTR)
 		return n;

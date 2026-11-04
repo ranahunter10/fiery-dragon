@@ -191,6 +191,33 @@ int main(int argc, char **argv)
 		memcpy(end.b + sizeof(end.e), "stop requested", 14);
 		rc |= put(w, 2, &end);
 	}
+	{       /* daemon, version 2 (ADR-0020): the kernel's skips, after the END so the v1 checks stand */
+		struct p15_stats_v2 s2;
+		struct p15_gap_v2 g2;
+		struct p15_net_stats_v2 n2;
+
+		memset(&s2, 0, sizeof(s2));
+		hdr(&s2.h, P15_T_STATS, sizeof(s2), 10000, 1, 1);
+		s2.h.version = 2;
+		s2.fork_missed = 1;
+		s2.exec_missed = 77;
+		s2.exit_missed = 3;
+		s2.rename_missed = 4;
+		rc |= put(w, 2, &s2);
+		memset(&g2, 0, sizeof(g2));
+		hdr(&g2.h, P15_T_GAP, sizeof(g2), 10001, 1, 1);
+		g2.h.version = 2;
+		g2.from_ns = 9500;
+		g2.to_ns = 10001;
+		g2.exec_missed = 5;
+		rc |= put(w, 2, &g2);
+		memset(&n2, 0, sizeof(n2));
+		hdr(&n2.h, P15_T_NET_STATS, sizeof(n2), 10002, 1, 1);
+		n2.h.version = 2;
+		n2.net_missed = 9;
+		n2.bulk_ring_bytes = 4194304;
+		rc |= put(w, 2, &n2);
+	}
 	if (rc) {
 		fprintf(stderr, "wal_fixture: an append failed\n");
 		return 1;

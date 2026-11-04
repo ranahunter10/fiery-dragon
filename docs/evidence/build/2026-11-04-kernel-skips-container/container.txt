@@ -1,0 +1,146 @@
+# 2026-11-04T16:17:44Z dev container 6.18.44-fc-v233 (6.18: tracepoints still preempt-disabled, so no skips are expected here; tracefs mounted by hand); working tree of feat/kernel-skips on 94c1d07
+$ make check
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_run.c: 0 failures
+ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    build/p15d: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 2.663s
+ok    bench/census/test_run.py: Ran 25 tests in 0.586s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.018s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.014s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.008s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.013s
+ok    bench/rb_cost/test_summarize.py: Ran 8 tests in 0.002s
+ok    python/tests/test_records.py: Ran 8 tests in 0.002s
+ok    python/tests/test_trace.py: Ran 23 tests in 0.074s
+ok    python/tests/test_wal.py: Ran 23 tests in 0.775s
+ok    schema/gen/test_gen.py: Ran 31 tests in 0.203s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.008s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.001s
+14 test files, 0 failed
+ok    docs/evidence/baseline/2026-10-25-hyperv-ABA/SHA256SUMS
+ok    docs/evidence/baseline/2026-10-25-hyperv-on-warm/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-hardening-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-records-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-exec-exact-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-scaffolding/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-vm/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-net-capture-runner/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-p15-trace/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-p15d-container/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-py-reader/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T221732Z-light/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T224617Z-v2/SHA256SUMS
+ok    docs/evidence/demo/2026-11-02-container-dry-run/SHA256SUMS
+ok    docs/evidence/phase0/SHA256SUMS
+ok    docs/evidence/platform/2026-10-25-perf-counters/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-exec-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p11/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p6-p8/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p8-32bit/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-02-net-probe/SHA256SUMS
+ok    docs/evidence/probes/2026-11-04-recursion-misses/SHA256SUMS
+25 checksum files, 0 failed
+ok    bpf/vmlinux/SHA256SUMS
+$ sudo make smoke
+    EXEC   ts=1998085043033 tgid=27695 tid=27695 start=1998083750383 flags=0x0 old_tid=27695 exe=266338304:343334 gen=0 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+    EXIT   ts=1998086170437 tgid=27695 tid=27695 start=1998083750383 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+          FORK        2        2               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+$ make it-p15d
+daemon/tests/it_p15d.sh build
+network capture: off (--no-net: fentry/fexit not loadable here)
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+p15d level=info code=start run_dir=/tmp/p15d-it-n6NfQu/c1/20261104T161755Z-46581e16 sched="SCHED_FIFO 1" spine_ring=4194304 net=off (--no-net)
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-n6NfQu/c1/20261104T161755Z-46581e16//seg-00000000.p15w: segment 0, 75704 bytes, 64 batches, 859 records, valid to the end
+  run.id = 20261104T161755Z-46581e16
+  kernel.release = 6.18.44-fc-v233
+  schema.hash = a12b53aa4464976fa1a35147448e92713459e3743add663e1ff7201e5fca93aa
+records: spine 812, bulk 0, daemon 47; invalid 0
+  FORK       203
+  EXEC       202
+  EXIT       205
+  RENAME     202
+  CLOCK_SYNC 5
+  STATS      41
+  END        1
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 41)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+case 2: stop by SIGTERM
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested"
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+p15d level=info code=start run_dir=/tmp/p15d-it-n6NfQu/c3/20261104T161810Z-46581e16 sched="normal (--no-rt)" spine_ring=4096 net=off (--no-net)
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 118, bulk 0, daemon 10; invalid 0
+  FORK       37
+  EXEC       23
+  EXIT       34
+  RENAME     24
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        2
+  END        1
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)"
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 4: a bad flag
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
+$ python3 daemon/tests/mutate_records.py
+mutation sweep: 22/22 killed
+$ sudo python3 bpf/test/mutate_spine_exec.py
+mutation sweep: 7/7 killed
+$ python3 tools/ci/mutate_py.py
+mutation sweep: 96/96 killed
+$ sudo python3 daemon/tests/mutate_p15d.py
+killed   0 queue.c if (h - t >= q->n) {
+killed   1 queue.c atomic_store_explicit(&q->head, h, memory_order_release);
+killed   2 queue.c s->count = 0;
+killed   3 queue.c return t == h ? NULL : &q->slots[t % q->n];
+killed   4 queue.c while (d > m && !atomic_compare_exchange_weak_explicit
+killed   5 config.c snprintf(err, errlen, "unknown argument '%s'", f);
+killed   6 config.c if (v < OPTS[i].lo || v > OPTS[i].hi ||
+killed   7 config.c (OPTS[i].pow2 && (v & (v - 1)))
+killed   8 config.c if (!c->wal_root) {
+killed   9 drain.c if (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_m
+killed   10 drain.c now_missed[t] != prev_missed[t];
+killed   11 drain.c for (int t = 1; t < P15_SPINE_TYPES; t++)
+killed   12 drain.c atomic_fetch_add(&d->run->drained[h->type], 1);
+killed   13 writer.c drained -= r->spine_selftest_consumed;
+killed   14 writer.c uint64_t emitted = 0, drained = r->spine_selftest_consumed;
+killed   15 writer.c if (inv == P15_INV_BROKEN)
+killed   16 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_
+killed   17 writer.c if (emitted != drained + atomic_load(&r->spine_invalid)) {
+killed   18 writer.c buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);
+killed   19 run.c case P15_RUN_DEGRADED:
+mutation sweep: 20/20 killed

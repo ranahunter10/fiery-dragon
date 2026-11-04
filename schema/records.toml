@@ -182,6 +182,78 @@ fields = [
 ]
 
 [[record]]
+name = "STATS"
+type = 33
+version = 2
+class = "STATS"
+doc = "The capture's own health, every stats interval (1 s by default), and once more at the end of the run (ADR-0019 G4.1). v2 adds the events the kernel skipped (ADR-0020). Spine counters are the BPF per-cause counters summed over CPUs (ADR-0006 rule 6)."
+fields = [
+  # spine counters per type and cause, cumulative (ADR-0006 rule 6; ADR-0019 G4.1 'per type')
+  { name = "fork_seen",             c = "u64", doc = "FORK hook runs, cumulative" },
+  { name = "fork_emitted",          c = "u64", doc = "FORK records submitted to the spine ring, cumulative" },
+  { name = "fork_reserve_failed",   c = "u64", doc = "FORK records lost to a full ring, cumulative" },
+  { name = "fork_build_failed",     c = "u64", doc = "FORK records lost before the ring (no buffer), cumulative" },
+  { name = "fork_read_failed",      c = "u64", doc = "emitted FORK records with a failed memory read, cumulative" },
+  { name = "fork_truncated",        c = "u64", doc = "emitted FORK records with a cut field, cumulative" },
+  { name = "exec_seen",             c = "u64", doc = "EXEC hook runs, cumulative" },
+  { name = "exec_emitted",          c = "u64", doc = "EXEC records submitted, cumulative" },
+  { name = "exec_reserve_failed",   c = "u64", doc = "EXEC records lost to a full ring, cumulative" },
+  { name = "exec_build_failed",     c = "u64", doc = "EXEC records lost before the ring, cumulative" },
+  { name = "exec_read_failed",      c = "u64", doc = "emitted EXEC records with a failed memory read, cumulative" },
+  { name = "exec_truncated",        c = "u64", doc = "emitted EXEC records with a cut field, cumulative" },
+  { name = "exit_seen",             c = "u64", doc = "EXIT hook runs, cumulative" },
+  { name = "exit_emitted",          c = "u64", doc = "EXIT records submitted, cumulative" },
+  { name = "exit_reserve_failed",   c = "u64", doc = "EXIT records lost to a full ring, cumulative" },
+  { name = "exit_build_failed",     c = "u64", doc = "EXIT records lost before the ring, cumulative" },
+  { name = "exit_read_failed",      c = "u64", doc = "emitted EXIT records with a failed memory read, cumulative" },
+  { name = "exit_truncated",        c = "u64", doc = "emitted EXIT records with a cut field, cumulative" },
+  { name = "rename_seen",           c = "u64", doc = "RENAME hook runs, cumulative" },
+  { name = "rename_emitted",        c = "u64", doc = "RENAME records submitted, cumulative" },
+  { name = "rename_reserve_failed", c = "u64", doc = "RENAME records lost to a full ring, cumulative" },
+  { name = "rename_build_failed",   c = "u64", doc = "RENAME records lost before the ring, cumulative" },
+  { name = "rename_read_failed",    c = "u64", doc = "emitted RENAME records with a failed memory read, cumulative" },
+  { name = "rename_truncated",      c = "u64", doc = "emitted RENAME records with a cut field, cumulative" },
+  # the drain side of the books: emitted = drained (per type); drained = written + drain_lost (ADR-0006 rule 6)
+  { name = "fork_drained",          c = "u64", doc = "FORK records the drain took from the ring and copied into a batch, cumulative" },
+  { name = "exec_drained",          c = "u64", doc = "EXEC records drained, cumulative" },
+  { name = "exit_drained",          c = "u64", doc = "EXIT records drained, cumulative" },
+  { name = "rename_drained",        c = "u64", doc = "RENAME records drained, cumulative" },
+  { name = "spine_invalid",         c = "u64", doc = "spine records refused by p15_rec_check, never written (run INVALID), cumulative" },
+  { name = "spine_written",         c = "u64", doc = "spine records in batches the WAL writer appended, cumulative" },
+  { name = "spine_drain_lost",      c = "u64", doc = "drained spine records in batches the writer could not append (run INVALID), cumulative" },
+  { name = "gap_records",           c = "u64", doc = "GAP records the drain emitted, cumulative (ADR-0017 layer 4)" },
+  # the drain's timing (ADR-0017 layers 2, 3 and 5; ADR-0019 G4.1 'poll-to-poll gap as a fixed histogram')
+  { name = "poll_gap_le_100us",     c = "u64", doc = "drain polls that came at most 100 us after the previous one, cumulative" },
+  { name = "poll_gap_le_1ms",       c = "u64", doc = "polls 100 us to 1 ms after the previous one, cumulative" },
+  { name = "poll_gap_le_10ms",      c = "u64", doc = "polls 1 to 10 ms after, cumulative" },
+  { name = "poll_gap_le_100ms",     c = "u64", doc = "polls 10 to 100 ms after, cumulative" },
+  { name = "poll_gap_le_1s",        c = "u64", doc = "polls 100 ms to 1 s after, cumulative" },
+  { name = "poll_gap_gt_1s",        c = "u64", doc = "polls more than 1 s after, cumulative" },
+  { name = "poll_gap_max_ns",       c = "u64", doc = "the longest poll-to-poll gap in this interval: the worst drain stall (ADR-0017 layer 5)" },
+  { name = "spine_fill_max",        c = "u64", doc = "the most bytes waiting in the spine ring at a poll, this interval (ADR-0019 G4.1 'fill high-water')" },
+  { name = "queue_full",            c = "u64", doc = "times the drain found no free batch and left records in the ring, cumulative (ADR-0017 layer 2)" },
+  # the WAL writer (ADR-0007; ADR-0019 G4.1 'WAL: bytes, batches, fsyncs, worst fsync latency')
+  { name = "wal_bytes",             c = "u64", doc = "bytes written to the WAL, headers included, cumulative" },
+  { name = "wal_batches",           c = "u64", doc = "batches appended, all rings, cumulative" },
+  { name = "wal_fsyncs",            c = "u64", doc = "fdatasync calls on segments, cumulative" },
+  { name = "wal_fsync_max_ns",      c = "u64", doc = "the slowest fdatasync in this interval (ADR-0017 evidence 9)" },
+  # the daemon process (ADR-0019 G4.1 'CPU time and RSS (getrusage)')
+  { name = "cpu_user_us",           c = "u64", doc = "the daemon's user CPU time, cumulative (getrusage RUSAGE_SELF)" },
+  { name = "cpu_sys_us",            c = "u64", doc = "the daemon's system CPU time, cumulative" },
+  { name = "maxrss_kb",             c = "u64", doc = "the daemon's peak resident set size, KiB (ru_maxrss)" },
+  { name = "interval_ns",           c = "u64", doc = "CLOCK_BOOTTIME since the previous STATS record (or the run's start): the span the interval fields cover" },
+  { name = "spine_ring_bytes",      c = "u32", doc = "the spine ring's size (also in the segment header), to read spine_fill_max against" },
+  { name = "queue_depth_max",       c = "u32", doc = "the most full batches waiting for the writer, this interval (ADR-0019 G4.1 'queue depth high-water')" },
+  { name = "queue_batches",         c = "u32", doc = "batches in the preallocated pool: the queue's capacity" },
+  { name = "run_state",             c = "u32", doc = "0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3)" },
+  # ADR-0020 rule 3: events the kernel skipped before our program ran (bpf_prog_info.recursion_misses)
+  { name = "fork_missed",           c = "u64", doc = "FORK events the kernel skipped (recursion_misses of the fork program since the run's start), cumulative" },
+  { name = "exec_missed",           c = "u64", doc = "EXEC events the kernel skipped, cumulative" },
+  { name = "exit_missed",           c = "u64", doc = "EXIT events the kernel skipped, cumulative" },
+  { name = "rename_missed",         c = "u64", doc = "RENAME events the kernel skipped, cumulative" },
+]
+
+[[record]]
 name = "GAP"
 type = 34
 version = 1
@@ -199,6 +271,30 @@ fields = [
   { name = "exec_build_failed",     c = "u64", doc = "EXEC records lost before the ring in the window" },
   { name = "exit_build_failed",     c = "u64", doc = "EXIT records lost before the ring in the window" },
   { name = "rename_build_failed",   c = "u64", doc = "RENAME records lost before the ring in the window" },
+]
+
+[[record]]
+name = "GAP"
+type = 34
+version = 2
+class = "MARKER"
+doc = "Spine records were lost between two reads of the loss counters: the window that contains the loss (ADR-0017 layer 4). Every process alive in [from_ns, to_ns] may be missing records. v2 also locates events the kernel skipped (ADR-0020 rule 3)."
+fields = [
+  { name = "from_ns",               c = "u64", doc = "CLOCK_BOOTTIME just before the previous counter read began" },
+  { name = "to_ns",                 c = "u64", doc = "CLOCK_BOOTTIME just after this counter read ended" },
+  { name = "spine_seq",             c = "u64", doc = "the spine sequence number the drain would give its next record at this read: records drained before it were in the ring before the read (ADR-0007 sequence; LTTng's packet numbering)" },
+  { name = "fork_reserve_failed",   c = "u64", doc = "FORK records lost to a full ring in the window" },
+  { name = "exec_reserve_failed",   c = "u64", doc = "EXEC records lost to a full ring in the window" },
+  { name = "exit_reserve_failed",   c = "u64", doc = "EXIT records lost to a full ring in the window" },
+  { name = "rename_reserve_failed", c = "u64", doc = "RENAME records lost to a full ring in the window" },
+  { name = "fork_build_failed",     c = "u64", doc = "FORK records lost before the ring in the window" },
+  { name = "exec_build_failed",     c = "u64", doc = "EXEC records lost before the ring in the window" },
+  { name = "exit_build_failed",     c = "u64", doc = "EXIT records lost before the ring in the window" },
+  { name = "rename_build_failed",   c = "u64", doc = "RENAME records lost before the ring in the window" },
+  { name = "fork_missed",           c = "u64", doc = "FORK events the kernel skipped in the window (recursion_misses delta)" },
+  { name = "exec_missed",           c = "u64", doc = "EXEC events the kernel skipped in the window" },
+  { name = "exit_missed",           c = "u64", doc = "EXIT events the kernel skipped in the window" },
+  { name = "rename_missed",         c = "u64", doc = "RENAME events the kernel skipped in the window" },
 ]
 
 [[record]]
@@ -255,5 +351,25 @@ fields = [
   { name = "net_written",        c = "u64", doc = "bulk records in batches the writer appended, cumulative" },
   { name = "net_drain_lost",     c = "u64", doc = "drained bulk records the writer could not append, cumulative" },
   { name = "bulk_fill_max",      c = "u64", doc = "the most bytes waiting in the bulk ring at a poll, this interval" },
+  { name = "bulk_ring_bytes",    c = "u32", doc = "the bulk ring's size" },
+]
+
+[[record]]
+name = "NET_STATS"
+type = 36
+version = 2
+class = "STATS"
+doc = "The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval. v2 adds the events the kernel skipped (ADR-0020)."
+fields = [
+  { name = "net_seen",           c = "u64", doc = "NET hook runs, cumulative" },
+  { name = "net_emitted",        c = "u64", doc = "NET records submitted to the bulk ring, cumulative" },
+  { name = "net_reserve_failed", c = "u64", doc = "NET records lost to a full bulk ring (run DEGRADED), cumulative" },
+  { name = "net_excluded",       c = "u64", doc = "hook runs not recorded by policy: failed accepts, non-IP sockets, no sock (ADR-0004 rule 3), cumulative" },
+  { name = "net_drained",        c = "u64", doc = "NET records the drain copied into a batch, cumulative" },
+  { name = "net_invalid",        c = "u64", doc = "bulk records refused by p15_rec_check, never written, cumulative" },
+  { name = "net_written",        c = "u64", doc = "bulk records in batches the writer appended, cumulative" },
+  { name = "net_drain_lost",     c = "u64", doc = "drained bulk records the writer could not append, cumulative" },
+  { name = "bulk_fill_max",      c = "u64", doc = "the most bytes waiting in the bulk ring at a poll, this interval" },
+  { name = "net_missed",         c = "u64", doc = "NET events the kernel skipped (recursion_misses of the six network programs since the run's start; run DEGRADED), cumulative" },
   { name = "bulk_ring_bytes",    c = "u32", doc = "the bulk ring's size" },
 ]

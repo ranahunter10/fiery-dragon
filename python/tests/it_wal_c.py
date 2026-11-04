@@ -38,11 +38,19 @@ class CWriterRun(unittest.TestCase):
                 self.assertIn(k, s.meta)
         self.assertEqual({k: len(v) for k, v in self.by.items()},
                          {"FORK": 1, "EXEC": 1, "EXIT": 1, "RENAME": 1, "NET": 2, "CLOCK_SYNC": 1,
-                          "STATS": 1, "NET_STATS": 1, "GAP": 1, "END": 1})
+                          "STATS": 2, "NET_STATS": 2, "GAP": 2, "END": 1})
 
     def test_sequences_per_ring(self):
-        for ring, n in ((0, 4), (1, 2), (2, 5)):
+        for ring, n in ((0, 4), (1, 2), (2, 8)):
             self.assertEqual([r.seq for r in self.run_.ring_records(ring)], list(range(n)))
+
+    def test_daemon_v2(self):
+        """STATS, GAP and NET_STATS version 2 (ADR-0020): the kernel's skips."""
+        s2, g2, n2 = self.by["STATS"][1], self.by["GAP"][1], self.by["NET_STATS"][1]
+        self.assertEqual([r.h["version"] for r in (s2, g2, n2)], [2, 2, 2])
+        self.assertEqual([s2.f[f"{t}_missed"] for t in ("fork", "exec", "exit", "rename")], [1, 77, 3, 4])
+        self.assertEqual((g2.f["from_ns"], g2.f["to_ns"], g2.f["exec_missed"], g2.f["fork_missed"]), (9500, 10001, 5, 0))
+        self.assertEqual((n2.f["net_missed"], n2.f["bulk_ring_bytes"]), (9, 4194304))
 
     def test_merged_by_time(self):
         ts = [r.h["ts_ns"] for r in self.recs]

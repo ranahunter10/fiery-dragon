@@ -61,7 +61,7 @@ class Tree(Base):
     def test_gap_marks_processes_alive_then(self):
         t = self.ctx(gap=True).tree
         self.assertEqual(len(t.gaps), 1)
-        self.assertEqual(t.gaps[0].lost, 2)
+        self.assertEqual(t.gaps[0].lost, 3, "2 ring losses + 1 kernel skip (GAP v2)")
         self.assertTrue(t.procs[S.NC].in_gap)
         self.assertTrue(t.procs[S.SRV].in_gap)             # still running: alive in every window
         self.assertFalse(t.procs[S.C1].in_gap)             # exited before the window
@@ -186,8 +186,13 @@ class TextReport(Base):
         self.assertIn("network capture was off, so this says nothing", self.report(18077, net_on=False))
         self.assertIn("no END record", self.report(18077, end=False))
         out = self.report(4444, gap=True)
-        self.assertIn("1 GAP window(s), 2 spine records lost", out)
+        self.assertIn("1 GAP window(s), 3 spine records lost", out)
         self.assertIn("alive during a GAP window", out)
+
+    def test_kernel_skips(self):
+        self.assertIn("kernel-skipped events: none", self.report(18077))
+        self.assertIn("KERNEL-SKIPPED EVENTS: fork 0, exec 3, exit 0, rename 0, network 0", self.report(18077, skipped=3))
+        self.assertIn("predates ADR-0020", self.report(18077, stats_v1=True))
 
     def test_wall_clock_uses_the_nearest_anchor(self):
         ctx = self.ctx()

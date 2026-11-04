@@ -123,6 +123,11 @@ int main(int argc, char **argv)
 		return code;
 	}
 	run.start_ns = ld.daemon_start_ns;
+	for (int t = 0; t < P15_SPINE_TYPES; t++)
+		run.miss_fd[t] = ld.miss_fd[t];
+	for (int i = 0; i < ld.n_net_miss; i++)
+		run.net_miss_fd[i] = ld.net_miss_fd[i];
+	run.n_net_miss = ld.n_net_miss;
 	run.spine_selftest_consumed = ld.spine_consumed;
 	run.net_selftest_consumed = ld.net_consumed;
 	sched = raise_priority(run.cfg.realtime);
@@ -213,7 +218,7 @@ int main(int argc, char **argv)
 		end_ns = p15_mono_ns() + (uint64_t)run.cfg.duration_s * 1000000000ull;
 
 	while (!atomic_load(&run.stop) && (!end_ns || p15_mono_ns() < end_ns)) {
-		if (p15_drain_poll(&d, 100))
+		if (p15_drain_poll(&d, 10))   /* ADR-0020 rule 2: records don't wake the drain below the high-water mark */
 			p15_fail(&run, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
 		if (run.cfg.drain_pause_ms)
 			usleep(run.cfg.drain_pause_ms * 1000u);   /* TEST ONLY: config.test_drain_pause_ms in the header */

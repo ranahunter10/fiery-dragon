@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003).
+ * exec, exit and rename attach to classic tracepoints, which need tracefs (ADR-0020 rule 1).
  * The run starts only if every step succeeds; each failure has its own exit code (ADR-0019 G2).
  */
 #ifndef P15_LOADER_H
@@ -24,6 +25,9 @@ struct p15_loader {
 	__u64 spine_consumed;      /* records the self-tests took from the rings: part of the run's books */
 	unsigned long long net_consumed;
 	char manifest[1024];       /* the attached hooks, for the WAL header */
+	int miss_fd[5];            /* program fds by spine record type 1..4, for recursion_misses (ADR-0020) */
+	int net_miss_fd[8];
+	int n_net_miss;
 };
 
 /* Returns 0, or a P15_EXIT_* code with a reason in err. */

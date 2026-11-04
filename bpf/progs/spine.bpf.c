@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
 /*
- * spine.bpf.c: the process spine (ADR-0003). One tp_btf program per
- * lifecycle event, each emitting one record (schema/records.toml) into the
- * spine ring buffer (ADR-0006), with the identity fields of ADR-0009.
+ * spine.bpf.c: the process spine (ADR-0003, ADR-0020). One program per lifecycle event, each
+ * emitting one record (schema/records.toml) into the spine ring buffer (ADR-0006), with the
+ * identity fields of ADR-0009. Hook types (ADR-0020 rule 1): fork on tp_btf (it needs the child's
+ * task); exec, exit and rename on classic tracepoints, which the kernel runs with preemption off,
+ * so its per-CPU recursion guard can't skip them for other tasks. Records wake the reader only
+ * above a high-water mark (ADR-0020 rule 2); whatever the kernel still skips is read by p15d
+ * from recursion_misses (rule 3).
  *
  * Rules kept here:
  *  - every record byte is written (ring memory is not zeroed);
@@ -34,6 +38,16 @@ struct {
 	__type(key, __u32);
 	__type(value, __u64);
 } spine_counters SEC(".maps");
+
+/* The ring's high-water mark (ADR-0020 rule 2): the loader sets a quarter of the ring's size.
+ * Below it a record doesn't wake the reader, which polls every 10 ms; above it, it does. */
+const volatile __u64 spine_wake_bytes = 1 << 20;
+
+static __always_inline __u64 wake(void)
+{
+	return bpf_ringbuf_query(&spine_rb, BPF_RB_AVAIL_DATA) > spine_wake_bytes ? BPF_RB_FORCE_WAKEUP
+										    : BPF_RB_NO_WAKEUP;
+}
 
 static __always_inline void count(__u32 type, __u32 kind)
 {
@@ -75,7 +89,7 @@ int BPF_PROG(spine_fork, struct task_struct *parent, struct task_struct *child)
 	r->child_tid = BPF_CORE_READ(child, pid);
 	r->kind = r->child_tgid == r->h.tgid ? 2 : 1;
 	__builtin_memset(r->_pad, 0, sizeof(r->_pad));
-	bpf_ringbuf_submit(r, 0);
+	bpf_ringbuf_submit(r, wake());
 	count(P15_T_FORK, P15_CK_EMITTED);
 	return 0;
 }
@@ -106,21 +120,23 @@ struct {
 	__type(value, __u8[P15_EXEC_MAX_SIZE]);
 } exec_scratch SEC(".maps");
 
-/* Exe identity, old tid and the filename (into tail). Returns the filename bytes copied. */
-static __always_inline __u32 exec_head(struct p15_exec *r, __u8 *tail, pid_t old_pid, struct linux_binprm *bprm,
-				       __u16 *flags)
+/* Exe identity, old tid and the filename (into tail). Returns the filename bytes copied.
+ * The exec'd file is current->mm->exe_file: begin_new_exec set it to bprm->file before the
+ * tracepoint (fs/exec.c, v7.0; ADR-0020 rule 1). The filename is the tracepoint's own copy of
+ * bprm->filename (its __data_loc field). */
+static __always_inline __u32 exec_head(struct p15_exec *r, __u8 *tail, pid_t old_pid, const char *filename,
+				       struct task_struct *p, __u16 *flags)
 {
-	const char *filename;
+	struct file *exe = BPF_CORE_READ(p, mm, exe_file);
 	__u32 fn_len = 0;
 	long n;
 
-	r->exe_ino = BPF_CORE_READ(bprm, file, f_inode, i_ino);
-	r->exe_dev = BPF_CORE_READ(bprm, file, f_inode, i_sb, s_dev);
-	r->exe_gen = BPF_CORE_READ(bprm, file, f_inode, i_generation);
+	r->exe_ino = BPF_CORE_READ(exe, f_inode, i_ino);
+	r->exe_dev = BPF_CORE_READ(exe, f_inode, i_sb, s_dev);
+	r->exe_gen = BPF_CORE_READ(exe, f_inode, i_generation);
 	r->old_tid = old_pid;
 
 	/* filename: the name as passed (bprm->filename); NUL not stored. */
-	filename = BPF_CORE_READ(bprm, filename);
 	n = bpf_probe_read_kernel_str(tail, P15_EXEC_FILENAME_MAX, filename);
 	if (n <= 0) {
 		*flags |= P15_F_READ_FAILED;
@@ -178,12 +194,12 @@ static __always_inline __u32 exec_len(__u32 end)
 #if P15_EXEC_WAY != P15_EXEC_WAY_DYNPTR
 /* Fill a whole EXEC record at r: P15_EXEC_MAX_SIZE bytes of ring or scratch memory. Returns its len. */
 static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p, pid_t old_pid,
-				       struct linux_binprm *bprm)
+				       const char *filename)
 {
 	__u8 *tail = (__u8 *)(r + 1);
 	__u16 flags = 0;
 	__u64 a0;
-	__u32 fn_len = exec_head(r, tail, old_pid, bprm, &flags);
+	__u32 fn_len = exec_head(r, tail, old_pid, filename, p, &flags);
 	__u32 av_len = exec_argv_span(r, p, &a0, &flags), end, len;
 
 	if (av_len && bpf_probe_read_user(tail + fn_len, av_len, (const void *)a0)) {
@@ -209,9 +225,12 @@ static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p
 }
 #endif
 
-SEC("tp_btf/sched_process_exec")
-int BPF_PROG(spine_exec, struct task_struct *p, pid_t old_pid, struct linux_binprm *bprm)
+SEC("tracepoint/sched/sched_process_exec")
+int spine_exec(struct trace_event_raw_sched_process_exec *ctx)
 {
+	struct task_struct *p = bpf_get_current_task_btf();
+	const char *filename = (const char *)ctx + (ctx->__data_loc_filename & 0xFFFF);
+	pid_t old_pid = ctx->old_pid;
 	struct p15_exec *r;
 #if P15_EXEC_WAY != P15_EXEC_WAY_FIXED
 	__u32 zero = 0;
@@ -224,8 +243,8 @@ int BPF_PROG(spine_exec, struct task_struct *p, pid_t old_pid, struct linux_binp
 		count(P15_T_EXEC, P15_CK_RESERVE_FAILED);
 		return 0;
 	}
-	exec_fill(r, p, old_pid, bprm);
-	bpf_ringbuf_submit(r, 0);
+	exec_fill(r, p, old_pid, filename);
+	bpf_ringbuf_submit(r, wake());
 #elif P15_EXEC_WAY == P15_EXEC_WAY_OUTPUT
 	__u32 len;
 
@@ -234,8 +253,8 @@ int BPF_PROG(spine_exec, struct task_struct *p, pid_t old_pid, struct linux_binp
 		count(P15_T_EXEC, P15_CK_BUILD_FAILED);
 		return 0;
 	}
-	len = exec_fill(r, p, old_pid, bprm);
-	if (bpf_ringbuf_output(&spine_rb, r, len, 0)) {
+	len = exec_fill(r, p, old_pid, filename);
+	if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {
 		count(P15_T_EXEC, P15_CK_RESERVE_FAILED);
 		return 0;
 	}
@@ -250,11 +269,11 @@ int BPF_PROG(spine_exec, struct task_struct *p, pid_t old_pid, struct linux_binp
 		count(P15_T_EXEC, P15_CK_BUILD_FAILED);
 		return 0;
 	}
-	fn_len = exec_head(r, (__u8 *)(r + 1), old_pid, bprm, &flags);
+	fn_len = exec_head(r, (__u8 *)(r + 1), old_pid, filename, p, &flags);
 	av_len = exec_argv_span(r, p, &a0, &flags);
 	len = exec_len(fn_len + av_len);
 	if (bpf_ringbuf_reserve_dynptr(&spine_rb, len, 0, &d)) {
-		bpf_ringbuf_discard_dynptr(&d, 0);
+		bpf_ringbuf_discard_dynptr(&d, BPF_RB_NO_WAKEUP);
 		count(P15_T_EXEC, P15_CK_RESERVE_FAILED);
 		return 0;
 	}
@@ -270,19 +289,20 @@ int BPF_PROG(spine_exec, struct task_struct *p, pid_t old_pid, struct linux_binp
 	/* ring memory is not zeroed: the padding, and argv's bytes after a failed read, are cleared */
 	if ((end < len && bpf_dynptr_memset(&d, end, len - end, 0)) ||
 	    bpf_dynptr_write(&d, 0, r, head, 0)) {
-		bpf_ringbuf_discard_dynptr(&d, 0);
+		bpf_ringbuf_discard_dynptr(&d, BPF_RB_NO_WAKEUP);
 		count(P15_T_EXEC, P15_CK_BUILD_FAILED);
 		return 0;
 	}
-	bpf_ringbuf_submit_dynptr(&d, 0);
+	bpf_ringbuf_submit_dynptr(&d, wake());
 #endif
 	count(P15_T_EXEC, P15_CK_EMITTED);
 	return 0;
 }
 
-SEC("tp_btf/sched_process_exit")
-int BPF_PROG(spine_exit, struct task_struct *p, bool group_dead)
+SEC("tracepoint/sched/sched_process_exit")
+int spine_exit(struct trace_event_raw_sched_process_exit *ctx)
 {
+	struct task_struct *p = bpf_get_current_task_btf();  /* do_exit: the exiting task is current */
 	struct p15_exit *r;
 
 	count(P15_T_EXIT, P15_CK_SEEN);
@@ -293,15 +313,18 @@ int BPF_PROG(spine_exit, struct task_struct *p, bool group_dead)
 	}
 	fill_hdr(&r->h, P15_T_EXIT, P15_EXIT_VERSION, sizeof(*r), 0, p);
 	r->exit_code = BPF_CORE_READ(p, exit_code);
-	r->group_dead = group_dead ? 1 : 0;
-	bpf_ringbuf_submit(r, 0);
+	r->group_dead = ctx->group_dead ? 1 : 0;
+	bpf_ringbuf_submit(r, wake());
 	count(P15_T_EXIT, P15_CK_EMITTED);
 	return 0;
 }
 
-SEC("tp_btf/task_rename")
-int BPF_PROG(spine_rename, struct task_struct *task, const char *comm)
+SEC("tracepoint/task/task_rename")
+int spine_rename(struct trace_event_raw_task_rename *ctx)
 {
+	/* the renamed task is current, or a thread of current's group (fs/proc/base.c comm_write
+	 * allows only the same thread group, v7.0): the process key is current's, the tid the event's */
+	struct task_struct *task = bpf_get_current_task_btf();
 	struct p15_rename *r;
 	__u16 flags = 0;
 
@@ -313,14 +336,15 @@ int BPF_PROG(spine_rename, struct task_struct *task, const char *comm)
 	}
 	__builtin_memset(r->old_comm, 0, sizeof(r->old_comm));
 	__builtin_memset(r->new_comm, 0, sizeof(r->new_comm));
-	/* at this tracepoint task->comm is still the old name (fs/exec.c __set_task_comm, v7.0) */
-	if (bpf_probe_read_kernel_str(r->old_comm, sizeof(r->old_comm), task->comm) < 0 ||
-	    bpf_probe_read_kernel_str(r->new_comm, sizeof(r->new_comm), comm) < 0) {
+	/* the event's own copies of the old and the new comm */
+	if (bpf_probe_read_kernel_str(r->old_comm, sizeof(r->old_comm), ctx->oldcomm) < 0 ||
+	    bpf_probe_read_kernel_str(r->new_comm, sizeof(r->new_comm), ctx->newcomm) < 0) {
 		flags |= P15_F_READ_FAILED;
 		count(P15_T_RENAME, P15_CK_READ_FAILED);
 	}
 	fill_hdr(&r->h, P15_T_RENAME, P15_RENAME_VERSION, sizeof(*r), flags, task);
-	bpf_ringbuf_submit(r, 0);
+	r->h.tid = (__u32)ctx->pid;
+	bpf_ringbuf_submit(r, wake());
 	count(P15_T_RENAME, P15_CK_EMITTED);
 	return 0;
 }

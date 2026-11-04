@@ -64,10 +64,14 @@ class RealSchemaTest(unittest.TestCase):
             self.assertEqual(r.fixed_size % 8, 0, r.name)
 
     def test_daemon_records_present(self):
-        names = {r.name: (r.type, r.version, r.cls) for r in self.s.records}
-        self.assertEqual({k: names[k] for k in ("CLOCK_SYNC", "STATS", "GAP", "END")},
-                         {"CLOCK_SYNC": (32, 1, "MARKER"), "STATS": (33, 1, "STATS"), "GAP": (34, 1, "MARKER"),
-                          "END": (35, 1, "MARKER")})
+        names = {(r.name, r.version): (r.type, r.cls) for r in self.s.records}
+        want = {("CLOCK_SYNC", 1): (32, "MARKER"), ("STATS", 1): (33, "STATS"), ("GAP", 1): (34, "MARKER"),
+                ("END", 1): (35, "MARKER"),
+                # ADR-0020: v2 adds the kernel's skips; v1 stays, for old segments (ADR-0008)
+                ("STATS", 2): (33, "STATS"), ("GAP", 2): (34, "MARKER"), ("NET_STATS", 2): (36, "STATS")}
+        self.assertEqual({k: names[k] for k in want}, want)
+        st2 = next(r for r in self.s.records if (r.name, r.version) == ("STATS", 2))
+        self.assertEqual([f.name for f in st2.fields][-4:], ["fork_missed", "exec_missed", "exit_missed", "rename_missed"])
         end = next(r for r in self.s.records if r.name == "END")
         self.assertEqual([(v.name, v.max) for v in end.var], [("reason", 256)])
 

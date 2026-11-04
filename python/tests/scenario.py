@@ -62,7 +62,7 @@ SRV, C1, C2, SH, NC = (600, START + 500), (610, START + 2 * S), (620, START + 3 
     (640, START + 4 * S + 10)
 
 
-def build(d: Path, *, net_on=True, end=True, gap=False) -> Path:
+def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=False) -> Path:
     ms = 1_000_000
     spine = [
         fork(START + 500, BASH, SRV), exe(START + 600, SRV, "/usr/bin/python3", ["python3", "-m", "http.server", "18077"]),
@@ -90,8 +90,11 @@ def build(d: Path, *, net_on=True, end=True, gap=False) -> Path:
                   realtime_ns=WALL + 5 * S)]
     if gap:
         daemon.append(rec("GAP", h_ts_ns=START + 4 * S + 40 * ms, from_ns=START + 4 * S, to_ns=START + 4 * S + 40 * ms,
-                          spine_seq=len(spine), exec_reserve_failed=2))
-    daemon.append(rec("STATS", h_ts_ns=START + 6 * S, run_state=0))
+                          spine_seq=len(spine), exec_reserve_failed=2, exit_missed=1))
+    if stats_v1:
+        daemon.append(rec("STATS", version=1, h_ts_ns=START + 6 * S, run_state=0))
+    else:
+        daemon.append(rec("STATS", h_ts_ns=START + 6 * S, run_state=2 if skipped else 0, exec_missed=skipped))
     daemon.append(rec("NET_STATS", h_ts_ns=START + 6 * S, net_seen=len(bulk), net_emitted=len(bulk),
                       net_drained=len(bulk), net_written=len(bulk)))
     if end:

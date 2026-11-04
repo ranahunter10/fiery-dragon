@@ -29,8 +29,8 @@ SRC = ROOT / "bpf" / "progs" / "spine.bpf.c"
 
 M = [
  # the record's ring size: exactly len
- ("if (bpf_ringbuf_output(&spine_rb, r, len, 0)) {",
-  "if (bpf_ringbuf_output(&spine_rb, r, len > 0 ? P15_EXEC_MAX_SIZE : len, 0)) {"),
+ ("if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {",
+  "if (bpf_ringbuf_output(&spine_rb, r, len > 0 ? P15_EXEC_MAX_SIZE : len, wake())) {"),
  # len larger than the fields: refused by p15_rec_check
  ("\tlen = exec_len(end);\n", "\tlen = exec_len(end + 8);\n"),
  # variable-field lengths not written into the scratch record
