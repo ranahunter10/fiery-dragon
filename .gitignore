@@ -24,6 +24,7 @@ htmlcov/
 # --- capture data: large and machine-specific; commit only curated fixtures under tests/fixtures/ ---
 *.wal
 *.p15w
+!docs/evidence/**/*.p15w
 /recordings/
 
 # --- editors and OS ---
