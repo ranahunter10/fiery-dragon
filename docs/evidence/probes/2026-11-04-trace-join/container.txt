@@ -1,0 +1,47 @@
+$ git rev-parse --short HEAD; uname -r
+c112803
+6.18.44-fc-v233
+
+$ python3 -B -m unittest -v python/tests/test_trace.py  (the join test)
+test_endpoint_join_rules (python.tests.test_trace.Port.test_endpoint_join_rules) ... ok
+Ran 23 tests in 0.067s
+OK
+$ python3 -B -m unittest python/tests/test_records.py
+Ran 8 tests in 0.002s
+
+OK
+$ python3 -B -m unittest python/tests/test_trace.py
+Ran 23 tests in 0.056s
+
+OK
+$ python3 -B -m unittest python/tests/test_wal.py
+Ran 23 tests in 0.714s
+
+OK
+
+$ python3 tools/ci/mutate_py.py   (NET mutants and the total)
+killed    79 net.py return self.ret == 0 or (self.op == "CONNECT" and self.ret =
+killed    80 net.py if e.op in ("BIND", "LISTEN") and e.lport == port and e.ok:
+killed    81 net.py lst = by_cookie.get(e.peer_cookie)
+killed    82 net.py k.local == e.remote and k.remote == e.local
+killed    83 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    84 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    85 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    86 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    87 net.py c.connect = min(cands, key=lambda k: (abs(k.ts_ns - e.ts_ns)
+killed    88 net.py c.connect = min(cands, key=lambda k: (abs(k.ts_ns - e.ts_ns)
+killed    89 net.py counts["connect_after_accept"] += c.connect.ts_ns > e.ts_ns
+killed    90 net.py refused = [e for e in connects if e.rport == port and not e.
+mutation sweep: 100/100 killed
+
+$ mount -t tracefs nodev /sys/kernel/tracing   (classic tracepoints need it, ADR-0020; not mounted in this container by default)
+$ make it-p15d
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+case 2: stop by SIGTERM
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 4: a bad flag
+it_p15d: PASS (0 failed checks)
+
+$ ruff check --select E9,F --extend-exclude third_party .
+All checks passed!
