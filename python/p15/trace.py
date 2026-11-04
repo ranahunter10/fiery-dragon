@@ -219,8 +219,9 @@ def text_report(ctx: Context, rep: N.PortReport) -> str:
     L += ["", "How the joins were made",
           "  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)",
           f"  client -> accept: by endpoints on this host (an inference): {c['client_by_endpoints']} matched, "
-          f"{c['endpoint_ambiguous']} of them with more than one candidate (the nearest earlier connect taken), "
-          f"{c['client_not_found']} not found",
+          f"{c['endpoint_ambiguous']} of them with more than one candidate (the connect nearest in time taken, "
+          f"within {N.JOIN_WINDOW_NS // 10**9} s either side), {c['connect_after_accept']} whose connect returned after "
+          f"the accept, {c['client_not_found']} not found",
           f"  process tree: {len(ctx.tree.procs)} processes, {t['pre_existing']} started before the capture "
           f"(their parents come with the snapshot, step 4c), {t['fork_missing']} with a missing FORK; "
           f"ADR-0009 checks: {t['exit_twice']} double exits, {t['fork_twice']} double forks (must be 0)"]
