@@ -1,0 +1,859 @@
+﻿2026-11-02T09:53:12.6415528Z Current runner version: '2.338.2'
+2026-11-02T09:53:12.6442315Z ##[group]Runner Image Provisioner
+2026-11-02T09:53:12.6443702Z Hosted Compute Agent
+2026-11-02T09:53:12.6444348Z Version: 20261021.618
+2026-11-02T09:53:12.6445020Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-11-02T09:53:12.6445876Z Build Date: 2026-10-21T00:45:21Z
+2026-11-02T09:53:12.6446591Z Worker ID: {bf3617af-247d-4e7a-9135-0cdf4a530180}
+2026-11-02T09:53:12.6447307Z Region: eastus
+2026-11-02T09:53:12.6447995Z Cloud: Azure
+2026-11-02T09:53:12.6448615Z ##[endgroup]
+2026-11-02T09:53:12.6450262Z ##[group]Operating System
+2026-11-02T09:53:12.6450940Z Ubuntu
+2026-11-02T09:53:12.6451455Z 24.04.5
+2026-11-02T09:53:12.6452058Z LTS
+2026-11-02T09:53:12.6452617Z ##[endgroup]
+2026-11-02T09:53:12.6453679Z ##[group]Runner Image
+2026-11-02T09:53:12.6454344Z Image: ubuntu-24.04
+2026-11-02T09:53:12.6454915Z Version: 20261025.353.1
+2026-11-02T09:53:12.6456301Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-02T09:53:12.6457932Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+2026-11-02T09:53:12.6458938Z ##[endgroup]
+2026-11-02T09:53:12.6460103Z ##[group]GITHUB_TOKEN Permissions
+2026-11-02T09:53:12.6462276Z Contents: read
+2026-11-02T09:53:12.6463144Z Metadata: read
+2026-11-02T09:53:12.6463899Z ##[endgroup]
+2026-11-02T09:53:12.6465992Z Secret source: Actions
+2026-11-02T09:53:12.6467073Z Cache mode: write
+2026-11-02T09:53:12.6468057Z Prepare workflow directory
+2026-11-02T09:53:12.6801872Z Prepare all required actions
+2026-11-02T09:53:12.6851096Z Getting action download info
+2026-11-02T09:53:12.8929930Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-02T09:53:13.0942883Z Complete job name: BPF build (vendored libbpf/bpftool) and smoke load (runner kernel, not the target)
+2026-11-02T09:53:13.1894105Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-02T09:53:13.1895255Z with:
+2026-11-02T09:53:13.1895677Z   submodules: recursive
+2026-11-02T09:53:13.1896175Z   repository: ranahunter10/fiery-dragon
+2026-11-02T09:53:13.1900001Z   token: ***
+2026-11-02T09:53:13.1900461Z   ssh-strict: true
+2026-11-02T09:53:13.1900899Z   ssh-user: git
+2026-11-02T09:53:13.1901338Z   persist-credentials: true
+2026-11-02T09:53:13.1901823Z   clean: true
+2026-11-02T09:53:13.1902253Z   sparse-checkout-cone-mode: true
+2026-11-02T09:53:13.1902913Z   fetch-depth: 1
+2026-11-02T09:53:13.1903360Z   fetch-tags: false
+2026-11-02T09:53:13.1903804Z   show-progress: true
+2026-11-02T09:53:13.1904241Z   lfs: false
+2026-11-02T09:53:13.1904658Z   set-safe-directory: true
+2026-11-02T09:53:13.1905161Z   allow-unsafe-pr-checkout: false
+2026-11-02T09:53:13.1905964Z ##[endgroup]
+2026-11-02T09:53:13.5282513Z Syncing repository: ranahunter10/fiery-dragon
+2026-11-02T09:53:13.5285798Z ##[group]Getting Git version info
+2026-11-02T09:53:13.5286697Z Working directory is '/home/runner/work/fiery-dragon/fiery-dragon'
+2026-11-02T09:53:13.5288612Z [command]/usr/bin/git version
+2026-11-02T09:53:13.5365725Z git version 2.56.0
+2026-11-02T09:53:13.5392118Z ##[endgroup]
+2026-11-02T09:53:13.5405413Z Temporarily overriding HOME='/home/runner/work/_temp/f6f74a52-c615-46cd-b2a1-05821b7ede99' before making global git config changes
+2026-11-02T09:53:13.5408118Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-02T09:53:13.5413003Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/fiery-dragon/fiery-dragon
+2026-11-02T09:53:13.5469424Z Deleting the contents of '/home/runner/work/fiery-dragon/fiery-dragon'
+2026-11-02T09:53:13.5473248Z ##[group]Determining repository object format
+2026-11-02T09:53:13.5474877Z ##[endgroup]
+2026-11-02T09:53:13.5476669Z ##[group]Initializing the repository
+2026-11-02T09:53:13.5479305Z [command]/usr/bin/git init /home/runner/work/fiery-dragon/fiery-dragon
+2026-11-02T09:53:13.5601374Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-02T09:53:13.5604224Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-02T09:53:13.5606101Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-02T09:53:13.5606971Z hint: call:
+2026-11-02T09:53:13.5607413Z hint:
+2026-11-02T09:53:13.5607998Z hint: 	git config --global init.defaultBranch <name>
+2026-11-02T09:53:13.5609191Z hint:
+2026-11-02T09:53:13.5609846Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-02T09:53:13.5610873Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-02T09:53:13.5612309Z hint:
+2026-11-02T09:53:13.5613413Z hint: 	git branch -m <name>
+2026-11-02T09:53:13.5614326Z hint:
+2026-11-02T09:53:13.5615575Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-02T09:53:13.5620904Z Initialized empty Git repository in /home/runner/work/fiery-dragon/fiery-dragon/.git/
+2026-11-02T09:53:13.5636302Z [command]/usr/bin/git remote add origin https://github.com/ranahunter10/fiery-dragon
+2026-11-02T09:53:13.5690062Z ##[endgroup]
+2026-11-02T09:53:13.5691102Z ##[group]Disabling automatic garbage collection
+2026-11-02T09:53:13.5693858Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-02T09:53:13.5731210Z ##[endgroup]
+2026-11-02T09:53:13.5732502Z ##[group]Setting up auth
+2026-11-02T09:53:13.5733562Z Removing SSH command configuration
+2026-11-02T09:53:13.5737598Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-02T09:53:13.5779169Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-02T09:53:13.6217122Z Removing HTTP extra header
+2026-11-02T09:53:13.6224593Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-02T09:53:13.6278551Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-02T09:53:13.6561418Z Removing includeIf entries pointing to credentials config files
+2026-11-02T09:53:13.6569818Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T09:53:13.6624514Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T09:53:13.6905878Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-02T09:53:13.6969559Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:13.7019706Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:13.7067029Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:13.7114344Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:13.7156757Z ##[endgroup]
+2026-11-02T09:53:13.7157563Z ##[group]Fetching the repository
+2026-11-02T09:53:13.7164011Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +dc65a67cb6a12629a97aaefc1c835da66a10692d:refs/remotes/pull/35/merge
+2026-11-02T09:53:14.0959608Z From https://github.com/ranahunter10/fiery-dragon
+2026-11-02T09:53:14.0962587Z  * [new ref]         dc65a67cb6a12629a97aaefc1c835da66a10692d -> pull/35/merge
+2026-11-02T09:53:14.0969427Z ##[endgroup]
+2026-11-02T09:53:14.0971998Z ##[group]Determining the checkout info
+2026-11-02T09:53:14.0974824Z ##[endgroup]
+2026-11-02T09:53:14.0976236Z [command]/usr/bin/git sparse-checkout disable
+2026-11-02T09:53:14.1047066Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-02T09:53:14.1091825Z ##[group]Checking out the ref
+2026-11-02T09:53:14.1096824Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/35/merge
+2026-11-02T09:53:14.1753917Z Note: switching to 'refs/remotes/pull/35/merge'.
+2026-11-02T09:53:14.1755152Z 
+2026-11-02T09:53:14.1756112Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-02T09:53:14.1758456Z changes and commit them, and you can discard any commits you make in this
+2026-11-02T09:53:14.1760831Z state without impacting any branches by switching back to a branch.
+2026-11-02T09:53:14.1762164Z 
+2026-11-02T09:53:14.1763266Z If you want to create a new branch to retain commits you create, you may
+2026-11-02T09:53:14.1766059Z do so (now or later) by using -c with the switch command. Example:
+2026-11-02T09:53:14.1767645Z 
+2026-11-02T09:53:14.1768285Z   git switch -c <new-branch-name>
+2026-11-02T09:53:14.1769438Z 
+2026-11-02T09:53:14.1770315Z Or undo this operation with:
+2026-11-02T09:53:14.1771771Z 
+2026-11-02T09:53:14.1772623Z   git switch -
+2026-11-02T09:53:14.1774012Z 
+2026-11-02T09:53:14.1775696Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-02T09:53:14.1777970Z 
+2026-11-02T09:53:14.1780833Z HEAD is now at dc65a67 Merge a6341fba1ef3d0bdb4d40b2deca05ee907359fb8 into 9a8c2db07c95e1939fbb4cf7e6a547e7c600195f
+2026-11-02T09:53:14.1788468Z ##[endgroup]
+2026-11-02T09:53:14.1791513Z ##[group]Setting up auth for fetching submodules
+2026-11-02T09:53:14.1798204Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-02T09:53:14.1845955Z [command]/usr/bin/git config --global include.path /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:14.1891231Z [command]/usr/bin/git config --global --unset-all url.https://github.com/.insteadOf
+2026-11-02T09:53:14.1935567Z [command]/usr/bin/git config --global --add url.https://github.com/.insteadOf git@github.com:
+2026-11-02T09:53:14.1982603Z [command]/usr/bin/git config --global --add url.https://github.com/.insteadOf org-129541702@github.com:
+2026-11-02T09:53:14.2027295Z ##[endgroup]
+2026-11-02T09:53:14.2029783Z ##[group]Fetching submodules
+2026-11-02T09:53:14.2031758Z [command]/usr/bin/git submodule sync --recursive
+2026-11-02T09:53:14.2285314Z [command]/usr/bin/git -c protocol.version=2 submodule update --init --force --depth=1 --recursive
+2026-11-02T09:53:14.2538212Z Submodule 'third_party/bpftool' (https://github.com/libbpf/bpftool) registered for path 'third_party/bpftool'
+2026-11-02T09:53:14.2544246Z Submodule 'third_party/libbpf' (https://github.com/libbpf/libbpf) registered for path 'third_party/libbpf'
+2026-11-02T09:53:14.2573535Z Cloning into '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool'...
+2026-11-02T09:53:14.5660752Z Cloning into '/home/runner/work/fiery-dragon/fiery-dragon/third_party/libbpf'...
+2026-11-02T09:53:15.5895034Z From https://github.com/libbpf/bpftool
+2026-11-02T09:53:15.5896604Z  * branch            4222ef1c8cdb0a1ea03c7a8c650ec334b782902d -> FETCH_HEAD
+2026-11-02T09:53:15.6071689Z Submodule path 'third_party/bpftool': checked out '4222ef1c8cdb0a1ea03c7a8c650ec334b782902d'
+2026-11-02T09:53:15.6111990Z Submodule 'libbpf' (https://github.com/libbpf/libbpf.git) registered for path 'third_party/bpftool/libbpf'
+2026-11-02T09:53:15.6139108Z Cloning into '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/libbpf'...
+2026-11-02T09:53:16.6552503Z From https://github.com/libbpf/libbpf
+2026-11-02T09:53:16.6553648Z  * branch            f5dcbae736e5d7f83a35718e01be1a8e3010fa39 -> FETCH_HEAD
+2026-11-02T09:53:16.6920334Z Submodule path 'third_party/bpftool/libbpf': checked out 'f5dcbae736e5d7f83a35718e01be1a8e3010fa39'
+2026-11-02T09:53:17.3018751Z From https://github.com/libbpf/libbpf
+2026-11-02T09:53:17.3019644Z  * branch            f5dcbae736e5d7f83a35718e01be1a8e3010fa39 -> FETCH_HEAD
+2026-11-02T09:53:17.3387474Z Submodule path 'third_party/libbpf': checked out 'f5dcbae736e5d7f83a35718e01be1a8e3010fa39'
+2026-11-02T09:53:17.3424682Z [command]/usr/bin/git submodule foreach --recursive git config --local gc.auto 0
+2026-11-02T09:53:17.3669178Z Entering 'third_party/bpftool'
+2026-11-02T09:53:17.3743842Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:17.3786895Z Entering 'third_party/libbpf'
+2026-11-02T09:53:17.3837092Z ##[endgroup]
+2026-11-02T09:53:17.3837931Z ##[group]Persisting credentials for submodules
+2026-11-02T09:53:17.3845149Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'url\.https\:\/\/github\.com\/\.insteadOf' && git config --local --unset-all 'url.https://github.com/.insteadOf' || :"
+2026-11-02T09:53:17.4085683Z Entering 'third_party/bpftool'
+2026-11-02T09:53:17.4133405Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:17.4181633Z Entering 'third_party/libbpf'
+2026-11-02T09:53:17.4248486Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T09:53:17.4484380Z Entering 'third_party/bpftool'
+2026-11-02T09:53:17.4509264Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config	remote.origin.url
+2026-11-02T09:53:17.4527691Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:17.4548674Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config	remote.origin.url
+2026-11-02T09:53:17.4573018Z Entering 'third_party/libbpf'
+2026-11-02T09:53:17.4592261Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config	remote.origin.url
+2026-11-02T09:53:17.4625332Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config includeIf.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:17.4672205Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config includeIf.gitdir:/github/workspace/.git/modules/third_party/bpftool.path /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:17.4719284Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config includeIf.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:17.4770392Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config includeIf.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:17.4834506Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config includeIf.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:17.4878703Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config includeIf.gitdir:/github/workspace/.git/modules/third_party/libbpf.path /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:17.4921486Z [command]/usr/bin/git submodule foreach --recursive git config --local --add 'url.https://github.com/.insteadOf' 'git@github.com:'
+2026-11-02T09:53:17.5160736Z Entering 'third_party/bpftool'
+2026-11-02T09:53:17.5202111Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:17.5248635Z Entering 'third_party/libbpf'
+2026-11-02T09:53:17.5307697Z [command]/usr/bin/git submodule foreach --recursive git config --local --add 'url.https://github.com/.insteadOf' 'org-129541702@github.com:'
+2026-11-02T09:53:17.5556115Z Entering 'third_party/bpftool'
+2026-11-02T09:53:17.5599698Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:17.5645799Z Entering 'third_party/libbpf'
+2026-11-02T09:53:17.5699023Z ##[endgroup]
+2026-11-02T09:53:17.5784232Z [command]/usr/bin/git log -1 --format=%H
+2026-11-02T09:53:17.5834226Z dc65a67cb6a12629a97aaefc1c835da66a10692d
+2026-11-02T09:53:17.6072119Z ##[group]Run sudo apt-get update -q
+2026-11-02T09:53:17.6072540Z [36;1msudo apt-get update -q[0m
+2026-11-02T09:53:17.6073403Z [36;1msudo apt-get install -y -q clang llvm gcc make pkg-config libelf-dev zlib1g-dev libssl-dev python3-numpy[0m
+2026-11-02T09:53:17.6074005Z [36;1muname -r; clang --version | head -1[0m
+2026-11-02T09:53:17.6098774Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:17.6099050Z ##[endgroup]
+2026-11-02T09:53:17.6887566Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-11-02T09:53:17.7242147Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-11-02T09:53:17.7243882Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-11-02T09:53:17.7264007Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-11-02T09:53:17.7322552Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-11-02T09:53:17.7343961Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-11-02T09:53:17.8446749Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [682 kB]
+2026-11-02T09:53:17.8617020Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [617 kB]
+2026-11-02T09:53:17.8960435Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1408 kB]
+2026-11-02T09:53:17.9241899Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [311 kB]
+2026-11-02T09:53:17.9265363Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1707 kB]
+2026-11-02T09:53:17.9357586Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [343 kB]
+2026-11-02T09:53:17.9386645Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1813 kB]
+2026-11-02T09:53:17.9485664Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [412 kB]
+2026-11-02T09:53:17.9517081Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+2026-11-02T09:53:18.0001122Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1146 kB]
+2026-11-02T09:53:18.0061018Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [231 kB]
+2026-11-02T09:53:18.0083129Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1223 kB]
+2026-11-02T09:53:18.0562014Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [246 kB]
+2026-11-02T09:53:21.1678613Z Fetched 10.5 MB in 1s (9654 kB/s)
+2026-11-02T09:53:22.2374135Z Reading package lists...
+2026-11-02T09:53:22.2762745Z Reading package lists...
+2026-11-02T09:53:22.4830641Z Building dependency tree...
+2026-11-02T09:53:22.4838266Z Reading state information...
+2026-11-02T09:53:22.6261112Z gcc is already the newest version (4:13.2.0-7ubuntu1).
+2026-11-02T09:53:22.6261774Z make is already the newest version (4.3-4.1build2).
+2026-11-02T09:53:22.6262217Z pkg-config is already the newest version (1.8.1-2build1).
+2026-11-02T09:53:22.6263158Z zlib1g-dev is already the newest version (1:1.3.dfsg-3.1ubuntu2.3).
+2026-11-02T09:53:22.6264046Z libssl-dev is already the newest version (3.0.13-0ubuntu3.16).
+2026-11-02T09:53:22.6264525Z The following additional packages will be installed:
+2026-11-02T09:53:22.6267743Z   libblas3 liblapack3 llvm-runtime
+2026-11-02T09:53:22.6273538Z Suggested packages:
+2026-11-02T09:53:22.6273930Z   python3-pytest
+2026-11-02T09:53:22.6473002Z The following NEW packages will be installed:
+2026-11-02T09:53:22.6479078Z   clang libblas3 libelf-dev liblapack3 llvm llvm-runtime python3-numpy
+2026-11-02T09:53:22.6678954Z 0 upgraded, 7 newly installed, 0 to remove and 6 not upgraded.
+2026-11-02T09:53:22.6679563Z Need to get 7405 kB of archives.
+2026-11-02T09:53:22.6679921Z After this operation, 32.4 MB of additional disk space will be used.
+2026-11-02T09:53:22.6680686Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-11-02T09:53:22.7023980Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 clang amd64 1:18.0-59~exp2 [5846 B]
+2026-11-02T09:53:22.7174691Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libblas3 amd64 3.12.0-3build1.1 [238 kB]
+2026-11-02T09:53:22.7360748Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libelf-dev amd64 0.190-1.1ubuntu0.1 [68.5 kB]
+2026-11-02T09:53:22.7538214Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 liblapack3 amd64 3.12.0-3build1.1 [2646 kB]
+2026-11-02T09:53:22.7834277Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 llvm-runtime amd64 1:18.0-59~exp2 [5496 B]
+2026-11-02T09:53:22.7977058Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble/universe amd64 llvm amd64 1:18.0-59~exp2 [4146 B]
+2026-11-02T09:53:22.8120112Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 python3-numpy amd64 1:1.26.4+ds-6ubuntu1 [4437 kB]
+2026-11-02T09:53:23.1074445Z Fetched 7405 kB in 0s (41.1 MB/s)
+2026-11-02T09:53:23.1320654Z Selecting previously unselected package clang.
+2026-11-02T09:53:23.1647248Z (Reading database ... 
+2026-11-02T09:53:23.1647776Z (Reading database ... 5%
+2026-11-02T09:53:23.1648127Z (Reading database ... 10%
+2026-11-02T09:53:23.1648526Z (Reading database ... 15%
+2026-11-02T09:53:23.1649034Z (Reading database ... 20%
+2026-11-02T09:53:23.1649558Z (Reading database ... 25%
+2026-11-02T09:53:23.1650038Z (Reading database ... 30%
+2026-11-02T09:53:23.1650577Z (Reading database ... 35%
+2026-11-02T09:53:23.1651012Z (Reading database ... 40%
+2026-11-02T09:53:23.1651306Z (Reading database ... 45%
+2026-11-02T09:53:23.1651565Z (Reading database ... 50%
+2026-11-02T09:53:23.1694469Z (Reading database ... 55%
+2026-11-02T09:53:23.3163322Z (Reading database ... 60%
+2026-11-02T09:53:23.5203965Z (Reading database ... 65%
+2026-11-02T09:53:23.7246687Z (Reading database ... 70%
+2026-11-02T09:53:23.9332312Z (Reading database ... 75%
+2026-11-02T09:53:24.1265427Z (Reading database ... 80%
+2026-11-02T09:53:24.2320978Z (Reading database ... 85%
+2026-11-02T09:53:24.3873412Z (Reading database ... 90%
+2026-11-02T09:53:24.5661715Z (Reading database ... 95%
+2026-11-02T09:53:24.5662432Z (Reading database ... 100%
+2026-11-02T09:53:24.5663617Z (Reading database ... 215504 files and directories currently installed.)
+2026-11-02T09:53:24.5706848Z Preparing to unpack .../0-clang_1%3a18.0-59~exp2_amd64.deb ...
+2026-11-02T09:53:24.5735602Z Unpacking clang (1:18.0-59~exp2) ...
+2026-11-02T09:53:24.6024405Z Selecting previously unselected package libblas3:amd64.
+2026-11-02T09:53:24.6165022Z Preparing to unpack .../1-libblas3_3.12.0-3build1.1_amd64.deb ...
+2026-11-02T09:53:24.6219859Z Unpacking libblas3:amd64 (3.12.0-3build1.1) ...
+2026-11-02T09:53:24.6524250Z Selecting previously unselected package libelf-dev:amd64.
+2026-11-02T09:53:24.6666239Z Preparing to unpack .../2-libelf-dev_0.190-1.1ubuntu0.1_amd64.deb ...
+2026-11-02T09:53:24.6674822Z Unpacking libelf-dev:amd64 (0.190-1.1ubuntu0.1) ...
+2026-11-02T09:53:24.6981381Z Selecting previously unselected package liblapack3:amd64.
+2026-11-02T09:53:24.7121786Z Preparing to unpack .../3-liblapack3_3.12.0-3build1.1_amd64.deb ...
+2026-11-02T09:53:24.7161731Z Unpacking liblapack3:amd64 (3.12.0-3build1.1) ...
+2026-11-02T09:53:24.7746089Z Selecting previously unselected package llvm-runtime:amd64.
+2026-11-02T09:53:24.7887829Z Preparing to unpack .../4-llvm-runtime_1%3a18.0-59~exp2_amd64.deb ...
+2026-11-02T09:53:24.7896855Z Unpacking llvm-runtime:amd64 (1:18.0-59~exp2) ...
+2026-11-02T09:53:24.8130640Z Selecting previously unselected package llvm.
+2026-11-02T09:53:24.8270119Z Preparing to unpack .../5-llvm_1%3a18.0-59~exp2_amd64.deb ...
+2026-11-02T09:53:24.8311692Z Unpacking llvm (1:18.0-59~exp2) ...
+2026-11-02T09:53:24.8736249Z Selecting previously unselected package python3-numpy.
+2026-11-02T09:53:24.8878339Z Preparing to unpack .../6-python3-numpy_1%3a1.26.4+ds-6ubuntu1_amd64.deb ...
+2026-11-02T09:53:24.8888384Z Unpacking python3-numpy (1:1.26.4+ds-6ubuntu1) ...
+2026-11-02T09:53:25.1060598Z Setting up libblas3:amd64 (3.12.0-3build1.1) ...
+2026-11-02T09:53:25.1126799Z update-alternatives: using /usr/lib/x86_64-linux-gnu/blas/libblas.so.3 to provide /usr/lib/x86_64-linux-gnu/libblas.so.3 (libblas.so.3-x86_64-linux-gnu) in auto mode
+2026-11-02T09:53:25.1148772Z Setting up clang (1:18.0-59~exp2) ...
+2026-11-02T09:53:25.1369032Z Setting up llvm-runtime:amd64 (1:18.0-59~exp2) ...
+2026-11-02T09:53:25.1391081Z Setting up libelf-dev:amd64 (0.190-1.1ubuntu0.1) ...
+2026-11-02T09:53:25.1418887Z Setting up llvm (1:18.0-59~exp2) ...
+2026-11-02T09:53:25.1447939Z Setting up liblapack3:amd64 (3.12.0-3build1.1) ...
+2026-11-02T09:53:25.1511522Z update-alternatives: using /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3 to provide /usr/lib/x86_64-linux-gnu/liblapack.so.3 (liblapack.so.3-x86_64-linux-gnu) in auto mode
+2026-11-02T09:53:25.1529604Z Setting up python3-numpy (1:1.26.4+ds-6ubuntu1) ...
+2026-11-02T09:53:26.6199041Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-11-02T09:53:26.6228734Z Not building database; man-db/auto-update is not 'true'.
+2026-11-02T09:53:26.6243797Z Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+2026-11-02T09:53:27.3575473Z 
+2026-11-02T09:53:27.3576448Z Running kernel seems to be up-to-date.
+2026-11-02T09:53:27.3576879Z 
+2026-11-02T09:53:27.3577026Z No services need to be restarted.
+2026-11-02T09:53:27.3577263Z 
+2026-11-02T09:53:27.3577393Z No containers need to be restarted.
+2026-11-02T09:53:27.3577631Z 
+2026-11-02T09:53:27.3577783Z No user sessions are running outdated binaries.
+2026-11-02T09:53:27.3578067Z 
+2026-11-02T09:53:27.3578330Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-11-02T09:53:28.2793362Z 7.0.0-1017-azure
+2026-11-02T09:53:29.0383407Z Ubuntu clang version 18.1.3 (1ubuntu1)
+2026-11-02T09:53:29.0678315Z ##[group]Run cd bpf/vmlinux && sha256sum -c SHA256SUMS
+2026-11-02T09:53:29.0678839Z [36;1mcd bpf/vmlinux && sha256sum -c SHA256SUMS[0m
+2026-11-02T09:53:29.0699722Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:29.0699972Z ##[endgroup]
+2026-11-02T09:53:29.0788275Z vmlinux-7.0.0-38.h: OK
+2026-11-02T09:53:29.0827927Z ##[group]Run make -j"$(nproc)"
+2026-11-02T09:53:29.0828229Z [36;1mmake -j"$(nproc)"[0m
+2026-11-02T09:53:29.0847698Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:29.0847987Z ##[endgroup]
+2026-11-02T09:53:29.0945653Z mkdir -p build
+2026-11-02T09:53:29.0959802Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_wal.c daemon/wal.c daemon/crc32c.c -o build/test_wal
+2026-11-02T09:53:29.0965544Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_exitcodes.c -o build/test_exitcodes
+2026-11-02T09:53:29.0970435Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build/test_records
+2026-11-02T09:53:29.1773820Z make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj \
+2026-11-02T09:53:29.1775436Z   DESTDIR=/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+2026-11-02T09:53:29.1788353Z make[1]: Entering directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/libbpf/src'
+2026-11-02T09:53:29.1944501Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs
+2026-11-02T09:53:29.1970284Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj
+2026-11-02T09:53:29.1990953Z   INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+2026-11-02T09:53:29.2058053Z   INSTALL  ../include/uapi/linux/bpf.h ../include/uapi/linux/bpf_common.h ../include/uapi/linux/btf.h
+2026-11-02T09:53:29.2111870Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/bpf.o
+2026-11-02T09:53:29.2705537Z mkdir -p /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool
+2026-11-02T09:53:29.2726565Z make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/ bootstrap
+2026-11-02T09:53:29.2745311Z make[1]: Entering directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/src'
+2026-11-02T09:53:29.4851369Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/btf.o
+2026-11-02T09:53:30.1193118Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/libbpf.o
+2026-11-02T09:53:30.1197693Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/libbpf_utils.o
+2026-11-02T09:53:30.3159465Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/netlink.o
+2026-11-02T09:53:30.8274266Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/nlattr.o
+2026-11-02T09:53:30.9534557Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/libbpf_probes.o
+2026-11-02T09:53:31.1394549Z ...                        libbfd: [ [31mOFF[m ]
+2026-11-02T09:53:31.1453590Z ...               clang-bpf-co-re: [ [32mon[m  ]
+2026-11-02T09:53:31.1497829Z ...                          llvm: [ [32mon[m  ]
+2026-11-02T09:53:31.1529234Z ...                        libcap: [ [31mOFF[m ]
+2026-11-02T09:53:31.1552618Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/bpf_prog_linfo.o
+2026-11-02T09:53:31.1704134Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf
+2026-11-02T09:53:31.1743779Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/
+2026-11-02T09:53:31.1773787Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/
+2026-11-02T09:53:31.1776779Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf/hashmap.h
+2026-11-02T09:53:31.1833948Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf/relo_core.h
+2026-11-02T09:53:31.1863860Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf/libbpf_internal.h
+2026-11-02T09:53:31.1893767Z make[2]: Entering directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/libbpf/src'
+2026-11-02T09:53:31.2111255Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs
+2026-11-02T09:53:31.2164672Z   INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+2026-11-02T09:53:31.2221034Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/bpf.o
+2026-11-02T09:53:31.2984911Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf.o
+2026-11-02T09:53:31.5694510Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/libbpf.o
+2026-11-02T09:53:32.2005474Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/libbpf_utils.o
+2026-11-02T09:53:32.4134143Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/btf_dump.o
+2026-11-02T09:53:33.3224347Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/netlink.o
+2026-11-02T09:53:33.5164212Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/hashmap.o
+2026-11-02T09:53:33.6414624Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/nlattr.o
+2026-11-02T09:53:33.7624102Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/ringbuf.o
+2026-11-02T09:53:33.7984075Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/strset.o
+2026-11-02T09:53:33.9244364Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/libbpf_probes.o
+2026-11-02T09:53:34.0414330Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/linker.o
+2026-11-02T09:53:34.1158271Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/gen_loader.o
+2026-11-02T09:53:34.7224362Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/bpf_prog_linfo.o
+2026-11-02T09:53:34.8594061Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/relo_core.o
+2026-11-02T09:53:35.1984162Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/usdt.o
+2026-11-02T09:53:35.4474339Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf_dump.o
+2026-11-02T09:53:35.6460626Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/hashmap.o
+2026-11-02T09:53:35.7714327Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/zip.o
+2026-11-02T09:53:35.9079996Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/ringbuf.o
+2026-11-02T09:53:35.9424528Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/elf.o
+2026-11-02T09:53:36.1781712Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/features.o
+2026-11-02T09:53:36.1800472Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/btf_iter.o
+2026-11-02T09:53:36.2824302Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/strset.o
+2026-11-02T09:53:36.3614292Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/staticobjs/btf_relocate.o
+2026-11-02T09:53:36.4114927Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/linker.o
+2026-11-02T09:53:36.4464401Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/gen_loader.o
+2026-11-02T09:53:36.6054077Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/libbpf.pc
+2026-11-02T09:53:36.6113879Z   AR       /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/libbpf.a
+2026-11-02T09:53:37.0484397Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/relo_core.o
+2026-11-02T09:53:37.2275415Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/obj/libbpf.a 
+2026-11-02T09:53:37.2331656Z make[1]: Leaving directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/libbpf/src'
+2026-11-02T09:53:37.2355942Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+2026-11-02T09:53:37.4030458Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/usdt.o
+2026-11-02T09:53:37.5024301Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/zip.o
+2026-11-02T09:53:37.6057741Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/load_check.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+2026-11-02T09:53:37.6594595Z clang -g -O2 -target bpf -Wall -Werror -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+2026-11-02T09:53:37.7210589Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -c bpf/test/rb_size.bpf.c -o build/rb_size.bpf.o
+2026-11-02T09:53:37.8571691Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/elf.o
+2026-11-02T09:53:38.0514628Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/features.o
+2026-11-02T09:53:38.0684552Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf_iter.o
+2026-11-02T09:53:38.1375048Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -c bpf/test/net_probe.bpf.c -o build/net_probe.bpf.o
+2026-11-02T09:53:38.1555275Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -c bpf/progs/spine.bpf.c -o build/spine.bpf.o
+2026-11-02T09:53:38.3354442Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf_relocate.o
+2026-11-02T09:53:38.5017292Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+2026-11-02T09:53:38.5564764Z   AR       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/libbpf/libbpf.a
+2026-11-02T09:53:38.6367498Z make[2]: Leaving directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/libbpf/src'
+2026-11-02T09:53:38.6393968Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/main.o
+2026-11-02T09:53:38.8424161Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/common.o
+2026-11-02T09:53:39.0934239Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/json_writer.o
+2026-11-02T09:53:39.1384521Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/gen.o
+2026-11-02T09:53:39.1614183Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/btf.o
+2026-11-02T09:53:39.2043687Z mkdir -p build/bench
+2026-11-02T09:53:39.2045757Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -DP15_EXEC_WAY=0 -c bpf/progs/spine.bpf.c -o build/bench/spine-fixed.bpf.o
+2026-11-02T09:53:39.2663811Z mkdir -p build/bench
+2026-11-02T09:53:39.2695140Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -DP15_EXEC_WAY=1 -c bpf/progs/spine.bpf.c -o build/bench/spine-output.bpf.o
+2026-11-02T09:53:39.6953883Z mkdir -p build/bench
+2026-11-02T09:53:39.6984950Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -DP15_EXEC_WAY=2 -c bpf/progs/spine.bpf.c -o build/bench/spine-dynptr.bpf.o
+2026-11-02T09:53:39.8184199Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/sign.o
+2026-11-02T09:53:40.0535645Z   LINK     /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/bpftool
+2026-11-02T09:53:40.1518795Z make[1]: Leaving directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/src'
+2026-11-02T09:53:40.1544338Z /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+2026-11-02T09:53:40.1574114Z /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/rb_size.bpf.o > build/rb_size.skel.h
+2026-11-02T09:53:40.2194360Z /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/net_probe.bpf.o > build/net_probe.skel.h
+2026-11-02T09:53:40.3214359Z /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+2026-11-02T09:53:40.3395556Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/core_smoke.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/core_smoke
+2026-11-02T09:53:40.3806923Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/rb_size.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/rb_size
+2026-11-02T09:53:40.4986299Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/net_probe.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/net_probe
+2026-11-02T09:53:40.5566720Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+2026-11-02T09:53:40.6556752Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/rb_cost/exec_cost.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/exec_cost
+2026-11-02T09:53:41.2169215Z ##[group]Run git submodule status
+2026-11-02T09:53:41.2169545Z [36;1mgit submodule status[0m
+2026-11-02T09:53:41.2169839Z [36;1mbuild/bpftool/bootstrap/bpftool version[0m
+2026-11-02T09:53:41.2189888Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:41.2190141Z ##[endgroup]
+2026-11-02T09:53:41.2530516Z  4222ef1c8cdb0a1ea03c7a8c650ec334b782902d third_party/bpftool (4222ef1)
+2026-11-02T09:53:41.2607032Z  f5dcbae736e5d7f83a35718e01be1a8e3010fa39 third_party/libbpf (f5dcbae)
+2026-11-02T09:53:41.2626023Z bpftool v7.7.0
+2026-11-02T09:53:41.2626401Z using libbpf v1.7
+2026-11-02T09:53:41.2626781Z features: skeletons, bootstrap
+2026-11-02T09:53:41.2683698Z ##[group]Run make hardening-check
+2026-11-02T09:53:41.2684055Z [36;1mmake hardening-check[0m
+2026-11-02T09:53:41.2703858Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:41.2704109Z ##[endgroup]
+2026-11-02T09:53:41.3056627Z python3 tools/ci/check_hardening.py build/p15-spine
+2026-11-02T09:53:41.4225473Z ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+2026-11-02T09:53:41.4314592Z ##[group]Run make test-c
+2026-11-02T09:53:41.4314888Z [36;1mmake test-c[0m
+2026-11-02T09:53:41.4335439Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:41.4335714Z ##[endgroup]
+2026-11-02T09:53:41.5088024Z ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+2026-11-02T09:53:41.5088665Z build/test_selftest
+2026-11-02T09:53:41.5097806Z daemon/tests/test_selftest.c: 0 failures
+2026-11-02T09:53:41.5099838Z build/test_wal
+2026-11-02T09:53:41.7019149Z daemon/tests/test_wal.c: 0 failures
+2026-11-02T09:53:41.7020099Z build/test_exitcodes
+2026-11-02T09:53:41.7025793Z daemon/tests/test_exitcodes.c: 0 failures
+2026-11-02T09:53:41.7026997Z build/test_records
+2026-11-02T09:53:41.7032104Z daemon/tests/test_records.c: 0 failures
+2026-11-02T09:53:41.7071546Z ##[group]Run make CC=clang OUT=build-clang -j"$(nproc)" all test-c
+2026-11-02T09:53:41.7072040Z [36;1mmake CC=clang OUT=build-clang -j"$(nproc)" all test-c[0m
+2026-11-02T09:53:41.7092282Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:41.7092538Z ##[endgroup]
+2026-11-02T09:53:41.7175124Z mkdir -p build-clang
+2026-11-02T09:53:41.7191455Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_wal.c daemon/wal.c daemon/crc32c.c -o build-clang/test_wal
+2026-11-02T09:53:41.7216038Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_exitcodes.c -o build-clang/test_exitcodes
+2026-11-02T09:53:41.7986785Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build-clang/test_records
+2026-11-02T09:53:41.9383996Z ok    ignoring a P15_MUST_CHECK result fails the build (clang)
+2026-11-02T09:53:41.9391982Z make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj \
+2026-11-02T09:53:41.9394184Z   DESTDIR=/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+2026-11-02T09:53:41.9406668Z make[1]: Entering directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/libbpf/src'
+2026-11-02T09:53:41.9494546Z mkdir -p /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool
+2026-11-02T09:53:41.9520948Z make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/ bootstrap
+2026-11-02T09:53:41.9543965Z make[1]: Entering directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/src'
+2026-11-02T09:53:41.9804050Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs
+2026-11-02T09:53:41.9805130Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj
+2026-11-02T09:53:41.9834208Z   INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+2026-11-02T09:53:41.9891259Z   INSTALL  ../include/uapi/linux/bpf.h ../include/uapi/linux/bpf_common.h ../include/uapi/linux/btf.h
+2026-11-02T09:53:41.9954052Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/bpf.o
+2026-11-02T09:53:42.2374650Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/btf.o
+2026-11-02T09:53:42.8074308Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/libbpf.o
+2026-11-02T09:53:42.8954663Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/libbpf_utils.o
+2026-11-02T09:53:43.1344020Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/netlink.o
+2026-11-02T09:53:43.1373714Z ...                        libbfd: [ [31mOFF[m ]
+2026-11-02T09:53:43.1391770Z ...               clang-bpf-co-re: [ [32mon[m  ]
+2026-11-02T09:53:43.1434339Z ...                          llvm: [ [32mon[m  ]
+2026-11-02T09:53:43.1454161Z ...                        libcap: [ [31mOFF[m ]
+2026-11-02T09:53:43.1644113Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/include/bpf
+2026-11-02T09:53:43.1673645Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/
+2026-11-02T09:53:43.1703654Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/
+2026-11-02T09:53:43.1733892Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/include/bpf/hashmap.h
+2026-11-02T09:53:43.1763828Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/include/bpf/relo_core.h
+2026-11-02T09:53:43.1793888Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/include/bpf/libbpf_internal.h
+2026-11-02T09:53:43.1823866Z make[2]: Entering directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/libbpf/src'
+2026-11-02T09:53:43.1993784Z   MKDIR    /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs
+2026-11-02T09:53:43.2024180Z   INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+2026-11-02T09:53:43.2083808Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/bpf.o
+2026-11-02T09:53:43.5684307Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/btf.o
+2026-11-02T09:53:44.2504291Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/nlattr.o
+2026-11-02T09:53:44.3704277Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/libbpf_probes.o
+2026-11-02T09:53:44.3854260Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/libbpf.o
+2026-11-02T09:53:44.5684127Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/bpf_prog_linfo.o
+2026-11-02T09:53:44.7144087Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/libbpf_utils.o
+2026-11-02T09:53:44.9269596Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/btf_dump.o
+2026-11-02T09:53:45.7694399Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/netlink.o
+2026-11-02T09:53:45.8404359Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/hashmap.o
+2026-11-02T09:53:45.9694136Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/nlattr.o
+2026-11-02T09:53:46.0934343Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/ringbuf.o
+2026-11-02T09:53:46.2632448Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/strset.o
+2026-11-02T09:53:46.3874144Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/linker.o
+2026-11-02T09:53:46.3903813Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/gen_loader.o
+2026-11-02T09:53:47.4548268Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/relo_core.o
+2026-11-02T09:53:47.5274248Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/libbpf_probes.o
+2026-11-02T09:53:47.7221582Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/usdt.o
+2026-11-02T09:53:47.9344341Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/bpf_prog_linfo.o
+2026-11-02T09:53:47.9554233Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/btf_dump.o
+2026-11-02T09:53:48.0654708Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/zip.o
+2026-11-02T09:53:48.1240543Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/hashmap.o
+2026-11-02T09:53:48.2294109Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/elf.o
+2026-11-02T09:53:48.2475306Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/features.o
+2026-11-02T09:53:48.4705112Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/ringbuf.o
+2026-11-02T09:53:48.4793941Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/btf_iter.o
+2026-11-02T09:53:48.5987418Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/staticobjs/btf_relocate.o
+2026-11-02T09:53:48.7524474Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/strset.o
+2026-11-02T09:53:48.8463507Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/libbpf.pc
+2026-11-02T09:53:48.8523714Z   AR       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/libbpf.a
+2026-11-02T09:53:48.8754690Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/linker.o
+2026-11-02T09:53:48.8783950Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/gen_loader.o
+2026-11-02T09:53:48.9282637Z   INSTALL  /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/obj/libbpf.a 
+2026-11-02T09:53:48.9323731Z make[1]: Leaving directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/libbpf/src'
+2026-11-02T09:53:48.9344026Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/relo_core.o
+2026-11-02T09:53:49.4834167Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/usdt.o
+2026-11-02T09:53:49.5265240Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -c bpf/test/core_smoke.bpf.c -o build-clang/core_smoke.bpf.o
+2026-11-02T09:53:49.9126773Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/load_check.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/load_check
+2026-11-02T09:53:50.1034974Z clang -g -O2 -target bpf -Wall -Werror -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build-clang/empty.bpf.o
+2026-11-02T09:53:50.1155022Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -c bpf/test/rb_size.bpf.c -o build-clang/rb_size.bpf.o
+2026-11-02T09:53:50.1955313Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -c bpf/test/net_probe.bpf.c -o build-clang/net_probe.bpf.o
+2026-11-02T09:53:50.6014099Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/zip.o
+2026-11-02T09:53:50.7615509Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -c bpf/progs/spine.bpf.c -o build-clang/spine.bpf.o
+2026-11-02T09:53:50.7746935Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/elf.o
+2026-11-02T09:53:50.9670027Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/test_selftest
+2026-11-02T09:53:51.2294409Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/features.o
+2026-11-02T09:53:51.4324997Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/btf_iter.o
+2026-11-02T09:53:51.4984152Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/staticobjs/btf_relocate.o
+2026-11-02T09:53:51.5411111Z mkdir -p build-clang/bench
+2026-11-02T09:53:51.5445758Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -DP15_EXEC_WAY=0 -c bpf/progs/spine.bpf.c -o build-clang/bench/spine-fixed.bpf.o
+2026-11-02T09:53:51.6873825Z mkdir -p build-clang/bench
+2026-11-02T09:53:51.6885304Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -DP15_EXEC_WAY=1 -c bpf/progs/spine.bpf.c -o build-clang/bench/spine-output.bpf.o
+2026-11-02T09:53:51.7233844Z mkdir -p build-clang/bench
+2026-11-02T09:53:51.7265111Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -DP15_EXEC_WAY=2 -c bpf/progs/spine.bpf.c -o build-clang/bench/spine-dynptr.bpf.o
+2026-11-02T09:53:51.7507771Z   AR       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/libbpf/libbpf.a
+2026-11-02T09:53:51.8314097Z make[2]: Leaving directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/libbpf/src'
+2026-11-02T09:53:51.8333610Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/main.o
+2026-11-02T09:53:52.0545033Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/common.o
+2026-11-02T09:53:52.4984040Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/json_writer.o
+2026-11-02T09:53:52.5125674Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/gen.o
+2026-11-02T09:53:52.6134006Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/btf.o
+2026-11-02T09:53:52.6507514Z build-clang/test_selftest
+2026-11-02T09:53:52.6526583Z daemon/tests/test_selftest.c: 0 failures
+2026-11-02T09:53:52.6537798Z build-clang/test_wal
+2026-11-02T09:53:52.6633966Z   CC       /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/sign.o
+2026-11-02T09:53:52.8576579Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/rb_cost/exec_cost.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/exec_cost
+2026-11-02T09:53:52.8758666Z daemon/tests/test_wal.c: 0 failures
+2026-11-02T09:53:52.8761681Z build-clang/test_exitcodes
+2026-11-02T09:53:52.8769345Z daemon/tests/test_exitcodes.c: 0 failures
+2026-11-02T09:53:52.8802595Z build-clang/test_records
+2026-11-02T09:53:52.8813808Z daemon/tests/test_records.c: 0 failures
+2026-11-02T09:53:53.1150243Z   LINK     /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/bpftool
+2026-11-02T09:53:53.1774545Z make[1]: Leaving directory '/home/runner/work/fiery-dragon/fiery-dragon/third_party/bpftool/src'
+2026-11-02T09:53:53.1777353Z /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/bpftool gen skeleton build-clang/core_smoke.bpf.o > build-clang/core_smoke.skel.h
+2026-11-02T09:53:53.1781161Z /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/bpftool gen skeleton build-clang/rb_size.bpf.o > build-clang/rb_size.skel.h
+2026-11-02T09:53:53.1784601Z /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/bpftool gen skeleton build-clang/net_probe.bpf.o > build-clang/net_probe.skel.h
+2026-11-02T09:53:53.3354507Z /home/runner/work/fiery-dragon/fiery-dragon/build-clang/bpftool/bootstrap/bpftool gen skeleton build-clang/spine.bpf.o > build-clang/spine.skel.h
+2026-11-02T09:53:53.3416394Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/core_smoke.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/core_smoke
+2026-11-02T09:53:53.3617236Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/net_probe.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/net_probe
+2026-11-02T09:53:53.5261370Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/rb_size.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/rb_size
+2026-11-02T09:53:53.5287185Z clang -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf -Ibuild-clang -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build-clang/libbpf/libbpf.a -lelf -lz -o build-clang/p15-spine
+2026-11-02T09:53:54.0663713Z ##[group]Run make test-c-asan
+2026-11-02T09:53:54.0664079Z [36;1mmake test-c-asan[0m
+2026-11-02T09:53:54.0683386Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:54.0683645Z ##[endgroup]
+2026-11-02T09:53:54.1027324Z mkdir -p build/asan
+2026-11-02T09:53:54.1040717Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_wal.c daemon/wal.c daemon/crc32c.c -o build/asan/test_wal
+2026-11-02T09:53:55.5820371Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/runner/work/fiery-dragon/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/asan/test_selftest
+2026-11-02T09:53:56.3020445Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_exitcodes.c -o build/asan/test_exitcodes
+2026-11-02T09:53:56.4076321Z cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build/asan/test_records
+2026-11-02T09:53:56.8103646Z build/asan/test_wal
+2026-11-02T09:53:57.0703279Z daemon/tests/test_wal.c: 0 failures
+2026-11-02T09:53:57.0722103Z build/asan/test_selftest
+2026-11-02T09:53:57.0820324Z daemon/tests/test_selftest.c: 0 failures
+2026-11-02T09:53:57.0831197Z build/asan/test_exitcodes
+2026-11-02T09:53:57.0931023Z daemon/tests/test_exitcodes.c: 0 failures
+2026-11-02T09:53:57.0944046Z build/asan/test_records
+2026-11-02T09:53:57.1029801Z daemon/tests/test_records.c: 0 failures
+2026-11-02T09:53:57.1086209Z ##[group]Run make layout-check
+2026-11-02T09:53:57.1086535Z [36;1mmake layout-check[0m
+2026-11-02T09:53:57.1111262Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:57.1111529Z ##[endgroup]
+2026-11-02T09:53:57.1473693Z clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/runner/work/fiery-dragon/fiery-dragon/build/libbpf -c schema/generated/p15_layout_probe.bpf.c -o build/p15_layout_probe.bpf.o
+2026-11-02T09:53:57.5283706Z /home/runner/work/fiery-dragon/fiery-dragon/build/bpftool/bootstrap/bpftool -j btf dump file build/p15_layout_probe.bpf.o > build/layout_btf.json
+2026-11-02T09:53:57.5307213Z python3 schema/gen/layout_check.py build/layout_btf.json
+2026-11-02T09:53:57.6625940Z layout check: 9 structs x 3 views, 0 disagreements
+2026-11-02T09:53:57.6860738Z ##[group]Run sudo make smoke
+2026-11-02T09:53:57.6861302Z [36;1msudo make smoke[0m
+2026-11-02T09:53:57.6890410Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:57.6890830Z ##[endgroup]
+2026-11-02T09:53:57.7324199Z build/load_check build/empty.bpf.o
+2026-11-02T09:53:57.7405130Z loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+2026-11-02T09:53:57.7406141Z loaded fd_empty_syscall         section syscall                          fd 5
+2026-11-02T09:53:57.7406919Z 2 programs accepted by the verifier
+2026-11-02T09:53:57.7407461Z build/core_smoke --attach
+2026-11-02T09:53:57.7515489Z loaded: libbpf v1.7
+2026-11-02T09:53:57.7516147Z child 4227: matched 1, start_ns 95417329487; seen 1, reserve_failed 0
+2026-11-02T09:53:57.7516884Z build/rb_size 200
+2026-11-02T09:53:57.8216592Z libbpf v1.7; child argv bytes 200
+2026-11-02T09:53:57.8217137Z mode                      rec len     ring bytes
+2026-11-02T09:53:57.8217919Z fixed (reserve max)           264           1344
+2026-11-02T09:53:57.8218727Z output (exact len)            264            264
+2026-11-02T09:53:57.8284936Z dynptr (exact len)            264            264
+2026-11-02T09:53:57.8285510Z ok: all three modes delivered
+2026-11-02T09:53:57.8285974Z build/p15-spine selftest
+2026-11-02T09:53:58.1730172Z p15-spine: libbpf v1.7, 4 programs attached
+2026-11-02T09:53:58.1731118Z selftest: daemon 4230, child 4231, grandchild 4232; 7 records collected, 0 invalid
+2026-11-02T09:53:58.1731831Z   ok    test child exited 0
+2026-11-02T09:53:58.1732396Z   ok    every record passes the length checks (none invalid)
+2026-11-02T09:53:58.1733349Z   ok    no record dropped for lack of memory
+2026-11-02T09:53:58.1734161Z   ok    every record takes exactly its len in the ring (ADR-0017; 0 do not)
+2026-11-02T09:53:58.1734955Z   ok    exactly one FORK of the child by the daemon (found 1)
+2026-11-02T09:53:58.1735455Z   ok      ... as a new process (kind 1)
+2026-11-02T09:53:58.1735963Z   ok    every child record carries the start_ns its FORK announced (ADR-0009)
+2026-11-02T09:53:58.1736594Z   ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+2026-11-02T09:53:58.1737278Z   ok    exactly 2 RENAMEs from the child (found 2)
+2026-11-02T09:53:58.1738322Z   ok      ... first: daemon comm -> "fd-selftest" (prctl)
+2026-11-02T09:53:58.1738888Z   ok      ... second: "fd-selftest" -> "true" (exec)
+2026-11-02T09:53:58.1739341Z   ok    exactly one FORK of the grandchild by the child (found 1)
+2026-11-02T09:53:58.1739731Z   ok      ... a new process with its own start_ns
+2026-11-02T09:53:58.1740065Z   ok    exactly one EXEC from the child (found 1)
+2026-11-02T09:53:58.1740391Z   ok      ... filename "/bin/true", not truncated
+2026-11-02T09:53:58.1740817Z   ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+2026-11-02T09:53:58.1741228Z   ok      ... no flags; old_tid is the child
+2026-11-02T09:53:58.1741540Z   ok    exactly one EXIT from the child (found 1)
+2026-11-02T09:53:58.1741859Z   ok      ... group_dead, exit status 0
+2026-11-02T09:53:58.1742215Z   ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+2026-11-02T09:53:58.1742651Z   ok      ... group_dead, exit status 7, start_ns as its FORK announced
+2026-11-02T09:53:58.1743542Z   ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+2026-11-02T09:53:58.1744179Z     FORK   ts=95536250801 tgid=4230 tid=4230 start=95488564628 flags=0x0 child=4231/4231 child_start=95536245010 kind=process
+2026-11-02T09:53:58.1744937Z     RENAME ts=95536317068 tgid=4231 tid=4231 start=95536245010 flags=0x0 old="p15-spine" new="fd-selftest"
+2026-11-02T09:53:58.1745675Z     FORK   ts=95536522301 tgid=4231 tid=4231 start=95536245010 flags=0x0 child=4232/4232 child_start=95536519475 kind=process
+2026-11-02T09:53:58.1746387Z     EXIT   ts=95536572381 tgid=4232 tid=4232 start=95536519475 flags=0x0 exit_code=1792 group_dead=1
+2026-11-02T09:53:58.1747020Z     RENAME ts=95537241273 tgid=4231 tid=4231 start=95536245010 flags=0x0 old="fd-selftest" new="true"
+2026-11-02T09:53:58.1748157Z     EXEC   ts=95537308829 tgid=4231 tid=4231 start=95536245010 flags=0x0 old_tid=4231 exe=8388609:1964 gen=2372599296 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+2026-11-02T09:53:58.1749057Z     EXIT   ts=95537853375 tgid=4231 tid=4231 start=95536245010 flags=0x0 exit_code=0 group_dead=1
+2026-11-02T09:53:58.1750014Z selftest: PASS (0 failed checks)
+2026-11-02T09:53:58.1750671Z counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+2026-11-02T09:53:58.1751465Z           FORK        2        2               0             0            0          0
+2026-11-02T09:53:58.1751953Z           EXEC        1        1               0             0            0          0
+2026-11-02T09:53:58.1752312Z           EXIT        2        2               0             0            0          0
+2026-11-02T09:53:58.1752674Z           RENAME      2        2               0             0            0          0
+2026-11-02T09:53:58.1784108Z ##[group]Run uname -r && sudo make smoke-net
+2026-11-02T09:53:58.1784480Z [36;1muname -r && sudo make smoke-net[0m
+2026-11-02T09:53:58.1803736Z shell: /usr/bin/bash -e {0}
+2026-11-02T09:53:58.1803985Z ##[endgroup]
+2026-11-02T09:53:58.1851977Z 7.0.0-1017-azure
+2026-11-02T09:53:58.2216589Z build/net_probe
+2026-11-02T09:53:58.2375348Z libbpf: prog 'net_connect': BPF program load failed: -EACCES
+2026-11-02T09:53:58.2376071Z libbpf: prog 'net_connect': -- BEGIN PROG LOAD LOG --
+2026-11-02T09:53:58.2376480Z 0: R1=ctx() R10=fp0
+2026-11-02T09:53:58.2377330Z ; int BPF_PROG(net_connect, struct file *file, void *address, int addrlen, int file_flags, int ret) @ net_probe.bpf.c:102
+2026-11-02T09:53:58.2378307Z 0: (b7) r2 = 24                       ; R2=24
+2026-11-02T09:53:58.2378651Z 1: (79) r3 = *(u64 *)(r1 +0)
+2026-11-02T09:53:58.2379091Z func '__sys_connect_file' arg0 has btf_id 119710 type STRUCT 'file'
+2026-11-02T09:53:58.2379513Z 2: R1=ctx() R3=ptr_file()
+2026-11-02T09:53:58.2379897Z 2: (0f) r3 += r2                      ; R2=24 R3=ptr_file(off=24)
+2026-11-02T09:53:58.2380312Z 3: (79) r9 = *(u64 *)(r1 +32)         ; R1=ctx() R9=scalar()
+2026-11-02T09:53:58.2380759Z 4: (79) r1 = *(u64 *)(r1 +8)
+2026-11-02T09:53:58.2381391Z func '__sys_connect_file' arg1 has btf_id 88167 type STRUCT '__kernel_sockaddr_storage'
+2026-11-02T09:53:58.2382604Z 5: R1=ptr___kernel_sockaddr_storage()
+2026-11-02T09:53:58.2383729Z ; struct socket *sock = bpf_core_cast(BPF_CORE_READ(file, private_data), struct socket); @ net_probe.bpf.c:104
+2026-11-02T09:53:58.2384714Z 5: (7b) *(u64 *)(r10 -16) = r1        ; R1=ptr___kernel_sockaddr_storage() R10=fp0 fp-16=ptr___kernel_sockaddr_storage()
+2026-11-02T09:53:58.2385321Z 6: (bf) r1 = r10                      ; R1=fp0 R10=fp0
+2026-11-02T09:53:58.2385675Z ;  @ net_probe.bpf.c:0
+2026-11-02T09:53:58.2385954Z 7: (07) r1 += -8                      ; R1=fp-8
+2026-11-02T09:53:58.2386731Z ; struct socket *sock = bpf_core_cast(BPF_CORE_READ(file, private_data), struct socket); @ net_probe.bpf.c:104
+2026-11-02T09:53:58.2387397Z 8: (b7) r2 = 8                        ; R2=8
+2026-11-02T09:53:58.2387825Z 9: (85) call bpf_probe_read_kernel#113        ; R0=scalar() fp-8=mmmmmmmm
+2026-11-02T09:53:58.2388329Z 10: (79) r1 = *(u64 *)(r10 -8)        ; R1=scalar() R10=fp0 fp-8=mmmmmmmm
+2026-11-02T09:53:58.2388850Z 11: (18) r2 = 0x267c9                 ; R2=0x267c9
+2026-11-02T09:53:58.2389331Z 13: (85) call bpf_rdonly_cast#101436          ; R0=untrusted_ptr_socket()
+2026-11-02T09:53:58.2389869Z 14: (bf) r8 = r0                      ; R0=untrusted_ptr_socket() R8=untrusted_ptr_socket()
+2026-11-02T09:53:58.2390313Z 15: (b7) r1 = 4                       ; R1=4
+2026-11-02T09:53:58.2390600Z ; __u32 k = op * 4 + kind; @ net_probe.bpf.c:39
+2026-11-02T09:53:58.2390926Z 16: (63) *(u32 *)(r10 -8) = r1        ; R1=4 R10=fp0 fp-8=mmmm4
+2026-11-02T09:53:58.2391253Z 17: (bf) r2 = r10                     ; R2=fp0 R10=fp0
+2026-11-02T09:53:58.2391531Z ;  @ net_probe.bpf.c:0
+2026-11-02T09:53:58.2391758Z 18: (07) r2 += -8                     ; R2=fp-8
+2026-11-02T09:53:58.2392094Z ; __u64 *v = bpf_map_lookup_elem(&net_ctr, &k); @ net_probe.bpf.c:40
+2026-11-02T09:53:58.2392546Z 19: (18) r1 = 0xffff8f2c98aa3e00      ; R1=map_ptr(map=net_ctr,ks=4,vs=8)
+2026-11-02T09:53:58.2393260Z 21: (85) call bpf_map_lookup_elem#1   ; R0=map_value(map=net_ctr,ks=4,vs=8)
+2026-11-02T09:53:58.2393657Z ; if (v) @ net_probe.bpf.c:42
+2026-11-02T09:53:58.2393969Z 22: (15) if r0 == 0x0 goto pc+3       ; R0=map_value(map=net_ctr,ks=4,vs=8)
+2026-11-02T09:53:58.2394302Z ; (*v)++; @ net_probe.bpf.c:43
+2026-11-02T09:53:58.2394647Z 23: (79) r1 = *(u64 *)(r0 +0)         ; R0=map_value(map=net_ctr,ks=4,vs=8) R1=scalar()
+2026-11-02T09:53:58.2395018Z 24: (07) r1 += 1                      ; R1=scalar()
+2026-11-02T09:53:58.2395366Z 25: (7b) *(u64 *)(r0 +0) = r1         ; R0=map_value(map=net_ctr,ks=4,vs=8) R1=scalar()
+2026-11-02T09:53:58.2395712Z 26: (b7) r6 = 0                       ; R6=0
+2026-11-02T09:53:58.2396345Z ; r = bpf_ringbuf_reserve(&net_rb, sizeof(*r), 0); @ net_probe.bpf.c:78
+2026-11-02T09:53:58.2396839Z 27: (18) r1 = 0xffff8f2c9e9a9c00      ; R1=map_ptr(map=net_rb,ks=0,vs=0)
+2026-11-02T09:53:58.2397420Z 29: (b7) r2 = 72                      ; R2=72
+2026-11-02T09:53:58.2397962Z 30: (b7) r3 = 0                       ; R3=0
+2026-11-02T09:53:58.2398708Z 31: (85) call bpf_ringbuf_reserve#131         ; R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2399683Z 32: (bf) r7 = r0                      ; R0=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=72) R7=ringbuf_mem_or_null(id=2,ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2400183Z ; if (!r) { @ net_probe.bpf.c:79
+2026-11-02T09:53:58.2400911Z 33: (55) if r7 != 0x0 goto pc+9 43: R0=ringbuf_mem(ref_obj_id=2,sz=72) R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) R8=untrusted_ptr_socket() R9=scalar() R10=fp0 fp-8=mmmm4 fp-16=ptr___kernel_sockaddr_storage() refs=2
+2026-11-02T09:53:58.2401700Z ; __builtin_memset(r, 0, sizeof(*r)); @ net_probe.bpf.c:83
+2026-11-02T09:53:58.2402102Z 43: (7b) *(u64 *)(r7 +56) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2402467Z 44: (b7) r1 = 1                       ; R1=1 refs=2
+2026-11-02T09:53:58.2403115Z ; r->op = op; @ net_probe.bpf.c:84
+2026-11-02T09:53:58.2403495Z 45: (6b) *(u16 *)(r7 +56) = r1        ; R1=1 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2404121Z ; __builtin_memset(r, 0, sizeof(*r)); @ net_probe.bpf.c:83
+2026-11-02T09:53:58.2404507Z 46: (7b) *(u64 *)(r7 +64) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2404910Z 47: (7b) *(u64 *)(r7 +48) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2405320Z 48: (7b) *(u64 *)(r7 +40) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2405708Z 49: (7b) *(u64 *)(r7 +32) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2406097Z 50: (7b) *(u64 *)(r7 +24) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2406494Z 51: (7b) *(u64 *)(r7 +16) = r6        ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2406894Z 52: (7b) *(u64 *)(r7 +8) = r6         ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2407282Z 53: (7b) *(u64 *)(r7 +0) = r6         ; R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2407720Z ; r->tgid = bpf_get_current_pid_tgid() >> 32; @ net_probe.bpf.c:85
+2026-11-02T09:53:58.2408129Z 54: (85) call bpf_get_current_pid_tgid#14     ; R0=scalar() refs=2
+2026-11-02T09:53:58.2408462Z ; r->ret = ret; @ net_probe.bpf.c:110
+2026-11-02T09:53:58.2408828Z 55: (63) *(u32 *)(r7 +48) = r9        ; R7=ringbuf_mem(ref_obj_id=2,sz=72) R9=scalar() refs=2
+2026-11-02T09:53:58.2409262Z ; r->tgid = bpf_get_current_pid_tgid() >> 32; @ net_probe.bpf.c:85
+2026-11-02T09:53:58.2409742Z 56: (77) r0 >>= 32                    ; R0=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) refs=2
+2026-11-02T09:53:58.2410421Z 57: (63) *(u32 *)(r7 +52) = r0        ; R0=scalar(smin=0,smax=umax=0xffffffff,var_off=(0x0; 0xffffffff)) R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2410985Z ; ok = fill(r, sock->sk, 0) == 0; @ net_probe.bpf.c:111
+2026-11-02T09:53:58.2411390Z 58: (79) r2 = *(u64 *)(r8 +24)        ; R2=untrusted_ptr_sock() R8=untrusted_ptr_socket() refs=2
+2026-11-02T09:53:58.2411922Z 59: (bf) r1 = r7                      ; R1=ringbuf_mem(ref_obj_id=2,sz=72) R7=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2412391Z 60: (b7) r3 = 0                       ; R3=0 refs=2
+2026-11-02T09:53:58.2412657Z 61: (85) call pc+68
+2026-11-02T09:53:58.2413122Z caller:
+2026-11-02T09:53:58.2413607Z  R6=0 R7=ringbuf_mem(ref_obj_id=2,sz=72) R8=untrusted_ptr_socket() R9=scalar() R10=fp0 fp-8=mmmm4 fp-16=ptr___kernel_sockaddr_storage() refs=2
+2026-11-02T09:53:58.2414151Z callee:
+2026-11-02T09:53:58.2414456Z  frame1: R1=ringbuf_mem(ref_obj_id=2,sz=72) R2=untrusted_ptr_sock() R3=0 R10=fp0 refs=2
+2026-11-02T09:53:58.2415167Z 130: frame1: R1=ringbuf_mem(ref_obj_id=2,sz=72) R2=untrusted_ptr_sock() R3=0 R10=fp0 refs=2
+2026-11-02T09:53:58.2415731Z ; static int fill(struct net_rec *r, struct sock *sk, int remote_from_sk) @ net_probe.bpf.c:47
+2026-11-02T09:53:58.2416191Z 130: (bf) r8 = r3                     ; frame1: R3=0 R8=0 refs=2
+2026-11-02T09:53:58.2416607Z 131: (bf) r7 = r2                     ; frame1: R2=untrusted_ptr_sock() R7=untrusted_ptr_sock() refs=2
+2026-11-02T09:53:58.2417175Z 132: (bf) r6 = r1                     ; frame1: R1=ringbuf_mem(ref_obj_id=2,sz=72) R6=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2417658Z 133: (b7) r1 = 16                     ; frame1: R1=16 refs=2
+2026-11-02T09:53:58.2418060Z 134: (bf) r3 = r7                     ; frame1: R3=untrusted_ptr_sock() R7=untrusted_ptr_sock() refs=2
+2026-11-02T09:53:58.2418530Z 135: (0f) r3 += r1                    ; frame1: R1=16 R3=untrusted_ptr_sock(off=16) refs=2
+2026-11-02T09:53:58.2418945Z 136: (bf) r1 = r10                    ; frame1: R1=fp0 R10=fp0 refs=2
+2026-11-02T09:53:58.2419259Z ;  @ net_probe.bpf.c:0
+2026-11-02T09:53:58.2419529Z 137: (07) r1 += -4                    ; frame1: R1=fp-4 refs=2
+2026-11-02T09:53:58.2419935Z ; r->family = BPF_CORE_READ(sk, __sk_common.skc_family); @ net_probe.bpf.c:49
+2026-11-02T09:53:58.2420341Z 138: (b7) r2 = 2                      ; frame1: R2=2 refs=2
+2026-11-02T09:53:58.2420894Z 139: (85) call bpf_probe_read_kernel#113      ; frame1: R0=scalar() fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2421611Z 140: (69) r1 = *(u16 *)(r10 -4)       ; frame1: R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2422499Z 141: (6b) *(u16 *)(r6 +58) = r1       ; frame1: R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2423518Z 142: (18) r0 = 0xffffffff             ; frame1: R0=0xffffffff refs=2
+2026-11-02T09:53:58.2423933Z ; if (r->family != AF_INET && r->family != AF_INET6) @ net_probe.bpf.c:50
+2026-11-02T09:53:58.2424537Z 144: (47) r1 |= 8                     ; frame1: R1=scalar(smin=umin=smin32=umin32=8,smax=umax=smax32=umax32=0xffff,var_off=(0x8; 0xfff7)) refs=2
+2026-11-02T09:53:58.2425369Z 145: (15) if r1 == 0xa goto pc+1 147: frame1: R0=0xffffffff R1=10 R6=ringbuf_mem(ref_obj_id=2,sz=72) R7=untrusted_ptr_sock() R8=0 R10=fp0 fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2426034Z ; if (r->family != AF_INET && r->family != AF_INET6) @ net_probe.bpf.c:50
+2026-11-02T09:53:58.2426415Z 147: (b7) r1 = 548                    ; frame1: R1=548 refs=2
+2026-11-02T09:53:58.2426832Z 148: (bf) r3 = r7                     ; frame1: R3=untrusted_ptr_sock() R7=untrusted_ptr_sock() refs=2
+2026-11-02T09:53:58.2427311Z 149: (0f) r3 += r1                    ; frame1: R1=548 R3=untrusted_ptr_sock(off=548) refs=2
+2026-11-02T09:53:58.2427720Z 150: (bf) r1 = r10                    ; frame1: R1=fp0 R10=fp0 refs=2
+2026-11-02T09:53:58.2428102Z ; r->proto = BPF_CORE_READ(sk, sk_protocol); @ net_probe.bpf.c:52
+2026-11-02T09:53:58.2428477Z 151: (07) r1 += -4                    ; frame1: R1=fp-4 refs=2
+2026-11-02T09:53:58.2428802Z 152: (b7) r2 = 2                      ; frame1: R2=2 refs=2
+2026-11-02T09:53:58.2429217Z 153: (85) call bpf_probe_read_kernel#113      ; frame1: R0=scalar() fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2429895Z 154: (69) r1 = *(u16 *)(r10 -4)       ; frame1: R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2430773Z 155: (6b) *(u16 *)(r6 +60) = r1       ; frame1: R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2431385Z 156: (b7) r1 = 14                     ; frame1: R1=14 refs=2
+2026-11-02T09:53:58.2431794Z 157: (bf) r3 = r7                     ; frame1: R3=untrusted_ptr_sock() R7=untrusted_ptr_sock() refs=2
+2026-11-02T09:53:58.2432264Z 158: (0f) r3 += r1                    ; frame1: R1=14 R3=untrusted_ptr_sock(off=14) refs=2
+2026-11-02T09:53:58.2433044Z 159: (bf) r1 = r10                    ; frame1: R1=fp0 R10=fp0 refs=2
+2026-11-02T09:53:58.2433459Z 160: (07) r1 += -4                    ; frame1: R1=fp-4 refs=2
+2026-11-02T09:53:58.2433858Z ; r->lport = BPF_CORE_READ(sk, __sk_common.skc_num); @ net_probe.bpf.c:53
+2026-11-02T09:53:58.2434243Z 161: (b7) r2 = 2                      ; frame1: R2=2 refs=2
+2026-11-02T09:53:58.2434655Z 162: (85) call bpf_probe_read_kernel#113      ; frame1: R0=scalar() fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2435333Z 163: (69) r1 = *(u16 *)(r10 -4)       ; frame1: R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R10=fp0 fp-8=??mm???? refs=2
+2026-11-02T09:53:58.2436212Z 164: (6b) *(u16 *)(r6 +62) = r1       ; frame1: R1=scalar(smin=smin32=0,smax=umax=smax32=umax32=0xffff,var_off=(0x0; 0xffff)) R6=ringbuf_mem(ref_obj_id=2,sz=72) refs=2
+2026-11-02T09:53:58.2436856Z ; r->cookie = bpf_get_socket_cookie(sk); @ net_probe.bpf.c:54
+2026-11-02T09:53:58.2437305Z 165: (bf) r1 = r7                     ; frame1: R1=untrusted_ptr_sock() R7=untrusted_ptr_sock() refs=2
+2026-11-02T09:53:58.2437699Z 166: (85) call bpf_get_socket_cookie#46
+2026-11-02T09:53:58.2438107Z R1 type=untrusted_ptr_ expected=sock_common, sock, tcp_sock, xdp_sock, ptr_, trusted_ptr_
+2026-11-02T09:53:58.2438698Z processed 118 insns (limit 1000000) max_states_per_insn 1 total_states 8 peak_states 8 mark_read 0
+2026-11-02T09:53:58.2439266Z -- END PROG LOAD LOG --
+2026-11-02T09:53:58.2439526Z libbpf: prog 'net_connect': failed to load: -EACCES
+2026-11-02T09:53:58.2439851Z libbpf: failed to load object 'net_probe_bpf'
+2026-11-02T09:53:58.2440197Z libbpf: failed to load BPF skeleton 'net_probe_bpf': -EACCES
+2026-11-02T09:53:58.2440530Z load failed: Permission denied
+2026-11-02T09:53:58.2440795Z make: *** [Makefile:234: smoke-net] Error 1
+2026-11-02T09:53:58.2452057Z ##[error]Process completed with exit code 2.
+2026-11-02T09:53:58.2583241Z Post job cleanup.
+2026-11-02T09:53:58.3448461Z [command]/usr/bin/git version
+2026-11-02T09:53:58.3497728Z git version 2.56.0
+2026-11-02T09:53:58.3539882Z Temporarily overriding HOME='/home/runner/work/_temp/49a1257e-0992-416c-bb9a-83533ba68bfd' before making global git config changes
+2026-11-02T09:53:58.3541525Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-02T09:53:58.3546159Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/fiery-dragon/fiery-dragon
+2026-11-02T09:53:58.3585178Z Removing SSH command configuration
+2026-11-02T09:53:58.3593135Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-02T09:53:58.3638942Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-02T09:53:58.3901540Z Entering 'third_party/bpftool'
+2026-11-02T09:53:58.3963806Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:58.4018635Z Entering 'third_party/libbpf'
+2026-11-02T09:53:58.4080745Z Removing HTTP extra header
+2026-11-02T09:53:58.4103047Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-02T09:53:58.4155971Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-02T09:53:58.4470039Z Entering 'third_party/bpftool'
+2026-11-02T09:53:58.4521885Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:58.4579571Z Entering 'third_party/libbpf'
+2026-11-02T09:53:58.4637832Z Removing includeIf entries pointing to credentials config files
+2026-11-02T09:53:58.4645211Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T09:53:58.4687526Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path
+2026-11-02T09:53:58.4688452Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path
+2026-11-02T09:53:58.4688953Z includeif.gitdir:/github/workspace/.git.path
+2026-11-02T09:53:58.4689324Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-02T09:53:58.4697699Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path
+2026-11-02T09:53:58.4767403Z /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.4778852Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.4829951Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path
+2026-11-02T09:53:58.4866912Z /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.4876808Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.4922562Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-02T09:53:58.4957625Z /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.4965411Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.5012552Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-02T09:53:58.5049537Z /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.5059828Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.5108691Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T09:53:58.5343259Z Entering 'third_party/bpftool'
+2026-11-02T09:53:58.5367220Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config	remote.origin.url
+2026-11-02T09:53:58.5384182Z Entering 'third_party/bpftool/libbpf'
+2026-11-02T09:53:58.5405870Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config	remote.origin.url
+2026-11-02T09:53:58.5428897Z Entering 'third_party/libbpf'
+2026-11-02T09:53:58.5449986Z file:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config	remote.origin.url
+2026-11-02T09:53:58.5484536Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T09:53:58.5521669Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path
+2026-11-02T09:53:58.5522473Z includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool.path
+2026-11-02T09:53:58.5530389Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path
+2026-11-02T09:53:58.5565956Z /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.5574465Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool.path \/home\/runner\/work\/_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.5621945Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --get-all includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool.path
+2026-11-02T09:53:58.5657466Z /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.5667788Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/config --unset includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool.path \/github\/runner_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.5716296Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T09:53:58.5751350Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T09:53:58.5752425Z includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T09:53:58.5759929Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T09:53:58.5793747Z /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.5802676Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf.path \/home\/runner\/work\/_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.5849212Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --get-all includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path
+2026-11-02T09:53:58.5883410Z /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.5892246Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/bpftool/modules/libbpf/config --unset includeif.gitdir:/github/workspace/.git/modules/third_party/bpftool/modules/libbpf.path \/github\/runner_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.5937634Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T09:53:58.5971722Z includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path
+2026-11-02T09:53:58.5981891Z includeif.gitdir:/github/workspace/.git/modules/third_party/libbpf.path
+2026-11-02T09:53:58.5983804Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --get-all includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path
+2026-11-02T09:53:58.6017864Z /home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.6028530Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --unset includeif.gitdir:/home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf.path \/home\/runner\/work\/_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.6077910Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --get-all includeif.gitdir:/github/workspace/.git/modules/third_party/libbpf.path
+2026-11-02T09:53:58.6115570Z /github/runner_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config
+2026-11-02T09:53:58.6122507Z [command]/usr/bin/git config --file /home/runner/work/fiery-dragon/fiery-dragon/.git/modules/third_party/libbpf/config --unset includeif.gitdir:/github/workspace/.git/modules/third_party/libbpf.path \/github\/runner_temp\/git\-credentials\-02d78b59\-fdc2\-483c\-a90d\-010ec6fb0f9f\.config
+2026-11-02T09:53:58.6164680Z Removing credentials config '/home/runner/work/_temp/git-credentials-02d78b59-fdc2-483c-a90d-010ec6fb0f9f.config'
+2026-11-02T09:53:58.6319850Z Cleaning up orphan processes

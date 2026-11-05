@@ -1,0 +1,49 @@
+2026-11-02T10:00:51.2671724Z ##[group]Run uname -r && sudo make smoke-net
+2026-11-02T10:00:51.2672091Z [36;1muname -r && sudo make smoke-net[0m
+2026-11-02T10:00:51.2691689Z shell: /usr/bin/bash -e {0}
+2026-11-02T10:00:51.2691945Z ##[endgroup]
+2026-11-02T10:00:51.2739792Z 7.0.0-1017-azure
+2026-11-02T10:00:51.3099804Z build/net_probe
+2026-11-02T10:00:51.4328546Z net_probe: libbpf v1.7, 6 programs attached
+2026-11-02T10:00:51.4329309Z TCP over IPv4: listener port 45249, client port 42162
+2026-11-02T10:00:51.4330125Z     bind    fam=2  proto=6  ret=0    local=127.0.0.1:45249 remote=0.0.0.0:0 cookie=1 lcookie=0
+2026-11-02T10:00:51.4331334Z     listen  fam=2  proto=6  ret=0    local=127.0.0.1:45249 remote=0.0.0.0:0 cookie=1 lcookie=0
+2026-11-02T10:00:51.4332200Z     connect fam=2  proto=6  ret=0    local=127.0.0.1:42162 remote=127.0.0.1:45249 cookie=2 lcookie=0
+2026-11-02T10:00:51.4333603Z     accept  fam=2  proto=6  ret=0    local=127.0.0.1:45249 remote=127.0.0.1:42162 cookie=3 lcookie=1
+2026-11-02T10:00:51.4334643Z   ok   exactly one bind, listen, connect and accept
+2026-11-02T10:00:51.4335367Z   ok   bind: family, TCP, ret 0, local loopback:port
+2026-11-02T10:00:51.4336126Z   ok   listen: ret 0, same port, same socket cookie as bind
+2026-11-02T10:00:51.4337034Z   ok   connect: ret 0, remote = listener, local = the client's port, its own cookie
+2026-11-02T10:00:51.4338581Z   ok   accept: local = listener port, remote = client, lcookie = the listener, new cookie
+2026-11-02T10:00:51.4339554Z TCP over IPv6: listener port 47343, client port 38856
+2026-11-02T10:00:51.4346559Z     bind    fam=10 proto=6  ret=0    local=::1:47343 remote=:::0 cookie=4 lcookie=0
+2026-11-02T10:00:51.4347382Z     listen  fam=10 proto=6  ret=0    local=::1:47343 remote=:::0 cookie=4 lcookie=0
+2026-11-02T10:00:51.4348113Z     connect fam=10 proto=6  ret=0    local=::1:38856 remote=::1:47343 cookie=5 lcookie=0
+2026-11-02T10:00:51.4348620Z     accept  fam=10 proto=6  ret=0    local=::1:47343 remote=::1:38856 cookie=6 lcookie=4
+2026-11-02T10:00:51.4349046Z   ok   exactly one bind, listen, connect and accept
+2026-11-02T10:00:51.4349381Z   ok   bind: family, TCP, ret 0, local loopback:port
+2026-11-02T10:00:51.4349755Z   ok   listen: ret 0, same port, same socket cookie as bind
+2026-11-02T10:00:51.4350188Z   ok   connect: ret 0, remote = listener, local = the client's port, its own cookie
+2026-11-02T10:00:51.4350948Z   ok   accept: local = listener port, remote = client, lcookie = the listener, new cookie
+2026-11-02T10:00:51.4351699Z   ok   UDP connect succeeds
+2026-11-02T10:00:51.4352186Z UDP connect to 127.0.0.1:9
+2026-11-02T10:00:51.4353138Z     connect fam=2  proto=17 ret=0    local=127.0.0.1:35428 remote=127.0.0.1:9 cookie=7 lcookie=0
+2026-11-02T10:00:51.4353821Z   ok   UDP connect: proto UDP, ret 0, remote port 9, local port assigned
+2026-11-02T10:00:51.4354268Z TCP connect to a closed port 40181 (connect returned -1, errno 111)
+2026-11-02T10:00:51.4354778Z     connect fam=2  proto=6  ret=-111 local=0.0.0.0:0 remote=127.0.0.1:40181 cookie=9 lcookie=0
+2026-11-02T10:00:51.4355228Z   ok   refused connect: ret -ECONNREFUSED recorded
+2026-11-02T10:00:51.4355585Z non-blocking TCP connect to 192.0.2.1:80 (TEST-NET-1)
+2026-11-02T10:00:51.4356037Z     connect fam=2  proto=6  ret=-115 local=10.1.0.44:39738 remote=192.0.2.1:80 cookie=10 lcookie=0
+2026-11-02T10:00:51.4356591Z   ok   non-blocking connect: ret -EINPROGRESS (or -ENETUNREACH without a route)
+2026-11-02T10:00:51.4357072Z   ok   AF_UNIX connect: no record (unix sockets are outside these hooks)
+2026-11-02T10:00:51.4357442Z   ok   no record lost by this probe's buffer
+2026-11-02T10:00:51.4357777Z counters:  op       seen  emitted  excluded  reserve_failed
+2026-11-02T10:00:51.4358126Z            connect      5        5         0               0
+2026-11-02T10:00:51.4358448Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T10:00:51.4358769Z            accept       2        2         0               0
+2026-11-02T10:00:51.4359100Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T10:00:51.4359776Z            listen       2        2         0               0
+2026-11-02T10:00:51.4360098Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T10:00:51.4360401Z            bind         3        3         0               0
+2026-11-02T10:00:51.4360701Z   ok     ... seen = emitted + excluded + reserve_failed
+2026-11-02T10:00:51.4361004Z net_probe: PASS (0 failed checks)

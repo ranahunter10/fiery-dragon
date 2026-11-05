@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25 (UTC), step 4b stack, PR 3 of 5 (daemon records in the schema)
+**Last updated:** 2026-11-02 (UTC), PR #35 (ADR-0004 network intent, proposed; probe passes on the CI runner's 7.0)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -68,6 +68,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
        3. the `bpf_iter/task` process snapshot at each segment open;
     5. Python WAL reader (generated, no defaults, `google-crc32c`), the P15R importer for v3.7 recordings, and the process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
+19. **Demo track (maintainer, 2026-11-02): "given a port, show what happened".** It pulls a network-intent slice of Phase 3 forward. Nothing here is demo-only: each item is a Phase-1 or Phase-3 deliverable.
+    1. 🔧 ADR-0004 (proposed): fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; a NET record on the bulk ring, keyed by socket cookie. The probe passes on the CI runner's 7.0.0-1017-azure (E-0079); the VM run is pending. PR #35;
+    2. `p15d` (step 4b PRs 4–5): the SPSC queue, drain and writer threads, WAL header, STATS/GAP/END. It drains the bulk ring too;
+    3. NET records in the schema, the production NET programs, and the self-test extension (ADR-0004 rule 6);
+    4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report;
+    5. a scripted demo scenario on the VM, with evidence, plus rehearsal notes.
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -100,3 +106,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 5. **Stricter EXEC checks in `p15_rec_check`:** `len` must be exactly the fields' padded size unless `READ_FAILED`, and every byte after the fields must be zero; a record that breaks either is refused and counted, which makes the run invalid. Recommendation: accept; the scratch buffer is reused, so a padding bug would otherwise leak an earlier command line into a record silently. Evidence: the unit tests and sweep (E-0075).
 6. **Where the daemon records go.** ADR-0006 rule 1 lists clock-sync and drop summaries among the *spine* ring's contents; ADR-0017 layer 4 puts GAP in the *daemon* ring; P15W has ring 2 for daemon records. Only BPF can write into the spine ring, so this PR's records are written by `p15d` into WAL ring 2 (daemon), all four of them, and readers merge rings by `ts_ns` (ADR-0006 rule 5). Recommendation: accept ring 2 for every daemon-written record, and record it in the ADR that next touches transport. Evidence: the ADR texts; the schema comment.
 7. **STATS shape:** counters cumulative from the run's start; four fields per interval since the previous STATS (`poll_gap_max_ns`, `spine_fill_max`, `queue_depth_max`, `wal_fsync_max_ns`), with `interval_ns` saying how long that was. Classes: STATS for STATS, MARKER for the other three; type numbers from 32, so the BPF counter types 0–7 stay apart. Recommendation: accept. Evidence: `schema/records.toml`.
+8. **Accept ADR-0004, network intent:** fexit on the proto_ops (not the syscall layer), NET on the bulk ring, socket-cookie identity, the declared v1 limits (AF_UNIX, unconnected UDP, MPTCP/SCTP/raw).
+   - Recommendation: accept.
+   - Evidence: the probe passes all checks on the runner's 7.0 (E-0079); the syscall-layer draft was refused by the verifier (E-0079); SRC rows 1–4 of the ADR.

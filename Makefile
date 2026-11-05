@@ -51,13 +51,13 @@ CFLAGS     += -std=gnu11 $(WARN) $(HARDEN) -I$(LIBBPF_DIR) -I$(OUT) -Ischema/gen
 LDFLAGS    += -pie -Wl,-z,relro,-z,now
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
-SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size
+SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/exec_cost
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 
-.PHONY: all check smoke clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+.PHONY: all check smoke smoke-net clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
         exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
@@ -207,6 +207,9 @@ bench-exec-cost: $(OUT)/exec_cost
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
+$(OUT)/net_probe: bpf/test/net_probe.c $(OUT)/net_probe.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
+
 $(OUT)/rb_size: bpf/test/rb_size.c $(OUT)/rb_size.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 
@@ -223,6 +226,12 @@ smoke: all
 	$(OUT)/core_smoke --attach
 	$(OUT)/rb_size 200
 	$(OUT)/p15-spine selftest
+
+# fentry/fexit programs (ADR-0004 network hooks). The cloud dev container refuses to load
+# any fentry/fexit program (EPERM, no tracefs), so this is separate from `smoke`; CI and
+# the VM run it.
+smoke-net: $(OUT)/net_probe
+	$(OUT)/net_probe
 
 clean:
 	rm -rf $(OUT)
