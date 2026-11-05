@@ -4,7 +4,10 @@
 
 **Files:**
 - [`vm-verify-summary.txt`](vm-verify-summary.txt): the run's SUMMARY, as pasted by the maintainer;
-- [`vm-summary-paste.txt`](vm-summary-paste.txt): `summarize.py` on that run's `hook_cost.txt` (step 18), as pasted.
+- [`hook_cost.txt`](hook_cost.txt): step 18's raw lines, all 20 rounds plus the warm-up;
+- [`summary.md`](summary.md): `python3 bench/hook_cost/summarize.py hook_cost.txt`, made here from the raw file;
+- [`vm-summary-paste.txt`](vm-summary-paste.txt): the maintainer's paste of the same report, made on the VM (CRLF line ends, from Windows). Once the CRs are removed it is identical to `summary.md`, line for line;
+- [`verify.log`](verify.log): the run's full log, all 18 steps.
 
 ## Findings (MEAS, VM)
 
@@ -31,6 +34,8 @@
 
 Confirmation 5 is met, and ADR-0020 is accepted, as the maintainer decided on 2026-11-05.
 
-## Not shown
+## Reproduce
 
-- The raw `hook_cost.txt` and `verify.log` of this run. They are on the VM at `~/vm-verify-20261105T025005Z/` and are to be added here. The committed report is `summarize.py`'s output from that raw file, which the tested code (#48, #49) computes.
+```
+python3 bench/hook_cost/summarize.py docs/evidence/probes/2026-11-05-hook-cost-vm/hook_cost.txt
+```
