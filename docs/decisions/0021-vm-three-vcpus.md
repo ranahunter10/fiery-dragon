@@ -1,8 +1,8 @@
 ---
-status: proposed
-date: —
+status: accepted
+date: 2026-11-05
 owner: Ashish Rana
-consulted: [VM kernel logs of 2026-11-04 (E-0088), maintainer's change of the VM to 3 vCPUs on 2026-11-04]
+consulted: [VM kernel logs of 2026-11-04 (E-0088), maintainer's change of the VM to 3 vCPUs on 2026-11-04, maintainer's acceptance of 2026-11-05]
 supersedes: ADR-0001, the "VM" row of its platform table (4 vCPU → 3 vCPU) only
 ---
 

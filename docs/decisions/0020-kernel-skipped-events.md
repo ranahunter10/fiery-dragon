@@ -2,8 +2,8 @@
 status: proposed
 date: —
 owner: Ashish Rana
-consulted: [VM runs of 2026-11-04 (E-0088, E-0089, E-0090), Linux v7.0 source, Falco libs modern_bpf, Tetragon, Tracee (source read, not run), the SRCU-fast tracepoint series (Rostedt, McKenney), maintainer review of 2026-11-04 ("do the recommended things")]
-supersedes: ADR-0003 rule 1 and the exec, exit and comm-change rows of its hook table; ADR-0006 rule 3 (wake-ups). ADR-0006 rule 6 (the invariant) and every other rule of ADR-0003, 0006 and 0017 stand.
+consulted: [VM runs of 2026-11-04 (E-0088, E-0089, E-0090), Linux v7.0 source, Falco libs modern_bpf, Tetragon, Tracee (source read, not run), the SRCU-fast tracepoint series (Rostedt, McKenney), maintainer review of 2026-11-04 ("do the recommended things"), maintainer's decision of 2026-11-05 (accept once confirmation 5 is measured; rule 6 added)]
+supersedes: ADR-0003 rule 1 and the exec, exit and comm-change rows of its hook table; ADR-0006 rule 3 (wake-ups); the clock-sync and drop-summary entries of ADR-0006's spine-ring contents (rule 6). ADR-0006 rule 6 (the invariant) and every other rule of ADR-0003, 0006 and 0017 stand.
 ---
 
 # 0020: Events the kernel skips: spine hooks on classic tracepoints, wake-ups only at a high-water mark, every skip counted and located
@@ -69,6 +69,11 @@ That breaks ADR-0006 driver 1 (lifecycle records are never lost silently) and CL
    - option 5 for now: fork stays on `tp_btf`, with near-zero measured skips (0 in every rmcheck run; 1 in the demo), counted by rule 3. A kprobe would widen ADR-0003's hook policy to function hooks;
    - option 6: the host's scheduler is not ours to choose. A capture tool must work on the kernel it is given.
 5. **Follow-up, under its own PR:** FORK, EXEC and EXIT records carry the kernel's `self_exec_id` and the parent's key (record v2s). Then a skipped EXEC is detected per process (a gap in `self_exec_id`), and a skipped FORK is repaired from the child's next record. That attribution closes the loop: skips located per process must sum to `recursion_misses`.
+
+6. **The daemon's own records go in WAL ring 2** (the daemon ring of P15W, ADR-0007):
+   - CLOCK_SYNC, STATS, NET_STATS, GAP and END are written by p15d, not by BPF. Only BPF can write into the spine and bulk rings, so ADR-0006's listing of clock-sync and drop summaries among the spine ring's contents can't be met as written;
+   - readers merge the three rings by `ts_ns` (ADR-0006 rule 5), so a record's ring doesn't change where it sits in time;
+   - ADR-0017 layer 4 already puts GAP there; this rule extends it to every daemon-written record (maintainer's decision 6, 2026-11-05).
 
 ### Conformance with practice
 
