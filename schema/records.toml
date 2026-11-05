@@ -318,6 +318,24 @@ var = [
   { name = "reason", max = 256, doc = "why the run ended, one line of text; 'stop requested' on an orderly stop" },
 ]
 
+[[record]]
+name = "END"
+type = 35
+version = 2
+class = "MARKER"
+doc = "v2 adds closing_snapshot (ADR-0023 rule 1). The last record of a run: its verdict (ADR-0019 G2.2, G2.3). Written after the final STATS, on an orderly stop and by p15_fail. A run whose last segment has no END did not end in order."
+fields = [
+  { name = "exit_code", c = "u32", doc = "the code p15d exits with (daemon/exitcodes.h)" },
+  { name = "run_state", c = "u32", doc = "0 RUNNING, 1 DEGRADED, 2 INVALID, final" },
+  { name = "invariant", c = "u32", doc = "ADR-0006 rule 6 at quiescence: 0 not checked (stopped before quiescence), 1 closed, 2 broken" },
+  { name = "signal",    c = "u32", doc = "the signal that asked for the stop (SIGTERM 15, SIGINT 2), or 0" },
+  { name = "closing_snapshot", c = "i32", doc = "ADR-0023 rule 1: 1 the closing snapshot was taken, complete, and its SNAP_DONE precedes this record; 0 not taken (the run stopped through p15_fail: no orderly stop); otherwise a negative errno: -71 (EPROTO) taken but incomplete (its SNAP_DONE says why), another value if a WAL append failed during it" },
+  { name = "reserved",  c = "u32", doc = "zero" },
+]
+var = [
+  { name = "reason", max = 256, doc = "why the run ended, one line of text; 'stop requested' on an orderly stop" },
+]
+
 # ---- network intent (ADR-0004): NET class, on the bulk ring, counted loss (ADR-0004 rule 4) ----
 # Type 5 keeps NET inside the BPF counter table (types 0..7, bpf/include/p15_counters.h).
 [[record]]
@@ -399,4 +417,56 @@ fields = [
   { name = "bulk_fill_max",      c = "u64", doc = "the most bytes waiting in the bulk ring at a poll, this interval" },
   { name = "net_missed",         c = "u64", doc = "NET events the kernel skipped (recursion_misses of the six network programs since the run's start; run DEGRADED), cumulative" },
   { name = "bulk_ring_bytes",    c = "u32", doc = "the bulk ring's size" },
+]
+
+# ---- process snapshot (ADR-0007 rule 3, ADR-0023): built by the bpf_iter/task program, written by p15d into
+# the daemon ring (ADR-0020 rule 6). Types 37 and 38 follow the daemon records.
+[[record]]
+name = "PROC"
+type = 37
+version = 1
+class = "MARKER"
+doc = "One live thread group in a process snapshot (ADR-0007 rule 3): the opening one at every segment open, the closing one at an orderly stop (ADR-0023). The header names the process (ADR-0009) and its ts_ns is when the iterator saw it. Hooks are attached for the whole snapshot, so a process created during it is in the snapshot, in an event, or both (the fuzzy-checkpoint rule)."
+fields = [
+  { name = "parent_start_ns", c = "u64", doc = "real_parent's thread-group leader start_boottime: with parent_tgid, the parent's key (ADR-0009)" },
+  { name = "exe_ino",         c = "u64", doc = "mm->exe_file inode number; 0 for a kernel thread" },
+  { name = "parent_tgid",     c = "u32", doc = "real_parent->tgid" },
+  { name = "exe_dev",         c = "u32", doc = "mm->exe_file superblock s_dev (kernel encoding, not st_dev)" },
+  { name = "exe_gen",         c = "u32", doc = "mm->exe_file inode i_generation" },
+  { name = "pflags",          c = "u32", doc = "bit 0 kernel thread (PF_KTHREAD: no mm, no argv, no exe), bit 1 exiting (PF_EXITING)" },
+  { name = "snap_id",         c = "u32", doc = "which snapshot of the run: 0, 1, 2, ... in the order they were taken" },
+  { name = "comm",            c = "char[16]", doc = "task->comm of the leader, NUL-padded" },
+  { name = "kind",            c = "u16", doc = "1 opening (segment open), 2 closing (orderly stop, ADR-0023)" },
+  { name = "reserved",        c = "u16", doc = "zero" },
+]
+var = [
+  { name = "exe_path", max = 256,  doc = "bpf_d_path of mm->exe_file, without the NUL; empty for a kernel thread or when the read failed (P15_F_READ_FAILED). A cut path is flagged TRUNCATED" },
+  { name = "argv",     max = 1024, doc = "mm->arg_start..arg_end read with bpf_copy_from_user_task, NUL-separated; the same cap as EXEC's argv" },
+]
+
+[[record]]
+name = "SNAP_DONE"
+type = 38
+version = 1
+class = "MARKER"
+doc = "The books of one process snapshot, written right after its PROC records. They close: tasks = threads + emitted + write_failed (the BPF side) and emitted = entries + invalid + unwritten (p15d's side); a reader that finds them open marks the run INVALID. A closing snapshot's SNAP_DONE precedes END (ADR-0023 rule 1)."
+fields = [
+  { name = "duration_ns",    c = "u64", doc = "CLOCK_BOOTTIME from creating the iterator to its end of output" },
+  { name = "tasks",          c = "u64", doc = "tasks the iterator showed the program (every thread of every process)" },
+  { name = "threads",        c = "u64", doc = "tasks that are not a thread-group leader: not recorded, by design (a PROC is one thread group)" },
+  { name = "emitted",        c = "u64", doc = "PROC records the program wrote to the iterator's output" },
+  { name = "write_failed",   c = "u64", doc = "bpf_seq_write refused a record: that process is missing from the snapshot (run INVALID)" },
+  { name = "entries",        c = "u64", doc = "PROC records that passed p15_rec_check and went into the WAL" },
+  { name = "invalid",        c = "u64", doc = "output that failed p15_rec_check or did not frame as records: counted, never written (run INVALID)" },
+  { name = "unwritten",      c = "u64", doc = "checked PROC records the WAL refused (an I/O failure; the run is already INVALID)" },
+  { name = "kthreads",       c = "u64", doc = "entries that are kernel threads (no argv, no executable)" },
+  { name = "exiting",        c = "u64", doc = "entries already exiting, without an mm (no argv, no executable): not read failures" },
+  { name = "argv_failed",    c = "u64", doc = "entries whose argv could not be read (bpf_copy_from_user_task failed): P15_F_READ_FAILED" },
+  { name = "path_unlocked",  c = "u64", doc = "entries whose executable path was not read because the task's mmap lock was busy or the iterator could not start: P15_F_READ_FAILED" },
+  { name = "path_not_found", c = "u64", doc = "entries whose mapping at mm->start_code is not mm->exe_file, so the path is not read: P15_F_READ_FAILED" },
+  { name = "path_failed",    c = "u64", doc = "entries where bpf_d_path failed for another reason than length: P15_F_READ_FAILED" },
+  { name = "truncated",      c = "u64", doc = "fields cut: an argv longer than its maximum, or a path longer than its maximum (a record with both counts twice); each such entry has P15_F_TRUNCATED" },
+  { name = "snap_id",        c = "u32", doc = "as in PROC" },
+  { name = "error",          c = "i32", doc = "0, or the negative errno that ended reading the iterator early (then the snapshot is incomplete and the run INVALID)" },
+  { name = "kind",           c = "u16", doc = "as in PROC" },
 ]

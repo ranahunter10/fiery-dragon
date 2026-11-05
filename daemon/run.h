@@ -19,6 +19,7 @@
 
 enum p15_run_state { P15_RUN_RUNNING = 0, P15_RUN_DEGRADED = 1, P15_RUN_INVALID = 2 };
 enum p15_invariant { P15_INV_NOT_CHECKED = 0, P15_INV_CLOSED = 1, P15_INV_BROKEN = 2 };
+enum p15_closing { P15_CLOSING_NONE = 0, P15_CLOSING_ASKED = 1, P15_CLOSING_DONE = 2 };
 
 #define P15_POLL_BUCKETS 6         /* <=100us, <=1ms, <=10ms, <=100ms, <=1s, >1s (STATS) */
 #define P15_SPINE_TYPES 5          /* index by record type 1..4 */
@@ -69,6 +70,11 @@ struct p15_run {
 	/* writer side */
 	_Atomic uint64_t spine_written, spine_drain_lost, net_written, net_drain_lost;
 	_Atomic int invariant;                   /* enum p15_invariant, set at the end */
+
+	/* the closing snapshot (ADR-0023 rule 1): main asks while the hooks are attached, the writer
+	 * (which owns the WAL) takes it, main waits for it, then detaches */
+	_Atomic int closing_req;                 /* enum p15_closing */
+	_Atomic int closing_result;              /* END closing_snapshot: 1 taken, 0 not, -errno failed */
 };
 
 /* Move the run to DEGRADED or INVALID (never back), keeping the first reason. */

@@ -66,6 +66,7 @@ static void test_fixed_sizes(void)
 		{ P15_T_NET, sizeof(struct p15_net_v1), "NET" },
 		{ P15_T_NET_STATS, sizeof(struct p15_net_stats_v1), "NET_STATS" },
 	};
+	struct p15_snap_done_v1 *sd;
 
 	for (size_t i = 0; i < sizeof(t) / sizeof(t[0]); i++) {
 		char what[96];
@@ -83,9 +84,19 @@ static void test_fixed_sizes(void)
 		EXPECT(!strcmp(p15_type_name(t[i].type), t[i].name), what);
 	}
 	EXPECT(!strcmp(p15_type_name(P15_T_EXEC), "EXEC") && !strcmp(p15_type_name(P15_T_END), "END"), "var types named");
-	EXPECT(!strcmp(p15_type_name(6), "?") && !strcmp(p15_type_name(37), "?"), "unknown types");
-	mk(37, 32);
+	EXPECT(!strcmp(p15_type_name(6), "?") && !strcmp(p15_type_name(39), "?"), "unknown types");
+	EXPECT(!strcmp(p15_type_name(P15_T_PROC), "PROC") && !strcmp(p15_type_name(P15_T_SNAP_DONE), "SNAP_DONE"),
+	       "snapshot types named");
+	mk(39, 32);
 	EXPECT(!ok(), "unknown type refused");
+	sd = (void *)mk(P15_T_SNAP_DONE, sizeof(struct p15_snap_done_v1));
+	sd->kind = 1;
+	EXPECT(ok(), "SNAP_DONE at its size accepted");
+	sd->kind = 0;
+	EXPECT(!ok(), "SNAP_DONE with an unknown kind refused");
+	sd->kind = 2;
+	sd->h.len += 8;
+	EXPECT(!ok(), "SNAP_DONE 8 bytes longer refused");
 	mk(P15_T_GAP, sizeof(struct p15_gap_v1));
 	EXPECT(ok_exact(sizeof(struct p15_gap_v1)), "GAP accepted from a buffer of exactly its size");
 	EXPECT(!ok_exact(sizeof(struct p15_gap_v1) - 8), "GAP refused from a buffer 8 bytes short");
@@ -115,7 +126,7 @@ static void test_fixed_sizes(void)
 static void end_with(const char *reason)
 {
 	size_t rl = strlen(reason);
-	struct p15_end *e = (void *)mk(P15_T_END, (sizeof(struct p15_end) + rl + 7) & ~7u);
+	struct p15_end_v1 *e = (void *)mk(P15_T_END, (sizeof(struct p15_end_v1) + rl + 7) & ~7u);
 
 	e->exit_code = 4;
 	e->run_state = 2;
@@ -128,10 +139,10 @@ static void end_with(const char *reason)
 
 static void test_end(void)
 {
-	struct p15_end *e = (void *)buf;
+	struct p15_end_v1 *e = (void *)buf;
 	char line[512];
 
-	EXPECT(sizeof(struct p15_end) == 56, "END fixed part is 56 bytes");
+	EXPECT(sizeof(struct p15_end_v1) == 56, "END fixed part is 56 bytes");
 	end_with("stop requested");                  /* 14 bytes: len 72, 2 bytes of padding */
 	EXPECT(e->h.len == 72 && ok(), "END with a reason accepted");
 	EXPECT(p15_rec_format(buf, line, sizeof(line)) > 0 &&
@@ -155,11 +166,35 @@ static void test_end(void)
 	/* above the maximum, though len, tiling and padding would all agree */
 	end_with("stop requested");
 	e->reason_len = P15_END_REASON_MAX + 8;
-	e->h.len = sizeof(struct p15_end) + P15_END_REASON_MAX + 8;
+	e->h.len = sizeof(struct p15_end_v1) + P15_END_REASON_MAX + 8;
 	EXPECT(!ok(), "reason_len above its maximum refused even when it tiles exactly");
 	end_with("stop requested");
 	EXPECT(ok_exact(72), "END accepted from a buffer of exactly its len");
 	EXPECT(!ok_exact(64), "END refused when len is beyond the bytes given");
+}
+
+/* END v2 (ADR-0023 rule 1): closing_snapshot and reserved before the reason */
+static void test_end_v2(void)
+{
+	struct p15_end_v2 *e;
+	char line[512];
+
+	EXPECT(sizeof(struct p15_end_v2) == 64, "END v2 fixed part is 64 bytes");
+	e = (void *)mk(P15_T_END, sizeof(struct p15_end_v2) + 16);
+	e->h.version = 2;
+	e->closing_snapshot = 1;
+	e->reason_len = e->reason_full = 14;
+	memcpy(e + 1, "stop requested", 14);
+	EXPECT(ok(), "END v2 accepted");
+	EXPECT(p15_rec_format(buf, line, sizeof(line)) > 0 && strstr(line, "closing_snapshot=1 reason=\"stop requested\""),
+	       "END v2 formats closing_snapshot before the reason");
+	e->reserved = 1;
+	EXPECT(!ok(), "END v2: non-zero reserved refused");
+	e->reserved = 0;
+	e->h.version = 1;
+	EXPECT(!ok(), "an END v2 read as v1 does not check (its reason is elsewhere)");
+	e->h.version = 3;
+	EXPECT(!ok(), "unknown END version refused");
 }
 
 /* EXEC with READ_FAILED may keep slack after its fields (the DYNPTR way), but nothing else gives */
@@ -307,6 +342,7 @@ int main(void)
 	test_format();
 	test_net_format();
 	test_net_v2();
+	test_end_v2();
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }

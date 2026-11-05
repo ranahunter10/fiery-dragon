@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "aa55a5c8125a151b47748e04a2c60c38c28f046a49715215a9c3bb72afb4fa25"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "23772a79261eb103211e451d652dbf2a1de6d40ca14b1ae5b837223cb51cce3d"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -43,6 +43,8 @@ TYPES = {
     'GAP': 34,
     'END': 35,
     'NET_STATS': 36,
+    'PROC': 37,
+    'SNAP_DONE': 38,
 }
 
 RECORDS = {
@@ -76,6 +78,9 @@ RECORDS = {
     (35, 1): Layout('END', 35, 1, 'MARKER',
         np.dtype({'names': ['h', 'exit_code', 'run_state', 'invariant', 'signal', 'reason_full', 'reason_len', '_pad'], 'formats': [HEADER_DTYPE, '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', 'S2'], 'offsets': [0, 32, 36, 40, 44, 48, 52, 54], 'itemsize': 56}),
         56, 312, (('reason', 256),)),
+    (35, 2): Layout('END', 35, 2, 'MARKER',
+        np.dtype({'names': ['h', 'exit_code', 'run_state', 'invariant', 'signal', 'closing_snapshot', 'reserved', 'reason_full', 'reason_len', '_pad'], 'formats': [HEADER_DTYPE, '<u4', '<u4', '<u4', '<u4', '<i4', '<u4', '<u4', '<u2', 'S2'], 'offsets': [0, 32, 36, 40, 44, 48, 52, 56, 60, 62], 'itemsize': 64}),
+        64, 320, (('reason', 256),)),
     (5, 1): Layout('NET', 5, 1, 'NET',
         np.dtype({'names': ['h', 'sock_cookie', 'peer_cookie', 'laddr', 'raddr', 'netns', 'ret', 'op', 'family', 'proto', 'lport', 'rport', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', 'S16', 'S16', '<u4', '<i4', '<u2', '<u2', '<u2', '<u2', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 64, 80, 84, 88, 90, 92, 94, 96, 98], 'itemsize': 104}),
         104, 104, ()),
@@ -88,4 +93,10 @@ RECORDS = {
     (36, 2): Layout('NET_STATS', 36, 2, 'STATS',
         np.dtype({'names': ['h', 'net_seen', 'net_emitted', 'net_reserve_failed', 'net_excluded', 'net_drained', 'net_invalid', 'net_written', 'net_drain_lost', 'bulk_fill_max', 'net_missed', 'bulk_ring_bytes', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', 'S4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 116], 'itemsize': 120}),
         120, 120, ()),
+    (37, 1): Layout('PROC', 37, 1, 'MARKER',
+        np.dtype({'names': ['h', 'parent_start_ns', 'exe_ino', 'parent_tgid', 'exe_dev', 'exe_gen', 'pflags', 'snap_id', 'comm', 'kind', 'reserved', 'exe_path_full', 'argv_full', 'exe_path_len', 'argv_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', 'S16', '<u2', '<u2', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 84, 86, 88, 92, 96, 98, 100], 'itemsize': 104}),
+        104, 1384, (('exe_path', 256), ('argv', 1024))),
+    (38, 1): Layout('SNAP_DONE', 38, 1, 'MARKER',
+        np.dtype({'names': ['h', 'duration_ns', 'tasks', 'threads', 'emitted', 'write_failed', 'entries', 'invalid', 'unwritten', 'kthreads', 'exiting', 'argv_failed', 'path_unlocked', 'path_not_found', 'path_failed', 'truncated', 'snap_id', 'error', 'kind', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<i4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 156, 160, 162], 'itemsize': 168}),
+        168, 168, ()),
 }

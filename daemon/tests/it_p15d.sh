@@ -5,6 +5,7 @@
 #   daemon/tests/it_p15d.sh BUILD_DIR          (make it-p15d)
 # Cases: a timed run with a workload; a stop by SIGTERM; a forced spine overflow (ADR-0017
 # confirmation: INVALID and a GAP record); a bad flag (exit 64). Exit 0 only if all pass.
+# Every run's process snapshots are checked too (ADR-0007 rule 3, ADR-0023 confirmations 2-3).
 set -u
 B=${1:-build}
 T=$(mktemp -d /tmp/p15d-it-XXXXXX)
@@ -49,6 +50,18 @@ skips() { PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
 st = [r for r in wal.read_run(Path(sys.argv[1])).ring_records(2) if r.name == 'STATS'][-1]
 print(' '.join(f'{t}={st.f[t + \"_missed\"]}' for t in ('fork', 'exec', 'exit', 'rename')))" "$1"; }
+# the snapshots and the ADR-0023 reconciliation, as p15-trace computes them:
+#   <verdict> <forks unexplained> <exits unexplained> <fork losses> <exit losses> <kind:procs:complete>...
+recon() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import trace
+c = trace.load(Path(sys.argv[1])); r = c.recon
+print(r.verdict.replace(' ', '_'), len(r.fork_unexplained), len(r.exit_unexplained), r.fork_losses, r.exit_losses,
+      ' '.join(f'{s.kind}:{len(s.procs)}:{int(s.complete)}' for s in c.snapshots))" "$1"; }
+# pid 1 must be in the opening snapshot. The cloud dev container's kernel never shows pid 1 to a
+# task iterator, even one asked for tid 1 alone (E-0105): there, P15_IT_PID1=0 turns this check off.
+pid1() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import trace
+c = trace.load(Path(sys.argv[1])); print(int(any(k[0] == 1 for k in c.snapshots[0].procs)))" "$1"; }
 
 echo "case 1: an 8 s run with 200 short processes, started once p15d is ready"
 "$B/p15d" $NET --wal-dir "$T/c1" --duration 8 --stats-ms 200 --textfile "$T/c1.prom" 2>"$T/c1.err" &
@@ -66,6 +79,14 @@ check "[ \"$sk\" = 'fork=0 exec=0 exit=0 rename=0' ]" "the kernel skipped no spi
 check "[ \"\${n_stats:-0}\" -ge 10 ]" "a STATS record every 200 ms (got ${n_stats:-0})"
 check "grep -q '^p15_run_state 0' $T/c1.prom && grep -q 'type=\"exec\",cause=\"drained\"' $T/c1.prom" "Prometheus textfile written"
 check "grep -q 'hooks.manifest = tp_btf/sched_process_fork' $T/c1.txt" "hook manifest in the header"
+rc1=$(recon "$d1"); echo "  reconciliation: $rc1"
+check "grep -q 'END: .*closing snapshot 1' $T/c1.txt" "END v2: the closing snapshot was taken (ADR-0023 rule 1)"
+check "echo '$rc1' | grep -qE ' opening:[0-9]+:1 closing:[0-9]+:1$'" "an opening and a closing snapshot, both complete (their books close)"
+check "echo '$rc1' | grep -q '^complete 0 0 '" "ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete"
+check "grep -qE 'PROC .* tgid=$pid .*path=\"[^\"]*/p15d\"' <(\"$B/p15w-inspect\" -v \"$d1\")" "the snapshot lists p15d itself, with its resolved path"
+if [ "${P15_IT_PID1:-1}" = 1 ]; then
+    check "[ \"$(pid1 "$d1")\" = 1 ]" "pid 1 is in the opening snapshot"
+fi
 
 echo "case 2: stop by SIGTERM"
 "$B/p15d" $NET --wal-dir "$T/c2" 2>"$T/c2.err" &
@@ -75,6 +96,7 @@ RUN=$T/c2; inspect >"$T/c2.txt"; irc=$?
 grep '^END' "$T/c2.txt"
 check "[ $rc -eq 0 ] && [ $irc -eq 0 ]" "exit 0, WAL valid"
 check "grep -q 'END: exit 0, state 0, invariant 1, signal 15' $T/c2.txt" "END records signal 15"
+check "grep -q 'END: .*closing snapshot 1' $T/c2.txt" "a stop by signal is orderly: the closing snapshot was taken"
 
 echo "case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)"
 "$B/p15d" $NET --wal-dir "$T/c3" --duration 5 --spine-ring-kb 4 --test-drain-pause-ms 300 --no-rt 2>"$T/c3.err" &
@@ -88,6 +110,10 @@ check "[ $rc -eq 4 ]" "exit 4 (INVALID)"
 check "[ $irc -eq 0 ]" "the WAL itself is still valid"
 check "[ \"\${n_gap:-0}\" -ge 1 ]" "GAP records locate the loss (got ${n_gap:-0})"
 check "grep -q 'END: exit 4, state 2, invariant 1' $T/c3.txt" "END: INVALID, and the books still close (loss is counted)"
+rc3=$(recon "$(ls -d "$T"/c3/*/ | head -1)"); echo "  reconciliation: $rc3"
+read -r v3 fu3 eu3 fl3 el3 _ <<<"$rc3"
+check "[ \"$v3\" = complete ] || [ \"$v3\" = repaired ]" "ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss ($v3)"
+check "[ \"$fu3\" -le \"$fl3\" ] && [ \"$eu3\" -le \"$el3\" ]" "unexplained forks $fu3 <= counted $fl3, exits $eu3 <= counted $el3"
 
 if [ "$NET_OK" = 1 ]; then
 echo "case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect"

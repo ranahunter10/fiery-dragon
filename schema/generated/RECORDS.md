@@ -299,6 +299,29 @@ Variable-length fields, after the fixed part in this order:
 
 - `reason` (at most 256 bytes): why the run ended, one line of text; 'stop requested' on an orderly stop
 
+## END (type 35, version 2, class MARKER)
+
+v2 adds closing_snapshot (ADR-0023 rule 1). The last record of a run: its verdict (ADR-0019 G2.2, G2.3). Written after the final STATS, on an orderly stop and by p15_fail. A run whose last segment has no END did not end in order.
+
+Fixed part 64 bytes; at most 320 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `exit_code` | u32 | the code p15d exits with (daemon/exitcodes.h) |
+| 36 | `run_state` | u32 | 0 RUNNING, 1 DEGRADED, 2 INVALID, final |
+| 40 | `invariant` | u32 | ADR-0006 rule 6 at quiescence: 0 not checked (stopped before quiescence), 1 closed, 2 broken |
+| 44 | `signal` | u32 | the signal that asked for the stop (SIGTERM 15, SIGINT 2), or 0 |
+| 48 | `closing_snapshot` | i32 | ADR-0023 rule 1: 1 the closing snapshot was taken, complete, and its SNAP_DONE precedes this record; 0 not taken (the run stopped through p15_fail: no orderly stop); otherwise a negative errno: -71 (EPROTO) taken but incomplete (its SNAP_DONE says why), another value if a WAL append failed during it |
+| 52 | `reserved` | u32 | zero |
+| 56 | `reason_full` | u32 | full length of reason in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 60 | `reason_len` | u16 | bytes of reason present in this record *(generated)* |
+| 62 | `_pad` | char[2] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `reason` (at most 256 bytes): why the run ended, one line of text; 'stop requested' on an orderly stop
+
 ## NET (type 5, version 1, class NET)
 
 One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted.
@@ -386,3 +409,62 @@ Fixed part 120 bytes; at most 120 bytes with its variable fields.
 | 104 | `net_missed` | u64 | NET events the kernel skipped (recursion_misses of the six network programs since the run's start; run DEGRADED), cumulative |
 | 112 | `bulk_ring_bytes` | u32 | the bulk ring's size |
 | 116 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+## PROC (type 37, version 1, class MARKER)
+
+One live thread group in a process snapshot (ADR-0007 rule 3): the opening one at every segment open, the closing one at an orderly stop (ADR-0023). The header names the process (ADR-0009) and its ts_ns is when the iterator saw it. Hooks are attached for the whole snapshot, so a process created during it is in the snapshot, in an event, or both (the fuzzy-checkpoint rule).
+
+Fixed part 104 bytes; at most 1384 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `parent_start_ns` | u64 | real_parent's thread-group leader start_boottime: with parent_tgid, the parent's key (ADR-0009) |
+| 40 | `exe_ino` | u64 | mm->exe_file inode number; 0 for a kernel thread |
+| 48 | `parent_tgid` | u32 | real_parent->tgid |
+| 52 | `exe_dev` | u32 | mm->exe_file superblock s_dev (kernel encoding, not st_dev) |
+| 56 | `exe_gen` | u32 | mm->exe_file inode i_generation |
+| 60 | `pflags` | u32 | bit 0 kernel thread (PF_KTHREAD: no mm, no argv, no exe), bit 1 exiting (PF_EXITING) |
+| 64 | `snap_id` | u32 | which snapshot of the run: 0, 1, 2, ... in the order they were taken |
+| 68 | `comm` | char[16] | task->comm of the leader, NUL-padded |
+| 84 | `kind` | u16 | 1 opening (segment open), 2 closing (orderly stop, ADR-0023) |
+| 86 | `reserved` | u16 | zero |
+| 88 | `exe_path_full` | u32 | full length of exe_path in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 92 | `argv_full` | u32 | full length of argv in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 96 | `exe_path_len` | u16 | bytes of exe_path present in this record *(generated)* |
+| 98 | `argv_len` | u16 | bytes of argv present in this record *(generated)* |
+| 100 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `exe_path` (at most 256 bytes): bpf_d_path of mm->exe_file, without the NUL; empty for a kernel thread or when the read failed (P15_F_READ_FAILED). A cut path is flagged TRUNCATED
+- `argv` (at most 1024 bytes): mm->arg_start..arg_end read with bpf_copy_from_user_task, NUL-separated; the same cap as EXEC's argv
+
+## SNAP_DONE (type 38, version 1, class MARKER)
+
+The books of one process snapshot, written right after its PROC records. They close: tasks = threads + emitted + write_failed (the BPF side) and emitted = entries + invalid + unwritten (p15d's side); a reader that finds them open marks the run INVALID. A closing snapshot's SNAP_DONE precedes END (ADR-0023 rule 1).
+
+Fixed part 168 bytes; at most 168 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `duration_ns` | u64 | CLOCK_BOOTTIME from creating the iterator to its end of output |
+| 40 | `tasks` | u64 | tasks the iterator showed the program (every thread of every process) |
+| 48 | `threads` | u64 | tasks that are not a thread-group leader: not recorded, by design (a PROC is one thread group) |
+| 56 | `emitted` | u64 | PROC records the program wrote to the iterator's output |
+| 64 | `write_failed` | u64 | bpf_seq_write refused a record: that process is missing from the snapshot (run INVALID) |
+| 72 | `entries` | u64 | PROC records that passed p15_rec_check and went into the WAL |
+| 80 | `invalid` | u64 | output that failed p15_rec_check or did not frame as records: counted, never written (run INVALID) |
+| 88 | `unwritten` | u64 | checked PROC records the WAL refused (an I/O failure; the run is already INVALID) |
+| 96 | `kthreads` | u64 | entries that are kernel threads (no argv, no executable) |
+| 104 | `exiting` | u64 | entries already exiting, without an mm (no argv, no executable): not read failures |
+| 112 | `argv_failed` | u64 | entries whose argv could not be read (bpf_copy_from_user_task failed): P15_F_READ_FAILED |
+| 120 | `path_unlocked` | u64 | entries whose executable path was not read because the task's mmap lock was busy or the iterator could not start: P15_F_READ_FAILED |
+| 128 | `path_not_found` | u64 | entries whose mapping at mm->start_code is not mm->exe_file, so the path is not read: P15_F_READ_FAILED |
+| 136 | `path_failed` | u64 | entries where bpf_d_path failed for another reason than length: P15_F_READ_FAILED |
+| 144 | `truncated` | u64 | fields cut: an argv longer than its maximum, or a path longer than its maximum (a record with both counts twice); each such entry has P15_F_TRUNCATED |
+| 152 | `snap_id` | u32 | as in PROC |
+| 156 | `error` | i32 | 0, or the negative errno that ended reading the iterator early (then the snapshot is incomplete and the run INVALID) |
+| 160 | `kind` | u16 | as in PROC |
+| 162 | `_pad` | char[6] | zero; pads the fixed part to 8 *(generated)* |

@@ -237,6 +237,44 @@ int main(int argc, char **argv)
 		n2.bulk_ring_bytes = 4194304;
 		rc |= put(w, 2, &n2);
 	}
+	{       /* daemon: a snapshot (ADR-0007 rule 3) and END v2 (ADR-0023 rule 1), after the v1 END */
+		union { struct p15_proc_v1 p; unsigned char b[sizeof(struct p15_proc_v1) + 32]; } pr;
+		struct p15_snap_done_v1 sd;
+		union { struct p15_end_v2 e; unsigned char b[sizeof(struct p15_end_v2) + 16]; } e2;
+
+		memset(&pr, 0, sizeof(pr));
+		hdr(&pr.p.h, P15_T_PROC, (sizeof(pr.p) + 9 + 8 + 7) & ~7u, 10100, 300, 77);
+		pr.p.parent_tgid = 1;
+		pr.p.parent_start_ns = 5;
+		pr.p.exe_ino = 0x8000000000000001ull;      /* the top bit set: must stay unsigned */
+		pr.p.exe_dev = (8u << 20) | 1;
+		pr.p.exe_gen = 0xfffffffeu;
+		pr.p.pflags = 2;
+		pr.p.snap_id = 4;
+		pr.p.kind = 2;
+		memcpy(pr.p.comm, "sshd", 4);
+		pr.p.exe_path_len = pr.p.exe_path_full = 9;
+		pr.p.argv_len = pr.p.argv_full = 8;
+		memcpy(pr.b + sizeof(pr.p), "/bin/sshd" "sshd\0-D\0", 17);
+		rc |= put(w, 2, &pr);
+		memset(&sd, 0, sizeof(sd));
+		hdr(&sd.h, P15_T_SNAP_DONE, sizeof(sd), 10101, 1, 1);
+		sd.duration_ns = 123456;
+		sd.tasks = 3;
+		sd.threads = 2;
+		sd.emitted = sd.entries = 1;
+		sd.snap_id = 4;
+		sd.error = -71;
+		sd.kind = 2;
+		rc |= put(w, 2, &sd);
+		memset(&e2, 0, sizeof(e2));
+		hdr(&e2.e.h, P15_T_END, (sizeof(e2.e) + 14 + 7) & ~7u, 10102, 1, 1);
+		e2.e.h.version = 2;
+		e2.e.closing_snapshot = -71;
+		e2.e.reason_full = e2.e.reason_len = 14;
+		memcpy(e2.b + sizeof(e2.e), "stop requested", 14);
+		rc |= put(w, 2, &e2);
+	}
 	if (rc) {
 		fprintf(stderr, "wal_fixture: an append failed\n");
 		return 1;
