@@ -112,7 +112,7 @@ class VmSmokeFixtureTest(unittest.TestCase):
 
 
 class VmSmoke2FixtureTest(unittest.TestCase):
-    """Same VM and workload as VmSmokeFixtureTest, with census.bt at cb836f9
+    """Same VM and workload as VmSmokeFixtureTest, with census.bt at 5aa5002
     (raw_syscalls exec bracket). This is the run that validates the probe on 7.0."""
 
     @classmethod
