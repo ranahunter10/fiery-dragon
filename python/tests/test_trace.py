@@ -129,23 +129,39 @@ class Port(Base):
             if netns is not None:
                 e.netns = netns
             return e
+        w = N.JOIN_WINDOW_NS
+        t0 = 2 * w                        # the accept's time, so a connect a full window before it is > 0
         lst = [ev(1, S.SRV, "LISTEN", 1, "127.0.0.1:80")]
-        acc = ev(50, S.SRV, "ACCEPT", 9, "127.0.0.1:80", "127.0.0.1:5000", peer=1)
-        cases = {
-            "after the accept": [ev(60, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80")],
-            "failed": [ev(40, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80", ret=-111)],
-            "other netns": [ev(40, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80", netns=7)],
-            "other target": [ev(40, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:81")],
+        acc = ev(t0, S.SRV, "ACCEPT", 9, "127.0.0.1:80", "127.0.0.1:5000", peer=1)
+        cases = {   # each one is inside the window but for the window cases, so only its own rule rejects it
+            "more than the window after": [ev(t0 + w + 1, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80")],
+            "more than the window before": [ev(t0 - w - 1, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80")],
+            "failed": [ev(t0 - 10, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80", ret=-111)],
+            "other netns": [ev(t0 - 10, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80", netns=7)],
+            "other target": [ev(t0 - 10, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:81")],
         }
         for why, conn in cases.items():
             with self.subTest(why):
                 r = N.port_report(lst + conn + [acc], 80)
                 self.assertIsNone(r.accepted[0].connect)
-        two = [ev(10, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80"),
-               ev(40, S.C2, "CONNECT", 3, "127.0.0.1:5000", "127.0.0.1:80")]
-        r = N.port_report(lst + two + [acc], 80)
-        self.assertEqual(r.accepted[0].connect.proc, S.C2, "the nearest earlier connect")
-        self.assertEqual(r.counts["endpoint_ambiguous"], 1)
+                self.assertEqual(r.counts["client_not_found"], 1)
+        # E-0092: on the VM the accept returned 12 us before its own connect. Both edges of the window count.
+        for why, dt, after in (("12 us after (as on the VM)", 12_185, 1), ("the window's edge after", w, 1),
+                               ("the window's edge before", -w, 0), ("at the same time", 0, 0)):
+            with self.subTest(why):
+                r = N.port_report(lst + [ev(t0 + dt, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80"), acc], 80)
+                self.assertEqual(r.accepted[0].connect.proc, S.C1)
+                self.assertEqual((r.counts["client_by_endpoints"], r.counts["connect_after_accept"]), (1, after))
+        # Two candidates: the one nearest in time wins, on whichever side it is.
+        for why, near, far, winner in (("nearer before", -30, 40, S.C1), ("nearer after", -40, 30, S.C2),
+                                       ("both before", -40, -10, S.C2), ("both after", 10, 40, S.C1)):
+            with self.subTest(why):
+                two = [ev(t0 + near, S.C1, "CONNECT", 2, "127.0.0.1:5000", "127.0.0.1:80"),
+                       ev(t0 + far, S.C2, "CONNECT", 3, "127.0.0.1:5000", "127.0.0.1:80")]
+                r = N.port_report(lst + two + [acc], 80)
+                self.assertEqual(r.accepted[0].connect.proc, winner)
+                self.assertEqual(r.counts["endpoint_ambiguous"], 1)
+                self.assertEqual(r.counts["connect_after_accept"], int(r.accepted[0].connect.ts_ns > t0))
 
     def test_accept_whose_listener_is_not_in_the_run(self):
         acc = N.event(R.decode(memoryview(S.net(5, S.SRV, "ACCEPT", 9, "127.0.0.1:80", "10.1.1.1:3", peer=77)), 0, 1, 0))

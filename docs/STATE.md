@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-02 (UTC), PR "bpf: network-intent capture into the bulk ring (ADR-0004)"
+**Last updated:** 2026-11-05 (UTC), PR "trace: join a client connect on either side of its accept"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -99,7 +99,17 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - p15-trace's Trust block shows the skips;
       - the end-to-end test waits for `code=start` and counts exactly.
     - **ADR-0021** (proposed): the VM has 3 vCPUs.
-    - **Next:** the VM run of PR #44 (`vm_verify.sh` plus `make probe-recursion`), then the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5), then the demo.
+    - **VM run of PR #44 (E-0092):** 16 of 17 steps pass.
+      - The probe, rerun: classic tracepoints skip 0 of 2,000 in every round.
+      - p15d: all 200 children's EXECs are in the WAL, with 0 kernel skips.
+      - The demo passes.
+      - Step 14 failed only in case 5, a p15-trace bug. On the VM an ACCEPT was stamped 12 µs before its own CONNECT, and the join took only earlier connects.
+    - 🔧 **The join fix** (PR #45): the connect nearest in time on either side, within 5 s (a heuristic bound). Matches whose connect came after the accept are counted. Container: 100/100 planted bugs caught.
+    - **VM rerun from step 14 on #45 (E-0093):** steps 14–17 pass, so every step of `vm_verify.sh` has now passed on the stack #32–#45.
+    - **The failing run's segment** is in the evidence. Re-read by the fixed p15-trace on the VM, it gives 2 of 2 clients, 1 of them with its connect after the accept (E-0094). In the container, both the bug and the fix reproduce from the file (E-0095).
+    - **Next:**
+      - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
+      - then the demo.
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -138,3 +148,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 9. **Analysis-tier packages pinned by hash** (`python/requirements.txt`, PR #39): google-crc32c 1.9.0 and numpy 2.5.4, binary wheels for x86-64 CPython 3.13 (the dev container) and 3.14 (the VM, CI) only, installed with `--require-hashes --only-binary=:all:`. Another Python or architecture fails to install, loudly. The alternative is version pins without hashes, which accept any file PyPI serves under that version.
    - Recommendation: accept; extend the hash list when the analysis tier adds torch and the rest (P11's list).
    - Evidence: the wheels' SHA-256s in the file; the CI install step.
+10. **The client join's time rule** (`python/p15/net.py`, PR #45). Today's rule is "the connect nearest in time on either side of the accept, within `JOIN_WINDOW_NS` = 5 s". The alternative is the old "at or before the accept", which the VM showed is wrong (E-0092).
+    - Recommendation: accept the rule. The window's size is the open part: 5 s is a heuristic. Every outcome it causes is counted (`connect_after_accept`, `endpoint_ambiguous`, `client_not_found`), and the match stays labelled an inference.
+    - Evidence: [the VM paste and the container checks](evidence/probes/2026-11-04-trace-join/README.md).

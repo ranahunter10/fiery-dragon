@@ -6,9 +6,11 @@ Two joins, and each says which it is:
 - **by cookie** (exact, ADR-0004 rule 5): an ACCEPT's peer_cookie is the listening socket's
   cookie, so every accepted connection names its listener;
 - **by endpoints** (an inference): a CONNECT on this host whose local endpoint is an ACCEPT's
-  remote endpoint, to the same address and port, in the same network namespace, before the
-  accept. That names the client process of a loopback or same-host connection. Ports are
-  reused, so the nearest earlier connect is taken, and the report labels the match.
+  remote endpoint, to the same address and port, in the same network namespace, within
+  JOIN_WINDOW_NS of the accept on **either side**. Each record is stamped when its call
+  returns, and the two calls finish concurrently: on the VM an accept returned 12 µs before its
+  own connect (E-0092). Ports are reused, so the connect nearest in time is taken; a match whose
+  connect came after the accept is counted, and the report labels every match as an inference.
 
 A connect that failed (ret < 0, other than -EINPROGRESS) is a refusal, not a connection.
 """
@@ -22,6 +24,9 @@ from . import records as R
 
 EINPROGRESS = errno.EINPROGRESS
 PROTO = {6: "tcp", 17: "udp"}
+# How far apart an accept and its connect may be stamped. A heuristic bound, not a guarantee: a reused port
+# inside it is still a candidate, and then `endpoint_ambiguous` counts the accept (E-0092).
+JOIN_WINDOW_NS = 5_000_000_000
 
 
 @dataclass
@@ -122,7 +127,7 @@ def port_report(events: list[Event], port: int) -> PortReport:
     """Everything the run holds about `port`: listeners on it, connections accepted on it (joined
     to their listener by cookie and to their client by endpoints), and connects to it."""
     counts = dict.fromkeys(("net_events", "accept_no_listener", "client_by_endpoints", "client_not_found",
-                            "endpoint_ambiguous"), 0)
+                            "endpoint_ambiguous", "connect_after_accept"), 0)
     counts["net_events"] = len(events)
     by_cookie: dict[int, Listener] = {}
     for e in events:
@@ -147,12 +152,13 @@ def port_report(events: list[Event], port: int) -> PortReport:
             counts["accept_no_listener"] += 1     # the listen came before the capture started
         c = Conn(e, lst)
         cands = [k for k in connects if k.ok and k.local == e.remote and k.remote == e.local
-                 and k.netns == e.netns and k.ts_ns <= e.ts_ns]
+                 and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WINDOW_NS]
         if cands:
-            c.connect = max(cands, key=lambda k: (k.ts_ns, k.seq))
+            c.connect = min(cands, key=lambda k: (abs(k.ts_ns - e.ts_ns), k.seq))
             c.match = "endpoints"
             counts["client_by_endpoints"] += 1
             counts["endpoint_ambiguous"] += len(cands) > 1
+            counts["connect_after_accept"] += c.connect.ts_ns > e.ts_ns
         else:
             counts["client_not_found"] += 1        # remote host, or a connect before the capture
         if lst is not None:

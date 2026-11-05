@@ -1,0 +1,27 @@
+ashu@p15-dev:~$ cd ~/fiery-dragon && K=~/vm-verify-20261104T164452Z/it-runs
+R=$(sudo sh -c "ls -d $K/*/" | head -1)
+sudo env PYTHONPATH=python ~/p15venv/bin/python -m p15.trace --port 18077 "$R" > ~/c5-retrace.txt 2>&1
+sed -n '/^Summary/,/^Processes/p;/How the joins/,+3p' ~/c5-retrace.txt
+sudo tar czf ~/trace-join-vm.tgz -C "$K" . -C ~ c5-retrace.txt && sudo chown $USER ~/trace-join-vm.tgz
+[sudo: authenticate] Password:
+Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+
+Listeners on port 18077
+  127.0.0.1:18077 tcp  cookie 4150  listening from 16:50:25.178 (t+0.067s)  by python3 (105936) ← pid 105028 [started before the capture]
+
+Connections accepted on port 18077
+  16:50:25.723 (t+0.612s)  127.0.0.1:55246 -> 127.0.0.1:18077  accepted by python3 (pid 105936)  (listener cookie 4150)
+      client: python3 (105938) ← pid 105028 [started before the capture]  (matched by endpoints, connect at t+0.612s)
+  16:50:25.774 (t+0.662s)  127.0.0.1:55256 -> 127.0.0.1:18077  accepted by python3 (pid 105936)  (listener cookie 4150)
+      client: python3 (105939) ← pid 105028 [started before the capture]  (matched by endpoints, connect at t+0.662s)
+
+Connects to port 18077
+  16:50:25.723 (t+0.612s)  127.0.0.1:55246 -> 127.0.0.1:18077 tcp  ok                      by python3 (105938) ← pid 105028 [started before the capture]
+  16:50:25.774 (t+0.662s)  127.0.0.1:55256 -> 127.0.0.1:18077 tcp  ok                      by python3 (105939) ← pid 105028 [started before the capture]
+
+Processes involved (4, with their ancestors)
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: by endpoints on this host (an inference): 2 matched, 0 of them with more than one candidate (the connect nearest in time taken, within 5 s either side), 1 whose connect returned after the accept, 0 not found
+  process tree: 13 processes, 4 started before the capture (their parents come with the snapshot, step 4c), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+ashu@p15-dev:~/fiery-dragon$

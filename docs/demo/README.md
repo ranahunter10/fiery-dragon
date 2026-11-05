@@ -51,7 +51,7 @@ A dry run in the cloud container already captured the step-4 chain in the spine:
 
 - **"Why no parent for the shell that ran the script?"** It started before the capture. Its parent comes with the start-up snapshot (Phase 1 step 4c), and the report says so instead of inventing one.
 - **"Why does nc's connect say 'in progress'?"** `nc -w` connects non-blocking. NET records the connect call's own return value (ADR-0004 rule 3). The outcome is visible because the catcher's ACCEPT is joined to it. Blocking connects, like the scan's, return the refusal directly.
-- **"Is the client join exact?"** No. It is by endpoints on the same host, same netns, before the accept, and it is labelled as an inference. The listener join is exact, by socket cookie.
+- **"Is the client join exact?"** No. It is by endpoints on the same host, same netns, the connect nearest in time within 5 s on either side of the accept (the two calls return concurrently, so the accept can be stamped first: E-0092), and it is labelled as an inference. The listener join is exact, by socket cookie.
 - **"What about data volumes, files, DNS?"** Not in this slice. NET records intent (connect, accept, listen, bind). Bytes and files are Phases 2 and 3 (ADR-0005, 0010).
 - **"How does this feed PIDSMaker?"** These are the same records the graph is built from: processes as nodes keyed by ADR-0009, sockets keyed by cookie. The graph export is the Phase-3 step after the capture layer is complete.
 
