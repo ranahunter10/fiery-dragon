@@ -6,6 +6,7 @@
 - [`vm-verify-20261104T164452Z-summary.txt`](vm-verify-20261104T164452Z-summary.txt): the maintainer's paste of that run's SUMMARY, the recur_probe rows and the end-to-end case 1 lines, as sent;
 - [`container.txt`](container.txt): the fix's tests, the Python mutation sweep and the end-to-end test in the container.
 - [`vm-verify-20261104T181920Z-summary.txt`](vm-verify-20261104T181920Z-summary.txt): the maintainer's paste of the VM rerun from step 14 on this PR's tip (`cc757c4`), as sent.
+- [`vm-c5-retrace-20261104T164452Z.txt`](vm-c5-retrace-20261104T164452Z.txt): the maintainer's paste of the fixed p15-trace (`cc757c4`) on the very run that failed, kept on the VM under that run's `it-runs/`.
 
 ## Findings
 
@@ -42,6 +43,13 @@
    - Steps 1–13 are as in run `20261104T164452Z`, where all of them passed.
    - The pasted SUMMARY doesn't show how many of the 2 accepts had a connect after them, or the per-check lines. Those are in that run's `verify.log`.
 
+7. **The failing run, re-read by the fix (MEAS, VM).** The same WAL that failed case 5 (run `20261104T164452Z`), now read by `cc757c4`'s p15-trace:
+   - 2 accepts, both matched by endpoints, 0 not found;
+   - 1 match whose connect returned after the accept: the 127.0.0.1:55246 one from finding 2;
+   - 0 ambiguous.
+   - The text report prints times to the millisecond, so the accept and its connect both show at t+0.612s. The 12,185 ns order shows only in the `connect_after_accept` count and in the raw records.
+   - Before the fix, this run gave 1 of 2.
+
 ## Not yet
 
-- The failing run's segment and `c5-trace.txt`, from `~/vm-verify-20261104T164452Z/it-runs/`, re-read by the fixed p15-trace. The two timestamps in finding 2 are still from the chat paste.
+- The run's segment itself (`trace-join-vm.tgz` on the VM), so the two raw timestamps of finding 2 rest on a file here, not only on the chat paste and the count in finding 7.

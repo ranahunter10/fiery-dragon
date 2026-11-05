@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-04 (UTC), PR "trace: join a client connect on either side of its accept"
+**Last updated:** 2026-11-05 (UTC), PR "trace: join a client connect on either side of its accept"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -107,7 +107,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - 🔧 **The join fix** (PR #45): the connect nearest in time on either side, within 5 s (a heuristic bound). Matches whose connect came after the accept are counted. Container: 100/100 planted bugs caught.
     - **VM rerun from step 14 on #45 (E-0093):** steps 14–17 pass, so every step of `vm_verify.sh` has now passed on the stack #32–#45.
     - **Next:**
-      - add the failing run's segment, re-read by the fixed p15-trace, to the evidence;
+      - add the failing run's segment to the evidence. Re-read by the fixed p15-trace on the VM, it gives 2 of 2 clients, 1 of them with its connect after the accept (E-0094);
       - then the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
 
