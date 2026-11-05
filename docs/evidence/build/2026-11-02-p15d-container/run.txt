@@ -1,0 +1,225 @@
+$ uname -r; gcc --version | head -1; clang --version | head -1; git log --oneline -1
+6.18.44-fc-v185
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Ubuntu clang version 18.1.3 (1ubuntu1)
+c7c8a50 adr: propose 0004, network intent hooks and the NET record
+$ make clean
+exit 0
+$ make -j8 all
+exit 0
+$ make check
+schema check: 8 records, 4 generated files, 0 problems
+layout check: 9 structs x 3 views, 0 disagreements
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+two threads: 200000 items, queue full 1157805 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_run.c: 0 failures
+allowed  daemon/selftest.c:232: _exit(P15_ST_GRANDCHILD_EXIT);   /* exit-ok: self-test grandchild */
+allowed  daemon/selftest.c:234: _exit(120);                      /* exit-ok: self-test child */
+allowed  daemon/selftest.c:237: _exit(127);                              /* exit-ok: self-test child, exec failed */
+exit check: 32 files, 3 marked sites, 0 unmarked calls
+ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    build/p15d: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 3.770s
+ok    bench/census/test_run.py: Ran 25 tests in 0.632s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.031s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.014s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.015s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.024s
+ok    bench/rb_cost/test_summarize.py: Ran 8 tests in 0.005s
+ok    schema/gen/test_gen.py: Ran 31 tests in 0.268s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.017s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.001s
+11 test files, 0 failed
+ok    docs/evidence/baseline/2026-10-25-hyperv-ABA/SHA256SUMS
+ok    docs/evidence/baseline/2026-10-25-hyperv-on-warm/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-hardening-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-records-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-exec-exact-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-scaffolding/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-vm/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T221732Z-light/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T224617Z-v2/SHA256SUMS
+ok    docs/evidence/phase0/SHA256SUMS
+ok    docs/evidence/platform/2026-10-25-perf-counters/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-exec-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p11/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p6-p8/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p8-32bit/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-02-net-probe/SHA256SUMS
+19 checksum files, 0 failed
+ok    bpf/vmlinux/SHA256SUMS
+exit 0
+$ make test-c
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+two threads: 200000 items, queue full 3465719 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_run.c: 0 failures
+exit 0
+$ make test-c-asan
+two threads: 200000 items, queue full 510296 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+exit 0
+$ make test-c-tsan
+two threads: 200000 items, queue full 100818 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+exit 0
+$ make CC=clang OUT=build-clang -j8 all test-c
+ok    ignoring a P15_MUST_CHECK result fails the build (clang)
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+two threads: 200000 items, queue full 23602791 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_run.c: 0 failures
+exit 0
+$ make exit-check
+allowed  daemon/selftest.c:232: _exit(P15_ST_GRANDCHILD_EXIT);   /* exit-ok: self-test grandchild */
+allowed  daemon/selftest.c:234: _exit(120);                      /* exit-ok: self-test child */
+allowed  daemon/selftest.c:237: _exit(127);                              /* exit-ok: self-test child, exec failed */
+exit check: 32 files, 3 marked sites, 0 unmarked calls
+exit 0
+$ make hardening-check
+ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    build/p15d: all of pie, relro, now, nx-stack, canary, fortify, cet
+exit 0
+$ make smoke
+loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+loaded fd_empty_syscall         section syscall                          fd 5
+2 programs accepted by the verifier
+loaded: libbpf v1.7
+child 30856: matched 1, start_ns 4975190694751; seen 1, reserve_failed 0
+libbpf v1.7; child argv bytes 200
+mode                      rec len     ring bytes
+fixed (reserve max)           264           1344
+output (exact len)            264            264
+dynptr (exact len)            264            264
+ok: all three modes delivered
+p15-spine: libbpf v1.7, 4 programs attached
+selftest: daemon 30859, child 30860, grandchild 30861; 7 records collected, 0 invalid
+  ok    test child exited 0
+  ok    every record passes the length checks (none invalid)
+  ok    no record dropped for lack of memory
+  ok    every record takes exactly its len in the ring (ADR-0017; 0 do not)
+  ok    exactly one FORK of the child by the daemon (found 1)
+  ok      ... as a new process (kind 1)
+  ok    every child record carries the start_ns its FORK announced (ADR-0009)
+  ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+  ok    exactly 2 RENAMEs from the child (found 2)
+  ok      ... first: daemon comm -> "fd-selftest" (prctl)
+  ok      ... second: "fd-selftest" -> "true" (exec)
+  ok    exactly one FORK of the grandchild by the child (found 1)
+  ok      ... a new process with its own start_ns
+  ok    exactly one EXEC from the child (found 1)
+  ok      ... filename "/bin/true", not truncated
+  ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+  ok      ... no flags; old_tid is the child
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=4975256347704 tgid=30859 tid=30859 start=4975225287876 flags=0x0 child=30860/30860 child_start=4975256341657 kind=process
+    RENAME ts=4975256500758 tgid=30860 tid=30860 start=4975256341657 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=4975256722734 tgid=30860 tid=30860 start=4975256341657 flags=0x0 child=30861/30861 child_start=4975256719399 kind=process
+    EXIT   ts=4975256867416 tgid=30861 tid=30861 start=4975256719399 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=4975259352607 tgid=30860 tid=30860 start=4975256341657 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=4975259457943 tgid=30860 tid=30860 start=4975256341657 flags=0x0 old_tid=30860 exe=266338304:343334 gen=0 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+    EXIT   ts=4975260954941 tgid=30860 tid=30860 start=4975256341657 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+          FORK        2        2               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+exit 0
+$ make it-p15d
+case 1: a 4 s run with 200 short processes
+p15d level=info code=start run_dir=/tmp/p15d-it-xuGHOi/c1/20261102T105008Z-3638fa0c sched="SCHED_FIFO 1" spine_ring=4194304
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-xuGHOi/c1/20261102T105008Z-3638fa0c//seg-00000000.p15w: segment 0, 91576 bytes, 737 batches, 832 records, valid to the end
+  run.id = 20261102T105008Z-3638fa0c
+  kernel.release = 6.18.44-fc-v185
+  schema.hash = f2e7ee07c17d0e146a7692cb288ee5633ceecdc2592ab1ed9440ff21d5349aca
+records: spine 808, bulk 0, daemon 24; invalid 0
+  FORK       203
+  EXEC       201
+  EXIT       202
+  RENAME     202
+  CLOCK_SYNC 3
+  STATS      20
+  END        1
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   at least 200 EXEC records (got 201)
+  ok   a STATS record every 200 ms (got 20)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+case 2: stop by SIGTERM
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested"
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+p15d level=info code=start run_dir=/tmp/p15d-it-xuGHOi/c3/20261102T105014Z-3638fa0c sched="normal (--no-rt)" spine_ring=4096
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 117, bulk 0, daemon 10; invalid 0
+  FORK       35
+  EXEC       26
+  EXIT       27
+  RENAME     29
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        2
+  END        1
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)"
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+case 4: a bad flag
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
+exit 0
+$ make mutate-p15d
+killed   0 queue.c if (h - t >= q->n) {
+killed   1 queue.c atomic_store_explicit(&q->head, h, memory_order_release);
+killed   2 queue.c s->count = 0;
+killed   3 queue.c return t == h ? NULL : &q->slots[t % q->n];
+killed   4 queue.c while (d > m && !atomic_compare_exchange_weak_explicit
+killed   5 config.c snprintf(err, errlen, "unknown argument '%s'", f);
+killed   6 config.c if (v < OPTS[i].lo || v > OPTS[i].hi ||
+killed   7 config.c (OPTS[i].pow2 && (v & (v - 1)))
+killed   8 config.c if (!c->wal_root) {
+killed   9 drain.c if (any)
+killed   10 drain.c atomic_fetch_add(&d->run->drained[h->type], 1);
+killed   11 drain.c run->bpf_base[k] = d->prev_ctr[k];
+killed   12 writer.c if (inv == P15_INV_BROKEN)
+killed   13 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_
+killed   14 writer.c if (emitted != drained + atomic_load(&r->spine_invalid)) {
+killed   15 writer.c buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);
+killed   16 run.c case P15_RUN_DEGRADED:
+mutation sweep: 17/17 killed
+exit 0

@@ -237,7 +237,7 @@ static void child_main(int wfd)
 	_exit(127);                              /* exit-ok: self-test child, exec failed */
 }
 
-int p15_selftest_run(int spine_rb_fd, FILE *log)
+int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns)
 {
 	struct p15_rec_list l = { 0 };
 	struct p15_selftest_expect e = { 0 };
@@ -325,6 +325,23 @@ int p15_selftest_run(int spine_rb_fd, FILE *log)
 			fprintf(log, "    %s\n", line);
 		}
 	}
+	if (daemon_start_ns) {
+		*daemon_start_ns = 0;
+		for (size_t i = 0; i < l.n; i++) {
+			const struct p15_hdr *h = l.recs[i];
+
+			if (h->type == P15_T_FORK && h->tgid == e.daemon_tgid &&
+			    ((const struct p15_fork *)h)->child_tgid == e.child) {
+				*daemon_start_ns = h->start_ns;
+				break;
+			}
+		}
+	}
 	p15_rec_list_free(&l);
 	return failed;
+}
+
+int p15_selftest_run(int spine_rb_fd, FILE *log)
+{
+	return p15_selftest_run_ex(spine_rb_fd, log, NULL);
 }

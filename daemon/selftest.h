@@ -47,5 +47,8 @@ P15_MUST_CHECK int p15_selftest_eval(const struct p15_rec_list *l, const struct 
  * Returns the number of failed checks, or -errno if the test could not be run.
  */
 P15_MUST_CHECK int p15_selftest_run(int spine_rb_fd, FILE *log);
+/* The same, and also report the daemon's own identity start time (ADR-0009), taken from the
+ * header of its FORK of the test child; 0 if that record was not seen. */
+P15_MUST_CHECK int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns);
 
 #endif

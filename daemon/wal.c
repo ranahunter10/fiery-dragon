@@ -206,13 +206,29 @@ static int open_segment(struct p15w *w)
 	return 0;
 }
 
+/* fdatasync, timed with the real monotonic clock (the injected clock drives policy, not latency). */
+static int timed_sync(struct p15w *w)
+{
+	struct timespec a, b;
+	uint64_t d;
+	int rc;
+
+	clock_gettime(CLOCK_MONOTONIC, &a);
+	rc = fdatasync(w->fd);
+	clock_gettime(CLOCK_MONOTONIC, &b);
+	d = (uint64_t)(b.tv_sec - a.tv_sec) * 1000000000ull + (uint64_t)b.tv_nsec - (uint64_t)a.tv_nsec;
+	if (d > w->st.fsync_max_ns)
+		w->st.fsync_max_ns = d;
+	return rc;
+}
+
 static int close_segment(struct p15w *w)
 {
 	int rc = 0;
 
 	if (w->fd < 0)
 		return 0;
-	if (fdatasync(w->fd))
+	if (timed_sync(w))
 		rc = fail(w, errno);
 	else
 		w->st.fsyncs++;
@@ -341,7 +357,7 @@ int p15w_tick(struct p15w *w)
 	if (w->seg_batches > 0 && t - w->opened_ns >= w->o.max_ns)
 		return rotate(w, &w->st.rotations_time);
 	if (w->dirty && t - w->last_sync_ns >= w->o.sync_ns) {
-		if (fdatasync(w->fd))
+		if (timed_sync(w))
 			return fail(w, errno);
 		w->st.fsyncs++;
 		w->last_sync_ns = t;
@@ -364,6 +380,14 @@ int p15w_close(struct p15w *w)
 }
 
 const struct p15w_stats *p15w_stats(const struct p15w *w) { return &w->st; }
+
+uint64_t p15w_take_fsync_max(struct p15w *w)
+{
+	uint64_t m = w->st.fsync_max_ns;
+
+	w->st.fsync_max_ns = 0;
+	return m;
+}
 unsigned p15w_segment_index(const struct p15w *w) { return w->seg; }
 int p15w_fd(const struct p15w *w) { return w->fd; }
 

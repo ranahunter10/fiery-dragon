@@ -30,3 +30,23 @@ sudo build/p15-spine dump 10   # self-test, then 10 s of spine records
 The C unit tests caught 12 of 12 deliberate bugs in the evaluation and the record checks, and 27 of 27 in the WAL writer (`make mutate-wal`).
 
 **Engineering gates (ADR-0019 G2, G3).** Every userspace binary is built with `-D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -pie -Wl,-z,relro,-z,now` and `-Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror`, under gcc and clang. `make must-check-test` proves that ignoring a `P15_MUST_CHECK` result fails the build.
+
+## p15d (step 4b)
+
+| File | What |
+|---|---|
+| [`p15d.c`](p15d.c) | `main`: wiring only. Load and self-test, run directory and WAL header, writer thread, drain loop, orderly stop |
+| [`config.c`](config.c) | strict command line; the effective config is echoed into the WAL header |
+| [`loader.c`](loader.c) | open, size, load and attach the spine, then the self-test; the hook manifest |
+| [`drain.c`](drain.c) | poll the ring, check each record, batch it at its own `len`, publish; counter reads and GAP records. Never touches the disk |
+| [`queue.c`](queue.c) | the bounded SPSC queue between the drain and the writer |
+| [`writer.c`](writer.c) | the only code that writes the WAL: batches, STATS, CLOCK_SYNC, the textfile, the invariant, END |
+| [`run.c`](run.c) | the run state machine and `p15_fail`, the single fatal path |
+| [`p15w_inspect.c`](p15w_inspect.c) | `p15w-inspect RUN_DIR`: validate every segment and record, count by type, print the END verdict |
+
+```bash
+sudo build/p15d --wal-dir /var/lib/p15 --textfile /run/p15d.prom   # until SIGTERM
+build/p15w-inspect /var/lib/p15/<run-id>
+sudo make it-p15d                  # the end-to-end test
+sudo make mutate-p15d              # the mutation sweep (17 bugs)
+```

@@ -72,5 +72,9 @@ jobs:
         run: make layout-check
       - name: Smoke (verifier load; tp_btf attach; spine self-test, ADR-0003)
         run: sudo make smoke
+      - name: The queue under ThreadSanitizer (ADR-0017 layer 2)
+        run: make test-c-tsan
+      - name: p15d end to end (runner kernel, not the target)
+        run: sudo make it-p15d
       - name: Network-intent probe (fexit hooks of ADR-0004; runner kernel, not the target)
         run: uname -r && sudo make smoke-net
