@@ -12,7 +12,37 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_EXEC:   return version == 1 ? sizeof(struct p15_exec_v1) : 0;
 	case P15_T_EXIT:   return version == 1 ? sizeof(struct p15_exit_v1) : 0;
 	case P15_T_RENAME: return version == 1 ? sizeof(struct p15_rename_v1) : 0;
+	case P15_T_CLOCK_SYNC: return version == 1 ? sizeof(struct p15_clock_sync_v1) : 0;
+	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : 0;
+	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : 0;
+	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : 0;
 	}
+	return 0;
+}
+
+/*
+ * The variable fields of a record take `used` bytes after its fixed part. They must end inside
+ * len; len must be exactly their padded end, unless `slack_ok`; and every byte after them up to
+ * len must be zero. EXEC is built in a reused per-CPU scratch buffer (ADR-0017), so a padding
+ * bug would otherwise carry an earlier record's bytes into this one.
+ */
+static int check_tail(const void *data, size_t fixed, size_t used, int slack_ok, const char **why)
+{
+	const struct p15_hdr *h = data;
+
+	if (fixed + used > h->len) {
+		*why = "variable field beyond len";
+		return -EINVAL;
+	}
+	if (h->len != ((fixed + used + 7) & ~(size_t)7) && !slack_ok) {
+		*why = "len larger than its fields need";
+		return -EINVAL;
+	}
+	for (size_t i = fixed + used; i < h->len; i++)
+		if (((const __u8 *)data)[i]) {
+			*why = "non-zero bytes after the variable fields";
+			return -EINVAL;
+		}
 	return 0;
 }
 
@@ -45,26 +75,25 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 	if (h->type == P15_T_EXEC) {
 		const struct p15_exec_v1 *e = data;
 
-		if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC_V1_ARGV_MAX ||
-		    fixed + e->filename_len + e->argv_len > h->len) {
+		if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC_V1_ARGV_MAX) {
 			*why = "variable field beyond len";
 			return -EINVAL;
 		}
-		/*
-		 * Exactly the fields' padded size: no slack, except after a failed read (the DYNPTR
-		 * way keeps its reservation). EXEC is built in reused per-CPU scratch (ADR-0017), so
-		 * every byte after the fields must be zero.
-		 */
-		if (h->len != ((fixed + e->filename_len + e->argv_len + 7) & ~(size_t)7) &&
-		    !(h->flags & P15_F_READ_FAILED)) {
-			*why = "len larger than its fields need";
+		/* slack only after a failed read: the DYNPTR way keeps its reservation */
+		if (check_tail(data, fixed, (size_t)e->filename_len + e->argv_len, h->flags & P15_F_READ_FAILED, why))
+			return -EINVAL;
+	} else if (h->type == P15_T_END) {
+		const struct p15_end_v1 *e = data;
+
+		if (e->reason_len > P15_END_V1_REASON_MAX) {
+			*why = "variable field beyond len";
 			return -EINVAL;
 		}
-		for (size_t i = fixed + e->filename_len + e->argv_len; i < h->len; i++)
-			if (((const __u8 *)data)[i]) {
-				*why = "non-zero bytes after the variable fields";
-				return -EINVAL;
-			}
+		if (check_tail(data, fixed, e->reason_len, 0, why))
+			return -EINVAL;
+	} else if (h->len != fixed) {
+		*why = "len differs from the fixed size";
+		return -EINVAL;
 	}
 	*why = NULL;
 	return 0;
@@ -94,13 +123,26 @@ static void printable(char *dst, size_t n, const __u8 *src, size_t len)
 	dst[i] = '\0';
 }
 
+const char *p15_type_name(__u16 type)
+{
+	switch (type) {
+	case P15_T_FORK:       return "FORK";
+	case P15_T_EXEC:       return "EXEC";
+	case P15_T_EXIT:       return "EXIT";
+	case P15_T_RENAME:     return "RENAME";
+	case P15_T_CLOCK_SYNC: return "CLOCK_SYNC";
+	case P15_T_STATS:      return "STATS";
+	case P15_T_GAP:        return "GAP";
+	case P15_T_END:        return "END";
+	}
+	return "?";
+}
+
 int p15_rec_format(const void *data, char *buf, size_t n)
 {
 	const struct p15_hdr *h = data;
 	char a[1100], b[300];
-	int k = snprintf(buf, n, "%-6s ts=%llu tgid=%u tid=%u start=%llu flags=0x%x",
-			 h->type == P15_T_FORK ? "FORK" : h->type == P15_T_EXEC ? "EXEC" :
-			 h->type == P15_T_EXIT ? "EXIT" : h->type == P15_T_RENAME ? "RENAME" : "?",
+	int k = snprintf(buf, n, "%-6s ts=%llu tgid=%u tid=%u start=%llu flags=0x%x", p15_type_name(h->type),
 			 (unsigned long long)h->ts_ns, h->tgid, h->tid, (unsigned long long)h->start_ns, h->flags);
 
 	if (k < 0 || (size_t)k >= n)
@@ -135,6 +177,50 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 		printable(a, sizeof(a), (const __u8 *)r->old_comm, strnlen(r->old_comm, sizeof(r->old_comm)));
 		printable(b, sizeof(b), (const __u8 *)r->new_comm, strnlen(r->new_comm, sizeof(r->new_comm)));
 		return k + snprintf(buf + k, n - k, " old=\"%s\" new=\"%s\"", a, b);
+	}
+	case P15_T_CLOCK_SYNC: {
+		const struct p15_clock_sync *r = data;
+
+		return k + snprintf(buf + k, n - k, " boot=%llu mono=%llu real=%llu spread=%llu",
+				    (unsigned long long)r->boottime_ns, (unsigned long long)r->monotonic_ns,
+				    (unsigned long long)r->realtime_ns, (unsigned long long)r->read_spread_ns);
+	}
+	case P15_T_STATS: {
+		const struct p15_stats *r = data;
+
+		return k + snprintf(buf + k, n - k, " state=%u emitted=%llu drained=%llu written=%llu lost=%llu+%llu "
+				    "invalid=%llu gaps=%llu poll_gap_max=%llu queue_full=%llu fsync_max=%llu",
+				    r->run_state,
+				    (unsigned long long)(r->fork_emitted + r->exec_emitted + r->exit_emitted +
+							 r->rename_emitted),
+				    (unsigned long long)(r->fork_drained + r->exec_drained + r->exit_drained +
+							 r->rename_drained),
+				    (unsigned long long)r->spine_written,
+				    (unsigned long long)(r->fork_reserve_failed + r->exec_reserve_failed +
+							 r->exit_reserve_failed + r->rename_reserve_failed),
+				    (unsigned long long)(r->fork_build_failed + r->exec_build_failed +
+							 r->exit_build_failed + r->rename_build_failed),
+				    (unsigned long long)r->spine_invalid, (unsigned long long)r->gap_records,
+				    (unsigned long long)r->poll_gap_max_ns, (unsigned long long)r->queue_full,
+				    (unsigned long long)r->wal_fsync_max_ns);
+	}
+	case P15_T_GAP: {
+		const struct p15_gap *r = data;
+
+		return k + snprintf(buf + k, n - k, " from=%llu to=%llu spine_seq=%llu reserve_failed=%llu/%llu/%llu/%llu "
+				    "build_failed=%llu/%llu/%llu/%llu", (unsigned long long)r->from_ns,
+				    (unsigned long long)r->to_ns, (unsigned long long)r->spine_seq,
+				    (unsigned long long)r->fork_reserve_failed, (unsigned long long)r->exec_reserve_failed,
+				    (unsigned long long)r->exit_reserve_failed, (unsigned long long)r->rename_reserve_failed,
+				    (unsigned long long)r->fork_build_failed, (unsigned long long)r->exec_build_failed,
+				    (unsigned long long)r->exit_build_failed, (unsigned long long)r->rename_build_failed);
+	}
+	case P15_T_END: {
+		const struct p15_end *r = data;
+
+		printable(b, sizeof(b), (const __u8 *)(r + 1), r->reason_len);
+		return k + snprintf(buf + k, n - k, " exit=%u state=%u invariant=%u signal=%u reason=\"%s\"",
+				    r->exit_code, r->run_state, r->invariant, r->signal, b);
 	}
 	}
 	return k;

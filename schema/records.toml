@@ -94,3 +94,125 @@ fields = [
   { name = "old_comm", c = "char[16]", doc = "comm before" },
   { name = "new_comm", c = "char[16]", doc = "comm after" },
 ]
+
+# ---- daemon records (ADR-0006 "daemon records", WAL ring 2): written by p15d, not by BPF ----
+# Their header: ts_ns is CLOCK_BOOTTIME read by the daemon (the clock bpf_ktime_get_boot_ns
+# reads); tgid, tid and start_ns name the daemon thread that wrote the record (ADR-0009).
+# Counters marked "cumulative" count from the start of the run; "interval" fields cover the
+# time since the previous STATS record.
+
+[[record]]
+name = "CLOCK_SYNC"
+type = 32
+version = 1
+class = "MARKER"
+doc = "The three clocks read back to back, repeated during the run so a reader can map boot time to wall time anywhere in a segment, not only at its header (ADR-0007 format rule 2, L5)."
+fields = [
+  { name = "boottime_ns",    c = "u64", doc = "CLOCK_BOOTTIME, read first; equals the header's ts_ns" },
+  { name = "monotonic_ns",   c = "u64", doc = "CLOCK_MONOTONIC, read second" },
+  { name = "realtime_ns",    c = "u64", doc = "CLOCK_REALTIME (wall time, UTC), read third" },
+  { name = "read_spread_ns", c = "u64", doc = "CLOCK_BOOTTIME after the three reads minus boottime_ns: the anchors' uncertainty" },
+]
+
+[[record]]
+name = "STATS"
+type = 33
+version = 1
+class = "STATS"
+doc = "The capture's own health, every stats interval (1 s by default), and once more at the end of the run (ADR-0019 G4.1). Spine counters are the BPF per-cause counters summed over CPUs (ADR-0006 rule 6)."
+fields = [
+  # spine counters per type and cause, cumulative (ADR-0006 rule 6; ADR-0019 G4.1 'per type')
+  { name = "fork_seen",             c = "u64", doc = "FORK hook runs, cumulative" },
+  { name = "fork_emitted",          c = "u64", doc = "FORK records submitted to the spine ring, cumulative" },
+  { name = "fork_reserve_failed",   c = "u64", doc = "FORK records lost to a full ring, cumulative" },
+  { name = "fork_build_failed",     c = "u64", doc = "FORK records lost before the ring (no buffer), cumulative" },
+  { name = "fork_read_failed",      c = "u64", doc = "emitted FORK records with a failed memory read, cumulative" },
+  { name = "fork_truncated",        c = "u64", doc = "emitted FORK records with a cut field, cumulative" },
+  { name = "exec_seen",             c = "u64", doc = "EXEC hook runs, cumulative" },
+  { name = "exec_emitted",          c = "u64", doc = "EXEC records submitted, cumulative" },
+  { name = "exec_reserve_failed",   c = "u64", doc = "EXEC records lost to a full ring, cumulative" },
+  { name = "exec_build_failed",     c = "u64", doc = "EXEC records lost before the ring, cumulative" },
+  { name = "exec_read_failed",      c = "u64", doc = "emitted EXEC records with a failed memory read, cumulative" },
+  { name = "exec_truncated",        c = "u64", doc = "emitted EXEC records with a cut field, cumulative" },
+  { name = "exit_seen",             c = "u64", doc = "EXIT hook runs, cumulative" },
+  { name = "exit_emitted",          c = "u64", doc = "EXIT records submitted, cumulative" },
+  { name = "exit_reserve_failed",   c = "u64", doc = "EXIT records lost to a full ring, cumulative" },
+  { name = "exit_build_failed",     c = "u64", doc = "EXIT records lost before the ring, cumulative" },
+  { name = "exit_read_failed",      c = "u64", doc = "emitted EXIT records with a failed memory read, cumulative" },
+  { name = "exit_truncated",        c = "u64", doc = "emitted EXIT records with a cut field, cumulative" },
+  { name = "rename_seen",           c = "u64", doc = "RENAME hook runs, cumulative" },
+  { name = "rename_emitted",        c = "u64", doc = "RENAME records submitted, cumulative" },
+  { name = "rename_reserve_failed", c = "u64", doc = "RENAME records lost to a full ring, cumulative" },
+  { name = "rename_build_failed",   c = "u64", doc = "RENAME records lost before the ring, cumulative" },
+  { name = "rename_read_failed",    c = "u64", doc = "emitted RENAME records with a failed memory read, cumulative" },
+  { name = "rename_truncated",      c = "u64", doc = "emitted RENAME records with a cut field, cumulative" },
+  # the drain side of the books: emitted = drained (per type); drained = written + drain_lost (ADR-0006 rule 6)
+  { name = "fork_drained",          c = "u64", doc = "FORK records the drain took from the ring and copied into a batch, cumulative" },
+  { name = "exec_drained",          c = "u64", doc = "EXEC records drained, cumulative" },
+  { name = "exit_drained",          c = "u64", doc = "EXIT records drained, cumulative" },
+  { name = "rename_drained",        c = "u64", doc = "RENAME records drained, cumulative" },
+  { name = "spine_invalid",         c = "u64", doc = "spine records refused by p15_rec_check, never written (run INVALID), cumulative" },
+  { name = "spine_written",         c = "u64", doc = "spine records in batches the WAL writer appended, cumulative" },
+  { name = "spine_drain_lost",      c = "u64", doc = "drained spine records in batches the writer could not append (run INVALID), cumulative" },
+  { name = "gap_records",           c = "u64", doc = "GAP records the drain emitted, cumulative (ADR-0017 layer 4)" },
+  # the drain's timing (ADR-0017 layers 2, 3 and 5; ADR-0019 G4.1 'poll-to-poll gap as a fixed histogram')
+  { name = "poll_gap_le_100us",     c = "u64", doc = "drain polls that came at most 100 us after the previous one, cumulative" },
+  { name = "poll_gap_le_1ms",       c = "u64", doc = "polls 100 us to 1 ms after the previous one, cumulative" },
+  { name = "poll_gap_le_10ms",      c = "u64", doc = "polls 1 to 10 ms after, cumulative" },
+  { name = "poll_gap_le_100ms",     c = "u64", doc = "polls 10 to 100 ms after, cumulative" },
+  { name = "poll_gap_le_1s",        c = "u64", doc = "polls 100 ms to 1 s after, cumulative" },
+  { name = "poll_gap_gt_1s",        c = "u64", doc = "polls more than 1 s after, cumulative" },
+  { name = "poll_gap_max_ns",       c = "u64", doc = "the longest poll-to-poll gap in this interval: the worst drain stall (ADR-0017 layer 5)" },
+  { name = "spine_fill_max",        c = "u64", doc = "the most bytes waiting in the spine ring at a poll, this interval (ADR-0019 G4.1 'fill high-water')" },
+  { name = "queue_full",            c = "u64", doc = "times the drain found no free batch and left records in the ring, cumulative (ADR-0017 layer 2)" },
+  # the WAL writer (ADR-0007; ADR-0019 G4.1 'WAL: bytes, batches, fsyncs, worst fsync latency')
+  { name = "wal_bytes",             c = "u64", doc = "bytes written to the WAL, headers included, cumulative" },
+  { name = "wal_batches",           c = "u64", doc = "batches appended, all rings, cumulative" },
+  { name = "wal_fsyncs",            c = "u64", doc = "fdatasync calls on segments, cumulative" },
+  { name = "wal_fsync_max_ns",      c = "u64", doc = "the slowest fdatasync in this interval (ADR-0017 evidence 9)" },
+  # the daemon process (ADR-0019 G4.1 'CPU time and RSS (getrusage)')
+  { name = "cpu_user_us",           c = "u64", doc = "the daemon's user CPU time, cumulative (getrusage RUSAGE_SELF)" },
+  { name = "cpu_sys_us",            c = "u64", doc = "the daemon's system CPU time, cumulative" },
+  { name = "maxrss_kb",             c = "u64", doc = "the daemon's peak resident set size, KiB (ru_maxrss)" },
+  { name = "interval_ns",           c = "u64", doc = "CLOCK_BOOTTIME since the previous STATS record (or the run's start): the span the interval fields cover" },
+  { name = "spine_ring_bytes",      c = "u32", doc = "the spine ring's size (also in the segment header), to read spine_fill_max against" },
+  { name = "queue_depth_max",       c = "u32", doc = "the most full batches waiting for the writer, this interval (ADR-0019 G4.1 'queue depth high-water')" },
+  { name = "queue_batches",         c = "u32", doc = "batches in the preallocated pool: the queue's capacity" },
+  { name = "run_state",             c = "u32", doc = "0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3)" },
+]
+
+[[record]]
+name = "GAP"
+type = 34
+version = 1
+class = "MARKER"
+doc = "Spine records were lost between two reads of the loss counters: the window that contains the loss (ADR-0017 layer 4). Every process alive in [from_ns, to_ns] may be missing records."
+fields = [
+  { name = "from_ns",               c = "u64", doc = "CLOCK_BOOTTIME just before the previous counter read began" },
+  { name = "to_ns",                 c = "u64", doc = "CLOCK_BOOTTIME just after this counter read ended" },
+  { name = "spine_seq",             c = "u64", doc = "the spine sequence number the drain would give its next record at this read: records drained before it were in the ring before the read (ADR-0007 sequence; LTTng's packet numbering)" },
+  { name = "fork_reserve_failed",   c = "u64", doc = "FORK records lost to a full ring in the window" },
+  { name = "exec_reserve_failed",   c = "u64", doc = "EXEC records lost to a full ring in the window" },
+  { name = "exit_reserve_failed",   c = "u64", doc = "EXIT records lost to a full ring in the window" },
+  { name = "rename_reserve_failed", c = "u64", doc = "RENAME records lost to a full ring in the window" },
+  { name = "fork_build_failed",     c = "u64", doc = "FORK records lost before the ring in the window" },
+  { name = "exec_build_failed",     c = "u64", doc = "EXEC records lost before the ring in the window" },
+  { name = "exit_build_failed",     c = "u64", doc = "EXIT records lost before the ring in the window" },
+  { name = "rename_build_failed",   c = "u64", doc = "RENAME records lost before the ring in the window" },
+]
+
+[[record]]
+name = "END"
+type = 35
+version = 1
+class = "MARKER"
+doc = "The last record of a run: its verdict (ADR-0019 G2.2, G2.3). Written after the final STATS, on an orderly stop and by p15_fail. A run whose last segment has no END did not end in order."
+fields = [
+  { name = "exit_code", c = "u32", doc = "the code p15d exits with (daemon/exitcodes.h)" },
+  { name = "run_state", c = "u32", doc = "0 RUNNING, 1 DEGRADED, 2 INVALID, final" },
+  { name = "invariant", c = "u32", doc = "ADR-0006 rule 6 at quiescence: 0 not checked (stopped before quiescence), 1 closed, 2 broken" },
+  { name = "signal",    c = "u32", doc = "the signal that asked for the stop (SIGTERM 15, SIGINT 2), or 0" },
+]
+var = [
+  { name = "reason", max = 256, doc = "why the run ended, one line of text; 'stop requested' on an orderly stop" },
+]

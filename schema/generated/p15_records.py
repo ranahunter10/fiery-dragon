@@ -12,6 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
+SCHEMA_HASH = "f2e7ee07c17d0e146a7692cb288ee5633ceecdc2592ab1ed9440ff21d5349aca"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -35,6 +36,10 @@ TYPES = {
     'EXEC': 2,
     'EXIT': 3,
     'RENAME': 4,
+    'CLOCK_SYNC': 32,
+    'STATS': 33,
+    'GAP': 34,
+    'END': 35,
 }
 
 RECORDS = {
@@ -50,4 +55,16 @@ RECORDS = {
     (4, 1): Layout('RENAME', 4, 1, 'SPINE',
         np.dtype({'names': ['h', 'old_comm', 'new_comm'], 'formats': [HEADER_DTYPE, 'S16', 'S16'], 'offsets': [0, 32, 48], 'itemsize': 64}),
         64, 64, ()),
+    (32, 1): Layout('CLOCK_SYNC', 32, 1, 'MARKER',
+        np.dtype({'names': ['h', 'boottime_ns', 'monotonic_ns', 'realtime_ns', 'read_spread_ns'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56], 'itemsize': 64}),
+        64, 64, ()),
+    (33, 1): Layout('STATS', 33, 1, 'STATS',
+        np.dtype({'names': ['h', 'fork_seen', 'fork_emitted', 'fork_reserve_failed', 'fork_build_failed', 'fork_read_failed', 'fork_truncated', 'exec_seen', 'exec_emitted', 'exec_reserve_failed', 'exec_build_failed', 'exec_read_failed', 'exec_truncated', 'exit_seen', 'exit_emitted', 'exit_reserve_failed', 'exit_build_failed', 'exit_read_failed', 'exit_truncated', 'rename_seen', 'rename_emitted', 'rename_reserve_failed', 'rename_build_failed', 'rename_read_failed', 'rename_truncated', 'fork_drained', 'exec_drained', 'exit_drained', 'rename_drained', 'spine_invalid', 'spine_written', 'spine_drain_lost', 'gap_records', 'poll_gap_le_100us', 'poll_gap_le_1ms', 'poll_gap_le_10ms', 'poll_gap_le_100ms', 'poll_gap_le_1s', 'poll_gap_gt_1s', 'poll_gap_max_ns', 'spine_fill_max', 'queue_full', 'wal_bytes', 'wal_batches', 'wal_fsyncs', 'wal_fsync_max_ns', 'cpu_user_us', 'cpu_sys_us', 'maxrss_kb', 'interval_ns', 'spine_ring_bytes', 'queue_depth_max', 'queue_batches', 'run_state'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 384, 392, 400, 408, 416, 424, 428, 432, 436], 'itemsize': 440}),
+        440, 440, ()),
+    (34, 1): Layout('GAP', 34, 1, 'MARKER',
+        np.dtype({'names': ['h', 'from_ns', 'to_ns', 'spine_seq', 'fork_reserve_failed', 'exec_reserve_failed', 'exit_reserve_failed', 'rename_reserve_failed', 'fork_build_failed', 'exec_build_failed', 'exit_build_failed', 'rename_build_failed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112], 'itemsize': 120}),
+        120, 120, ()),
+    (35, 1): Layout('END', 35, 1, 'MARKER',
+        np.dtype({'names': ['h', 'exit_code', 'run_state', 'invariant', 'signal', 'reason_full', 'reason_len', '_pad'], 'formats': [HEADER_DTYPE, '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', 'S2'], 'offsets': [0, 32, 36, 40, 44, 48, 52, 54], 'itemsize': 56}),
+        56, 312, (('reason', 256),)),
 }

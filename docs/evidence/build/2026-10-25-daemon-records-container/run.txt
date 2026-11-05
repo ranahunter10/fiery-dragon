@@ -1,0 +1,237 @@
+$ make clean
+rm -rf build
+[exit 0]
+$ make -j8
+make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/claude/fiery-dragon/build/libbpf/obj \
+  DESTDIR=/home/claude/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/claude/fiery-dragon/build/bpftool/ bootstrap
+/home/claude/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+/home/claude/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/rb_size.bpf.o > build/rb_size.skel.h
+/home/claude/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+[exit 0]
+$ make check
+python3 schema/gen/gen.py --check
+schema check: 8 records, 4 generated files, 0 problems
+/home/claude/fiery-dragon/build/bpftool/bootstrap/bpftool -j btf dump file build/p15_layout_probe.bpf.o > build/layout_btf.json
+python3 schema/gen/layout_check.py build/layout_btf.json
+layout check: 9 structs x 3 views, 0 disagreements
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+build/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build/test_wal
+daemon/tests/test_wal.c: 0 failures
+build/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build/test_records
+daemon/tests/test_records.c: 0 failures
+python3 tools/ci/check_exits.py daemon
+allowed  daemon/selftest.c:232: _exit(P15_ST_GRANDCHILD_EXIT);   /* exit-ok: self-test grandchild */
+allowed  daemon/selftest.c:234: _exit(120);                      /* exit-ok: self-test child */
+allowed  daemon/selftest.c:237: _exit(127);                              /* exit-ok: self-test child, exec failed */
+exit check: 15 files, 3 marked sites, 0 unmarked calls
+python3 tools/ci/check_hardening.py build/p15-spine
+ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+tools/ci/run-tests.sh
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 3.153s
+ok    bench/census/test_run.py: Ran 25 tests in 0.584s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.024s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.009s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.008s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.013s
+ok    bench/rb_cost/test_summarize.py: Ran 8 tests in 0.002s
+ok    schema/gen/test_gen.py: Ran 31 tests in 0.176s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.010s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.001s
+11 test files, 0 failed
+tools/ci/check-evidence.sh
+ok    docs/evidence/baseline/2026-10-25-hyperv-ABA/SHA256SUMS
+ok    docs/evidence/baseline/2026-10-25-hyperv-on-warm/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-hardening-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-exec-exact-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-scaffolding/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-vm/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T221732Z-light/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T224617Z-v2/SHA256SUMS
+ok    docs/evidence/phase0/SHA256SUMS
+ok    docs/evidence/platform/2026-10-25-perf-counters/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-exec-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p11/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p6-p8/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p8-32bit/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-vm/SHA256SUMS
+17 checksum files, 0 failed
+cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
+ok    bpf/vmlinux/SHA256SUMS
+[exit 0]
+$ make test-c-asan
+build/asan/test_wal
+daemon/tests/test_wal.c: 0 failures
+build/asan/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build/asan/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build/asan/test_records
+daemon/tests/test_records.c: 0 failures
+[exit 0]
+$ make CC=clang OUT=build-clang -j8 all test-c
+ok    ignoring a P15_MUST_CHECK result fails the build (clang)
+/home/claude/fiery-dragon/build-clang/bpftool/bootstrap/bpftool gen skeleton build-clang/spine.bpf.o > build-clang/spine.skel.h
+build-clang/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build-clang/test_wal
+daemon/tests/test_wal.c: 0 failures
+build-clang/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build-clang/test_records
+daemon/tests/test_records.c: 0 failures
+[exit 0]
+$ make mutate-records
+python3 daemon/tests/mutate_records.py
+killed    0 if (h->len > size) {
+killed    1 if (h->len % 8) {
+killed    2 if (h->len < fixed) {
+killed    3 case P15_T_STATS:  return version == 1 ?
+killed    4 case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : 0;
+killed    5 } else if (h->len != fixed) {
+killed    6 if (fixed + used > h->len) {
+killed    7 if (h->len != ((fixed + used + 7) & ~(size_t)7) && !slack_ok) {
+killed    8 if (h->len != ((fixed + used + 7) & ~(size_t)7) && !slack_ok) {
+killed    9 for (size_t i = fixed + used; i < h->len; i++)
+killed    10 if (((const __u8 *)data)[i]) {
+killed    11 h->flags & P15_F_READ_FAILED, why))
+killed    12 if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC
+killed    13 if (e->reason_len > P15_END_V1_REASON_MAX) {
+killed    14 if (check_tail(data, fixed, e->reason_len, 0, why))
+killed    15 case P15_T_END:        return "END";
+killed    16 case P15_T_GAP:        return "GAP";
+killed    17 (unsigned long long)r->fork_build_failed, (unsigned long long)r->exec_bu
+killed    18 (unsigned long long)r->spine_written,
+killed    19 printable(b, sizeof(b), (const __u8 *)(r + 1), r->reason_len);
+mutation sweep: 20/20 killed
+[exit 0]
+$ make mutate-wal
+python3 daemon/tests/mutate_wal.py
+killed    0 w->st.next_seq[ring] += count;
+killed    1 put32(h + 24, p15_crc32c(0, payload, len));
+killed    2 put32(h + 32, p15_crc32c(0, h, 32));
+killed    3 w->seg_bytes + total > w->o.max_bytes &&
+killed    4 if (!w->in_open && w->seg_batches > 0
+killed    5 if (w->seg_batches > 0 && t - w->opened_ns >= w->o.max_ns)
+killed    6 if (w->dirty && t - w->last_sync_ns >= w->o.sync_ns)
+killed    7 w->last_sync_ns = t;
+killed    8 s->torn = (off + P15W_BATCH_HDR_LEN + plen == n);
+killed    9 if (all_zero(h, rem))
+killed    10 else if (get64(h + 16) != s->next_seq[ring])
+killed    11 } else if (s.stop && !s.torn) {
+killed    12 if (rl < P15W_REC_MIN || rl % 8 || rl > len - off)
+killed    13 return n == count;
+killed    14 if (len < P15W_REC_MIN || len % 8 || len > size || len > b->cap)
+killed    15 memcpy(b->buf + b->len, rec, len);
+killed    16 if (!w->failed)
+killed    17 if (w->failed)
+killed    18 w->st.rejected_batches++;
+killed    19 OWN("clock.read_spread_ns", "%llu", (unsigned long long)(bt1 - bt0));
+killed    20 !strncmp(k, "clock.", 6) ||
+killed    21 O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC
+killed    22 crc = p15_crc32c(crc, zero4, 4);
+killed    23 w->st.short_writes++;
+killed    24 c = (c >> 1) ^ (0x82F63B78u & (0u - (c & 1)));
+killed    25 w->st.oversize_batches++;
+killed    26 if (ftruncate(fd, s.good_end) || fdatasync(fd))
+mutation sweep: 27/27 killed
+[exit 0]
+$ make mutate-py
+python3 tools/ci/mutate_py.py
+killed    0 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    1 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    2 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    3 check_exits.py MARK = re.compile(r"exit-ok:\s*[A-Za-z]")
+killed    4 check_exits.py if c == "/" and nxt == "/":
+killed    5 check_exits.py if c == "/" and nxt == "*":
+killed    6 check_exits.py if c in "\"'":
+killed    7 check_exits.py if state == "line":
+killed    8 check_exits.py state, i = "code", i + 2
+killed    9 check_exits.py if CALL.search(code):
+killed    10 check_exits.py return 1 if bad else 0
+killed    11 check_exits.py (ok if MARK.search(line) else bad)
+killed    12 check_exits.py if c == "\\":
+killed    13 check_hardening.py bool(re.search(r"Type:\s+DYN", h)) and
+killed    14 check_hardening.py and bool(re.search(r"FLAGS_1\).*\bPIE\b", d)),
+killed    15 check_hardening.py "relro": "GNU_RELRO" in lw,
+killed    16 check_hardening.py or bool(re.search(r"FLAGS_1\).*\bNOW\b", d)),
+killed    17 check_hardening.py "nx-stack": bool(stack) and "E" not in stack.group(1),
+killed    18 check_hardening.py "canary": bool(re.search(r"\b__stack_chk_fail\b", syms)),
+killed    19 check_hardening.py "fortify": bool(re.search(r"\b__\w+_chk\b", syms)),
+killed    20 check_hardening.py \bIBT\b.*\bSHSTK\b
+killed    21 summarize.py if word not in ("row", "nullsys", "selftest"):
+killed    22 summarize.py if set(kv) != set(ROW_KEYS) or kv["way"] not in WAYS:
+killed    23 summarize.py if row["run_cnt"] <= 0:
+killed    24 summarize.py if kv["way"] not in WAYS or verdict not in ("PASS", "FAIL"):
+killed    25 summarize.py if r["ours"] != r["execs"] or r["invalid"]
+killed    26 summarize.py or r["wrong_size"] or r["wrong_argv"]:
+killed    27 summarize.py if any(s != sets[0] for s in sets):
+killed    28 summarize.py return r["run_time_ns"] / r["run_cnt"]
+killed    29 summarize.py diffs = sorted(by[(argv, w)][k] - base[k]
+killed    30 summarize.py below = sum(x < 0 for x in diffs)
+killed    31 summarize.py ratio = f"{m / nmed:.1f}"
+killed    32 summarize.py foreign = sum(r["foreign"] for r in d["rows"])
+killed    33 summarize.py return 1 if probs else 0
+mutation sweep: 34/34 killed
+[exit 0]
+$ make smoke
+build/load_check build/empty.bpf.o
+loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+loaded fd_empty_syscall         section syscall                          fd 5
+2 programs accepted by the verifier
+build/core_smoke --attach
+loaded: libbpf v1.7
+child 16137: matched 1, start_ns 3341366234537; seen 1, reserve_failed 0
+build/rb_size 200
+libbpf v1.7; child argv bytes 200
+mode                      rec len     ring bytes
+fixed (reserve max)           264           1344
+output (exact len)            264            264
+dynptr (exact len)            264            264
+ok: all three modes delivered
+build/p15-spine selftest
+p15-spine: libbpf v1.7, 4 programs attached
+selftest: daemon 16140, child 16142, grandchild 16143; 7 records collected, 0 invalid
+  ok    test child exited 0
+  ok    every record passes the length checks (none invalid)
+  ok    no record dropped for lack of memory
+  ok    every record takes exactly its len in the ring (ADR-0017; 0 do not)
+  ok    exactly one FORK of the child by the daemon (found 1)
+  ok      ... as a new process (kind 1)
+  ok    every child record carries the start_ns its FORK announced (ADR-0009)
+  ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+  ok    exactly 2 RENAMEs from the child (found 2)
+  ok      ... first: daemon comm -> "fd-selftest" (prctl)
+  ok      ... second: "fd-selftest" -> "true" (exec)
+  ok    exactly one FORK of the grandchild by the child (found 1)
+  ok      ... a new process with its own start_ns
+  ok    exactly one EXEC from the child (found 1)
+  ok      ... filename "/bin/true", not truncated
+  ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+  ok      ... no flags; old_tid is the child
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=3341417671485 tgid=16140 tid=16140 start=3341397437960 flags=0x0 child=16142/16142 child_start=3341417668247 kind=process
+    RENAME ts=3341417810182 tgid=16142 tid=16142 start=3341417668247 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=3341418018209 tgid=16142 tid=16142 start=3341417668247 flags=0x0 child=16143/16143 child_start=3341418015560 kind=process
+    EXIT   ts=3341418130802 tgid=16143 tid=16143 start=3341418015560 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=3341418750745 tgid=16142 tid=16142 start=3341417668247 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=3341418838372 tgid=16142 tid=16142 start=3341417668247 flags=0x0 old_tid=16142 exe=266338304:343334 gen=0 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+    EXIT   ts=3341420447889 tgid=16142 tid=16142 start=3341417668247 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+          FORK        3        3               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+[exit 0]
