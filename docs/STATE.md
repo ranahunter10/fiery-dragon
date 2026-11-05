@@ -85,7 +85,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     1. 🔧 ADR-0004 (proposed): fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; a NET record on the bulk ring, keyed by socket cookie. The probe passes on the CI runner's 7.0.0-1017-azure (E-0079); the VM run is pending. PR #35;
     2. 🔧 `p15d` (step 4b PRs 4–5 in one): the SPSC queue, drain and writer threads, WAL header, STATS/CLOCK_SYNC/GAP/END, run state and invariant, textfile, strict config; `p15w-inspect`. The end-to-end test passes all 4 cases in the dev container, including the forced overflow (INVALID with GAP records, books closed); 17/17 planted bugs caught (E-0080). Not yet: the drain-stall test, the bulk ring (with item 3);
     3. 🔧 NET (type 5) and NET_STATS (36) in the schema; `bpf/progs/net.bpf.c` on the bulk ring; the network self-test at load (ADR-0004 rule 6); `p15d` drains both rings, NET loss makes the run DEGRADED, the invariant covers NET; `--no-net` for hosts without fentry/fexit, recorded in the header. Container: the end-to-end test passes with `--no-net`; the network case runs in CI (`P15_IT_NET=1`) and on the VM. Depends on ADR-0004 being accepted;
-    4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report;
+    4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report.
+       1. 🔧 the reader: `python/p15/wal.py` and `records.py`, with packages pinned by hash. It decodes a C-written run of all 10 types field by field, and its counts equal p15w-inspect's on every end-to-end run. 31 unit tests pass and 71/71 planted bugs are caught (E-0084). PR #39;
+       2. the process tree, the cookie join and `p15-trace --port N`, with the HTML report: next;
     5. a scripted demo scenario on the VM, with evidence, plus rehearsal notes.
 
 ## Decisions taken (now recorded in ADRs where noted)
@@ -122,3 +124,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 8. **Accept ADR-0004, network intent:** fexit on the proto_ops (not the syscall layer), NET on the bulk ring, socket-cookie identity, the declared v1 limits (AF_UNIX, unconnected UDP, MPTCP/SCTP/raw).
    - Recommendation: accept.
    - Evidence: the probe passes all checks on the runner's 7.0 (E-0079); the syscall-layer draft was refused by the verifier (E-0079); SRC rows 1–4 of the ADR.
+9. **Analysis-tier packages pinned by hash** (`python/requirements.txt`, PR #39): google-crc32c 1.9.0 and numpy 2.5.4, binary wheels for x86-64 CPython 3.13 (the dev container) and 3.14 (the VM, CI) only, installed with `--require-hashes --only-binary=:all:`. Another Python or architecture fails to install, loudly. The alternative is version pins without hashes, which accept any file PyPI serves under that version.
+   - Recommendation: accept; extend the hash list when the analysis tier adds torch and the rest (P11's list).
+   - Evidence: the wheels' SHA-256s in the file; the CI install step.

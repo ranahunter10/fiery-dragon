@@ -25,7 +25,9 @@ jobs:
         with:
           python-version: "3.14"  # the VM's Python (E-0054)
       - name: Tools
-        run: python -m pip install ruff==0.16.9 packaging==26.3 numpy==2.5.4
+        run: |
+          python -m pip install ruff==0.16.9 packaging==26.3
+          python -m pip install --require-hashes "--only-binary=:all:" -r python/requirements.txt
       - name: Lint (syntax errors and pyflakes)
         run: ruff check --select E9,F --extend-exclude third_party --output-format github .
       - name: Whitespace (evidence and fixtures are exempt via .gitattributes)
@@ -49,6 +51,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           submodules: recursive   # third_party/libbpf v1.7.0, third_party/bpftool v7.7.0 (ADR-0002)
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.14"  # the VM's Python (E-0054); the Python reader reads every run
+      - name: Python reader packages (pinned with hashes)
+        run: python -m pip install --require-hashes "--only-binary=:all:" -r python/requirements.txt
       - name: Toolchain
         run: |
           sudo apt-get update -q
@@ -76,7 +83,9 @@ jobs:
         run: sudo make smoke
       - name: The queue under ThreadSanitizer (ADR-0017 layer 2)
         run: make test-c-tsan
+      - name: The Python reader decodes what the C writer wrote, field by field
+        run: make it-pyreader
       - name: p15d end to end, network capture required (runner kernel, not the target)
-        run: sudo P15_IT_NET=1 make it-p15d
+        run: sudo P15_PYTHON="$(command -v python3)" P15_IT_NET=1 make it-p15d
       - name: Network-intent probe (fexit hooks of ADR-0004; runner kernel, not the target)
         run: uname -r && sudo make smoke-net

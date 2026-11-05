@@ -130,7 +130,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect. | `ok`, `bad`, `check`, `inspect`, `storm` |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
 | [`mutate_wal.py`](../daemon/tests/mutate_wal.py) | Mutation sweep for the WAL writer (CONTRIBUTING: every gate is checked by mutation sweeps). |  |
@@ -141,6 +141,24 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`test_run.c`](../daemon/tests/test_run.c) | Unit tests for the run state machine, the exit code and the accounting invariant (daemon/run.c, daemon/writer.c p15_invariant_check; ADR-0006 rule 6, ADR-0019 G2). |  |
 | [`test_selftest.c`](../daemon/tests/test_selftest.c) | Unit tests for the record checks and the self-test evaluation, on synthetic records. |  |
 | [`test_wal.c`](../daemon/tests/test_wal.c) | Unit tests for the P15W writer, batch builder, scanner and recovery (docs/formats/p15w-v1.md). |  |
+| [`wal_fixture.c`](../daemon/tests/wal_fixture.c) | write a small P15W run with one or more records of every type, through the C writer (daemon/wal.c), so the Python reader's test (python/tests/it_wal_c.py) can check that it deco... |  |
+
+## python/p15
+
+| File | Job | Public names |
+|---|---|---|
+| [`__init__.py`](../python/p15/__init__.py) | Fiery Dragon's analysis tier: reading what the capture wrote (README "python/"). |  |
+| [`records.py`](../python/p15/records.py) | The ADR-0008 records, decoded from the generated layouts (schema/generated/p15_records.py). | `RecordError`, `Record`, `decode`, `kdev`, `net_addr`, `endpoint`, `comm`, `argv` |
+| [`wal.py`](../python/p15/wal.py) | segments and runs (docs/formats/p15w-v1.md, ADR-0007). | `crc32c`, `HeaderError`, `RunError`, `Batch`, `Stop`, `Segment`, `parse_header`, `read_segment`, `Run`, `read_run`, `summary` |
+
+## python/tests
+
+| File | Job | Public names |
+|---|---|---|
+| [`it_wal_c.py`](../python/tests/it_wal_c.py) | decode, field by field, the run that daemon/tests/wal_fixture.c wrote through daemon/wal.c. | `CWriterRun` |
+| [`p15w_build.py`](../python/tests/p15w_build.py) | build P15W segments and ADR-0008 records in memory, with every field open to being broken on purpose. | `rec`, `batch`, `header`, `meta_for`, `write_run` |
+| [`test_records.py`](../python/tests/test_records.py) | Tests for the record decoder (python/p15/records.py): every refusal p15_rec_check makes (daemon/records.c, same wording), no defaults, and the field helpers. | `dec`, `Refusals`, `Decoding`, `Helpers` |
+| [`test_wal.py`](../python/tests/test_wal.py) | Tests for the P15W reader (python/p15/wal.py) against docs/formats/p15w-v1.md: every header check, every §4 stop cause and its torn/corrupt verdict, the run rules, and random da... | `Tmp`, `Crc`, `Header`, `Batches`, `Runs`, `BadRecords`, `Damage` |
 
 ## schema
 

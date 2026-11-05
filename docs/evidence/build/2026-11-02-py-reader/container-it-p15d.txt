@@ -1,0 +1,55 @@
+# 2026-11-02T11:46:49Z 6.18.44-fc-v185 dev container: fentry/fexit refused (E-0078), so case 5 skips here
+$ make it-p15d
+daemon/tests/it_p15d.sh build
+network capture: off (--no-net: fentry/fexit not loadable here)
+case 1: a 4 s run with 200 short processes
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+p15d level=info code=start run_dir=/tmp/p15d-it-d8u175/c1/20261102T114649Z-3638fa0c sched="SCHED_FIFO 1" spine_ring=4194304 net=off (--no-net)
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-d8u175/c1/20261102T114649Z-3638fa0c//seg-00000000.p15w: segment 0, 92936 bytes, 771 batches, 831 records, valid to the end
+  run.id = 20261102T114649Z-3638fa0c
+  kernel.release = 6.18.44-fc-v185
+  schema.hash = 92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3
+records: spine 807, bulk 0, daemon 24; invalid 0
+  FORK       202
+  EXEC       201
+  EXIT       203
+  RENAME     201
+  CLOCK_SYNC 3
+  STATS      20
+  END        1
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   at least 200 EXEC records (got 201)
+  ok   a STATS record every 200 ms (got 20)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+case 2: stop by SIGTERM
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested"
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+p15d level=info code=start run_dir=/tmp/p15d-it-d8u175/c3/20261102T114656Z-3638fa0c sched="normal (--no-rt)" spine_ring=4096 net=off (--no-net)
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 174, bulk 0, daemon 11; invalid 0
+  FORK       39
+  EXEC       43
+  EXIT       50
+  RENAME     42
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        3
+  END        1
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)"
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 3)
+  ok   END: INVALID, and the books still close (loss is counted)
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 4: a bad flag
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
