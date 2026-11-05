@@ -58,6 +58,21 @@ class Context:
     def when(self, ts: int) -> str:
         return f"{self.wall(ts)} ({self.rel(ts)})"
 
+    def skip_lines(self) -> list[str]:
+        """Events the kernel skipped before our programs ran (ADR-0020), from the last STATS and
+        NET_STATS. A run written before v2 of those records didn't count them, and says so."""
+        if self.stats is None:
+            return ["no STATS record: the kernel's skipped events are unknown"]
+        if self.stats.h["version"] < 2:
+            return ["this run predates ADR-0020: events the kernel skipped (recursion misses) were not counted"]
+        f = self.stats.f
+        sk = {t: f[f"{t}_missed"] for t in ("fork", "exec", "exit", "rename")}
+        net = self.net_stats.f["net_missed"] if self.net_stats is not None and self.net_stats.h["version"] >= 2 else 0
+        if not any(sk.values()) and not net:
+            return ["kernel-skipped events: none (every hook ran for every event)"]
+        return ["KERNEL-SKIPPED EVENTS: " + ", ".join(f"{t} {n}" for t, n in sk.items()) + f", network {net}"
+                + " (recursion misses, ADR-0020): processes alive then may lack records"]
+
     def verdict(self) -> list[str]:
         """How far the run can be trusted, in plain words; first line is the headline."""
         out = []
@@ -71,6 +86,7 @@ class Context:
         if not self.net_on:
             out.append("NETWORK CAPTURE WAS OFF in this run (--no-net): no NET record means nothing is known, "
                        "not that nothing happened")
+        out += self.skip_lines()
         if self.net_stats is not None:
             ns = self.net_stats.f
             out.append(f"NET records: {ns['net_emitted']} captured, {ns['net_reserve_failed']} lost to a full ring, "

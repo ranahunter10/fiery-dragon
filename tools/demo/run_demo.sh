@@ -30,7 +30,8 @@ log() { echo "$(date -u +%H:%M:%S.%3N) $*" | tee -a "$OUT/story.log"; }
 log "p15d: start (30 s, network capture on)"
 "$B/p15d" ${P15D_FLAGS:-} --wal-dir "$OUT/wal" --duration 30 --stats-ms 1000 --textfile "$OUT/p15d.prom" 2>"$OUT/p15d.err" &
 P15D=$!
-sleep 3          # load, attach and both self-tests
+for _ in $(seq 150); do grep -q code=start "$OUT/p15d.err" && break; sleep 0.1; done   # hooks attached, self-tests passed
+grep -q code=start "$OUT/p15d.err" || { echo "run_demo: p15d did not start: $(cat "$OUT/p15d.err")"; exit 1; }
 
 nc -l 127.0.0.1 $C2 >/dev/null </dev/null &
 CATCH=$!

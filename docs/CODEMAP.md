@@ -78,7 +78,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`net.bpf.c`](../bpf/progs/net.bpf.c) | network intent (ADR-0004). | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
-| [`spine.bpf.c`](../bpf/progs/spine.bpf.c) | the process spine (ADR-0003). | `tp_btf/sched_process_fork → spine_fork`, `tp_btf/sched_process_exec → spine_exec`, `tp_btf/sched_process_exit → spine_exit`, `tp_btf/task_rename → spine_rename` |
+| [`spine.bpf.c`](../bpf/progs/spine.bpf.c) | the process spine (ADR-0003, ADR-0020). | `tp_btf/sched_process_fork → spine_fork`, `tracepoint/sched/sched_process_exec`, `tracepoint/sched/sched_process_exit`, `tracepoint/task/task_rename` |
 
 ## bpf/test
 
@@ -132,7 +132,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm` |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
 | [`mutate_wal.py`](../daemon/tests/mutate_wal.py) | Mutation sweep for the WAL writer (CONTRIBUTING: every gate is checked by mutation sweeps). |  |

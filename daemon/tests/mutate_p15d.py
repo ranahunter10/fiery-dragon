@@ -30,7 +30,10 @@ M = [
     ("config.c", "(OPTS[i].pow2 && (v & (v - 1)))", "0", UNIT),
     ("config.c", "\tif (!c->wal_root) {", "\tif (0) {", UNIT),
     # drain, writer, run: the books, GAP, END
-    ("drain.c", "\t\tif (any)\n\t\t\temit_gap(d, from, to, now_ctr);", "\t\tif (any && 0)\n\t\t\temit_gap(d, from, to, now_ctr);", IT),
+    ("drain.c", "\t\tif (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_missed)) {", "\t\tif (0) {", IT),
+    # ADR-0020 rule 3: a kernel skip of any spine type calls for a GAP
+    ("drain.c", "now_missed[t] != prev_missed[t];", "(0 && now_missed[t] != prev_missed[t]);", UNIT),
+    ("drain.c", "\tfor (int t = 1; t < P15_SPINE_TYPES; t++)\n\t\tany |=", "\tfor (int t = 2; t < P15_SPINE_TYPES; t++)\n\t\tany |=", UNIT),
     ("drain.c", "\tatomic_fetch_add(&d->run->drained[h->type], 1);", "", IT),
     ("writer.c", "\tdrained -= r->spine_selftest_consumed;", "", UNIT),
     ("writer.c", "\tuint64_t emitted = 0, drained = r->spine_selftest_consumed;", "\tuint64_t emitted = 0, drained = 0;", UNIT),

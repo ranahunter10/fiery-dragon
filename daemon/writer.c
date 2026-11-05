@@ -178,6 +178,11 @@ static void fill_stats(struct p15_writer *w, struct p15_stats *s, uint64_t now)
 	s->queue_depth_max = atomic_exchange(&r->q.depth_max, 0);
 	s->queue_batches = r->q.n;
 	s->run_state = (uint32_t)atomic_load(&r->state);
+	/* ADR-0020 rule 3: events the kernel skipped, since the run's start */
+	s->fork_missed = atomic_load(&r->missed[P15_T_FORK]) - r->missed_base[P15_T_FORK];
+	s->exec_missed = atomic_load(&r->missed[P15_T_EXEC]) - r->missed_base[P15_T_EXEC];
+	s->exit_missed = atomic_load(&r->missed[P15_T_EXIT]) - r->missed_base[P15_T_EXIT];
+	s->rename_missed = atomic_load(&r->missed[P15_T_RENAME]) - r->missed_base[P15_T_RENAME];
 }
 
 /* Prometheus text format, written to PATH.tmp and renamed over PATH (ADR-0019 G4.2). */
@@ -205,6 +210,8 @@ static void textfile(struct p15_writer *w, const struct p15_stats *s)
 				(unsigned long long)bpfc(w->run, t, k));
 		fprintf(f, "p15_spine_events_total{type=\"%s\",cause=\"drained\"} %llu\n", names[t],
 			(unsigned long long)atomic_load(&w->run->drained[t]));
+		fprintf(f, "p15_spine_events_total{type=\"%s\",cause=\"kernel_skipped\"} %llu\n", names[t],
+			(unsigned long long)(atomic_load(&w->run->missed[t]) - w->run->missed_base[t]));
 	}
 	fprintf(f, "# TYPE p15_spine_written_total counter\np15_spine_written_total %llu\n", (unsigned long long)s->spine_written);
 	fprintf(f, "# TYPE p15_gap_records_total counter\np15_gap_records_total %llu\n", (unsigned long long)s->gap_records);
@@ -220,6 +227,8 @@ static void textfile(struct p15_writer *w, const struct p15_stats *s)
 			fprintf(f, "p15_net_events_total{cause=\"%s\"} %llu\n", nk[k], (unsigned long long)netc(w->run, k));
 		fprintf(f, "p15_net_events_total{cause=\"excluded\"} %llu\n", (unsigned long long)netc(w->run, P15_CK_EXCLUDED));
 		fprintf(f, "p15_net_events_total{cause=\"written\"} %llu\n", (unsigned long long)atomic_load(&w->run->net_written));
+		fprintf(f, "p15_net_events_total{cause=\"kernel_skipped\"} %llu\n",
+			(unsigned long long)(atomic_load(&w->run->net_missed) - w->run->net_missed_base));
 	}
 	fprintf(f, "# HELP p15_run_state 0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3).\n# TYPE p15_run_state gauge\n");
 	fprintf(f, "p15_run_state %u\n", s->run_state);
@@ -243,6 +252,7 @@ static void net_stats(struct p15_writer *w)
 	s.net_written = atomic_load(&r->net_written);
 	s.net_drain_lost = atomic_load(&r->net_drain_lost);
 	s.bulk_fill_max = atomic_exchange(&r->bulk_fill_max, 0);
+	s.net_missed = atomic_load(&r->net_missed) - r->net_missed_base;   /* ADR-0020 rule 3 */
 	s.bulk_ring_bytes = r->bulk_ring_bytes;
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 }

@@ -164,6 +164,73 @@ Fixed part 440 bytes; at most 440 bytes with its variable fields.
 | 432 | `queue_batches` | u32 | batches in the preallocated pool: the queue's capacity |
 | 436 | `run_state` | u32 | 0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3) |
 
+## STATS (type 33, version 2, class STATS)
+
+The capture's own health, every stats interval (1 s by default), and once more at the end of the run (ADR-0019 G4.1). v2 adds the events the kernel skipped (ADR-0020). Spine counters are the BPF per-cause counters summed over CPUs (ADR-0006 rule 6).
+
+Fixed part 472 bytes; at most 472 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fork_seen` | u64 | FORK hook runs, cumulative |
+| 40 | `fork_emitted` | u64 | FORK records submitted to the spine ring, cumulative |
+| 48 | `fork_reserve_failed` | u64 | FORK records lost to a full ring, cumulative |
+| 56 | `fork_build_failed` | u64 | FORK records lost before the ring (no buffer), cumulative |
+| 64 | `fork_read_failed` | u64 | emitted FORK records with a failed memory read, cumulative |
+| 72 | `fork_truncated` | u64 | emitted FORK records with a cut field, cumulative |
+| 80 | `exec_seen` | u64 | EXEC hook runs, cumulative |
+| 88 | `exec_emitted` | u64 | EXEC records submitted, cumulative |
+| 96 | `exec_reserve_failed` | u64 | EXEC records lost to a full ring, cumulative |
+| 104 | `exec_build_failed` | u64 | EXEC records lost before the ring, cumulative |
+| 112 | `exec_read_failed` | u64 | emitted EXEC records with a failed memory read, cumulative |
+| 120 | `exec_truncated` | u64 | emitted EXEC records with a cut field, cumulative |
+| 128 | `exit_seen` | u64 | EXIT hook runs, cumulative |
+| 136 | `exit_emitted` | u64 | EXIT records submitted, cumulative |
+| 144 | `exit_reserve_failed` | u64 | EXIT records lost to a full ring, cumulative |
+| 152 | `exit_build_failed` | u64 | EXIT records lost before the ring, cumulative |
+| 160 | `exit_read_failed` | u64 | emitted EXIT records with a failed memory read, cumulative |
+| 168 | `exit_truncated` | u64 | emitted EXIT records with a cut field, cumulative |
+| 176 | `rename_seen` | u64 | RENAME hook runs, cumulative |
+| 184 | `rename_emitted` | u64 | RENAME records submitted, cumulative |
+| 192 | `rename_reserve_failed` | u64 | RENAME records lost to a full ring, cumulative |
+| 200 | `rename_build_failed` | u64 | RENAME records lost before the ring, cumulative |
+| 208 | `rename_read_failed` | u64 | emitted RENAME records with a failed memory read, cumulative |
+| 216 | `rename_truncated` | u64 | emitted RENAME records with a cut field, cumulative |
+| 224 | `fork_drained` | u64 | FORK records the drain took from the ring and copied into a batch, cumulative |
+| 232 | `exec_drained` | u64 | EXEC records drained, cumulative |
+| 240 | `exit_drained` | u64 | EXIT records drained, cumulative |
+| 248 | `rename_drained` | u64 | RENAME records drained, cumulative |
+| 256 | `spine_invalid` | u64 | spine records refused by p15_rec_check, never written (run INVALID), cumulative |
+| 264 | `spine_written` | u64 | spine records in batches the WAL writer appended, cumulative |
+| 272 | `spine_drain_lost` | u64 | drained spine records in batches the writer could not append (run INVALID), cumulative |
+| 280 | `gap_records` | u64 | GAP records the drain emitted, cumulative (ADR-0017 layer 4) |
+| 288 | `poll_gap_le_100us` | u64 | drain polls that came at most 100 us after the previous one, cumulative |
+| 296 | `poll_gap_le_1ms` | u64 | polls 100 us to 1 ms after the previous one, cumulative |
+| 304 | `poll_gap_le_10ms` | u64 | polls 1 to 10 ms after, cumulative |
+| 312 | `poll_gap_le_100ms` | u64 | polls 10 to 100 ms after, cumulative |
+| 320 | `poll_gap_le_1s` | u64 | polls 100 ms to 1 s after, cumulative |
+| 328 | `poll_gap_gt_1s` | u64 | polls more than 1 s after, cumulative |
+| 336 | `poll_gap_max_ns` | u64 | the longest poll-to-poll gap in this interval: the worst drain stall (ADR-0017 layer 5) |
+| 344 | `spine_fill_max` | u64 | the most bytes waiting in the spine ring at a poll, this interval (ADR-0019 G4.1 'fill high-water') |
+| 352 | `queue_full` | u64 | times the drain found no free batch and left records in the ring, cumulative (ADR-0017 layer 2) |
+| 360 | `wal_bytes` | u64 | bytes written to the WAL, headers included, cumulative |
+| 368 | `wal_batches` | u64 | batches appended, all rings, cumulative |
+| 376 | `wal_fsyncs` | u64 | fdatasync calls on segments, cumulative |
+| 384 | `wal_fsync_max_ns` | u64 | the slowest fdatasync in this interval (ADR-0017 evidence 9) |
+| 392 | `cpu_user_us` | u64 | the daemon's user CPU time, cumulative (getrusage RUSAGE_SELF) |
+| 400 | `cpu_sys_us` | u64 | the daemon's system CPU time, cumulative |
+| 408 | `maxrss_kb` | u64 | the daemon's peak resident set size, KiB (ru_maxrss) |
+| 416 | `interval_ns` | u64 | CLOCK_BOOTTIME since the previous STATS record (or the run's start): the span the interval fields cover |
+| 424 | `spine_ring_bytes` | u32 | the spine ring's size (also in the segment header), to read spine_fill_max against |
+| 428 | `queue_depth_max` | u32 | the most full batches waiting for the writer, this interval (ADR-0019 G4.1 'queue depth high-water') |
+| 432 | `queue_batches` | u32 | batches in the preallocated pool: the queue's capacity |
+| 436 | `run_state` | u32 | 0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3) |
+| 440 | `fork_missed` | u64 | FORK events the kernel skipped (recursion_misses of the fork program since the run's start), cumulative |
+| 448 | `exec_missed` | u64 | EXEC events the kernel skipped, cumulative |
+| 456 | `exit_missed` | u64 | EXIT events the kernel skipped, cumulative |
+| 464 | `rename_missed` | u64 | RENAME events the kernel skipped, cumulative |
+
 ## GAP (type 34, version 1, class MARKER)
 
 Spine records were lost between two reads of the loss counters: the window that contains the loss (ADR-0017 layer 4). Every process alive in [from_ns, to_ns] may be missing records.
@@ -184,6 +251,31 @@ Fixed part 120 bytes; at most 120 bytes with its variable fields.
 | 96 | `exec_build_failed` | u64 | EXEC records lost before the ring in the window |
 | 104 | `exit_build_failed` | u64 | EXIT records lost before the ring in the window |
 | 112 | `rename_build_failed` | u64 | RENAME records lost before the ring in the window |
+
+## GAP (type 34, version 2, class MARKER)
+
+Spine records were lost between two reads of the loss counters: the window that contains the loss (ADR-0017 layer 4). Every process alive in [from_ns, to_ns] may be missing records. v2 also locates events the kernel skipped (ADR-0020 rule 3).
+
+Fixed part 152 bytes; at most 152 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `from_ns` | u64 | CLOCK_BOOTTIME just before the previous counter read began |
+| 40 | `to_ns` | u64 | CLOCK_BOOTTIME just after this counter read ended |
+| 48 | `spine_seq` | u64 | the spine sequence number the drain would give its next record at this read: records drained before it were in the ring before the read (ADR-0007 sequence; LTTng's packet numbering) |
+| 56 | `fork_reserve_failed` | u64 | FORK records lost to a full ring in the window |
+| 64 | `exec_reserve_failed` | u64 | EXEC records lost to a full ring in the window |
+| 72 | `exit_reserve_failed` | u64 | EXIT records lost to a full ring in the window |
+| 80 | `rename_reserve_failed` | u64 | RENAME records lost to a full ring in the window |
+| 88 | `fork_build_failed` | u64 | FORK records lost before the ring in the window |
+| 96 | `exec_build_failed` | u64 | EXEC records lost before the ring in the window |
+| 104 | `exit_build_failed` | u64 | EXIT records lost before the ring in the window |
+| 112 | `rename_build_failed` | u64 | RENAME records lost before the ring in the window |
+| 120 | `fork_missed` | u64 | FORK events the kernel skipped in the window (recursion_misses delta) |
+| 128 | `exec_missed` | u64 | EXEC events the kernel skipped in the window |
+| 136 | `exit_missed` | u64 | EXIT events the kernel skipped in the window |
+| 144 | `rename_missed` | u64 | RENAME events the kernel skipped in the window |
 
 ## END (type 35, version 1, class MARKER)
 
@@ -248,3 +340,25 @@ Fixed part 112 bytes; at most 112 bytes with its variable fields.
 | 96 | `bulk_fill_max` | u64 | the most bytes waiting in the bulk ring at a poll, this interval |
 | 104 | `bulk_ring_bytes` | u32 | the bulk ring's size |
 | 108 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+## NET_STATS (type 36, version 2, class STATS)
+
+The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval. v2 adds the events the kernel skipped (ADR-0020).
+
+Fixed part 120 bytes; at most 120 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `net_seen` | u64 | NET hook runs, cumulative |
+| 40 | `net_emitted` | u64 | NET records submitted to the bulk ring, cumulative |
+| 48 | `net_reserve_failed` | u64 | NET records lost to a full bulk ring (run DEGRADED), cumulative |
+| 56 | `net_excluded` | u64 | hook runs not recorded by policy: failed accepts, non-IP sockets, no sock (ADR-0004 rule 3), cumulative |
+| 64 | `net_drained` | u64 | NET records the drain copied into a batch, cumulative |
+| 72 | `net_invalid` | u64 | bulk records refused by p15_rec_check, never written, cumulative |
+| 80 | `net_written` | u64 | bulk records in batches the writer appended, cumulative |
+| 88 | `net_drain_lost` | u64 | drained bulk records the writer could not append, cumulative |
+| 96 | `bulk_fill_max` | u64 | the most bytes waiting in the bulk ring at a poll, this interval |
+| 104 | `net_missed` | u64 | NET events the kernel skipped (recursion_misses of the six network programs since the run's start; run DEGRADED), cumulative |
+| 112 | `bulk_ring_bytes` | u32 | the bulk ring's size |
+| 116 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |

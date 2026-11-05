@@ -90,6 +90,17 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
        2. 🔧 `p15-trace --port N` (`tools/p15-trace`): the process tree (ADR-0009 keys, `group_dead`, pre-existing processes and GAP windows flagged, never guessed), listeners and accepts joined by cookie (exact), clients joined by endpoints (an inference, labelled), refused connects, a text report and a self-contained HTML one. 22 tests and 93/93 planted bugs on a synthetic run (E-0085); `it_p15d.sh` case 5 runs it on a real capture in CI and keeps the run as an artifact. PR #40. Next: the VM run, then the demo scenario (item 5);
     5. 🔧 a scripted demo scenario on the VM, with evidence, plus rehearsal notes. `tools/demo/run_demo.sh` plays the story on loopback: a catcher on 4444; a web app with a command-injection bug on 8080; ordinary requests; one injected `nc` to 4444; a scan of closed ports. It then runs p15-trace on 8080, 4444 and 4442. [Rehearsal notes](demo/README.md). The container dry run (spine only) captured the chain `nc ← sh ← python3 webapp` (E-0087). PR #41. Next: the VM run, with NET (maintainer).
 
+20. **Events the kernel skips (E-0088 to E-0090; ADR-0020, proposed).**
+    - **Found on the VM:** on 7.0, the kernel's per-CPU recursion guard skips our `tp_btf` spine programs for other tasks, while our books still close. It skipped 3.3 % of EXEC and 3.9 % of EXIT in a 2,000-exec burst. The fix was chosen from 7 designs measured on the VM (PR #42).
+    - 🔧 **ADR-0020** (PR #43) and its implementation (PR #44):
+      - exec, exit and rename on classic tracepoints; fork stays on `tp_btf`;
+      - records wake the drain only above a quarter of the ring, and the drain polls every 10 ms;
+      - STATS, GAP and NET_STATS v2 carry `recursion_misses`; a spine skip makes the run INVALID with a GAP, a network skip makes it DEGRADED;
+      - p15-trace's Trust block shows the skips;
+      - the end-to-end test waits for `code=start` and counts exactly.
+    - **ADR-0021** (proposed): the VM has 3 vCPUs.
+    - **Next:** the VM run of PR #44 (`vm_verify.sh` plus `make probe-recursion`), then the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5), then the demo.
+
 ## Decisions taken (now recorded in ADRs where noted)
 
 1. **libbpf:** vendor the latest 1.7.x tag (matches bpftool 7.7, which generates our skeletons). → ADR-0002 (v1.7.0). *(2026-10-25, E-0013)*

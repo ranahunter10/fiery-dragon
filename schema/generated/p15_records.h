@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3"
+#define P15_SCHEMA_HASH "a12b53aa4464976fa1a35147448e92713459e3743add663e1ff7201e5fca93aa"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -259,6 +259,129 @@ P15_ASSERT(P15_OFFSETOF(struct p15_stats_v1, run_state) == 436, "p15_stats_v1.ru
 
 #define P15_STATS_V1_MAX_SIZE 440
 
+/* STATS v2 (STATS): The capture's own health, every stats interval (1 s by default), and once more at the end of the run (ADR-0019 G4.1). v2 adds the events the kernel skipped (ADR-0020). Spine counters are the BPF per-cause counters summed over CPUs (ADR-0006 rule 6). */
+struct p15_stats_v2 {
+	struct p15_hdr h;
+	__u64 fork_seen;
+	__u64 fork_emitted;
+	__u64 fork_reserve_failed;
+	__u64 fork_build_failed;
+	__u64 fork_read_failed;
+	__u64 fork_truncated;
+	__u64 exec_seen;
+	__u64 exec_emitted;
+	__u64 exec_reserve_failed;
+	__u64 exec_build_failed;
+	__u64 exec_read_failed;
+	__u64 exec_truncated;
+	__u64 exit_seen;
+	__u64 exit_emitted;
+	__u64 exit_reserve_failed;
+	__u64 exit_build_failed;
+	__u64 exit_read_failed;
+	__u64 exit_truncated;
+	__u64 rename_seen;
+	__u64 rename_emitted;
+	__u64 rename_reserve_failed;
+	__u64 rename_build_failed;
+	__u64 rename_read_failed;
+	__u64 rename_truncated;
+	__u64 fork_drained;
+	__u64 exec_drained;
+	__u64 exit_drained;
+	__u64 rename_drained;
+	__u64 spine_invalid;
+	__u64 spine_written;
+	__u64 spine_drain_lost;
+	__u64 gap_records;
+	__u64 poll_gap_le_100us;
+	__u64 poll_gap_le_1ms;
+	__u64 poll_gap_le_10ms;
+	__u64 poll_gap_le_100ms;
+	__u64 poll_gap_le_1s;
+	__u64 poll_gap_gt_1s;
+	__u64 poll_gap_max_ns;
+	__u64 spine_fill_max;
+	__u64 queue_full;
+	__u64 wal_bytes;
+	__u64 wal_batches;
+	__u64 wal_fsyncs;
+	__u64 wal_fsync_max_ns;
+	__u64 cpu_user_us;
+	__u64 cpu_sys_us;
+	__u64 maxrss_kb;
+	__u64 interval_ns;
+	__u32 spine_ring_bytes;
+	__u32 queue_depth_max;
+	__u32 queue_batches;
+	__u32 run_state;
+	__u64 fork_missed;
+	__u64 exec_missed;
+	__u64 exit_missed;
+	__u64 rename_missed;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_stats_v2) == 472, "p15_stats_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, h) == 0, "p15_stats_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_seen) == 32, "p15_stats_v2.fork_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_emitted) == 40, "p15_stats_v2.fork_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_reserve_failed) == 48, "p15_stats_v2.fork_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_build_failed) == 56, "p15_stats_v2.fork_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_read_failed) == 64, "p15_stats_v2.fork_read_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_truncated) == 72, "p15_stats_v2.fork_truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_seen) == 80, "p15_stats_v2.exec_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_emitted) == 88, "p15_stats_v2.exec_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_reserve_failed) == 96, "p15_stats_v2.exec_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_build_failed) == 104, "p15_stats_v2.exec_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_read_failed) == 112, "p15_stats_v2.exec_read_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_truncated) == 120, "p15_stats_v2.exec_truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_seen) == 128, "p15_stats_v2.exit_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_emitted) == 136, "p15_stats_v2.exit_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_reserve_failed) == 144, "p15_stats_v2.exit_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_build_failed) == 152, "p15_stats_v2.exit_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_read_failed) == 160, "p15_stats_v2.exit_read_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_truncated) == 168, "p15_stats_v2.exit_truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_seen) == 176, "p15_stats_v2.rename_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_emitted) == 184, "p15_stats_v2.rename_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_reserve_failed) == 192, "p15_stats_v2.rename_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_build_failed) == 200, "p15_stats_v2.rename_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_read_failed) == 208, "p15_stats_v2.rename_read_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_truncated) == 216, "p15_stats_v2.rename_truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_drained) == 224, "p15_stats_v2.fork_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_drained) == 232, "p15_stats_v2.exec_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_drained) == 240, "p15_stats_v2.exit_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_drained) == 248, "p15_stats_v2.rename_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, spine_invalid) == 256, "p15_stats_v2.spine_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, spine_written) == 264, "p15_stats_v2.spine_written offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, spine_drain_lost) == 272, "p15_stats_v2.spine_drain_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, gap_records) == 280, "p15_stats_v2.gap_records offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_le_100us) == 288, "p15_stats_v2.poll_gap_le_100us offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_le_1ms) == 296, "p15_stats_v2.poll_gap_le_1ms offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_le_10ms) == 304, "p15_stats_v2.poll_gap_le_10ms offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_le_100ms) == 312, "p15_stats_v2.poll_gap_le_100ms offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_le_1s) == 320, "p15_stats_v2.poll_gap_le_1s offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_gt_1s) == 328, "p15_stats_v2.poll_gap_gt_1s offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, poll_gap_max_ns) == 336, "p15_stats_v2.poll_gap_max_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, spine_fill_max) == 344, "p15_stats_v2.spine_fill_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, queue_full) == 352, "p15_stats_v2.queue_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, wal_bytes) == 360, "p15_stats_v2.wal_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, wal_batches) == 368, "p15_stats_v2.wal_batches offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, wal_fsyncs) == 376, "p15_stats_v2.wal_fsyncs offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, wal_fsync_max_ns) == 384, "p15_stats_v2.wal_fsync_max_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, cpu_user_us) == 392, "p15_stats_v2.cpu_user_us offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, cpu_sys_us) == 400, "p15_stats_v2.cpu_sys_us offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, maxrss_kb) == 408, "p15_stats_v2.maxrss_kb offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, interval_ns) == 416, "p15_stats_v2.interval_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, spine_ring_bytes) == 424, "p15_stats_v2.spine_ring_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, queue_depth_max) == 428, "p15_stats_v2.queue_depth_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, queue_batches) == 432, "p15_stats_v2.queue_batches offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, run_state) == 436, "p15_stats_v2.run_state offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, fork_missed) == 440, "p15_stats_v2.fork_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exec_missed) == 448, "p15_stats_v2.exec_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, exit_missed) == 456, "p15_stats_v2.exit_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_stats_v2, rename_missed) == 464, "p15_stats_v2.rename_missed offset");
+
+#define P15_STATS_V2_MAX_SIZE 472
+
 /* GAP v1 (MARKER): Spine records were lost between two reads of the loss counters: the window that contains the loss (ADR-0017 layer 4). Every process alive in [from_ns, to_ns] may be missing records. */
 struct p15_gap_v1 {
 	struct p15_hdr h;
@@ -289,6 +412,45 @@ P15_ASSERT(P15_OFFSETOF(struct p15_gap_v1, exit_build_failed) == 104, "p15_gap_v
 P15_ASSERT(P15_OFFSETOF(struct p15_gap_v1, rename_build_failed) == 112, "p15_gap_v1.rename_build_failed offset");
 
 #define P15_GAP_V1_MAX_SIZE 120
+
+/* GAP v2 (MARKER): Spine records were lost between two reads of the loss counters: the window that contains the loss (ADR-0017 layer 4). Every process alive in [from_ns, to_ns] may be missing records. v2 also locates events the kernel skipped (ADR-0020 rule 3). */
+struct p15_gap_v2 {
+	struct p15_hdr h;
+	__u64 from_ns;
+	__u64 to_ns;
+	__u64 spine_seq;
+	__u64 fork_reserve_failed;
+	__u64 exec_reserve_failed;
+	__u64 exit_reserve_failed;
+	__u64 rename_reserve_failed;
+	__u64 fork_build_failed;
+	__u64 exec_build_failed;
+	__u64 exit_build_failed;
+	__u64 rename_build_failed;
+	__u64 fork_missed;
+	__u64 exec_missed;
+	__u64 exit_missed;
+	__u64 rename_missed;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_gap_v2) == 152, "p15_gap_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, h) == 0, "p15_gap_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, from_ns) == 32, "p15_gap_v2.from_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, to_ns) == 40, "p15_gap_v2.to_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, spine_seq) == 48, "p15_gap_v2.spine_seq offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, fork_reserve_failed) == 56, "p15_gap_v2.fork_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, exec_reserve_failed) == 64, "p15_gap_v2.exec_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, exit_reserve_failed) == 72, "p15_gap_v2.exit_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, rename_reserve_failed) == 80, "p15_gap_v2.rename_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, fork_build_failed) == 88, "p15_gap_v2.fork_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, exec_build_failed) == 96, "p15_gap_v2.exec_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, exit_build_failed) == 104, "p15_gap_v2.exit_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, rename_build_failed) == 112, "p15_gap_v2.rename_build_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, fork_missed) == 120, "p15_gap_v2.fork_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, exec_missed) == 128, "p15_gap_v2.exec_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, exit_missed) == 136, "p15_gap_v2.exit_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_gap_v2, rename_missed) == 144, "p15_gap_v2.rename_missed offset");
+
+#define P15_GAP_V2_MAX_SIZE 152
 
 /* END v1 (MARKER): The last record of a run: its verdict (ADR-0019 G2.2, G2.3). Written after the final STATS, on an orderly stop and by p15_fail. A run whose last segment has no END did not end in order. */
 struct p15_end_v1 {
@@ -378,6 +540,39 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, _pad) == 108, "p15_net_stats_v1
 
 #define P15_NET_STATS_V1_MAX_SIZE 112
 
+/* NET_STATS v2 (STATS): The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval. v2 adds the events the kernel skipped (ADR-0020). */
+struct p15_net_stats_v2 {
+	struct p15_hdr h;
+	__u64 net_seen;
+	__u64 net_emitted;
+	__u64 net_reserve_failed;
+	__u64 net_excluded;
+	__u64 net_drained;
+	__u64 net_invalid;
+	__u64 net_written;
+	__u64 net_drain_lost;
+	__u64 bulk_fill_max;
+	__u64 net_missed;
+	__u32 bulk_ring_bytes;
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_net_stats_v2) == 120, "p15_net_stats_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, h) == 0, "p15_net_stats_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_seen) == 32, "p15_net_stats_v2.net_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_emitted) == 40, "p15_net_stats_v2.net_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_reserve_failed) == 48, "p15_net_stats_v2.net_reserve_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_excluded) == 56, "p15_net_stats_v2.net_excluded offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_drained) == 64, "p15_net_stats_v2.net_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_invalid) == 72, "p15_net_stats_v2.net_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_written) == 80, "p15_net_stats_v2.net_written offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_drain_lost) == 88, "p15_net_stats_v2.net_drain_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, bulk_fill_max) == 96, "p15_net_stats_v2.bulk_fill_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, net_missed) == 104, "p15_net_stats_v2.net_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, bulk_ring_bytes) == 112, "p15_net_stats_v2.bulk_ring_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, _pad) == 116, "p15_net_stats_v2._pad offset");
+
+#define P15_NET_STATS_V2_MAX_SIZE 120
+
 /* The current version of each record type: what the BPF programs emit. */
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
@@ -396,12 +591,12 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, _pad) == 108, "p15_net_stats_v1
 #define P15_CLOCK_SYNC_VERSION 1
 #define p15_clock_sync p15_clock_sync_v1
 #define P15_CLOCK_SYNC_MAX_SIZE P15_CLOCK_SYNC_V1_MAX_SIZE
-#define P15_STATS_VERSION 1
-#define p15_stats p15_stats_v1
-#define P15_STATS_MAX_SIZE P15_STATS_V1_MAX_SIZE
-#define P15_GAP_VERSION 1
-#define p15_gap p15_gap_v1
-#define P15_GAP_MAX_SIZE P15_GAP_V1_MAX_SIZE
+#define P15_STATS_VERSION 2
+#define p15_stats p15_stats_v2
+#define P15_STATS_MAX_SIZE P15_STATS_V2_MAX_SIZE
+#define P15_GAP_VERSION 2
+#define p15_gap p15_gap_v2
+#define P15_GAP_MAX_SIZE P15_GAP_V2_MAX_SIZE
 #define P15_END_VERSION 1
 #define p15_end p15_end_v1
 #define P15_END_MAX_SIZE P15_END_V1_MAX_SIZE
@@ -409,8 +604,8 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v1, _pad) == 108, "p15_net_stats_v1
 #define P15_NET_VERSION 1
 #define p15_net p15_net_v1
 #define P15_NET_MAX_SIZE P15_NET_V1_MAX_SIZE
-#define P15_NET_STATS_VERSION 1
-#define p15_net_stats p15_net_stats_v1
-#define P15_NET_STATS_MAX_SIZE P15_NET_STATS_V1_MAX_SIZE
+#define P15_NET_STATS_VERSION 2
+#define p15_net_stats p15_net_stats_v2
+#define P15_NET_STATS_MAX_SIZE P15_NET_STATS_V2_MAX_SIZE
 
 #endif /* P15_RECORDS_H */

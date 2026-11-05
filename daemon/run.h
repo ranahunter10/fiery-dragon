@@ -56,6 +56,16 @@ struct p15_run {
 	_Atomic uint64_t net_drained, net_invalid;
 	_Atomic uint64_t bulk_fill_max;          /* interval field */
 
+	/* events the kernel skipped before our programs ran (ADR-0020 rule 3): bpf_prog_info.recursion_misses
+	 * of each attached program, read by the drain; *_base is the read after the self-tests */
+	int miss_fd[P15_SPINE_TYPES];            /* by record type 1..4; 0 = none */
+	int net_miss_fd[8];
+	int n_net_miss;
+	_Atomic uint64_t missed[P15_SPINE_TYPES];
+	uint64_t missed_base[P15_SPINE_TYPES];
+	_Atomic uint64_t net_missed;
+	uint64_t net_missed_base;
+
 	/* writer side */
 	_Atomic uint64_t spine_written, spine_drain_lost, net_written, net_drain_lost;
 	_Atomic int invariant;                   /* enum p15_invariant, set at the end */

@@ -105,6 +105,7 @@ int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed)
 	}
 	for (int i = 0; i < 5; i++)
 		ring_buffer__poll(rb, 20);
+	ring_buffer__consume(rb);            /* records don't wake the reader below the high-water mark (ADR-0020) */
 	b = find(&c, BIND, TCP, 0);
 	l = find(&c, LISTEN, TCP, 0);
 	t = find(&c, CONNECT, TCP, 0);

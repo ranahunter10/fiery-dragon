@@ -121,6 +121,10 @@ M = [
  (TRACE, 'run.meta["config.net"] == "yes"', 'True'),
  (HTML, "def _e(s) -> str:\n    return escape(str(s), quote=True)", "def _e(s) -> str:\n    return str(s)"),
  (HTML, 'if ctx.end is None or ctx.end.f["run_state"] == 2 or not ctx.net_on:', 'if ctx.end is None:'),
+ # ADR-0020: the kernel's skips in the Trust block and in GAP windows
+ (TRACE, 'if self.stats.h["version"] < 2:', 'if False:'),
+ (TRACE, 'if not any(sk.values()) and not net:', 'if True:'),
+ (TREE, '"_build_failed", "_missed")', '"_build_failed")'),
 ]
 
 

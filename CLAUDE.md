@@ -35,7 +35,7 @@ Claude-Session: <session link>
 
 ## Environment facts (see `docs/evidence/` for proof)
 
-- **Target:** VM `p15-dev-2604`, Ubuntu 26.04.1, kernel **7.0.0-38-generic, held**; 4 vCPU / 8 GB.
+- **Target:** VM `p15-dev-2604`, Ubuntu 26.04.1, kernel **7.0.0-38-generic, held** (`PREEMPT(lazy)`); 3 vCPU / 8 GB (from 4 on 2026-11-04: host stalls, E-0088). VirtualBox on a Windows host with Hyper-V on: the guest can stall for seconds to minutes, so `vm_verify.sh` marks any step a stall touched.
   - The maintainer reaches it with `ssh p15`.
   - Kernel-side work and every authoritative measurement happen there.
 - **Toolchain on the VM:** clang 21.1.8, libbpf-dev 1.6.3, bpftool 7.7.0 (its own libbpf 1.7), pahole 1.31, bpftrace 0.25.0, Python 3.14.4.
@@ -45,7 +45,8 @@ Claude-Session: <session link>
   - `vfs_readv`/`vfs_writev` are hookable;
   - `__sock_sendmsg` is inlined (not hookable), so the `sock_send_length`/`sock_recv_length` tracepoints are used;
   - `inode_storage` is unavailable (no BPF-LSM);
-  - there is no `bpf` in the LSM list.
+  - there is no `bpf` in the LSM list;
+  - tracepoint BPF runs preemptible on 7.0: the kernel's per-CPU, per-program recursion guard skips `tp_btf` and fentry/fexit programs for other tasks (counted only in `recursion_misses`, E-0089). Classic `tracepoint/` programs run with preemption off. Hence ADR-0020: the spine's exec/exit/rename are classic tracepoints, and p15d needs **tracefs at `/sys/kernel/tracing`** (in the dev container: `mount -t tracefs nodev /sys/kernel/tracing`).
 - **Cloud sessions can't run BPF programs on the target kernel.** Kernel-side changes are proven on the VM by the maintainer, and the PR shows that output.
 
 ## End of every session

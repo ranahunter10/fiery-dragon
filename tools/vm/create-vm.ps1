@@ -17,7 +17,7 @@ if (-not ((& $vbm list ostypes) -match "^ID / Description:\s+$os\s+--")) { throw
 
 # --- machine ---
 vb createvm --name $name --ostype $os --register
-vb modifyvm $name --memory 8192 --cpus 4 --firmware efi --ioapic on --rtc-use-utc on --pae on --nested-paging on --paravirt-provider default
+vb modifyvm $name --memory 8192 --cpus 3 --firmware efi --ioapic on --rtc-use-utc on --pae on --nested-paging on --paravirt-provider default
 vb modifyvm $name --graphicscontroller vmsvga --vram 16 --audio-enabled off --usb-ohci off --usb-ehci off --usb-xhci off --mouse ps2
 vb modifyvm $name --clipboard-mode disabled --drag-and-drop disabled
 vb modifyvm $name --boot1 dvd --boot2 disk --boot3 none --boot4 none

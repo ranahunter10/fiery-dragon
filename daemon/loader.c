@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <bpf/libbpf.h>
 
 #include "exitcodes.h"
@@ -43,14 +44,24 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 		snprintf(err, errlen, "spine: ring size %u refused", spine_ring_bytes);
 		return P15_EXIT_CONFIG;
 	}
+	l->spine->rodata->spine_wake_bytes = spine_ring_bytes / 4;   /* ADR-0020 rule 2 */
 	if (spine_bpf__load(l->spine)) {
 		snprintf(err, errlen, "spine: load failed: %s", strerror(errno));
+		return P15_EXIT_LOAD;
+	}
+	if (access("/sys/kernel/tracing/events/sched/sched_process_exec", F_OK)) {
+		snprintf(err, errlen, "tracefs is not mounted at /sys/kernel/tracing (the spine's exec, exit and rename "
+			 "hooks are classic tracepoints, ADR-0020): mount -t tracefs nodev /sys/kernel/tracing");
 		return P15_EXIT_LOAD;
 	}
 	if (spine_bpf__attach(l->spine)) {
 		snprintf(err, errlen, "spine: attach failed: %s", strerror(errno));
 		return P15_EXIT_LOAD;
 	}
+	l->miss_fd[1] = bpf_program__fd(l->spine->progs.spine_fork);
+	l->miss_fd[2] = bpf_program__fd(l->spine->progs.spine_exec);
+	l->miss_fd[3] = bpf_program__fd(l->spine->progs.spine_exit);
+	l->miss_fd[4] = bpf_program__fd(l->spine->progs.spine_rename);
 	if (manifest_add(l, l->spine->obj, &off)) {
 		snprintf(err, errlen, "hook manifest too long");
 		return P15_EXIT_INTERNAL;
@@ -65,6 +76,7 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 			snprintf(err, errlen, "net: bulk ring size %u refused", bulk_ring_bytes);
 			return P15_EXIT_CONFIG;
 		}
+		l->net->rodata->bulk_wake_bytes = bulk_ring_bytes / 4;   /* ADR-0020 rule 2 */
 		if (net_bpf__load(l->net) || net_bpf__attach(l->net)) {
 			snprintf(err, errlen, "net: load or attach failed: %s (fentry/fexit unavailable? --no-net runs without "
 				 "network capture)", strerror(errno));
@@ -73,6 +85,17 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 		if (manifest_add(l, l->net->obj, &off)) {
 			snprintf(err, errlen, "hook manifest too long");
 			return P15_EXIT_INTERNAL;
+		}
+		{
+			struct bpf_program *p;
+
+			bpf_object__for_each_program(p, l->net->obj) {
+				if (l->n_net_miss >= (int)(sizeof(l->net_miss_fd) / sizeof(l->net_miss_fd[0]))) {
+					snprintf(err, errlen, "more network programs than net_miss_fd holds");
+					return P15_EXIT_INTERNAL;
+				}
+				l->net_miss_fd[l->n_net_miss++] = bpf_program__fd(p);
+			}
 		}
 	}
 	null = fopen("/dev/null", "w");

@@ -157,7 +157,8 @@ def build(recs, run_start_ns: int | None = None) -> Tree:
                 continue
             p.exit_ns, p.exit_code = r.h["ts_ns"], r.f["exit_code"]
         elif n == "GAP":
-            lost = sum(v for k, v in r.f.items() if k.endswith(("_reserve_failed", "_build_failed")))
+            # ring losses, and from GAP v2 on, events the kernel skipped (ADR-0020)
+            lost = sum(v for k, v in r.f.items() if k.endswith(("_reserve_failed", "_build_failed", "_missed")))
             gaps.append(Gap(r.f["from_ns"], r.f["to_ns"], lost))
     start = run_start_ns if run_start_ns is not None else first_ts
     for p in procs.values():

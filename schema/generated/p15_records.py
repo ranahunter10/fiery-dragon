@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "a12b53aa4464976fa1a35147448e92713459e3743add663e1ff7201e5fca93aa"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -63,9 +63,15 @@ RECORDS = {
     (33, 1): Layout('STATS', 33, 1, 'STATS',
         np.dtype({'names': ['h', 'fork_seen', 'fork_emitted', 'fork_reserve_failed', 'fork_build_failed', 'fork_read_failed', 'fork_truncated', 'exec_seen', 'exec_emitted', 'exec_reserve_failed', 'exec_build_failed', 'exec_read_failed', 'exec_truncated', 'exit_seen', 'exit_emitted', 'exit_reserve_failed', 'exit_build_failed', 'exit_read_failed', 'exit_truncated', 'rename_seen', 'rename_emitted', 'rename_reserve_failed', 'rename_build_failed', 'rename_read_failed', 'rename_truncated', 'fork_drained', 'exec_drained', 'exit_drained', 'rename_drained', 'spine_invalid', 'spine_written', 'spine_drain_lost', 'gap_records', 'poll_gap_le_100us', 'poll_gap_le_1ms', 'poll_gap_le_10ms', 'poll_gap_le_100ms', 'poll_gap_le_1s', 'poll_gap_gt_1s', 'poll_gap_max_ns', 'spine_fill_max', 'queue_full', 'wal_bytes', 'wal_batches', 'wal_fsyncs', 'wal_fsync_max_ns', 'cpu_user_us', 'cpu_sys_us', 'maxrss_kb', 'interval_ns', 'spine_ring_bytes', 'queue_depth_max', 'queue_batches', 'run_state'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 384, 392, 400, 408, 416, 424, 428, 432, 436], 'itemsize': 440}),
         440, 440, ()),
+    (33, 2): Layout('STATS', 33, 2, 'STATS',
+        np.dtype({'names': ['h', 'fork_seen', 'fork_emitted', 'fork_reserve_failed', 'fork_build_failed', 'fork_read_failed', 'fork_truncated', 'exec_seen', 'exec_emitted', 'exec_reserve_failed', 'exec_build_failed', 'exec_read_failed', 'exec_truncated', 'exit_seen', 'exit_emitted', 'exit_reserve_failed', 'exit_build_failed', 'exit_read_failed', 'exit_truncated', 'rename_seen', 'rename_emitted', 'rename_reserve_failed', 'rename_build_failed', 'rename_read_failed', 'rename_truncated', 'fork_drained', 'exec_drained', 'exit_drained', 'rename_drained', 'spine_invalid', 'spine_written', 'spine_drain_lost', 'gap_records', 'poll_gap_le_100us', 'poll_gap_le_1ms', 'poll_gap_le_10ms', 'poll_gap_le_100ms', 'poll_gap_le_1s', 'poll_gap_gt_1s', 'poll_gap_max_ns', 'spine_fill_max', 'queue_full', 'wal_bytes', 'wal_batches', 'wal_fsyncs', 'wal_fsync_max_ns', 'cpu_user_us', 'cpu_sys_us', 'maxrss_kb', 'interval_ns', 'spine_ring_bytes', 'queue_depth_max', 'queue_batches', 'run_state', 'fork_missed', 'exec_missed', 'exit_missed', 'rename_missed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 384, 392, 400, 408, 416, 424, 428, 432, 436, 440, 448, 456, 464], 'itemsize': 472}),
+        472, 472, ()),
     (34, 1): Layout('GAP', 34, 1, 'MARKER',
         np.dtype({'names': ['h', 'from_ns', 'to_ns', 'spine_seq', 'fork_reserve_failed', 'exec_reserve_failed', 'exit_reserve_failed', 'rename_reserve_failed', 'fork_build_failed', 'exec_build_failed', 'exit_build_failed', 'rename_build_failed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112], 'itemsize': 120}),
         120, 120, ()),
+    (34, 2): Layout('GAP', 34, 2, 'MARKER',
+        np.dtype({'names': ['h', 'from_ns', 'to_ns', 'spine_seq', 'fork_reserve_failed', 'exec_reserve_failed', 'exit_reserve_failed', 'rename_reserve_failed', 'fork_build_failed', 'exec_build_failed', 'exit_build_failed', 'rename_build_failed', 'fork_missed', 'exec_missed', 'exit_missed', 'rename_missed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144], 'itemsize': 152}),
+        152, 152, ()),
     (35, 1): Layout('END', 35, 1, 'MARKER',
         np.dtype({'names': ['h', 'exit_code', 'run_state', 'invariant', 'signal', 'reason_full', 'reason_len', '_pad'], 'formats': [HEADER_DTYPE, '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', 'S2'], 'offsets': [0, 32, 36, 40, 44, 48, 52, 54], 'itemsize': 56}),
         56, 312, (('reason', 256),)),
@@ -75,4 +81,7 @@ RECORDS = {
     (36, 1): Layout('NET_STATS', 36, 1, 'STATS',
         np.dtype({'names': ['h', 'net_seen', 'net_emitted', 'net_reserve_failed', 'net_excluded', 'net_drained', 'net_invalid', 'net_written', 'net_drain_lost', 'bulk_fill_max', 'bulk_ring_bytes', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', 'S4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 108], 'itemsize': 112}),
         112, 112, ()),
+    (36, 2): Layout('NET_STATS', 36, 2, 'STATS',
+        np.dtype({'names': ['h', 'net_seen', 'net_emitted', 'net_reserve_failed', 'net_excluded', 'net_drained', 'net_invalid', 'net_written', 'net_drain_lost', 'bulk_fill_max', 'net_missed', 'bulk_ring_bytes', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', 'S4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 116], 'itemsize': 120}),
+        120, 120, ()),
 }

@@ -14,11 +14,11 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_EXIT:   return version == 1 ? sizeof(struct p15_exit_v1) : 0;
 	case P15_T_RENAME: return version == 1 ? sizeof(struct p15_rename_v1) : 0;
 	case P15_T_CLOCK_SYNC: return version == 1 ? sizeof(struct p15_clock_sync_v1) : 0;
-	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : 0;
-	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : 0;
+	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : version == 2 ? sizeof(struct p15_stats_v2) : 0;
+	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;
 	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : 0;
 	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : 0;
-	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : 0;
+	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
 	}
 	return 0;
 }
