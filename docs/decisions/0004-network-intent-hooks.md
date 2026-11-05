@@ -1,8 +1,8 @@
 ---
-status: proposed
-date: 2026-11-02
+status: accepted
+date: 2026-11-05
 owner: Ashish Rana
-consulted: [capture blueprint v1 §4 and §10 (Phase 3), census v2 (E-0031, E-0032), Linux v7.0 net/socket.c, net/compat.c, io_uring/net.c, net/ipv4/af_inet.c, net/ipv6/af_inet6.c, kernel/bpf/verifier.c, the net_probe runs, maintainer's demo request of 2026-11-02]
+consulted: [capture blueprint v1 §4 and §10 (Phase 3), census v2 (E-0031, E-0032), Linux v7.0 net/socket.c, net/compat.c, io_uring/net.c, net/ipv4/af_inet.c, net/ipv6/af_inet6.c, kernel/bpf/verifier.c, the net_probe runs, maintainer's demo request of 2026-11-02, maintainer's acceptance of 2026-11-05]
 supersedes: none
 ---
 

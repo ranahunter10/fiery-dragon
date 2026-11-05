@@ -17,8 +17,8 @@ These rules apply to everyone: the maintainer, AI coding sessions, and anyone el
    | `bench/<topic>` | measurement harnesses and results |
 
 3. Open a pull request. CI must pass and the maintainer must approve.
-4. **Squash-merge**, so `main` gets one commit per PR, titled with the PR title.
-5. Delete the branch after the merge.
+4. **Merge with a merge commit** ("Merge pull request #N"), never squash or rebase. Evidence cites exact commit hashes (the VM run's commit, the "before" commit of a fix), and a merge commit keeps every one of them in `main`'s history. Stacked PRs then merge in order without rebasing. (Maintainer's decision, 2026-11-05; PRs #20–#31 were already merged this way.)
+5. Delete the branch after the merge, once `git merge-base --is-ancestor` shows its tip is in `main`.
 6. **Tags and releases are created by the maintainer only.** An AI session marks a release candidate with a `release/vX.Y.Z` branch and supplies the tag commands.
 
 ## 2. Commits

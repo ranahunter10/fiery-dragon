@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "trace: join a client connect on either side of its accept"
+**Last updated:** 2026-11-05 (UTC), PR "docs: record the 2026-11-05 decisions; accept ADR-0004 and 0021"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -82,7 +82,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     5. Python WAL reader (generated, no defaults, `google-crc32c`), the P15R importer for v3.7 recordings, and the process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
 19. **Demo track (maintainer, 2026-11-02): "given a port, show what happened".** It pulls a network-intent slice of Phase 3 forward. Nothing here is demo-only: each item is a Phase-1 or Phase-3 deliverable.
-    1. 🔧 ADR-0004 (proposed): fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; a NET record on the bulk ring, keyed by socket cookie. The probe passes on the CI runner's 7.0.0-1017-azure (E-0079); the VM run is pending. PR #35;
+    1. ✅ ADR-0004 (accepted 2026-11-05): fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; a NET record on the bulk ring, keyed by socket cookie. The probe passes on the CI runner's 7.0.0-1017-azure (E-0079); the VM run is pending. PR #35;
     2. 🔧 `p15d` (step 4b PRs 4–5 in one): the SPSC queue, drain and writer threads, WAL header, STATS/CLOCK_SYNC/GAP/END, run state and invariant, textfile, strict config; `p15w-inspect`. The end-to-end test passes all 4 cases in the dev container, including the forced overflow (INVALID with GAP records, books closed); 17/17 planted bugs caught (E-0080). Not yet: the drain-stall test, the bulk ring (with item 3);
     3. 🔧 NET (type 5) and NET_STATS (36) in the schema; `bpf/progs/net.bpf.c` on the bulk ring; the network self-test at load (ADR-0004 rule 6); `p15d` drains both rings, NET loss makes the run DEGRADED, the invariant covers NET; `--no-net` for hosts without fentry/fexit, recorded in the header. Container: the end-to-end test passes with `--no-net`; the network case runs in CI (`P15_IT_NET=1`) and on the VM. Depends on ADR-0004 being accepted;
     4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report.
@@ -98,7 +98,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - STATS, GAP and NET_STATS v2 carry `recursion_misses`; a spine skip makes the run INVALID with a GAP, a network skip makes it DEGRADED;
       - p15-trace's Trust block shows the skips;
       - the end-to-end test waits for `code=start` and counts exactly.
-    - **ADR-0021** (proposed): the VM has 3 vCPUs.
+    - ✅ **ADR-0021** (accepted 2026-11-05): the VM has 3 vCPUs.
+    - **ADR-0020: decided 2026-11-05, still proposed.** Its own text makes acceptance wait for confirmation 5: the ADR-0018 cost run of the classic-tracepoint hooks against `tp_btf`, on the VM. The statistics ADR-0018 asks for (Hodges–Lehmann, exact Wilcoxon, the A/A floor) are not implemented yet.
     - **VM run of PR #44 (E-0092):** 16 of 17 steps pass.
       - The probe, rerun: classic tracepoints skip 0 of 2,000 in every round.
       - p15d: all 200 children's EXECs are in the WAL, with 0 kernel skips.
@@ -108,6 +109,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - **VM rerun from step 14 on #45 (E-0093):** steps 14–17 pass, so every step of `vm_verify.sh` has now passed on the stack #32–#45.
     - **The failing run's segment** is in the evidence. Re-read by the fixed p15-trace on the VM, it gives 2 of 2 clients, 1 of them with its connect after the accept (E-0094). In the container, both the bug and the fix reproduce from the file (E-0095).
     - **Next:**
+      - merge #32–#46 with merge commits, in order (maintainer's decision 13);
+      - ADR-0018's statistics as tested code, and the hook-cost harness; then the VM run that lets ADR-0020 be accepted;
       - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
 
@@ -133,21 +136,21 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
     PRs #28–#30 merged. *(2026-10-25 UTC, "accepted and merged", E-0072)*
 
+13. **The 2026-11-05 review** (maintainer: "do the recommended items"; merge method and branch clean-up chosen in the session):
+    1. **Exit codes:** sysexits(3) values where one fits (USAGE 64, CONFIG 78, IO 74, OSERR 71, INTERNAL 70, LOAD 69, SELFTEST 65); DEGRADED 3 and INVALID 4; 0 only for a valid run. *(E-0074)*
+    2. **Allowed exit sites** are marked in place with `exit-ok: <reason>`, every marked site printed in CI. *(E-0074)*
+    3. **Hardening flags** apply to every userspace binary, the BPF test loaders and the C tests included.
+    4. **EXEC takes its exact `len` by `output`** (per-CPU scratch, then `bpf_ringbuf_output`). The `fixed` and `dynptr` ways leave `spine.bpf.c` after the VM repeats `bench-exec-cost`. *(E-0076)*
+    5. **Stricter EXEC checks** in `p15_rec_check`: exact padded `len` unless `READ_FAILED`, zero bytes after the fields. *(E-0075)*
+    6. **Daemon-written records in WAL ring 2**, recorded as ADR-0020 rule 6.
+    7. **STATS shape:** cumulative counters, four per-interval maxima with `interval_ns`; daemon record types from 32.
+    8. **ADR-0004 accepted** (network intent).
+    9. **Analysis-tier packages pinned by hash**, binary wheels only, for CPython 3.13 and 3.14 on x86-64; the list grows with the analysis tier.
+    10. **The client join's time rule:** the connect nearest in time on either side of the accept, within 5 s; kept in code and here, no ADR. *(E-0092 to E-0095)*
+    11. **ADR-0020:** accepted in principle; the status changes once its confirmation 5 is measured, as the ADR itself requires.
+    12. **ADR-0021 accepted** (3 vCPUs; supersedes ADR-0001's VM row).
+    13. **Merge #32–#46 with merge commits**, never squash: evidence cites commit hashes, and merge commits keep them in `main`. `CONTRIBUTING.md` now says so. Merged branches whose tips are in `main` are deleted.
+
 ## Decisions waiting
 
-1. **Exit-code values** (`daemon/exitcodes.h`, ADR-0019 G2.2 asks for one table but not its values). Proposed: sysexits(3) values where one fits (USAGE 64, CONFIG 78, IO 74, OSERR 71, INTERNAL 70, LOAD 69 "unavailable", SELFTEST 65); DEGRADED 3 and INVALID 4 for an orderly stop of a run that is not valid; 0 only for a valid run. Recommendation: accept; systemd and a person reading `systemctl status` then read the same meaning. Evidence: the table and its test (E-0074).
-2. **How the exit-call check knows the allowed sites:** a same-line comment `exit-ok: <reason>`, every marked site printed in CI, rather than a list of file/function names in the checker. Recommendation: accept; the reason sits next to the call and a new site is visible in the diff. Evidence: `tools/ci/check_exits.py` and its tests (E-0074).
-3. **Scope of the hardening flags:** applied to every userspace binary, the loaders in `bpf/test/` and the C tests included, not only the daemon. Recommendation: accept; one flag set, and the tests then run the code as it ships. Evidence: [build run](evidence/build/2026-10-25-daemon-hardening-container/README.md).
-4. **How EXEC takes exactly its `len` (ADR-0017 layer 1 leaves `output` or `dynptr` to a `bpf_stats` measurement).** Implemented: `output` (per-CPU scratch, then `bpf_ringbuf_output`). Recommendation: keep `output`. Evidence: in two 10-round sessions the two ways' CPU cost is not resolved on this host (paired medians 12–124 ns apart, sign changing between sessions); `output` needs only a helper since 5.8 while `dynptr` needs two kfuncs from 6.16+ (present on the target per its BTF, SRC) and two more error paths; `fixed` is 51–379 ns cheaper at ≥ 200 B of argv but takes 1,344 B per exec (E-0076, [cost run](evidence/probes/2026-10-25-exec-cost-container/README.md)). The two other ways stay in `spine.bpf.c` behind `-DP15_EXEC_WAY` until the VM repeats the run; then they can go.
-5. **Stricter EXEC checks in `p15_rec_check`:** `len` must be exactly the fields' padded size unless `READ_FAILED`, and every byte after the fields must be zero; a record that breaks either is refused and counted, which makes the run invalid. Recommendation: accept; the scratch buffer is reused, so a padding bug would otherwise leak an earlier command line into a record silently. Evidence: the unit tests and sweep (E-0075).
-6. **Where the daemon records go.** ADR-0006 rule 1 lists clock-sync and drop summaries among the *spine* ring's contents; ADR-0017 layer 4 puts GAP in the *daemon* ring; P15W has ring 2 for daemon records. Only BPF can write into the spine ring, so this PR's records are written by `p15d` into WAL ring 2 (daemon), all four of them, and readers merge rings by `ts_ns` (ADR-0006 rule 5). Recommendation: accept ring 2 for every daemon-written record, and record it in the ADR that next touches transport. Evidence: the ADR texts; the schema comment.
-7. **STATS shape:** counters cumulative from the run's start; four fields per interval since the previous STATS (`poll_gap_max_ns`, `spine_fill_max`, `queue_depth_max`, `wal_fsync_max_ns`), with `interval_ns` saying how long that was. Classes: STATS for STATS, MARKER for the other three; type numbers from 32, so the BPF counter types 0–7 stay apart. Recommendation: accept. Evidence: `schema/records.toml`.
-8. **Accept ADR-0004, network intent:** fexit on the proto_ops (not the syscall layer), NET on the bulk ring, socket-cookie identity, the declared v1 limits (AF_UNIX, unconnected UDP, MPTCP/SCTP/raw).
-   - Recommendation: accept.
-   - Evidence: the probe passes all checks on the runner's 7.0 (E-0079); the syscall-layer draft was refused by the verifier (E-0079); SRC rows 1–4 of the ADR.
-9. **Analysis-tier packages pinned by hash** (`python/requirements.txt`, PR #39): google-crc32c 1.9.0 and numpy 2.5.4, binary wheels for x86-64 CPython 3.13 (the dev container) and 3.14 (the VM, CI) only, installed with `--require-hashes --only-binary=:all:`. Another Python or architecture fails to install, loudly. The alternative is version pins without hashes, which accept any file PyPI serves under that version.
-   - Recommendation: accept; extend the hash list when the analysis tier adds torch and the rest (P11's list).
-   - Evidence: the wheels' SHA-256s in the file; the CI install step.
-10. **The client join's time rule** (`python/p15/net.py`, PR #45). Today's rule is "the connect nearest in time on either side of the accept, within `JOIN_WINDOW_NS` = 5 s". The alternative is the old "at or before the accept", which the VM showed is wrong (E-0092).
-    - Recommendation: accept the rule. The window's size is the open part: 5 s is a heuristic. Every outcome it causes is counted (`connect_after_accept`, `endpoint_ambiguous`, `client_not_found`), and the match stays labelled an inference.
-    - Evidence: [the VM paste and the container checks](evidence/probes/2026-11-04-trace-join/README.md).
+None from the 2026-11-05 review. ADR-0020's acceptance waits on a measurement (its confirmation 5), not on a decision.
