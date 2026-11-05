@@ -1,0 +1,214 @@
+6.18.44-fc-v236
+2
+hook_cost: libbpf v1.7, pinned to CPU 1, 20 rounds, 200000 renames and 300 execs per arm
+row round=-1 event=rename arm=none n=20001 cpu_ns=2669474 wall_ns=2664467 hits=0
+row round=-1 event=rename arm=none2 n=20001 cpu_ns=3022488 wall_ns=5858963 hits=0
+row round=-1 event=rename arm=tp n=20001 cpu_ns=3548950 wall_ns=3547791 hits=20001
+row round=-1 event=rename arm=btf n=20001 cpu_ns=3131062 wall_ns=3129764 hits=20001
+row round=-1 event=exec arm=none n=31 cpu_ns=29202000 wall_ns=34156117 hits=0
+row round=-1 event=exec arm=none2 n=31 cpu_ns=28179000 wall_ns=31641333 hits=0
+row round=-1 event=exec arm=tp n=31 cpu_ns=27857000 wall_ns=31518199 hits=31
+row round=-1 event=exec arm=btf n=31 cpu_ns=29914000 wall_ns=34405400 hits=31
+row round=-1 event=exec arm=spine n=31 cpu_ns=30528000 wall_ns=36337638 hits=31
+nullsys round=0 calls=1000000 total_ns=108789530
+row round=0 event=rename arm=none n=200000 cpu_ns=31758689 wall_ns=31776735 hits=0
+row round=0 event=rename arm=none2 n=200000 cpu_ns=25117098 wall_ns=25667256 hits=0
+row round=0 event=rename arm=tp n=200000 cpu_ns=32164306 wall_ns=32161966 hits=200000
+row round=0 event=rename arm=btf n=200000 cpu_ns=32011036 wall_ns=33698958 hits=200000
+row round=0 event=exec arm=none n=300 cpu_ns=363777000 wall_ns=415853042 hits=0
+row round=0 event=exec arm=none2 n=300 cpu_ns=279111000 wall_ns=312471929 hits=0
+row round=0 event=exec arm=tp n=300 cpu_ns=273837000 wall_ns=309004913 hits=300
+row round=0 event=exec arm=btf n=300 cpu_ns=287818000 wall_ns=329490809 hits=300
+row round=0 event=exec arm=spine n=300 cpu_ns=293066000 wall_ns=342418485 hits=300
+nullsys round=1 calls=1000000 total_ns=79629154
+row round=1 event=rename arm=none2 n=200000 cpu_ns=21490561 wall_ns=22601266 hits=0
+row round=1 event=rename arm=tp n=200000 cpu_ns=35690898 wall_ns=36469513 hits=200000
+row round=1 event=rename arm=btf n=200000 cpu_ns=30422054 wall_ns=32070895 hits=200000
+row round=1 event=rename arm=none n=200000 cpu_ns=25129182 wall_ns=25285306 hits=0
+row round=1 event=exec arm=none2 n=300 cpu_ns=323685000 wall_ns=369588377 hits=0
+row round=1 event=exec arm=tp n=300 cpu_ns=284705000 wall_ns=317385165 hits=300
+row round=1 event=exec arm=btf n=300 cpu_ns=304209000 wall_ns=352599899 hits=300
+row round=1 event=exec arm=spine n=300 cpu_ns=274154000 wall_ns=304384962 hits=300
+row round=1 event=exec arm=none n=300 cpu_ns=274021000 wall_ns=306215883 hits=0
+nullsys round=2 calls=1000000 total_ns=100185219
+row round=2 event=rename arm=tp n=200000 cpu_ns=35004925 wall_ns=35226715 hits=200000
+row round=2 event=rename arm=btf n=200000 cpu_ns=28438533 wall_ns=28957312 hits=200000
+row round=2 event=rename arm=none n=200000 cpu_ns=23949352 wall_ns=23948638 hits=0
+row round=2 event=rename arm=none2 n=200000 cpu_ns=24108298 wall_ns=24106753 hits=0
+row round=2 event=exec arm=tp n=300 cpu_ns=242290000 wall_ns=273053488 hits=300
+row round=2 event=exec arm=btf n=300 cpu_ns=353012000 wall_ns=402501778 hits=300
+row round=2 event=exec arm=spine n=300 cpu_ns=221815000 wall_ns=248189986 hits=300
+row round=2 event=exec arm=none n=300 cpu_ns=241149000 wall_ns=268011118 hits=0
+row round=2 event=exec arm=none2 n=300 cpu_ns=266163000 wall_ns=308862100 hits=0
+nullsys round=3 calls=1000000 total_ns=101759714
+row round=3 event=rename arm=btf n=200000 cpu_ns=31902640 wall_ns=32245121 hits=200000
+row round=3 event=rename arm=none n=200000 cpu_ns=27243917 wall_ns=27919850 hits=0
+row round=3 event=rename arm=none2 n=200000 cpu_ns=26981729 wall_ns=26996793 hits=0
+row round=3 event=rename arm=tp n=200000 cpu_ns=35209890 wall_ns=35312665 hits=200000
+row round=3 event=exec arm=btf n=300 cpu_ns=293913000 wall_ns=331330135 hits=300
+row round=3 event=exec arm=spine n=300 cpu_ns=278181000 wall_ns=309937301 hits=300
+row round=3 event=exec arm=none n=300 cpu_ns=276590000 wall_ns=308326421 hits=0
+row round=3 event=exec arm=none2 n=300 cpu_ns=296862000 wall_ns=334560138 hits=0
+row round=3 event=exec arm=tp n=300 cpu_ns=243293000 wall_ns=277909164 hits=300
+nullsys round=4 calls=1000000 total_ns=82846501
+row round=4 event=rename arm=none n=200000 cpu_ns=23234469 wall_ns=23231419 hits=0
+row round=4 event=rename arm=none2 n=200000 cpu_ns=23220871 wall_ns=23218913 hits=0
+row round=4 event=rename arm=tp n=200000 cpu_ns=31517536 wall_ns=31515629 hits=200000
+row round=4 event=rename arm=btf n=200000 cpu_ns=28644458 wall_ns=28658046 hits=200000
+row round=4 event=exec arm=spine n=300 cpu_ns=276404000 wall_ns=313421488 hits=300
+row round=4 event=exec arm=none n=300 cpu_ns=231431000 wall_ns=260470445 hits=0
+row round=4 event=exec arm=none2 n=300 cpu_ns=219775000 wall_ns=246735705 hits=0
+row round=4 event=exec arm=tp n=300 cpu_ns=254108000 wall_ns=286266602 hits=300
+row round=4 event=exec arm=btf n=300 cpu_ns=320748000 wall_ns=363915324 hits=300
+nullsys round=5 calls=1000000 total_ns=93130991
+row round=5 event=rename arm=none2 n=200000 cpu_ns=24338001 wall_ns=24336405 hits=0
+row round=5 event=rename arm=tp n=200000 cpu_ns=31791221 wall_ns=31873027 hits=200000
+row round=5 event=rename arm=btf n=200000 cpu_ns=31810440 wall_ns=32575645 hits=200000
+row round=5 event=rename arm=none n=200000 cpu_ns=27433576 wall_ns=37479128 hits=0
+row round=5 event=exec arm=none n=300 cpu_ns=300468000 wall_ns=341216174 hits=0
+row round=5 event=exec arm=none2 n=300 cpu_ns=297580000 wall_ns=338199004 hits=0
+row round=5 event=exec arm=tp n=300 cpu_ns=275495000 wall_ns=313193032 hits=300
+row round=5 event=exec arm=btf n=300 cpu_ns=249699000 wall_ns=283428242 hits=300
+row round=5 event=exec arm=spine n=300 cpu_ns=229410000 wall_ns=258396552 hits=300
+nullsys round=6 calls=1000000 total_ns=103374614
+row round=6 event=rename arm=tp n=200000 cpu_ns=40949933 wall_ns=40945840 hits=200000
+row round=6 event=rename arm=btf n=200000 cpu_ns=36285165 wall_ns=36403319 hits=200000
+row round=6 event=rename arm=none n=200000 cpu_ns=30070364 wall_ns=30083601 hits=0
+row round=6 event=rename arm=none2 n=200000 cpu_ns=30488968 wall_ns=30500422 hits=0
+row round=6 event=exec arm=none2 n=300 cpu_ns=289504000 wall_ns=332318705 hits=0
+row round=6 event=exec arm=tp n=300 cpu_ns=282986000 wall_ns=320028245 hits=300
+row round=6 event=exec arm=btf n=300 cpu_ns=229641000 wall_ns=264176830 hits=300
+row round=6 event=exec arm=spine n=300 cpu_ns=270648000 wall_ns=303602456 hits=300
+row round=6 event=exec arm=none n=300 cpu_ns=306238000 wall_ns=347052936 hits=0
+nullsys round=7 calls=1000000 total_ns=113199304
+row round=7 event=rename arm=btf n=200000 cpu_ns=44480692 wall_ns=44475307 hits=200000
+row round=7 event=rename arm=none n=200000 cpu_ns=31192348 wall_ns=32372378 hits=0
+row round=7 event=rename arm=none2 n=200000 cpu_ns=27147539 wall_ns=28312244 hits=0
+row round=7 event=rename arm=tp n=200000 cpu_ns=35532821 wall_ns=35899274 hits=200000
+row round=7 event=exec arm=tp n=300 cpu_ns=271936000 wall_ns=308011544 hits=300
+row round=7 event=exec arm=btf n=300 cpu_ns=299369000 wall_ns=338322010 hits=300
+row round=7 event=exec arm=spine n=300 cpu_ns=273056000 wall_ns=305296156 hits=300
+row round=7 event=exec arm=none n=300 cpu_ns=285685000 wall_ns=320446435 hits=0
+row round=7 event=exec arm=none2 n=300 cpu_ns=275233000 wall_ns=309252707 hits=0
+nullsys round=8 calls=1000000 total_ns=92090434
+row round=8 event=rename arm=none n=200000 cpu_ns=24676818 wall_ns=24674650 hits=0
+row round=8 event=rename arm=none2 n=200000 cpu_ns=24380246 wall_ns=24378355 hits=0
+row round=8 event=rename arm=tp n=200000 cpu_ns=31244700 wall_ns=31242878 hits=200000
+row round=8 event=rename arm=btf n=200000 cpu_ns=31572309 wall_ns=31615121 hits=200000
+row round=8 event=exec arm=btf n=300 cpu_ns=292152000 wall_ns=338053886 hits=300
+row round=8 event=exec arm=spine n=300 cpu_ns=314984000 wall_ns=362155798 hits=300
+row round=8 event=exec arm=none n=300 cpu_ns=236792000 wall_ns=270775316 hits=0
+row round=8 event=exec arm=none2 n=300 cpu_ns=233844000 wall_ns=265375010 hits=0
+row round=8 event=exec arm=tp n=300 cpu_ns=224146000 wall_ns=254196747 hits=300
+nullsys round=9 calls=1000000 total_ns=112491499
+row round=9 event=rename arm=none2 n=200000 cpu_ns=27029365 wall_ns=27227196 hits=0
+row round=9 event=rename arm=tp n=200000 cpu_ns=32277501 wall_ns=32493413 hits=200000
+row round=9 event=rename arm=btf n=200000 cpu_ns=31569521 wall_ns=32520873 hits=200000
+row round=9 event=rename arm=none n=200000 cpu_ns=27278751 wall_ns=27457459 hits=0
+row round=9 event=exec arm=spine n=300 cpu_ns=282108000 wall_ns=325325054 hits=300
+row round=9 event=exec arm=none n=300 cpu_ns=269263000 wall_ns=314455358 hits=0
+row round=9 event=exec arm=none2 n=300 cpu_ns=305193000 wall_ns=349503264 hits=0
+row round=9 event=exec arm=tp n=300 cpu_ns=284901000 wall_ns=321618346 hits=300
+row round=9 event=exec arm=btf n=300 cpu_ns=334488000 wall_ns=389538586 hits=300
+nullsys round=10 calls=1000000 total_ns=90467168
+row round=10 event=rename arm=tp n=200000 cpu_ns=31532714 wall_ns=31712144 hits=200000
+row round=10 event=rename arm=btf n=200000 cpu_ns=32206226 wall_ns=32921285 hits=200000
+row round=10 event=rename arm=none n=200000 cpu_ns=27925284 wall_ns=28205147 hits=0
+row round=10 event=rename arm=none2 n=200000 cpu_ns=27545591 wall_ns=27628222 hits=0
+row round=10 event=exec arm=none n=300 cpu_ns=275320000 wall_ns=316854557 hits=0
+row round=10 event=exec arm=none2 n=300 cpu_ns=270384000 wall_ns=306175809 hits=0
+row round=10 event=exec arm=tp n=300 cpu_ns=234935000 wall_ns=262716105 hits=300
+row round=10 event=exec arm=btf n=300 cpu_ns=295230000 wall_ns=355911993 hits=300
+row round=10 event=exec arm=spine n=300 cpu_ns=275437000 wall_ns=309728144 hits=300
+nullsys round=11 calls=1000000 total_ns=158151566
+row round=11 event=rename arm=btf n=200000 cpu_ns=31736662 wall_ns=32823012 hits=200000
+row round=11 event=rename arm=none n=200000 cpu_ns=26939425 wall_ns=26946315 hits=0
+row round=11 event=rename arm=none2 n=200000 cpu_ns=26917082 wall_ns=27071430 hits=0
+row round=11 event=rename arm=tp n=200000 cpu_ns=34879635 wall_ns=34877803 hits=200000
+row round=11 event=exec arm=none2 n=300 cpu_ns=273337000 wall_ns=308113620 hits=0
+row round=11 event=exec arm=tp n=300 cpu_ns=257126000 wall_ns=295198448 hits=300
+row round=11 event=exec arm=btf n=300 cpu_ns=282125000 wall_ns=327070018 hits=300
+row round=11 event=exec arm=spine n=300 cpu_ns=278234000 wall_ns=318634222 hits=300
+row round=11 event=exec arm=none n=300 cpu_ns=297531000 wall_ns=339455916 hits=0
+nullsys round=12 calls=1000000 total_ns=113813493
+row round=12 event=rename arm=none n=200000 cpu_ns=36981568 wall_ns=37004865 hits=0
+row round=12 event=rename arm=none2 n=200000 cpu_ns=34287890 wall_ns=34306209 hits=0
+row round=12 event=rename arm=tp n=200000 cpu_ns=40753255 wall_ns=40815936 hits=200000
+row round=12 event=rename arm=btf n=200000 cpu_ns=31669200 wall_ns=31712860 hits=200000
+row round=12 event=exec arm=tp n=300 cpu_ns=275756000 wall_ns=306153726 hits=300
+row round=12 event=exec arm=btf n=300 cpu_ns=263635000 wall_ns=302651706 hits=300
+row round=12 event=exec arm=spine n=300 cpu_ns=308714000 wall_ns=351902393 hits=300
+row round=12 event=exec arm=none n=300 cpu_ns=272280000 wall_ns=304290975 hits=0
+row round=12 event=exec arm=none2 n=300 cpu_ns=257322000 wall_ns=293422022 hits=0
+nullsys round=13 calls=1000000 total_ns=78494594
+row round=13 event=rename arm=none2 n=200000 cpu_ns=21060268 wall_ns=21079425 hits=0
+row round=13 event=rename arm=tp n=200000 cpu_ns=31792531 wall_ns=31920269 hits=200000
+row round=13 event=rename arm=btf n=200000 cpu_ns=40847953 wall_ns=40844225 hits=200000
+row round=13 event=rename arm=none n=200000 cpu_ns=36359697 wall_ns=36356212 hits=0
+row round=13 event=exec arm=btf n=300 cpu_ns=284463000 wall_ns=318686051 hits=300
+row round=13 event=exec arm=spine n=300 cpu_ns=278025000 wall_ns=313172875 hits=300
+row round=13 event=exec arm=none n=300 cpu_ns=246035000 wall_ns=274495888 hits=0
+row round=13 event=exec arm=none2 n=300 cpu_ns=232750000 wall_ns=258252886 hits=0
+row round=13 event=exec arm=tp n=300 cpu_ns=270728000 wall_ns=299929136 hits=300
+nullsys round=14 calls=1000000 total_ns=106573585
+row round=14 event=rename arm=tp n=200000 cpu_ns=35287353 wall_ns=35284159 hits=200000
+row round=14 event=rename arm=btf n=200000 cpu_ns=31827173 wall_ns=31899751 hits=200000
+row round=14 event=rename arm=none n=200000 cpu_ns=27817505 wall_ns=28839713 hits=0
+row round=14 event=rename arm=none2 n=200000 cpu_ns=27331739 wall_ns=27575596 hits=0
+row round=14 event=exec arm=spine n=300 cpu_ns=285595000 wall_ns=322754967 hits=300
+row round=14 event=exec arm=none n=300 cpu_ns=240049000 wall_ns=272101569 hits=0
+row round=14 event=exec arm=none2 n=300 cpu_ns=229315000 wall_ns=266074007 hits=0
+row round=14 event=exec arm=tp n=300 cpu_ns=305374000 wall_ns=348857492 hits=300
+row round=14 event=exec arm=btf n=300 cpu_ns=248762000 wall_ns=282565889 hits=300
+nullsys round=15 calls=1000000 total_ns=93860941
+row round=15 event=rename arm=btf n=200000 cpu_ns=25999093 wall_ns=26054971 hits=200000
+row round=15 event=rename arm=none n=200000 cpu_ns=22288126 wall_ns=22362885 hits=0
+row round=15 event=rename arm=none2 n=200000 cpu_ns=22353938 wall_ns=22397180 hits=0
+row round=15 event=rename arm=tp n=200000 cpu_ns=33208555 wall_ns=33375351 hits=200000
+row round=15 event=exec arm=none n=300 cpu_ns=266577000 wall_ns=327687339 hits=0
+row round=15 event=exec arm=none2 n=300 cpu_ns=275477000 wall_ns=308328273 hits=0
+row round=15 event=exec arm=tp n=300 cpu_ns=275319000 wall_ns=309785515 hits=300
+row round=15 event=exec arm=btf n=300 cpu_ns=236625000 wall_ns=273658183 hits=300
+row round=15 event=exec arm=spine n=300 cpu_ns=314031000 wall_ns=355212099 hits=300
+nullsys round=16 calls=1000000 total_ns=83898061
+row round=16 event=rename arm=none n=200000 cpu_ns=22835791 wall_ns=22933000 hits=0
+row round=16 event=rename arm=none2 n=200000 cpu_ns=25252512 wall_ns=25250594 hits=0
+row round=16 event=rename arm=tp n=200000 cpu_ns=30420014 wall_ns=30416529 hits=200000
+row round=16 event=rename arm=btf n=200000 cpu_ns=25799193 wall_ns=25800383 hits=200000
+row round=16 event=exec arm=none2 n=300 cpu_ns=222233000 wall_ns=250594325 hits=0
+row round=16 event=exec arm=tp n=300 cpu_ns=278918000 wall_ns=318931477 hits=300
+row round=16 event=exec arm=btf n=300 cpu_ns=218530000 wall_ns=243407298 hits=300
+row round=16 event=exec arm=spine n=300 cpu_ns=292771000 wall_ns=336991080 hits=300
+row round=16 event=exec arm=none n=300 cpu_ns=230568000 wall_ns=257421333 hits=0
+nullsys round=17 calls=1000000 total_ns=89221238
+row round=17 event=rename arm=none2 n=200000 cpu_ns=24379878 wall_ns=24425186 hits=0
+row round=17 event=rename arm=tp n=200000 cpu_ns=31437927 wall_ns=31436371 hits=200000
+row round=17 event=rename arm=btf n=200000 cpu_ns=31562790 wall_ns=32195314 hits=200000
+row round=17 event=rename arm=none n=200000 cpu_ns=27098360 wall_ns=27513952 hits=0
+row round=17 event=exec arm=tp n=300 cpu_ns=305092000 wall_ns=345487141 hits=300
+row round=17 event=exec arm=btf n=300 cpu_ns=271473000 wall_ns=308109617 hits=300
+row round=17 event=exec arm=spine n=300 cpu_ns=248320000 wall_ns=282115050 hits=300
+row round=17 event=exec arm=none n=300 cpu_ns=237375000 wall_ns=265759579 hits=0
+row round=17 event=exec arm=none2 n=300 cpu_ns=276863000 wall_ns=311902624 hits=0
+nullsys round=18 calls=1000000 total_ns=88691459
+row round=18 event=rename arm=tp n=200000 cpu_ns=30695288 wall_ns=32258607 hits=200000
+row round=18 event=rename arm=btf n=200000 cpu_ns=25208222 wall_ns=25446101 hits=200000
+row round=18 event=rename arm=none n=200000 cpu_ns=22355782 wall_ns=22430383 hits=0
+row round=18 event=rename arm=none2 n=200000 cpu_ns=24375501 wall_ns=26710094 hits=0
+row round=18 event=exec arm=btf n=300 cpu_ns=314991000 wall_ns=362995326 hits=300
+row round=18 event=exec arm=spine n=300 cpu_ns=269695000 wall_ns=311035130 hits=300
+row round=18 event=exec arm=none n=300 cpu_ns=303840000 wall_ns=358091904 hits=0
+row round=18 event=exec arm=none2 n=300 cpu_ns=304846000 wall_ns=357200954 hits=0
+row round=18 event=exec arm=tp n=300 cpu_ns=335684000 wall_ns=383775726 hits=300
+nullsys round=19 calls=1000000 total_ns=84280820
+row round=19 event=rename arm=btf n=200000 cpu_ns=27493817 wall_ns=30107097 hits=200000
+row round=19 event=rename arm=none n=200000 cpu_ns=23106518 wall_ns=23987399 hits=0
+row round=19 event=rename arm=none2 n=200000 cpu_ns=25912055 wall_ns=30816806 hits=0
+row round=19 event=rename arm=tp n=200000 cpu_ns=39676821 wall_ns=39768066 hits=200000
+row round=19 event=exec arm=spine n=300 cpu_ns=297244000 wall_ns=341641037 hits=300
+row round=19 event=exec arm=none n=300 cpu_ns=350802000 wall_ns=414174390 hits=0
+row round=19 event=exec arm=none2 n=300 cpu_ns=344072000 wall_ns=399860425 hits=0
+row round=19 event=exec arm=tp n=300 cpu_ns=345879000 wall_ns=395653357 hits=300
+row round=19 event=exec arm=btf n=300 cpu_ns=313718000 wall_ns=357491489 hits=300
+hook_cost: ok (spine records failing p15_rec_check: 0)
+exit=0
