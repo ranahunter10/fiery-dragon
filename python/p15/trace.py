@@ -190,8 +190,8 @@ def text_report(ctx: Context, rep: N.PortReport) -> str:
         via = f"listener cookie {c.listener.cookie}" if c.listener else "listener not in the run"
         L.append(f"  {ctx.when(a.ts_ns)}  {a.remote} -> {a.local}  accepted by {proc_line(ctx, a.proc)}  ({via})")
         if c.connect:
-            L.append(f"      client: {chain(ctx, c.connect.proc)}  (matched by endpoints, connect at "
-                     f"{ctx.rel(c.connect.ts_ns)})")
+            how = "exact, by TCP sequence number" if c.match == "isn" else "inferred from endpoints and time"
+            L.append(f"      client: {chain(ctx, c.connect.proc)}  ({how}; connect at {ctx.rel(c.connect.ts_ns)})")
         else:
             L.append("      client: not on this host, or its connect is not in the run")
     if not rep.accepted:
@@ -218,10 +218,12 @@ def text_report(ctx: Context, rep: N.PortReport) -> str:
     c, t = rep.counts, ctx.tree.counts
     L += ["", "How the joins were made",
           "  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)",
-          f"  client -> accept: by endpoints on this host (an inference): {c['client_by_endpoints']} matched, "
-          f"{c['endpoint_ambiguous']} of them with more than one candidate (the connect nearest in time taken, "
-          f"within {N.JOIN_WINDOW_NS // 10**9} s either side), {c['connect_after_accept']} whose connect returned after "
-          f"the accept, {c['client_not_found']} not found",
+          f"  client -> accept: {c['client_by_isn']} exact, by the TCP client sequence number (ADR-0022); "
+          f"{c['client_by_endpoints']} inferred from endpoints on this host ({c['endpoint_ambiguous']} of them with more than "
+          f"one candidate, the connect nearest in time taken, within {N.JOIN_WINDOW_NS // 10**9} s either side); "
+          f"{c['connect_after_accept']} whose connect returned after the accept; {c['isn_mismatch']} same-endpoint "
+          f"connect(s) set aside as a different connection; {c['client_not_found']} not found; "
+          f"{c['tcp_without_isn']} TCP record(s) without a sequence number",
           f"  process tree: {len(ctx.tree.procs)} processes, {t['pre_existing']} started before the capture "
           f"(their parents come with the snapshot, step 4c), {t['fork_missing']} with a missing FORK; "
           f"ADR-0009 checks: {t['exit_twice']} double exits, {t['fork_twice']} double forks (must be 0)"]

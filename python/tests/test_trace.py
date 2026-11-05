@@ -99,11 +99,13 @@ class Port(Base):
         self.assertEqual([c.accept.cookie for c in r.accepted], [9003, 9005, 9006])
         self.assertTrue(all(c.listener is r.listeners[0] for c in r.accepted), "joined by cookie")
         self.assertEqual([c.connect.proc if c.connect else None for c in r.accepted], [S.C1, S.C2, None])
-        self.assertEqual([c.match for c in r.accepted], ["endpoints", "endpoints", ""])
+        self.assertEqual([c.match for c in r.accepted], ["isn", "isn", ""])
         self.assertEqual([e.proc for e in r.outbound], [S.C1, S.C2])
         self.assertEqual((r.refused, r.binds, r.other), ([], [], []))
         self.assertEqual(r.procs, {S.SRV, S.C1, S.C2})
-        self.assertEqual((r.counts["client_by_endpoints"], r.counts["client_not_found"]), (2, 1))
+        self.assertEqual((r.counts["client_by_isn"], r.counts["client_by_endpoints"], r.counts["client_not_found"]),
+                         (2, 0, 1))
+        self.assertEqual((r.counts["isn_mismatch"], r.counts["tcp_without_isn"]), (0, 0))
         self.assertEqual(len(r.events), 7)
 
     def test_4444_refused(self):
@@ -122,9 +124,43 @@ class Port(Base):
         r = N.port_report([e], 80)
         self.assertEqual((len(r.outbound), len(r.refused)), (1, 0))
 
+    def test_isn_join_rules(self):
+        """ADR-0022: the client ISN joins exactly, beats time, and sets a different connection aside."""
+        def ev(t, p, op, ck, lo, re_="0.0.0.0:0", peer=0, isn=None):
+            return N.event(R.decode(memoryview(S.net(t, p, op, ck, lo, re_, peer=peer, isn=isn)), 0, 1, t))
+        t0 = 10 ** 9
+        lst = [ev(1, S.SRV, "LISTEN", 1, "127.0.0.1:80")]
+
+        def acc(isn):
+            return ev(t0, S.SRV, "ACCEPT", 9, "127.0.0.1:80", "127.0.0.1:5000", peer=1, isn=isn)
+
+        def con(dt, proc, ck, isn):
+            return ev(t0 + dt, proc, "CONNECT", ck, "127.0.0.1:5000", "127.0.0.1:80", isn=isn)
+        # a reused port: the nearer connect is the other connection; the ISN picks the right one
+        r = N.port_report(lst + [con(10, S.C1, 2, 7), con(1000, S.C2, 3, 5), acc(5)], 80)
+        c = r.accepted[0]
+        self.assertEqual((c.connect.proc, c.match), (S.C2, "isn"))
+        self.assertEqual((r.counts["client_by_isn"], r.counts["isn_mismatch"], r.counts["client_by_endpoints"]), (1, 1, 0))
+        # only a different connection on those endpoints: not joined, and counted
+        r = N.port_report(lst + [con(10, S.C1, 2, 7), acc(5)], 80)
+        self.assertIsNone(r.accepted[0].connect)
+        self.assertEqual((r.counts["client_not_found"], r.counts["isn_mismatch"]), (1, 1))
+        # either side without an ISN: the window's inference, labelled as such, and the record counted
+        for why, a_isn, c_isn in (("connect has none", 5, None), ("accept has none", None, 5)):
+            with self.subTest(why):
+                r = N.port_report(lst + [con(10, S.C1, 2, c_isn), acc(a_isn)], 80)
+                self.assertEqual((r.accepted[0].connect.proc, r.accepted[0].match), (S.C1, "endpoints"))
+                self.assertEqual((r.counts["client_by_endpoints"], r.counts["tcp_without_isn"]), (1, 1))
+        # 0 is an ISN like any other
+        r = N.port_report(lst + [con(10, S.C1, 2, 0), acc(0)], 80)
+        self.assertEqual(r.accepted[0].match, "isn")
+        # the ISN doesn't widen the window: an equal ISN 6 s away is outside it
+        r = N.port_report(lst + [con(6 * 10 ** 9, S.C1, 2, 5), acc(5)], 80)
+        self.assertIsNone(r.accepted[0].connect)
+
     def test_endpoint_join_rules(self):
-        def ev(t, p, op, ck, lo, re_="0.0.0.0:0", peer=0, ret=0, netns=None):
-            raw = S.net(t, p, op, ck, lo, re_, ret=ret, peer=peer)
+        def ev(t, p, op, ck, lo, re_="0.0.0.0:0", peer=0, ret=0, netns=None, isn=None):
+            raw = S.net(t, p, op, ck, lo, re_, ret=ret, peer=peer, isn=isn)
             e = N.event(R.decode(memoryview(raw), 0, 1, t))
             if netns is not None:
                 e.netns = netns
@@ -186,7 +222,7 @@ class TextReport(Base):
         self.assertIn("capture RUNNING, accounting invariant closed, exit 0 (stop requested)", out)
         self.assertIn("127.0.0.1:18077 tcp  cookie 9001  listening from 10:00:01.000 (t+1.000s)  by python3 (600) ← "
                       "pid 500 [started before the capture]", out)
-        self.assertIn("client: curl (610) ← pid 500 [started before the capture]  (matched by endpoints", out)
+        self.assertIn("client: curl (610) ← pid 500 [started before the capture]  (exact, by TCP sequence number", out)
         self.assertIn("10.0.0.7:52000 -> 127.0.0.1:18077", out)
         self.assertIn("client: not on this host", out)
         self.assertIn("pid 610     curl http://127.0.0.1:18077/", out)

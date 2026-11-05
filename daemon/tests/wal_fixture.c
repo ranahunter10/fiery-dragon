@@ -130,6 +130,25 @@ int main(int argc, char **argv)
 		n.rport = 50000;
 		rc |= put(w, 1, &n);
 	}
+	{       /* bulk: a NET v2 connect with the client ISN (ADR-0022); the top bit set, so it must stay unsigned */
+		struct p15_net_v2 n;
+
+		memset(&n, 0, sizeof(n));
+		hdr(&n.h, P15_T_NET, sizeof(n), 3002, 200, 990);
+		n.h.version = 2;
+		n.h.flags = P15_F_ISN;
+		n.sock_cookie = 4107;
+		inet_pton(AF_INET, "127.0.0.1", n.laddr);
+		inet_pton(AF_INET, "127.0.0.1", n.raddr);
+		n.netns = 4026531840u;
+		n.op = 1;
+		n.family = AF_INET;
+		n.proto = 6;
+		n.lport = 41510;
+		n.rport = 8080;
+		n.tcp_isn = 0xfedcba98u;
+		rc |= put(w, 1, &n);
+	}
 	{       /* daemon: CLOCK_SYNC, STATS, NET_STATS, GAP, END */
 		struct p15_clock_sync_v1 c;
 		struct p15_stats_v1 s;

@@ -5,7 +5,11 @@ Two joins, and each says which it is:
 
 - **by cookie** (exact, ADR-0004 rule 5): an ACCEPT's peer_cookie is the listening socket's
   cookie, so every accepted connection names its listener;
-- **by endpoints** (an inference): a CONNECT on this host whose local endpoint is an ACCEPT's
+- **by ISN** (exact, ADR-0022): a TCP CONNECT and ACCEPT with the same endpoints, network namespace
+  and client initial sequence number (NET v2 with P15_F_ISN). Both sides read the ISN at fexit, so
+  the join doesn't depend on which call returned first. A candidate with the same endpoints but a
+  different ISN is a different connection: never joined, counted (`isn_mismatch`);
+- **by endpoints** (an inference, the fallback when either side has no ISN): a CONNECT on this host whose local endpoint is an ACCEPT's
   remote endpoint, to the same address and port, in the same network namespace, within
   JOIN_WINDOW_NS of the accept on **either side**. Each record is stamped when its call
   returns, and the two calls finish concurrently: on the VM an accept returned 12 µs before its
@@ -48,6 +52,7 @@ class Event:
     raddr: str
     netns: int
     seq: int
+    isn: int | None = None      # the client ISN (NET v2 with P15_F_ISN, ADR-0022); None when unknown
 
     @property
     def ok(self) -> bool:
@@ -63,10 +68,11 @@ class Event:
 
 
 def event(r: R.Record) -> Event:
+    isn = r.f["tcp_isn"] if r.h["flags"] & R.F_ISN else None
     return Event(r.h["ts_ns"], R.NET_OPS[r.f["op"]], PROTO.get(r.f["proto"], str(r.f["proto"])), r.f["ret"],
                  r.proc, r.h["tid"], r.f["sock_cookie"], r.f["peer_cookie"], R.endpoint(r, "l"),
                  R.endpoint(r, "r"), r.f["lport"], r.f["rport"], R.net_addr(r, "laddr"), R.net_addr(r, "raddr"),
-                 r.f["netns"], r.seq)
+                 r.f["netns"], r.seq, isn)
 
 
 @dataclass
@@ -88,7 +94,7 @@ class Conn:
     accept: Event
     listener: Listener | None
     connect: Event | None = None
-    match: str = ""                 # how `connect` was found: "endpoints" or ""
+    match: str = ""                 # how `connect` was found: "isn" (exact), "endpoints" (inference) or ""
 
 
 @dataclass
@@ -126,8 +132,9 @@ class PortReport:
 def port_report(events: list[Event], port: int) -> PortReport:
     """Everything the run holds about `port`: listeners on it, connections accepted on it (joined
     to their listener by cookie and to their client by endpoints), and connects to it."""
-    counts = dict.fromkeys(("net_events", "accept_no_listener", "client_by_endpoints", "client_not_found",
-                            "endpoint_ambiguous", "connect_after_accept"), 0)
+    counts = dict.fromkeys(("net_events", "accept_no_listener", "client_by_isn", "client_by_endpoints",
+                            "client_not_found", "endpoint_ambiguous", "connect_after_accept", "isn_mismatch",
+                            "tcp_without_isn"), 0)
     counts["net_events"] = len(events)
     by_cookie: dict[int, Listener] = {}
     for e in events:
@@ -153,18 +160,29 @@ def port_report(events: list[Event], port: int) -> PortReport:
         c = Conn(e, lst)
         cands = [k for k in connects if k.ok and k.local == e.remote and k.remote == e.local
                  and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WINDOW_NS]
-        if cands:
-            c.connect = min(cands, key=lambda k: (abs(k.ts_ns - e.ts_ns), k.seq))
-            c.match = "endpoints"
+        exact = [k for k in cands if e.isn is not None and k.isn == e.isn]
+        other_conn = [k for k in cands if e.isn is not None and k.isn is not None and k.isn != e.isn]
+        counts["isn_mismatch"] += len(other_conn)
+        inferred = [k for k in cands if k not in other_conn]
+        if exact:                                  # the same connection, whatever the timestamps say
+            c.match, pool = "isn", exact
+            counts["client_by_isn"] += 1
+        elif inferred:
+            c.match, pool = "endpoints", inferred
             counts["client_by_endpoints"] += 1
-            counts["endpoint_ambiguous"] += len(cands) > 1
-            counts["connect_after_accept"] += c.connect.ts_ns > e.ts_ns
+            counts["endpoint_ambiguous"] += len(inferred) > 1
         else:
+            pool = []
             counts["client_not_found"] += 1        # remote host, or a connect before the capture
+        if pool:
+            c.connect = min(pool, key=lambda k: (abs(k.ts_ns - e.ts_ns), k.seq))
+            counts["connect_after_accept"] += c.connect.ts_ns > e.ts_ns
         if lst is not None:
             lst.accepts.append(c)
         accepted.append(c)
     outbound = [e for e in connects if e.rport == port and e.ok]
+    counts["tcp_without_isn"] = sum(1 for e in outbound if e.proto == "tcp" and e.isn is None) + \
+        sum(1 for c in accepted if c.accept.proto == "tcp" and c.accept.isn is None)
     refused = [e for e in connects if e.rport == port and not e.ok]
     other = [e for e in events if e.lport == port and e.op == "CONNECT"]
     return PortReport(port, listeners, accepted, outbound, refused, binds, other, counts)

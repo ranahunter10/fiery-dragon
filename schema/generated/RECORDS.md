@@ -23,6 +23,7 @@ Common header of every record, 32 bytes (ADR-0008).
 
 - bit 0 `TRUNCATED`: at least one variable-length field was cut at its maximum; see its _full and _len
 - bit 1 `READ_FAILED`: a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted
+- bit 2 `ISN`: NET v2: tcp_isn holds the connection's client initial sequence number (ADR-0022 rule 2); unset when it isn't known (rule 3)
 
 ## FORK (type 1, version 1, class SPINE)
 
@@ -319,6 +320,29 @@ Fixed part 104 bytes; at most 104 bytes with its variable fields.
 | 94 | `lport` | u16 | local port, host order |
 | 96 | `rport` | u16 | remote port, host order |
 | 98 | `_pad` | char[6] | zero; pads the fixed part to 8 *(generated)* |
+
+## NET (type 5, version 2, class NET)
+
+One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted. v2 adds the TCP client ISN, which joins an accept to its connect exactly (ADR-0022).
+
+Fixed part 104 bytes; at most 104 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `sock_cookie` | u64 | bpf_get_socket_cookie of the socket; for accept, of the new connection. (boot_id, cookie) names a socket for the run (ADR-0004 rule 5) |
+| 40 | `peer_cookie` | u64 | accept: the listening socket's cookie, which links the connection to its listener; otherwise 0 |
+| 48 | `laddr` | char[16] | local address after the operation; IPv4 in the first 4 bytes, network order |
+| 64 | `raddr` | char[16] | remote address: for connect the requested one (kernel copy), for accept the peer; zero for listen and bind |
+| 80 | `netns` | u32 | network namespace inode (as in /proc/PID/ns/net) |
+| 84 | `ret` | i32 | the hook's return value: 0, -EINPROGRESS, -ECONNREFUSED, -EADDRINUSE, ... (ADR-0004 rule 3) |
+| 88 | `op` | u16 | 1 CONNECT, 2 ACCEPT, 3 LISTEN, 4 BIND |
+| 90 | `family` | u16 | AF_INET 2 or AF_INET6 10 |
+| 92 | `proto` | u16 | IPPROTO_TCP 6 or IPPROTO_UDP 17 |
+| 94 | `lport` | u16 | local port, host order |
+| 96 | `rport` | u16 | remote port, host order |
+| 98 | `reserved` | u16 | zero; aligns tcp_isn (checked by p15_rec_check) |
+| 100 | `tcp_isn` | u32 | TCP: the client's initial sequence number, valid when the header has P15_F_ISN; connect: write_seq - 1, accept: copied_seq - 1 at fexit (ADR-0022 rule 2); else 0 |
 
 ## NET_STATS (type 36, version 1, class STATS)
 

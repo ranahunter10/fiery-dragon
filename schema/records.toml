@@ -40,6 +40,11 @@ name = "READ_FAILED"
 bit = 1
 doc = "a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted"
 
+[[flag]]
+name = "ISN"
+bit = 2
+doc = "NET v2: tcp_isn holds the connection's client initial sequence number (ADR-0022 rule 2); unset when it isn't known (rule 3)"
+
 # ---- process spine (ADR-0003): SPINE class, never shed (ADR-0006) ----
 
 [[record]]
@@ -333,6 +338,28 @@ fields = [
   { name = "proto",       c = "u16", doc = "IPPROTO_TCP 6 or IPPROTO_UDP 17" },
   { name = "lport",       c = "u16", doc = "local port, host order" },
   { name = "rport",       c = "u16", doc = "remote port, host order" },
+]
+
+[[record]]
+name = "NET"
+type = 5
+version = 2
+class = "NET"
+doc = "One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted. v2 adds the TCP client ISN, which joins an accept to its connect exactly (ADR-0022)."
+fields = [
+  { name = "sock_cookie", c = "u64", doc = "bpf_get_socket_cookie of the socket; for accept, of the new connection. (boot_id, cookie) names a socket for the run (ADR-0004 rule 5)" },
+  { name = "peer_cookie", c = "u64", doc = "accept: the listening socket's cookie, which links the connection to its listener; otherwise 0" },
+  { name = "laddr",       c = "char[16]", doc = "local address after the operation; IPv4 in the first 4 bytes, network order" },
+  { name = "raddr",       c = "char[16]", doc = "remote address: for connect the requested one (kernel copy), for accept the peer; zero for listen and bind" },
+  { name = "netns",       c = "u32", doc = "network namespace inode (as in /proc/PID/ns/net)" },
+  { name = "ret",         c = "i32", doc = "the hook's return value: 0, -EINPROGRESS, -ECONNREFUSED, -EADDRINUSE, ... (ADR-0004 rule 3)" },
+  { name = "op",          c = "u16", doc = "1 CONNECT, 2 ACCEPT, 3 LISTEN, 4 BIND" },
+  { name = "family",      c = "u16", doc = "AF_INET 2 or AF_INET6 10" },
+  { name = "proto",       c = "u16", doc = "IPPROTO_TCP 6 or IPPROTO_UDP 17" },
+  { name = "lport",       c = "u16", doc = "local port, host order" },
+  { name = "rport",       c = "u16", doc = "remote port, host order" },
+  { name = "reserved",    c = "u16", doc = "zero; aligns tcp_isn (checked by p15_rec_check)" },
+  { name = "tcp_isn",     c = "u32", doc = "TCP: the client's initial sequence number, valid when the header has P15_F_ISN; connect: write_seq - 1, accept: copied_seq - 1 at fexit (ADR-0022 rule 2); else 0" },
 ]
 
 [[record]]

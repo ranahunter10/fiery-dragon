@@ -296,11 +296,14 @@ connects, squares accepts, and crosses failures. A dotted line joins a connect t
 <div class="panel"><dl class="how">
 <dt>Listener to accept</dt><dd>By socket cookie, which is exact (ADR-0004 rule 5): an accept's peer cookie is
 its listener's cookie.</dd>
-<dt>Client to accept</dt><dd>By endpoints, which is an inference: a connect on this host whose local endpoint
-is the accept's remote one, nearest in time within {N.JOIN_WINDOW_NS // 10**9} s on either side (the two calls finish
-concurrently, so either can return first). {c['client_by_endpoints']} matched,
-{c['endpoint_ambiguous']} of them with more than one candidate, {c['connect_after_accept']} whose connect returned
-after the accept, and {c['client_not_found']} not found.</dd>
+<dt>Client to accept</dt><dd>Exact when both sides carry the TCP client sequence number (ADR-0022): the
+connect and the accept with the same endpoints and the same number are one connection.
+{c['client_by_isn']} matched that way. Otherwise by endpoints, which is an inference: a connect on this host whose
+local endpoint is the accept's remote one, nearest in time within {N.JOIN_WINDOW_NS // 10**9} s on either side.
+{c['client_by_endpoints']} matched that way, {c['endpoint_ambiguous']} of them with more than one candidate.
+{c['isn_mismatch']} same-endpoint connect(s) were set aside as a different connection, {c['connect_after_accept']}
+connect(s) returned after their accept, {c['client_not_found']} accept(s) have no client here, and
+{c['tcp_without_isn']} TCP record(s) carry no sequence number.</dd>
 <dt>Process identity</dt><dd>(tgid, the thread-group leader's start time), within this boot (ADR-0009). The
 run holds {len(ctx.tree.procs)} processes. {t['pre_existing']} of them started before the capture, so their
 parents are unknown until the start-up snapshot (Phase 1 step 4c). The ADR-0009 checks found

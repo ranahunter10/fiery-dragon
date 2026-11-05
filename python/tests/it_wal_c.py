@@ -37,11 +37,11 @@ class CWriterRun(unittest.TestCase):
             for k in ("clock.boottime_ns", "seq.next.spine", "seq.next.bulk", "seq.next.daemon", "rotate.max_bytes"):
                 self.assertIn(k, s.meta)
         self.assertEqual({k: len(v) for k, v in self.by.items()},
-                         {"FORK": 1, "EXEC": 1, "EXIT": 1, "RENAME": 1, "NET": 2, "CLOCK_SYNC": 1,
+                         {"FORK": 1, "EXEC": 1, "EXIT": 1, "RENAME": 1, "NET": 3, "CLOCK_SYNC": 1,
                           "STATS": 2, "NET_STATS": 2, "GAP": 2, "END": 1})
 
     def test_sequences_per_ring(self):
-        for ring, n in ((0, 4), (1, 2), (2, 8)):
+        for ring, n in ((0, 4), (1, 3), (2, 8)):
             self.assertEqual([r.seq for r in self.run_.ring_records(ring)], list(range(n)))
 
     def test_daemon_v2(self):
@@ -72,8 +72,15 @@ class CWriterRun(unittest.TestCase):
         x = self.by["EXIT"][0]
         self.assertEqual((x.f["exit_code"], x.f["group_dead"]), (256, 1))
 
+    def test_net_v2(self):
+        """NET version 2 (ADR-0022): the client ISN and its flag, next to v1 records in the same run."""
+        v2 = self.by["NET"][2]
+        self.assertEqual((v2.h["version"], v2.h["flags"] & R.F_ISN), (2, R.F_ISN))
+        self.assertEqual((v2.f["tcp_isn"], v2.f["reserved"], v2.f["sock_cookie"]), (0xFEDCBA98, 0, 4107))
+        self.assertEqual(R.endpoint(v2, "l"), "127.0.0.1:41510")
+
     def test_net(self):
-        c, a = self.by["NET"]
+        c, a = self.by["NET"][:2]
         self.assertEqual((c.f["op"], c.f["ret"], c.f["sock_cookie"], c.f["peer_cookie"]), (1, -111, 4105, 0))
         self.assertEqual((R.endpoint(c, "l"), R.endpoint(c, "r")), ("127.0.0.1:41508", "10.0.0.0:4444"))
         self.assertEqual((c.f["proto"], c.f["netns"]), (6, 4026531840))

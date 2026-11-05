@@ -17,7 +17,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : version == 2 ? sizeof(struct p15_stats_v2) : 0;
 	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;
 	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : 0;
-	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : 0;
+	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;
 	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
 	}
 	return 0;
@@ -74,6 +74,23 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 	if (h->len < fixed) {
 		*why = "len shorter than the fixed part";
 		return -EINVAL;
+	}
+	if (h->flags & ~(__u16)(P15_F_TRUNCATED | P15_F_READ_FAILED | P15_F_ISN)) {
+		*why = "unknown flag bits";
+		return -EINVAL;
+	}
+	if ((h->flags & P15_F_ISN) && !(h->type == P15_T_NET && h->version >= 2)) {
+		*why = "ISN flag on a record that has no ISN";
+		return -EINVAL;
+	}
+	if (h->type == P15_T_NET && h->version >= 2) {
+		const struct p15_net_v2 *r = data;
+
+		/* every byte has one meaning: the alignment field is zero, and so is an ISN nobody read */
+		if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {
+			*why = "NET v2: non-zero reserved, or tcp_isn without P15_F_ISN";
+			return -EINVAL;
+		}
 	}
 	if (h->type == P15_T_EXEC) {
 		const struct p15_exec_v1 *e = data;
@@ -224,15 +241,18 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 		const struct p15_net *r = data;
 		static const char *const ops[] = { "?", "CONNECT", "ACCEPT", "LISTEN", "BIND" };
 		char l[INET6_ADDRSTRLEN] = "?", rm[INET6_ADDRSTRLEN] = "?";
-		int af = r->family == 10 ? AF_INET6 : AF_INET;
+		int af = r->family == 10 ? AF_INET6 : AF_INET, m;
 
 		inet_ntop(af, r->laddr, l, sizeof(l));
 		inet_ntop(af, r->raddr, rm, sizeof(rm));
-		return k + snprintf(buf + k, n - k, " op=%s proto=%s ret=%d local=%s%s%s:%u remote=%s%s%s:%u cookie=%llu peer=%llu netns=%u",
-				    ops[r->op < 5 ? r->op : 0], r->proto == 6 ? "tcp" : r->proto == 17 ? "udp" : "?", r->ret,
-				    af == AF_INET6 ? "[" : "", l, af == AF_INET6 ? "]" : "", r->lport,
-				    af == AF_INET6 ? "[" : "", rm, af == AF_INET6 ? "]" : "", r->rport,
-				    (unsigned long long)r->sock_cookie, (unsigned long long)r->peer_cookie, r->netns);
+		m = k + snprintf(buf + k, n - k, " op=%s proto=%s ret=%d local=%s%s%s:%u remote=%s%s%s:%u cookie=%llu peer=%llu netns=%u",
+				 ops[r->op < 5 ? r->op : 0], r->proto == 6 ? "tcp" : r->proto == 17 ? "udp" : "?", r->ret,
+				 af == AF_INET6 ? "[" : "", l, af == AF_INET6 ? "]" : "", r->lport,
+				 af == AF_INET6 ? "[" : "", rm, af == AF_INET6 ? "]" : "", r->rport,
+				 (unsigned long long)r->sock_cookie, (unsigned long long)r->peer_cookie, r->netns);
+		if (r->h.version >= 2 && (r->h.flags & P15_F_ISN) && m >= 0 && (size_t)m < n)
+			m += snprintf(buf + m, n - (size_t)m, " isn=%u", r->tcp_isn);
+		return m;
 	}
 	case P15_T_NET_STATS: {
 		const struct p15_net_stats *r = data;

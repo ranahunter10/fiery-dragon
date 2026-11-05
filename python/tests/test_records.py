@@ -42,6 +42,19 @@ class Refusals(unittest.TestCase):
         self.why(rec("END", var={"reason": b"x"}, length=80, h_flags=R.F_READ_FAILED),
                  "len larger than its fields need")   # slack only on a BPF-built (SPINE) record
 
+    def test_flags_and_net_v2(self):
+        """The same rules as records.c (ADR-0022): known flag bits only, the ISN flag only on NET v2,
+        and NET v2's reserved field and unflagged ISN are zero."""
+        self.why(rec("EXIT", h_flags=1 << 7), "unknown flag bits")
+        self.why(rec("EXIT", h_flags=R.F_ISN), "ISN flag on a record that has no ISN")
+        self.why(rec("NET", version=1, h_flags=R.F_ISN), "ISN flag on a record that has no ISN")
+        self.why(rec("NET", reserved=1), "NET v2: non-zero reserved, or tcp_isn without P15_F_ISN")
+        self.why(rec("NET", tcp_isn=5), "NET v2: non-zero reserved, or tcp_isn without P15_F_ISN")
+        r = dec(rec("NET", h_flags=R.F_ISN, tcp_isn=0xFFFFFFFF))
+        self.assertEqual((r.h["version"], r.f["tcp_isn"]), (2, 0xFFFFFFFF))
+        self.assertEqual(dec(rec("NET", h_flags=R.F_ISN, tcp_isn=0)).f["tcp_isn"], 0)
+        self.assertEqual(dec(rec("NET", version=1)).h["version"], 1)
+
     def test_slack_after_a_failed_read(self):
         r = dec(rec("EXEC", var={"filename": b"/bin/x"}, length=80, h_flags=R.F_READ_FAILED))
         self.assertEqual(r.var, {"filename": b"/bin/x", "argv": b""})

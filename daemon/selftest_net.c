@@ -132,6 +132,11 @@ int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed)
 			     x->sock_cookie && x->sock_cookie != t->sock_cookie,
 			"accept: listener port, remote = the client, peer_cookie = the listener's cookie");
 	failed += check(log, u->ret == 0 && u->rport == 9 && u->lport != 0, "UDP connect: ret 0, remote port 9, local port assigned");
+	failed += check(log, t->h.version >= 2 && (t->h.flags & P15_F_ISN) && (x->h.flags & P15_F_ISN) &&
+			     t->tcp_isn == x->tcp_isn,
+			"connect and accept carry the same client ISN (ADR-0022 rule 5)");
+	failed += check(log, !(u->h.flags & P15_F_ISN) && !(b->h.flags & P15_F_ISN) && !(l->h.flags & P15_F_ISN),
+			"UDP connect, bind and listen carry no ISN");
 	failed += check(log, b->netns && b->netns == x->netns && b->h.start_ns == x->h.start_ns,
 			"netns set; every record names this process (ADR-0009)");
 out:

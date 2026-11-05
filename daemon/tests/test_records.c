@@ -257,6 +257,48 @@ static void test_net_format(void)
 	EXPECT(strstr(line, "local=[::1]:8080") != NULL, "IPv6 endpoints in brackets");
 }
 
+/* NET v2 (ADR-0022): the client ISN, its flag, and the bytes around it */
+static void test_net_v2(void)
+{
+	struct p15_net_v2 *r;
+	char line[400];
+
+	r = (void *)mk(P15_T_NET, sizeof(struct p15_net_v2));
+	r->h.version = 2;
+	r->op = 1;
+	r->proto = 6;
+	r->family = 2;
+	EXPECT(ok(), "NET v2 without an ISN accepted");
+	r->tcp_isn = 0x9abcdef0u;
+	EXPECT(!ok(), "NET v2: tcp_isn without P15_F_ISN refused");
+	r->h.flags |= P15_F_ISN;
+	EXPECT(ok(), "NET v2 with P15_F_ISN and an ISN accepted");
+	r->tcp_isn = 0;
+	EXPECT(ok(), "NET v2 with P15_F_ISN and ISN 0 accepted (0 is a valid ISN)");
+	r->tcp_isn = 0x9abcdef0u;
+	p15_rec_format(r, line, sizeof(line));
+	EXPECT(strstr(line, " isn=2596069104") != NULL, "NET v2 formats its ISN");
+	r->reserved = 1;
+	EXPECT(!ok(), "NET v2: non-zero reserved refused");
+	r->reserved = 0;
+	r->h.flags |= 1u << 7;
+	EXPECT(!ok(), "unknown flag bit refused");
+
+	r = (void *)mk(P15_T_NET, sizeof(struct p15_net_v1));
+	r->h.flags = P15_F_ISN;
+	EXPECT(!ok(), "P15_F_ISN on a NET v1 refused");
+	r->h.flags = 0;
+	EXPECT(ok(), "NET v1 still accepted");
+	p15_rec_format(r, line, sizeof(line));
+	EXPECT(strstr(line, "isn=") == NULL, "NET v1 prints no ISN");
+	mk(P15_T_EXIT, sizeof(struct p15_exit_v1))->flags = P15_F_ISN;
+	EXPECT(!ok(), "P15_F_ISN on an EXIT refused");
+	r = (void *)mk(P15_T_NET, sizeof(struct p15_net_v1));
+	r->h.version = 2;
+	r->h.len = sizeof(struct p15_net_v2) + 8;
+	EXPECT(!ok(), "NET v2 longer than its fixed size refused");
+}
+
 int main(void)
 {
 	test_fixed_sizes();
@@ -264,6 +306,7 @@ int main(void)
 	test_exec_slack_rules();
 	test_format();
 	test_net_format();
+	test_net_v2();
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }

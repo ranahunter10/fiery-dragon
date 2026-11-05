@@ -35,6 +35,8 @@ SCHEMA_HASH = gen.SCHEMA_HASH
 TYPES = dict(gen.TYPES)
 F_TRUNCATED = gen.F_TRUNCATED
 F_READ_FAILED = gen.F_READ_FAILED
+F_ISN = gen.F_ISN
+F_KNOWN = F_TRUNCATED | F_READ_FAILED | F_ISN
 
 NET_OPS = {1: "CONNECT", 2: "ACCEPT", 3: "LISTEN", 4: "BIND"}
 RUN_STATES = {0: "RUNNING", 1: "DEGRADED", 2: "INVALID"}
@@ -87,6 +89,10 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
         raise RecordError("unknown type or version", off)
     if n < lay.fixed_size:
         raise RecordError("len shorter than the fixed part", off)
+    if h["flags"] & ~F_KNOWN:
+        raise RecordError("unknown flag bits", off)
+    if h["flags"] & F_ISN and not (lay.name == "NET" and h["version"] >= 2):
+        raise RecordError("ISN flag on a record that has no ISN", off)
     row = np.frombuffer(buf, lay.dtype, count=1, offset=off)[0]
     f = {}
     for name in lay.dtype.names:
@@ -95,6 +101,9 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
         dt, o = lay.dtype.fields[name][:2]
         # char[N]: the exact N bytes (numpy's S dtype would drop trailing NULs, e.g. of 10.0.0.0)
         f[name] = bytes(buf[off + o:off + o + dt.itemsize]) if dt.kind == "S" else int(row[name])
+    if lay.name == "NET" and h["version"] >= 2 and (f["reserved"] or (not h["flags"] & F_ISN and f["tcp_isn"])):
+        # every byte has one meaning (records.c): the alignment field is zero, and so is an ISN nobody read
+        raise RecordError("NET v2: non-zero reserved, or tcp_isn without P15_F_ISN", off)
     var = {}
     if lay.var:
         used = 0

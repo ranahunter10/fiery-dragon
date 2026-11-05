@@ -17,6 +17,7 @@ struct p15_gap_v1 p15_probe_p15_gap_v1 __attribute__((used));
 struct p15_gap_v2 p15_probe_p15_gap_v2 __attribute__((used));
 struct p15_end_v1 p15_probe_p15_end_v1 __attribute__((used));
 struct p15_net_v1 p15_probe_p15_net_v1 __attribute__((used));
+struct p15_net_v2 p15_probe_p15_net_v2 __attribute__((used));
 struct p15_net_stats_v1 p15_probe_p15_net_stats_v1 __attribute__((used));
 struct p15_net_stats_v2 p15_probe_p15_net_stats_v2 __attribute__((used));
 

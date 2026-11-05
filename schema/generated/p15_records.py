@@ -12,10 +12,11 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "a12b53aa4464976fa1a35147448e92713459e3743add663e1ff7201e5fca93aa"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "aa55a5c8125a151b47748e04a2c60c38c28f046a49715215a9c3bb72afb4fa25"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
+F_ISN = 1 << 2
 
 HEADER_DTYPE = np.dtype({'names': ['type', 'version', 'len', 'flags', 'ts_ns', 'tgid', 'tid', 'start_ns'], 'formats': ['<u2', '<u2', '<u2', '<u2', '<u8', '<u4', '<u4', '<u8'], 'offsets': [0, 2, 4, 6, 8, 16, 20, 24], 'itemsize': 32})
 
@@ -77,6 +78,9 @@ RECORDS = {
         56, 312, (('reason', 256),)),
     (5, 1): Layout('NET', 5, 1, 'NET',
         np.dtype({'names': ['h', 'sock_cookie', 'peer_cookie', 'laddr', 'raddr', 'netns', 'ret', 'op', 'family', 'proto', 'lport', 'rport', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', 'S16', 'S16', '<u4', '<i4', '<u2', '<u2', '<u2', '<u2', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 64, 80, 84, 88, 90, 92, 94, 96, 98], 'itemsize': 104}),
+        104, 104, ()),
+    (5, 2): Layout('NET', 5, 2, 'NET',
+        np.dtype({'names': ['h', 'sock_cookie', 'peer_cookie', 'laddr', 'raddr', 'netns', 'ret', 'op', 'family', 'proto', 'lport', 'rport', 'reserved', 'tcp_isn'], 'formats': [HEADER_DTYPE, '<u8', '<u8', 'S16', 'S16', '<u4', '<i4', '<u2', '<u2', '<u2', '<u2', '<u2', '<u2', '<u4'], 'offsets': [0, 32, 40, 48, 64, 80, 84, 88, 90, 92, 94, 96, 98, 100], 'itemsize': 104}),
         104, 104, ()),
     (36, 1): Layout('NET_STATS', 36, 1, 'STATS',
         np.dtype({'names': ['h', 'net_seen', 'net_emitted', 'net_reserve_failed', 'net_excluded', 'net_drained', 'net_invalid', 'net_written', 'net_drain_lost', 'bulk_fill_max', 'bulk_ring_bytes', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', 'S4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 108], 'itemsize': 112}),
