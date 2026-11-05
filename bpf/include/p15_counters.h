@@ -4,7 +4,7 @@
  * accounting invariant). One per-CPU u64 per (record type, kind). For every
  * record type, at quiescence:
  *
- *     SEEN == EMITTED + RESERVE_FAILED
+ *     SEEN == EMITTED + RESERVE_FAILED + BUILD_FAILED
  *
  * READ_FAILED and TRUNCATED describe emitted records (each such record also
  * carries P15_F_READ_FAILED / P15_F_TRUNCATED in its header flags).
@@ -18,6 +18,7 @@ enum p15_ctr_kind {
 	P15_CK_RESERVE_FAILED = 2, /* the ring was full: no record (spine: run invalid) */
 	P15_CK_READ_FAILED = 3,    /* a memory read for an emitted record failed */
 	P15_CK_TRUNCATED = 4,      /* a variable-length field of an emitted record was cut */
+	P15_CK_BUILD_FAILED = 5,   /* no buffer to build the record in, or a dynptr write refused: no record */
 	P15_CK__N = 8,
 };
 

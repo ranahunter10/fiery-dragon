@@ -41,6 +41,7 @@ int p15_rec_list_add(struct p15_rec_list *l, const void *data, size_t size)
 	}
 	memcpy(copy, data, ((const struct p15_hdr *)data)->len);
 	l->recs[l->n++] = copy;
+	l->size_not_len += size != ((const struct p15_hdr *)data)->len;
 	return 0;
 }
 
@@ -117,6 +118,9 @@ int p15_selftest_eval(const struct p15_rec_list *l, const struct p15_selftest_ex
 
 	check(&c, l->invalid == 0, "every record passes the length checks (none invalid)");
 	check(&c, l->dropped_oom == 0, "no record dropped for lack of memory");
+	snprintf(what, sizeof(what), "every record takes exactly its len in the ring (ADR-0017; %zu do not)",
+		 l->size_not_len);
+	check(&c, l->size_not_len == 0, what);
 
 	fc = only(l, P15_T_FORK, e->daemon_tgid, fork_of_child, e, &n);
 	snprintf(what, sizeof(what), "exactly one FORK of the child by the daemon (found %zu)", n);

@@ -45,7 +45,9 @@ static void add_rename(struct p15_rec_list *l, const char *old, const char *new,
 	EXPECT(p15_rec_list_add(l, &r, sizeof(r)) == 0, "record list add");
 }
 
-static void add_exec(struct p15_rec_list *l, const char *file, const char *argv, int argv_len, unsigned long long ts)
+/* ring: the size the ring gave the record; 0 = exactly its len (ADR-0017 layer 1) */
+static void add_exec(struct p15_rec_list *l, const char *file, const char *argv, int argv_len, unsigned long long ts,
+		     size_t ring)
 {
 	unsigned char buf[P15_EXEC_MAX_SIZE];
 	struct p15_exec *r = (void *)buf;
@@ -56,7 +58,7 @@ static void add_exec(struct p15_rec_list *l, const char *file, const char *argv,
 	r->old_tid = C; r->filename_len = fl; r->filename_full = fl; r->argv_len = argv_len; r->argv_full = argv_len;
 	memcpy(buf + sizeof(*r), file, fl);
 	memcpy(buf + sizeof(*r) + fl, argv, argv_len);
-	EXPECT(p15_rec_list_add(l, buf, len) == 0, "record list add");
+	EXPECT(p15_rec_list_add(l, buf, ring ? ring : (size_t)len) == 0, "record list add");
 }
 
 static void add_exit(struct p15_rec_list *l, unsigned tgid, unsigned long long start, int code, unsigned long long ts)
@@ -71,7 +73,7 @@ static void add_exit(struct p15_rec_list *l, unsigned tgid, unsigned long long s
 
 /* the record set a correct spine produces, with one knob per failure to inject */
 struct knobs { int skip_exec, double_exec, bad_argv, bad_code, other_start, extra_grand, bad_order, invalid,
-	       extra_child, double_daemon_fork; };
+	       extra_child, double_daemon_fork, ring_max; };
 
 static int run(struct knobs k)
 {
@@ -93,9 +95,10 @@ static int run(struct knobs k)
 	}
 	add_rename(&l, P15_ST_NAME, "true", k.bad_order ? 5 : 40);
 	if (!k.skip_exec)
-		add_exec(&l, "/bin/true", k.bad_argv ? "true\0fd-selftesX" : "true\0" P15_ST_NAME, 17, 50);
+		add_exec(&l, "/bin/true", k.bad_argv ? "true\0fd-selftesX" : "true\0" P15_ST_NAME, 17, 50,
+			 k.ring_max ? P15_EXEC_MAX_SIZE : 0);
 	if (k.double_exec)
-		add_exec(&l, "/bin/true", "true\0" P15_ST_NAME, 17, 55);
+		add_exec(&l, "/bin/true", "true\0" P15_ST_NAME, 17, 55, 0);
 	if (k.extra_child)
 		add_fork(&l, C, SC, 777, SC, 45);   /* an unexpected extra record from the child */
 	add_exit(&l, C, k.other_start ? SC + 1 : SC, 0, 60);
@@ -144,6 +147,22 @@ static void test_record_checks(void)
 	EXPECT(p15_rec_check(buf, sizeof(buf), &why) != 0, "var fields beyond len refused");
 	r->argv_len = 6;
 	EXPECT(p15_rec_check(buf, sizeof(buf), &why) == 0, "var fields exactly within len accepted");
+	r->argv_len = 2;
+	EXPECT(p15_rec_check(buf, sizeof(buf), &why) == 0, "zero bytes after the var fields accepted");
+	buf[64 + 10 + 2 + 3] = 'x';   /* a stale byte from an earlier record in the scratch buffer */
+	EXPECT(p15_rec_check(buf, sizeof(buf), &why) != 0, "non-zero bytes after the var fields refused");
+	buf[64 + 10 + 2 + 3] = 0;
+	buf[80] = 'x';                /* beyond len: not the record's business */
+	EXPECT(p15_rec_check(buf, sizeof(buf), &why) == 0, "bytes past len ignored");
+	buf[80] = 0;
+	r->h.len = 88;                /* 8 bytes more than the fields need */
+	EXPECT(p15_rec_check(buf, sizeof(buf), &why) != 0, "slack after the fields refused");
+	r->h.flags = P15_F_READ_FAILED;
+	EXPECT(p15_rec_check(buf, sizeof(buf), &why) == 0, "zeroed slack after a failed read accepted (DYNPTR)");
+	buf[84] = 'x';
+	EXPECT(p15_rec_check(buf, sizeof(buf), &why) != 0, "non-zero slack after a failed read refused");
+	buf[84] = 0; r->h.flags = 0; r->h.len = 80;
+	r->argv_len = 6;
 	r->argv_len = P15_EXEC_ARGV_MAX + 1; r->h.len = P15_EXEC_MAX_SIZE;
 	EXPECT(p15_rec_check(buf, sizeof(buf), &why) != 0, "argv_len above its maximum refused");
 }
@@ -162,6 +181,7 @@ int main(void)
 	EXPECT(run((struct knobs){ .invalid = 1 }) > 0, "an invalid record fails the run");
 	EXPECT(run((struct knobs){ .extra_child = 1 }) > 0, "an extra child record fails");
 	EXPECT(run((struct knobs){ .double_daemon_fork = 1 }) > 0, "two FORKs of the child fail");
+	EXPECT(run((struct knobs){ .ring_max = 1 }) == 1, "an EXEC reserved at its maximum fails exactly one check");
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }

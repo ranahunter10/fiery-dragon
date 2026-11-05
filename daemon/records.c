@@ -50,6 +50,21 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 			*why = "variable field beyond len";
 			return -EINVAL;
 		}
+		/*
+		 * Exactly the fields' padded size: no slack, except after a failed read (the DYNPTR
+		 * way keeps its reservation). EXEC is built in reused per-CPU scratch (ADR-0017), so
+		 * every byte after the fields must be zero.
+		 */
+		if (h->len != ((fixed + e->filename_len + e->argv_len + 7) & ~(size_t)7) &&
+		    !(h->flags & P15_F_READ_FAILED)) {
+			*why = "len larger than its fields need";
+			return -EINVAL;
+		}
+		for (size_t i = fixed + e->filename_len + e->argv_len; i < h->len; i++)
+			if (((const __u8 *)data)[i]) {
+				*why = "non-zero bytes after the variable fields";
+				return -EINVAL;
+			}
 	}
 	*why = NULL;
 	return 0;

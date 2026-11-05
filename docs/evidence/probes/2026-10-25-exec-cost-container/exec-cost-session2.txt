@@ -1,0 +1,110 @@
+kernel 6.18.44-fc-v153; vCPUs 2; Ubuntu clang version 18.1.3 (1ubuntu1); gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+start 2026-10-25T23:03:37Z; base commit 445f7d7 + the working tree of feat/bpf-exec-exact-size
+$ build/exec_cost build/bench 10 1000 20 200 1000
+exec_cost: libbpf v1.7, 10 rounds x 1000 execs, ways fixed/output/dynptr
+selftest way=fixed FAIL failed_checks=1
+selftest way=output PASS failed_checks=0
+selftest way=dynptr PASS failed_checks=0
+nullsys round=0 calls=1000000 total_ns=99813953
+row round=0 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1948261 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1834878 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=2026306 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1719790 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=2019040 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=1645774 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=2033637 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2130042 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=0 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=1940407 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=1 calls=1000000 total_ns=97455132
+row round=1 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1638900 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=2002988 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1544734 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=1610630 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=1636639 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1664566 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=1919559 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2344342 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=1 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1909467 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=2 calls=1000000 total_ns=133242147
+row round=2 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=1698953 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1599654 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=3712284 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=1743118 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1599080 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=2032756 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=1905545 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1739185 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=2 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2075130 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=3 calls=1000000 total_ns=106131162
+row round=3 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1952556 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1847833 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=1888821 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1864074 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=1938678 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=1818561 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1781693 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2098002 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=3 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2192345 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=4 calls=1000000 total_ns=99014122
+row round=4 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1869566 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=1731003 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1653462 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=2055664 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=2007688 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1690616 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2174570 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2328065 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=4 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1976147 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=5 calls=1000000 total_ns=113329032
+row round=5 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=2002144 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=2314641 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1765252 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=1781314 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1666446 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=1800368 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2202430 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1862117 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=5 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2086442 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=6 calls=1000000 total_ns=121415442
+row round=6 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1888454 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1715884 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=1474625 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1608350 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=1920900 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=2002012 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1887584 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=1818474 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=6 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2004444 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=7 calls=1000000 total_ns=114895837
+row round=7 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=2344436 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=1897301 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1971602 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=1878657 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=2547408 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=2212553 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2648947 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2466797 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=7 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=2072735 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=8 calls=1000000 total_ns=123131609
+row round=8 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=2169984 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1958813 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1668174 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=1632328 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1700839 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=1962324 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=2182038 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1918535 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=8 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=1983219 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+nullsys round=9 calls=1000000 total_ns=105145650
+row round=9 way=fixed argv=20 execs=1000 run_cnt=1000 run_time_ns=1799405 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=output argv=20 execs=1000 run_cnt=1000 run_time_ns=1869092 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=dynptr argv=20 execs=1000 run_cnt=1000 run_time_ns=1996878 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=fixed argv=200 execs=1000 run_cnt=1000 run_time_ns=1829699 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=output argv=200 execs=1000 run_cnt=1000 run_time_ns=2206061 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=dynptr argv=200 execs=1000 run_cnt=1000 run_time_ns=2243490 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=fixed argv=1000 execs=1000 run_cnt=1000 run_time_ns=1917225 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=output argv=1000 execs=1000 run_cnt=1000 run_time_ns=2116505 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+row round=9 way=dynptr argv=1000 execs=1000 run_cnt=1000 run_time_ns=1979197 ours=1000 foreign=0 invalid=0 wrong_size=0 wrong_argv=0
+exec_cost: ok
+[exit 0]
+end 2026-10-25T23:06:28Z
