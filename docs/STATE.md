@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "bpf: make the counter maps' increments atomic"
+**Last updated:** 2026-11-05 (UTC), PR "bench: ADR-0018's paired statistics as tested code"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -99,7 +99,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - p15-trace's Trust block shows the skips;
       - the end-to-end test waits for `code=start` and counts exactly.
     - ✅ **ADR-0021** (accepted 2026-11-05): the VM has 3 vCPUs.
-    - **ADR-0020: decided 2026-11-05, still proposed.** Its own text makes acceptance wait for confirmation 5: the ADR-0018 cost run of the classic-tracepoint hooks against `tp_btf`, on the VM. The statistics ADR-0018 asks for (Hodges–Lehmann, exact Wilcoxon, the A/A floor) are not implemented yet.
+    - **ADR-0020: decided 2026-11-05, still proposed.** Its own text makes acceptance wait for confirmation 5: the ADR-0018 cost run of the classic-tracepoint hooks against `tp_btf`, on the VM. ADR-0018's statistics now exist as code (PR #48); the hook-cost harness comes next.
     - **VM run of PR #44 (E-0092):** 16 of 17 steps pass.
       - The probe, rerun: classic tracepoints skip 0 of 2,000 in every round.
       - p15d: all 200 children's EXECs are in the WAL, with 0 kernel skips.
@@ -116,6 +116,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields):
     - 🔧 **Atomic BPF counters** (PR #47, E-0097). The six network fexit programs shared per-CPU counter slots with a plain `*v += 1`, and on 7.0 they run preemptible with a per-program recursion guard, so a count could be lost silently. Found by checking our code against the pattern of CVE-2026-89580.
+    - 🔧 **ADR-0018's statistics as code** (PR #48, E-0098): `bench/quant/paired.py`, tested against enumeration, the textbook tables and scipy. The tool ADR-0020's confirmation 5 needs.
 
 ## Decisions taken (now recorded in ADRs where noted)
 

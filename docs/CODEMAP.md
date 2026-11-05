@@ -59,6 +59,13 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`run.py`](../bench/probes/p8_compat/run.py) | do the capture hooks see I/O and exec made through the 32-bit (compat) ABI? | `expectations`, `parse_probe`, `parse_ops`, `op_problems`, `analyze`, `render`, `reanalyze` |
 | [`test_run.py`](../bench/probes/p8_compat/test_run.py) | Tests for the P8 analysis (no root, no BPF). | `probe`, `AnalyzeTest` |
 
+## bench/quant
+
+| File | Job | Public names |
+|---|---|---|
+| [`paired.py`](../bench/quant/paired.py) | the paired-timing statistics, as code with tests (never by hand). | `median`, `mean`, `harmonic_mean`, `Interval`, `median_ci`, `signed_rank_counts`, `Wilcoxon`, `wilcoxon_exact`, `walsh_averages`, `HodgesLehmann`, `hodges_lehmann`, `Arm` (+2) |
+| [`test_paired.py`](../bench/quant/test_paired.py) | Tests for paired.py. | `brute_counts`, `brute_p`, `SignedRankTest`, `HodgesLehmannTest`, `MedianTest`, `ReportTest` |
+
 ## bench/rb_cost
 
 | File | Job | Public names |

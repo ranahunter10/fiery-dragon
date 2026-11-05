@@ -24,6 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 EXITS, HARD, SUMM = "tools/ci/check_exits.py", "tools/ci/check_hardening.py", "bench/rb_cost/summarize.py"
 WAL, REC = "python/p15/wal.py", "python/p15/records.py"
 TREE, NET, TRACE, HTML = "python/p15/proctree.py", "python/p15/net.py", "python/p15/trace.py", "python/p15/report_html.py"
+QUANT = "bench/quant/paired.py"
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: "python/tests/test_trace.py",
          NET: "python/tests/test_trace.py", TRACE: "python/tests/test_trace.py", HTML: "python/tests/test_trace.py"}
 
@@ -134,6 +135,20 @@ M = [
  (TRACE, 'if self.stats.h["version"] < 2:', 'if False:'),
  (TRACE, 'if not any(sk.values()) and not net:', 'if True:'),
  (TREE, '"_build_failed", "_missed")', '"_build_failed")'),
+ # ADR-0018 rule 2: the paired statistics
+ (QUANT, "nxt[w + r] += c", "nxt[w + r - 1] += c"),
+ (QUANT, "r = (i + j + 2) / 2", "r = (i + j + 1) / 2"),
+ (QUANT, "lo = sum(counts[: math.floor(w) + 1])", "lo = sum(counts[: math.floor(w)])"),
+ (QUANT, "p = min(1.0, 2 * min(lo, hi) / total)", "p = min(1.0, min(lo, hi) / total)"),
+ (QUANT, "est = median(w)", "est = median(d)"),
+ (QUANT, "Interval(w[k - 1], w[m - k],", "Interval(w[k], w[m - k - 1],"),
+ (QUANT, "Interval(s[j - 1], s[n - j],", "Interval(s[j], s[n - j - 1],"),
+ (QUANT, "a = [math.log(v / u) for v, u in zip(aa, untraced)]", "a = [math.log(v / u) for v, u in zip(aa, traced)]"),
+ (QUANT, "and not floor.ci.lo <= effect.estimate <= floor.ci.hi)", ")"),
+ (QUANT, "et.p_two_sided < 0.05", "et.p_two_sided < 0.5"),
+ (QUANT, "drift = abs(rom - math.exp(effect.estimate)) >", "drift = abs(rom - math.exp(effect.estimate)) <"),
+ (QUANT, "return len(xs) / math.fsum(1 / x for x in xs)", "return math.fsum(1 / x for x in xs) / len(xs)"),
+ (QUANT, "if t.zeros:", "if False:"),
 ]
 
 
