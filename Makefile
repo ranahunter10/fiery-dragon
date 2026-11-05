@@ -16,6 +16,7 @@
 #   make hardening-check  the daemon binaries carry the ADR-0019 G3.3 hardening
 #   make mutate-py        mutation sweep of the Python gates and harnesses (checkers, summarizers)
 #   make bench-exec-cost  EXEC cost per way, bpf_stats (root; ADR-0017 layer 1)
+#   make bench-hook-cost  classic tracepoint vs tp_btf hook path, paired (root; ADR-0020 conf. 5)
 #   make mutate-spine     mutation sweep of the spine's EXEC program through the self-test (root)
 #   make CC=clang OUT=build-clang test-c   the same build and tests with clang (-Werror clean)
 #   make clean
@@ -53,7 +54,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
-         $(OUT)/exec_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run
+         $(OUT)/exec_cost $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
@@ -64,7 +65,7 @@ GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || e
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
 .PHONY: probe-recursion it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
-        exit-check hardening-check must-check-test mutate-py bench-exec-cost mutate-spine mutate-records
+        exit-check hardening-check must-check-test mutate-py bench-exec-cost bench-hook-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -264,6 +265,20 @@ $(OUT)/exec_cost: bench/rb_cost/exec_cost.c $(DAEMON_COMMON) daemon/*.h $(LIBBPF
 bench-exec-cost: $(OUT)/exec_cost
 	$(OUT)/exec_cost $(OUT)/bench $(or $(ROUNDS),10) $(or $(EXECS),1000) 20 200 1000 | tee $(OUT)/exec_cost.txt
 	python3 bench/rb_cost/summarize.py $(OUT)/exec_cost.txt
+
+# ADR-0020 confirmation 5: the classic-tracepoint hook path against tp_btf, paired (bench/hook_cost/).
+$(OUT)/hook_cost.bpf.o: bench/hook_cost/hook_cost.bpf.c bpf/vmlinux/vmlinux.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
+
+$(OUT)/hook_cost: bench/hook_cost/hook_cost.c $(OUT)/hook_cost.skel.h $(OUT)/spine.bpf.o daemon/records.c \
+                  daemon/*.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/hook_cost/hook_cost.c daemon/records.c $(LDLIBS) -o $@
+
+# root; tracefs mounted. About 30 s per 10 rounds in the dev container. Raw lines: $(OUT)/hook_cost.txt.
+bench-hook-cost: $(OUT)/hook_cost
+	$(OUT)/hook_cost $(OUT)/spine.bpf.o $(or $(ROUNDS),10) $(or $(RENAMES),200000) $(or $(EXECS),300) \
+		| tee $(OUT)/hook_cost.txt
+	python3 bench/hook_cost/summarize.py $(OUT)/hook_cost.txt
 
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@

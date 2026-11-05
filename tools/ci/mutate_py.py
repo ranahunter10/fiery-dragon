@@ -24,7 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 EXITS, HARD, SUMM = "tools/ci/check_exits.py", "tools/ci/check_hardening.py", "bench/rb_cost/summarize.py"
 WAL, REC = "python/p15/wal.py", "python/p15/records.py"
 TREE, NET, TRACE, HTML = "python/p15/proctree.py", "python/p15/net.py", "python/p15/trace.py", "python/p15/report_html.py"
-QUANT = "bench/quant/paired.py"
+QUANT, HOOKS = "bench/quant/paired.py", "bench/hook_cost/summarize.py"
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: "python/tests/test_trace.py",
          NET: "python/tests/test_trace.py", TRACE: "python/tests/test_trace.py", HTML: "python/tests/test_trace.py"}
 
@@ -149,6 +149,12 @@ M = [
  (QUANT, "drift = abs(rom - math.exp(effect.estimate)) >", "drift = abs(rom - math.exp(effect.estimate)) <"),
  (QUANT, "return len(xs) / math.fsum(1 / x for x in xs)", "return math.fsum(1 / x for x in xs) / len(xs)"),
  (QUANT, "if t.zeros:", "if False:"),
+ # ADR-0020 confirmation 5: the hook-cost report
+ (HOOKS, "want = 0 if arm in UNTRACED else n", "want = n"),
+ (HOOKS, "if rnd >= 0:", "if True:"),
+ (HOOKS, 'out[a].append(got[a][metric] / got[a]["n"])', 'out[a].append(got[a][metric])'),
+ (HOOKS, "if hits != want:", "if False:"),
+ (HOOKS, 'return "\\n".join(out), 1 if bad else 0', 'return "\\n".join(out), 0'),
 ]
 
 

@@ -1,0 +1,74 @@
+# hook_cost: the classic-tracepoint hook path against tp_btf (ADR-0020 confirmation 5)
+
+Null syscall (getppid), median over rounds: 163.6 ns.
+
+## rename, cpu time per event (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 211.9 ns | 186.3 ns to 246.0 ns |
+| none2 | 197.4 ns | 166.0 ns to 226.9 ns |
+| tp | 315.7 ns | 282.0 ns to 347.1 ns |
+| btf | 267.1 ns | 239.2 ns to 321.9 ns |
+
+- **tp against none:** overhead +47.84 %, 95 % interval +36.50 % to +65.82 %, Wilcoxon p = 3.81e-06
+  - added per event 107.6 ns (95 % interval 82.4 ns to 131.9 ns), 0.66 null syscalls; ratio of medians 1.4895; effect p = 3.81e-06
+- **btf against none:** overhead +30.17 %, 95 % interval +18.15 % to +44.98 %, Wilcoxon p = 0.000261
+  - added per event 65.4 ns (95 % interval 40.8 ns to 88.8 ns), 0.40 null syscalls; ratio of medians 1.2603; effect p = 0.000261
+- **tp against btf (the ADR-0020 question):** overhead +18.15 %, 95 % interval +3.96 % to +26.94 %, Wilcoxon p = 0.0172
+  - added per event 49.4 ns (95 % interval 9.8 ns to 72.4 ns), 0.30 null syscalls; ratio of medians 1.1818; effect p = 0.0172
+
+## rename, wall time per event (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 230.0 ns | 202.1 ns to 266.5 ns |
+| none2 | 214.0 ns | 179.7 ns to 246.3 ns |
+| tp | 341.9 ns | 305.5 ns to 376.0 ns |
+| btf | 289.3 ns | 259.1 ns to 348.7 ns |
+
+- **tp against none:** overhead +47.80 %, 95 % interval +36.47 % to +65.84 %, Wilcoxon p = 3.81e-06
+  - added per event 116.3 ns (95 % interval 88.7 ns to 142.7 ns), 0.71 null syscalls; ratio of medians 1.4870; effect p = 3.81e-06
+- **btf against none:** overhead +29.98 %, 95 % interval +18.06 % to +44.82 %, Wilcoxon p = 0.000261
+  - added per event 70.4 ns (95 % interval 43.9 ns to 96.2 ns), 0.43 null syscalls; ratio of medians 1.2582; effect p = 0.000261
+- **tp against btf (the ADR-0020 question):** overhead +18.16 %, 95 % interval +3.97 % to +27.07 %, Wilcoxon p = 0.0172
+  - added per event 53.6 ns (95 % interval 10.9 ns to 78.4 ns), 0.33 null syscalls; ratio of medians 1.1818; effect p = 0.0172
+
+## exec, cpu time per event (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 4,849,120.0 ns | 4,538,403.3 ns to 5,544,613.3 ns |
+| none2 | 4,549,793.3 ns | 4,371,300.0 ns to 4,984,096.7 ns |
+| tp | 4,667,436.7 ns | 4,359,373.3 ns to 5,074,523.3 ns |
+| btf | 4,744,473.3 ns | 4,069,736.7 ns to 5,420,200.0 ns |
+| spine | 4,679,355.0 ns | 4,296,583.3 ns to 4,966,913.3 ns |
+
+- **tp against none:** not resolved on this host (A/A interval -9.17 % to +0.82 %)
+  - added per event -11,782.5 ns (95 % interval -343,445.0 ns to 292,426.7 ns), -72.02 null syscalls; ratio of medians 0.9625; effect p = 0.869
+- **btf against none:** not resolved on this host (A/A interval -9.17 % to +0.82 %)
+  - added per event -17,659.2 ns (95 % interval -355,070.0 ns to 249,456.7 ns), -107.95 null syscalls; ratio of medians 0.9784; effect p = 0.729
+- **spine EXEC (shipped) against none:** not resolved on this host (A/A interval -9.17 % to +0.82 %)
+  - added per event 78,103.3 ns (95 % interval -301,448.3 ns to 191,263.3 ns), 477.43 null syscalls; ratio of medians 0.9650; effect p = 0.729
+- **tp against btf (the ADR-0020 question):** not resolved on this host (A/A interval -9.17 % to +0.82 %)
+  - added per event 98,614.2 ns (95 % interval -219,313.3 ns to 362,620.0 ns), 602.81 null syscalls; ratio of medians 0.9838; effect p = 0.409
+
+## exec, wall time per event (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 5,574,049.1 ns | 5,226,443.7 ns to 6,578,955.2 ns |
+| none2 | 5,252,445.5 ns | 5,042,435.8 ns to 5,734,729.8 ns |
+| tp | 5,376,453.2 ns | 5,053,460.8 ns to 5,858,600.1 ns |
+| btf | 5,502,322.3 ns | 4,716,073.5 ns to 6,338,361.3 ns |
+| spine | 5,388,487.6 ns | 4,967,157.5 ns to 5,697,628.7 ns |
+
+- **tp against none:** not resolved on this host (A/A interval -8.95 % to +0.89 %)
+  - added per event -5,879.0 ns (95 % interval -391,486.5 ns to 328,723.1 ns), -35.94 null syscalls; ratio of medians 0.9646; effect p = 0.927
+- **btf against none:** not resolved on this host (A/A interval -8.95 % to +0.89 %)
+  - added per event -18,409.7 ns (95 % interval -391,799.0 ns to 297,161.0 ns), -112.53 null syscalls; ratio of medians 0.9871; effect p = 0.812
+- **spine EXEC (shipped) against none:** not resolved on this host (A/A interval -8.95 % to +0.89 %)
+  - added per event 109,191.3 ns (95 % interval -336,060.6 ns to 222,922.0 ns), 667.46 null syscalls; ratio of medians 0.9667; effect p = 0.701
+- **tp against btf (the ADR-0020 question):** not resolved on this host (A/A interval -8.95 % to +0.89 %)
+  - added per event 102,430.7 ns (95 % interval -251,196.8 ns to 390,244.1 ns), 626.14 null syscalls; ratio of medians 0.9771; effect p = 0.498
+

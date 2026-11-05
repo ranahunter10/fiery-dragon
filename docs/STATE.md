@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "bench: ADR-0018's paired statistics as tested code"
+**Last updated:** 2026-11-05 (UTC), PR "bench: the hook-cost harness for ADR-0020 confirmation 5" (VM run; ADR-0020 accepted)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -90,7 +90,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
        2. 🔧 `p15-trace --port N` (`tools/p15-trace`): the process tree (ADR-0009 keys, `group_dead`, pre-existing processes and GAP windows flagged, never guessed), listeners and accepts joined by cookie (exact), clients joined by endpoints (an inference, labelled), refused connects, a text report and a self-contained HTML one. 22 tests and 93/93 planted bugs on a synthetic run (E-0085); `it_p15d.sh` case 5 runs it on a real capture in CI and keeps the run as an artifact. PR #40. Next: the VM run, then the demo scenario (item 5);
     5. 🔧 a scripted demo scenario on the VM, with evidence, plus rehearsal notes. `tools/demo/run_demo.sh` plays the story on loopback: a catcher on 4444; a web app with a command-injection bug on 8080; ordinary requests; one injected `nc` to 4444; a scan of closed ports. It then runs p15-trace on 8080, 4444 and 4442. [Rehearsal notes](demo/README.md). The container dry run (spine only) captured the chain `nc ← sh ← python3 webapp` (E-0087). PR #41. Next: the VM run, with NET (maintainer).
 
-20. **Events the kernel skips (E-0088 to E-0090; ADR-0020, proposed).**
+20. **Events the kernel skips (E-0088 to E-0090; ADR-0020, accepted 2026-11-05).**
     - **Found on the VM:** on 7.0, the kernel's per-CPU recursion guard skips our `tp_btf` spine programs for other tasks, while our books still close. It skipped 3.3 % of EXEC and 3.9 % of EXIT in a 2,000-exec burst. The fix was chosen from 7 designs measured on the VM (PR #42).
     - 🔧 **ADR-0020** (PR #43) and its implementation (PR #44):
       - exec, exit and rename on classic tracepoints; fork stays on `tp_btf`;
@@ -99,7 +99,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - p15-trace's Trust block shows the skips;
       - the end-to-end test waits for `code=start` and counts exactly.
     - ✅ **ADR-0021** (accepted 2026-11-05): the VM has 3 vCPUs.
-    - **ADR-0020: decided 2026-11-05, still proposed.** Its own text makes acceptance wait for confirmation 5: the ADR-0018 cost run of the classic-tracepoint hooks against `tp_btf`, on the VM. ADR-0018's statistics now exist as code (PR #48); the hook-cost harness comes next.
+    - ✅ **ADR-0020 accepted 2026-11-05**, after its confirmation 5 on the VM (E-0101): the classic path costs +49.4 ns per event against `tp_btf` (9.8–72.4 ns), and nothing resolves per exec, where an exec costs about 4.85 ms of CPU.
     - **VM run of PR #44 (E-0092):** 16 of 17 steps pass.
       - The probe, rerun: classic tracepoints skip 0 of 2,000 in every round.
       - p15d: all 200 children's EXECs are in the WAL, with 0 kernel skips.
@@ -110,13 +110,14 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - **The failing run's segment** is in the evidence. Re-read by the fixed p15-trace on the VM, it gives 2 of 2 clients, 1 of them with its connect after the accept (E-0094). In the container, both the bug and the fix reproduce from the file (E-0095).
     - **Next:**
       - ✅ merged #32–#46 with merge commits, in order (2026-11-05); `main`'s tree is byte-identical to #46's head;
-      - ADR-0018's statistics as tested code, and the hook-cost harness; then the VM run that lets ADR-0020 be accepted;
+      - ✅ ADR-0018's statistics as code, the hook-cost harness and its VM run (#48, #49): ADR-0020 accepted;
       - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields):
     - 🔧 **Atomic BPF counters** (PR #47, E-0097). The six network fexit programs shared per-CPU counter slots with a plain `*v += 1`, and on 7.0 they run preemptible with a per-program recursion guard, so a count could be lost silently. Found by checking our code against the pattern of CVE-2026-89580.
     - 🔧 **ADR-0018's statistics as code** (PR #48, E-0098): `bench/quant/paired.py`, tested against enumeration, the textbook tables and scipy. The tool ADR-0020's confirmation 5 needs.
+    - 🔧 **The hook-cost harness** (PR #49, E-0099): `make bench-hook-cost`, the same trivial body on a classic tracepoint and on `tp_btf`, plus the shipped spine EXEC. Container (not the target): classic costs +13.9 ns per rename event against `tp_btf` (0.15 null syscalls); at exec level nothing resolves. **VM (E-0101): +49.4 ns per rename event (9.8–72.4 ns, p = 0.017); per exec, not resolved. `vm_verify.sh` passes all 18 steps on #47–#49.**
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -151,10 +152,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     8. **ADR-0004 accepted** (network intent).
     9. **Analysis-tier packages pinned by hash**, binary wheels only, for CPython 3.13 and 3.14 on x86-64; the list grows with the analysis tier.
     10. **The client join's time rule:** the connect nearest in time on either side of the accept, within 5 s; kept in code and here, no ADR. *(E-0092 to E-0095)*
-    11. **ADR-0020:** accepted in principle; the status changes once its confirmation 5 is measured, as the ADR itself requires.
+    11. **ADR-0020:** accepted in principle; the status changes once its confirmation 5 is measured, as the ADR itself requires. Measured on the VM and accepted the same day (E-0101).
     12. **ADR-0021 accepted** (3 vCPUs; supersedes ADR-0001's VM row).
     13. **Merge #32–#46 with merge commits**, never squash: evidence cites commit hashes, and merge commits keep them in `main`. `CONTRIBUTING.md` now says so. Merged branches whose tips are in `main` are deleted.
 
 ## Decisions waiting
 
-None from the 2026-11-05 review. ADR-0020's acceptance waits on a measurement (its confirmation 5), not on a decision.
+None from the 2026-11-05 review.

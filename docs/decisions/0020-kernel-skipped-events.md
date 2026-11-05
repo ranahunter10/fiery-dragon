@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: —
+status: accepted
+date: 2026-11-05
 owner: Ashish Rana
 consulted: [VM runs of 2026-11-04 (E-0088, E-0089, E-0090), Linux v7.0 source, Falco libs modern_bpf, Tetragon, Tracee (source read, not run), the SRCU-fast tracepoint series (Rostedt, McKenney), maintainer review of 2026-11-04 ("do the recommended things"), maintainer's decision of 2026-11-05 (accept once confirmation 5 is measured; rule 6 added)]
 supersedes: ADR-0003 rule 1 and the exec, exit and comm-change rows of its hook table; ADR-0006 rule 3 (wake-ups); the clock-sync and drop-summary entries of ADR-0006's spine-ring contents (rule 6). ADR-0006 rule 6 (the invariant) and every other rule of ADR-0003, 0006 and 0017 stand.
@@ -92,7 +92,9 @@ That breaks ADR-0006 driver 1 (lifecycle records are never lost silently) and CL
 - Good: zero measured EXEC/EXIT skips on the target (E-0090). Whatever still slips through is counted, located and fatal to the run's validity, never silent.
 - Good: fewer wake-ups. The probe's bursts finished faster, though that comes from 3 rounds on a stalling host, so it is a direction, not a result.
 - Bad: tracefs becomes a requirement (the dev container needs `mount -t tracefs nodev /sys/kernel/tracing`).
-- Bad: the perf path fills the tracepoint's own record (the exec filename) before our program runs. Its cost is unmeasured (OPEN) and is measured under ADR-0018 before this ADR is accepted.
+- Bad: the perf path fills the tracepoint's own record (the exec filename) before our program runs.
+  - Measured on the VM under ADR-0018 (confirmation 5, E-0101): **+49.4 ns per event against `tp_btf`** (95 % interval 9.8–72.4 ns), 0.30 null syscalls.
+  - At exec level it doesn't resolve against the A/A floor; an exec costs about 4.85 ms of CPU there.
 - Bad: up to about 10 ms of added latency between an event and the WAL, below the 1 s durability window of ADR-0007.
 
 ### Confirmation
@@ -101,7 +103,7 @@ That breaks ADR-0006 driver 1 (lifecycle records are never lost silently) and CL
 2. p15d on the VM with the same 200-exec bursts as E-0089: `exec_missed = exit_missed = rename_missed = 0`, and `fork_missed` reported.
 3. `it_p15d.sh` case 1 counts exactly the 200 children's EXECs.
 4. A unit test: any spine miss makes the run INVALID and emits a GAP v2.
-5. The ADR-0018 cost comparison: the classic-tracepoint EXEC against the `tp_btf` one, paired, on the VM.
+5. The ADR-0018 cost comparison: the classic-tracepoint EXEC against the `tp_btf` one, paired, on the VM. **Done:** `make bench-hook-cost`, 20 rounds on the VM ([evidence](../evidence/probes/2026-11-05-hook-cost-vm/README.md), E-0101).
 
 ### Falsifier
 
@@ -127,7 +129,7 @@ Reopen if any of these is observed:
 | 10 | `bpf_task_from_pid` is not offered to classic tracepoint programs on 7.0, so FORK on a classic tracepoint could not read the child's start time | SRC | v7.0 `kernel/bpf/helpers.c` (`generic_kfunc_set` registrations) |
 | 11 | `current->mm->exe_file` is the exec'd file at the exec tracepoint | SRC | v7.0 `fs/exec.c` `begin_new_exec` → `set_mm_exe_file`, before `trace_sched_process_exec` in `exec_binprm` |
 | 12 | `self_exec_id` increments once per successful exec and is inherited at fork | SRC | v7.0 `fs/exec.c:1243`, `kernel/fork.c:2381` |
-| 13 | The perf path's per-event cost against `tp_btf` | OPEN | Confirmation 5 |
+| 13 | The perf path's per-event cost against `tp_btf`: +49.4 ns (9.8–72.4 ns) per rename event; not resolvable per exec | MEAS | [hook cost, VM](../evidence/probes/2026-11-05-hook-cost-vm/README.md) |
 
 ## Pros and cons of the options
 
@@ -141,7 +143,7 @@ Reopen if any of these is observed:
 
 ### 3. Classic tracepoints
 - Good: 0 / 0 measured, structural by the kernel's own design; stable tracepoint format.
-- Bad: needs tracefs; the perf path's cost is unmeasured; fork can't move (row 10).
+- Bad: needs tracefs; the perf path costs +49.4 ns per event (row 13); fork can't move (row 10).
 
 ### 4. `bpf_preempt_disable()`
 - Bad: no measurable help, as predicted.

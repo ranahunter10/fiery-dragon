@@ -29,6 +29,15 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`filechurn.py`](../bench/census/workloads/filechurn.py) | create, append, read and delete files for a fixed time. | `write_bytes`, `read_all`, `churn` |
 | [`knownops.py`](../bench/census/workloads/knownops.py) | Perform exact, known numbers of operations and print what the census must see. | `IoVec`, `meta_ops`, `net_ops`, `cap_ops`, `run` |
 
+## bench/hook_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`hook_cost.bpf.c`](../bench/hook_cost/hook_cost.bpf.c) | the same trivial body behind the two hook types ADR-0020 chooses between, so a difference in cost is the hook path's alone (ADR-0020 confirmation 5, ADR-0018 rule 2): tracepoint... | `tracepoint/task/task_rename`, `tp_btf/task_rename`, `tracepoint/sched/sched_process_exec`, `tp_btf/sched_process_exec` |
+| [`hook_cost.c`](../bench/hook_cost/hook_cost.c) | what the classic-tracepoint hook path costs against tp_btf, per event, paired by round (ADR-0020 confirmation 5; ADR-0018 rule 2). |  |
+| [`summarize.py`](../bench/hook_cost/summarize.py) | Summarize hook_cost output (bench/hook_cost/hook_cost.c) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `series`, `comparison`, `report` |
+| [`test_summarize.py`](../bench/hook_cost/test_summarize.py) | Tests for summarize.py on synthetic hook_cost output with a known answer. | `synth`, `overhead`, `SummarizeTest` |
+
 ## bench/probes
 
 | File | Job | Public names |
