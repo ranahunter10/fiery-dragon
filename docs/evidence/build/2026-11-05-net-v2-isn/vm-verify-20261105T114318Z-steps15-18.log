@@ -1,0 +1,428 @@
+# vm-verify 20261105T114318Z
+Linux p15-dev 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux
+Ubuntu 26.04.1 LTS
+3
+               total        used        free      shared  buff/cache   available
+Mem:           7.2Gi       498Mi       6.6Gi       1.0Mi       390Mi       6.7Gi
+Ubuntu clang version 21.1.8 (6ubuntu1)
+Python 3.14.4
+bpftool v7.7.0
+soft-lockup reports so far this boot: 0
+
+================ 15. planted bugs: p15d (root, runs the end-to-end test per mutant) ================
+$ sudo env PYTHONUNBUFFERED=1 P15_PYTHON=/home/ashu/p15venv/bin/python3 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make mutate-p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"fa8fdf1682ef"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/records.c daemon/selftest.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+python3 daemon/tests/mutate_p15d.py
+killed   0 queue.c if (h - t >= q->n) {
+killed   1 queue.c atomic_store_explicit(&q->head, h, memory_order_release);
+killed   2 queue.c s->count = 0;
+killed   3 queue.c return t == h ? NULL : &q->slots[t % q->n];
+killed   4 queue.c while (d > m && !atomic_compare_exchange_weak_explicit
+killed   5 config.c snprintf(err, errlen, "unknown argument '%s'", f);
+killed   6 config.c if (v < OPTS[i].lo || v > OPTS[i].hi ||
+killed   7 config.c (OPTS[i].pow2 && (v & (v - 1)))
+killed   8 config.c if (!c->wal_root) {
+killed   9 drain.c if (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_m
+killed   10 drain.c now_missed[t] != prev_missed[t];
+killed   11 drain.c for (int t = 1; t < P15_SPINE_TYPES; t++)
+killed   12 drain.c atomic_fetch_add(&d->run->drained[h->type], 1);
+killed   13 writer.c drained -= r->spine_selftest_consumed;
+killed   14 writer.c uint64_t emitted = 0, drained = r->spine_selftest_consumed;
+killed   15 writer.c if (inv == P15_INV_BROKEN)
+killed   16 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_
+killed   17 writer.c if (emitted != drained + atomic_load(&r->spine_invalid)) {
+killed   18 writer.c buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);
+killed   19 run.c case P15_RUN_DEGRADED:
+mutation sweep: 20/20 killed
+---- PASS (745 s)  [HOST STALL: 2 soft-lockup report(s) during this step]
+
+================ 16. planted bugs: spine EXEC program (root, loads each mutant) ================
+$ sudo env PYTHONUNBUFFERED=1 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make mutate-spine
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+python3 bpf/test/mutate_spine_exec.py
+killed    0 if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {
+killed    1 len = exec_len(end);
+killed    2 r->argv_len = av_len;
+killed    3 r->filename_len = fn_len;
+killed    4 #endif
+killed    5 count(P15_T_EXEC, P15_CK_SEEN);
+killed    6 #define P15_EXEC_WAY P15_EXEC_WAY_OUTPUT
+mutation sweep: 7/7 killed
+---- PASS (60 s)
+
+================ 17. the demo story, with network capture (root) ================
+$ sudo env P15_PYTHON=/home/ashu/p15venv/bin/python3 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin tools/demo/run_demo.sh /home/ashu/vm-verify-20261105T114318Z/demo
+11:56:48.535 p15d: start (30 s, network capture on)
+11:56:51.692 1. listener on 4444: nc pid 6917
+11:56:51.732 2. web app on 8080: pid 6921
+11:56:52.997 3. curl /: done
+11:56:53.629 3. curl /about: done
+11:56:54.294 3. curl /lookup?name=localhost: done
+11:56:56.392 4. injected request sent: the app's shell ran nc to 4444
+11:56:57.238 5. scan of port 4441: refused, as expected
+11:56:57.321 5. scan of port 4442: refused, as expected
+11:56:57.418 5. scan of port 4443: refused, as expected
+11:56:58.487 p15d: waiting for the end of its 30 s
+11:57:22.413 p15d: exit 0
+
+p15-trace: port 4444
+run 20261105T115651Z-d1eb2499 on p15-dev, kernel 7.0.0-38-generic, captured from 11:56:51.598 UTC
+
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  kernel-skipped events: none (every hook ran for every event)
+  NET records: 19 captured, 0 lost to a full ring, 0 excluded by policy (failed accepts, non-IP sockets)
+
+Summary: 1 listener(s); 1 connection(s) accepted, 1 of them from a process on this host; 1 connect(s) to the port, 0 refused or failed
+
+Listeners on port 4444
+  127.0.0.1:4444 tcp  cookie 8244  listening from 11:56:51.687 (t+0.089s)  by nc (6917) ← pid 6866 [started before the capture]
+
+Connections accepted on port 4444
+  11:56:54.995 (t+3.397s)  127.0.0.1:48348 -> 127.0.0.1:4444  accepted by nc (pid 6917)  (listener cookie 8244)
+      client: nc (6947) ← sh (6945) ← python3 (6921) ← pid 6866 [started before the capture]  (exact, by TCP sequence number; connect at t+3.396s)
+
+Connects to port 4444
+  11:56:54.994 (t+3.396s)  127.0.0.1:48348 -> 127.0.0.1:4444 tcp  in progress (non-blocking)  by nc (6947) ← sh (6945) ← python3 (6921) ← pid 6866 [started before the capture]
+
+Processes involved (5, with their ancestors)
+  pid 6917    nc -l 127.0.0.1 4444
+            started t+0.058s; exited 0 at t+4.403s
+            parent: pid 6866 [started before the capture]
+  pid 6866    (no program recorded)
+            started before the capture (its parent comes with the snapshot, step 4c); still running at the end of the run
+  pid 6947    nc -w1 127.0.0.1 4444
+            started t+3.378s; exited 0 at t+4.402s
+            parent: sh (6945) ← python3 (6921) ← pid 6866 [started before the capture]
+  pid 6945    /bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null
+            started t+3.329s; exited 0 at t+4.405s
+            parent: python3 (6921) ← pid 6866 [started before the capture]
+  pid 6921    /home/ashu/p15venv/bin/python3 tools/demo/webapp.py 8080
+            started t+0.105s; killed by signal 15 at t+6.861s
+            parent: pid 6866 [started before the capture]
+
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: 1 exact, by the TCP client sequence number (ADR-0022); 0 inferred from endpoints on this host (0 of them with more than one candidate, the connect nearest in time taken, within 5 s either side); 0 whose connect returned after the accept; 0 same-endpoint connect(s) set aside as a different connection; 0 not found; 0 TCP record(s) without a sequence number
+  process tree: 59 processes, 2 started before the capture (their parents come with the snapshot, step 4c), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+HTML report: /home/ashu/vm-verify-20261105T114318Z/demo/port-4444.html
+run_demo: p15d exit 0, p15w-inspect exit 0, reports made; files in /home/ashu/vm-verify-20261105T114318Z/demo
+---- PASS (37 s)
+
+================ 18. the hook-path cost, paired, 20 rounds (root; ADR-0020 confirmation 5) ================
+$ bash -c sudo env PATH="/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin" make bench-hook-cost ROUNDS=20 && cp build/hook_cost.txt "/home/ashu/vm-verify-20261105T114318Z/hook_cost.txt"
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/hook_cost/hook_cost.c daemon/records.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/hook_cost
+build/hook_cost build/spine.bpf.o 20 200000 300 \
+	| tee build/hook_cost.txt
+hook_cost: libbpf v1.7, pinned to CPU 2, 20 rounds, 200000 renames and 300 execs per arm
+row round=-1 event=rename arm=none n=20001 cpu_ns=10869757 wall_ns=10842626 hits=0
+row round=-1 event=rename arm=none2 n=20001 cpu_ns=10837130 wall_ns=10834400 hits=0
+row round=-1 event=rename arm=tp n=20001 cpu_ns=17221731 wall_ns=17216912 hits=20001
+row round=-1 event=rename arm=btf n=20001 cpu_ns=13876920 wall_ns=13868844 hits=20001
+row round=-1 event=exec arm=none n=31 cpu_ns=512393000 wall_ns=535179229 hits=0
+row round=-1 event=exec arm=none2 n=31 cpu_ns=527066000 wall_ns=549065496 hits=0
+row round=-1 event=exec arm=tp n=31 cpu_ns=512388000 wall_ns=531513924 hits=31
+row round=-1 event=exec arm=btf n=31 cpu_ns=498465000 wall_ns=524275835 hits=31
+row round=-1 event=exec arm=spine n=31 cpu_ns=516009000 wall_ns=539696744 hits=31
+nullsys round=0 calls=1000000 total_ns=366361423
+row round=0 event=rename arm=none n=200000 cpu_ns=112020981 wall_ns=112005603 hits=0
+row round=0 event=rename arm=none2 n=200000 cpu_ns=112135990 wall_ns=112132988 hits=0
+row round=0 event=rename arm=tp n=200000 cpu_ns=152828151 wall_ns=152824723 hits=200000
+row round=0 event=rename arm=btf n=200000 cpu_ns=131674812 wall_ns=131668785 hits=200000
+row round=0 event=exec arm=none n=300 cpu_ns=4920238000 wall_ns=5151821573 hits=0
+row round=0 event=exec arm=none2 n=300 cpu_ns=4929131000 wall_ns=5145164799 hits=0
+row round=0 event=exec arm=tp n=300 cpu_ns=4874821000 wall_ns=5084307555 hits=300
+row round=0 event=exec arm=btf n=300 cpu_ns=4853211000 wall_ns=5071881196 hits=300
+row round=0 event=exec arm=spine n=300 cpu_ns=4856905000 wall_ns=5125353847 hits=300
+nullsys round=1 calls=1000000 total_ns=361520346
+row round=1 event=rename arm=none2 n=200000 cpu_ns=111291308 wall_ns=111266583 hits=0
+row round=1 event=rename arm=tp n=200000 cpu_ns=160507566 wall_ns=160498641 hits=200000
+row round=1 event=rename arm=btf n=200000 cpu_ns=131273860 wall_ns=131263317 hits=200000
+row round=1 event=rename arm=none n=200000 cpu_ns=117496670 wall_ns=117625055 hits=0
+row round=1 event=exec arm=none2 n=300 cpu_ns=4884096000 wall_ns=5096614208 hits=0
+row round=1 event=exec arm=tp n=300 cpu_ns=4903194000 wall_ns=5120748816 hits=300
+row round=1 event=exec arm=btf n=300 cpu_ns=4901967000 wall_ns=5105477533 hits=300
+row round=1 event=exec arm=spine n=300 cpu_ns=4857957000 wall_ns=5075101782 hits=300
+row round=1 event=exec arm=none n=300 cpu_ns=4875595000 wall_ns=5088503008 hits=0
+nullsys round=2 calls=1000000 total_ns=392411560
+row round=2 event=rename arm=tp n=200000 cpu_ns=165850169 wall_ns=165841379 hits=200000
+row round=2 event=rename arm=btf n=200000 cpu_ns=135765917 wall_ns=135755322 hits=200000
+row round=2 event=rename arm=none n=200000 cpu_ns=117315418 wall_ns=117771596 hits=0
+row round=2 event=rename arm=none2 n=200000 cpu_ns=102963887 wall_ns=102954647 hits=0
+row round=2 event=exec arm=tp n=300 cpu_ns=5021297000 wall_ns=5247044962 hits=300
+row round=2 event=exec arm=btf n=300 cpu_ns=4885138000 wall_ns=5112321099 hits=300
+row round=2 event=exec arm=spine n=300 cpu_ns=4914860000 wall_ns=5120130131 hits=300
+row round=2 event=exec arm=none n=300 cpu_ns=4887846000 wall_ns=5103067321 hits=0
+row round=2 event=exec arm=none2 n=300 cpu_ns=4921124000 wall_ns=5135661488 hits=0
+nullsys round=3 calls=1000000 total_ns=391533159
+row round=3 event=rename arm=btf n=200000 cpu_ns=133493731 wall_ns=133481818 hits=200000
+row round=3 event=rename arm=none n=200000 cpu_ns=117129838 wall_ns=117158151 hits=0
+row round=3 event=rename arm=none2 n=200000 cpu_ns=107775659 wall_ns=107767709 hits=0
+row round=3 event=rename arm=tp n=200000 cpu_ns=162721044 wall_ns=162708204 hits=200000
+row round=3 event=exec arm=btf n=300 cpu_ns=4889861000 wall_ns=5120226043 hits=300
+row round=3 event=exec arm=spine n=300 cpu_ns=4893172000 wall_ns=5115047885 hits=300
+row round=3 event=exec arm=none n=300 cpu_ns=4957214000 wall_ns=5179015852 hits=0
+row round=3 event=exec arm=none2 n=300 cpu_ns=4992138000 wall_ns=5198289096 hits=0
+row round=3 event=exec arm=tp n=300 cpu_ns=1719227000 wall_ns=1822036341 hits=300
+nullsys round=4 calls=1000000 total_ns=131670514
+row round=4 event=rename arm=none n=200000 cpu_ns=41949057 wall_ns=41939562 hits=0
+row round=4 event=rename arm=none2 n=200000 cpu_ns=43203638 wall_ns=43196803 hits=0
+row round=4 event=rename arm=tp n=200000 cpu_ns=62144914 wall_ns=62139890 hits=200000
+row round=4 event=rename arm=btf n=200000 cpu_ns=56724124 wall_ns=56715808 hits=200000
+row round=4 event=exec arm=spine n=300 cpu_ns=968085000 wall_ns=1030143054 hits=300
+row round=4 event=exec arm=none n=300 cpu_ns=1057890000 wall_ns=1128689750 hits=0
+row round=4 event=exec arm=none2 n=300 cpu_ns=865464000 wall_ns=920368157 hits=0
+row round=4 event=exec arm=tp n=300 cpu_ns=2076585000 wall_ns=2181738538 hits=300
+row round=4 event=exec arm=btf n=300 cpu_ns=3397736000 wall_ns=3561515218 hits=300
+nullsys round=5 calls=1000000 total_ns=133890835
+row round=5 event=rename arm=none2 n=200000 cpu_ns=39746642 wall_ns=39732460 hits=0
+row round=5 event=rename arm=tp n=200000 cpu_ns=83399531 wall_ns=83389696 hits=200000
+row round=5 event=rename arm=btf n=200000 cpu_ns=85324916 wall_ns=85306551 hits=200000
+row round=5 event=rename arm=none n=200000 cpu_ns=44193470 wall_ns=44184135 hits=0
+row round=5 event=exec arm=none n=300 cpu_ns=899194000 wall_ns=958018377 hits=0
+row round=5 event=exec arm=none2 n=300 cpu_ns=892391000 wall_ns=947246756 hits=0
+row round=5 event=exec arm=tp n=300 cpu_ns=973826000 wall_ns=1035373642 hits=300
+row round=5 event=exec arm=btf n=300 cpu_ns=868549000 wall_ns=924103831 hits=300
+row round=5 event=exec arm=spine n=300 cpu_ns=1094986000 wall_ns=1166078616 hits=300
+nullsys round=6 calls=1000000 total_ns=182029842
+row round=6 event=rename arm=tp n=200000 cpu_ns=53992291 wall_ns=53984454 hits=200000
+row round=6 event=rename arm=btf n=200000 cpu_ns=49981651 wall_ns=49973418 hits=200000
+row round=6 event=rename arm=none n=200000 cpu_ns=41213227 wall_ns=41289285 hits=0
+row round=6 event=rename arm=none2 n=200000 cpu_ns=45121112 wall_ns=45115192 hits=0
+row round=6 event=exec arm=none2 n=300 cpu_ns=923914000 wall_ns=981824407 hits=0
+row round=6 event=exec arm=tp n=300 cpu_ns=1148818000 wall_ns=1225955425 hits=300
+row round=6 event=exec arm=btf n=300 cpu_ns=5208851000 wall_ns=5444971532 hits=300
+row round=6 event=exec arm=spine n=300 cpu_ns=4949771000 wall_ns=5170125570 hits=300
+row round=6 event=exec arm=none n=300 cpu_ns=4892044000 wall_ns=5125604216 hits=0
+nullsys round=7 calls=1000000 total_ns=373004690
+row round=7 event=rename arm=btf n=200000 cpu_ns=135264712 wall_ns=135252281 hits=200000
+row round=7 event=rename arm=none n=200000 cpu_ns=112551577 wall_ns=112579263 hits=0
+row round=7 event=rename arm=none2 n=200000 cpu_ns=113190397 wall_ns=113180646 hits=0
+row round=7 event=rename arm=tp n=200000 cpu_ns=162386864 wall_ns=162374366 hits=200000
+row round=7 event=exec arm=tp n=300 cpu_ns=4821242000 wall_ns=5043900487 hits=300
+row round=7 event=exec arm=btf n=300 cpu_ns=5879028000 wall_ns=6146280238 hits=300
+row round=7 event=exec arm=spine n=300 cpu_ns=4980439000 wall_ns=5209103831 hits=300
+row round=7 event=exec arm=none n=300 cpu_ns=5032635000 wall_ns=5269127875 hits=0
+row round=7 event=exec arm=none2 n=300 cpu_ns=5114594000 wall_ns=5351543235 hits=0
+nullsys round=8 calls=1000000 total_ns=368681474
+row round=8 event=rename arm=none n=200000 cpu_ns=117682149 wall_ns=117651491 hits=0
+row round=8 event=rename arm=none2 n=200000 cpu_ns=116121317 wall_ns=116098744 hits=0
+row round=8 event=rename arm=tp n=200000 cpu_ns=172716332 wall_ns=172693011 hits=200000
+row round=8 event=rename arm=btf n=200000 cpu_ns=152773298 wall_ns=152749077 hits=200000
+row round=8 event=exec arm=btf n=300 cpu_ns=5170782000 wall_ns=5391078556 hits=300
+row round=8 event=exec arm=spine n=300 cpu_ns=4904984000 wall_ns=5122062479 hits=300
+row round=8 event=exec arm=none n=300 cpu_ns=4973644000 wall_ns=5199409964 hits=0
+row round=8 event=exec arm=none2 n=300 cpu_ns=5008447000 wall_ns=5230082062 hits=0
+row round=8 event=exec arm=tp n=300 cpu_ns=5013897000 wall_ns=5239152579 hits=300
+nullsys round=9 calls=1000000 total_ns=391532866
+row round=9 event=rename arm=none2 n=200000 cpu_ns=112517030 wall_ns=112486554 hits=0
+row round=9 event=rename arm=tp n=200000 cpu_ns=157288894 wall_ns=157264795 hits=200000
+row round=9 event=rename arm=btf n=200000 cpu_ns=135760855 wall_ns=135735720 hits=200000
+row round=9 event=rename arm=none n=200000 cpu_ns=111636584 wall_ns=111719023 hits=0
+row round=9 event=exec arm=spine n=300 cpu_ns=5252643000 wall_ns=5499086333 hits=300
+row round=9 event=exec arm=none n=300 cpu_ns=5019140000 wall_ns=5277556378 hits=0
+row round=9 event=exec arm=none2 n=300 cpu_ns=4928646000 wall_ns=5150380008 hits=0
+row round=9 event=exec arm=tp n=300 cpu_ns=4852632000 wall_ns=5070786119 hits=300
+row round=9 event=exec arm=btf n=300 cpu_ns=4875330000 wall_ns=5084241428 hits=300
+nullsys round=10 calls=1000000 total_ns=406985126
+row round=10 event=rename arm=tp n=200000 cpu_ns=154119291 wall_ns=154117317 hits=200000
+row round=10 event=rename arm=btf n=200000 cpu_ns=142063205 wall_ns=142007789 hits=200000
+row round=10 event=rename arm=none n=200000 cpu_ns=111975136 wall_ns=111969812 hits=0
+row round=10 event=rename arm=none2 n=200000 cpu_ns=114842970 wall_ns=114837979 hits=0
+row round=10 event=exec arm=none n=300 cpu_ns=4910174000 wall_ns=5126800523 hits=0
+row round=10 event=exec arm=none2 n=300 cpu_ns=5012129000 wall_ns=5227789232 hits=0
+row round=10 event=exec arm=tp n=300 cpu_ns=7998794000 wall_ns=8654654798 hits=300
+row round=10 event=exec arm=btf n=300 cpu_ns=5100786000 wall_ns=5358092174 hits=300
+row round=10 event=exec arm=spine n=300 cpu_ns=5135036000 wall_ns=5375817485 hits=300
+nullsys round=11 calls=1000000 total_ns=374378292
+row round=11 event=rename arm=btf n=200000 cpu_ns=136640937 wall_ns=136634138 hits=200000
+row round=11 event=rename arm=none n=200000 cpu_ns=116910478 wall_ns=116932189 hits=0
+row round=11 event=rename arm=none2 n=200000 cpu_ns=115198295 wall_ns=115195895 hits=0
+row round=11 event=rename arm=tp n=200000 cpu_ns=158289134 wall_ns=158288653 hits=200000
+row round=11 event=exec arm=none2 n=300 cpu_ns=4917133000 wall_ns=5133186302 hits=0
+row round=11 event=exec arm=tp n=300 cpu_ns=4983849000 wall_ns=5208790783 hits=300
+row round=11 event=exec arm=btf n=300 cpu_ns=4916661000 wall_ns=5145171002 hits=300
+row round=11 event=exec arm=spine n=300 cpu_ns=5002579000 wall_ns=5253499344 hits=300
+row round=11 event=exec arm=none n=300 cpu_ns=4907689000 wall_ns=5145146370 hits=0
+nullsys round=12 calls=1000000 total_ns=375452778
+row round=12 event=rename arm=none n=200000 cpu_ns=129572961 wall_ns=129558102 hits=0
+row round=12 event=rename arm=none2 n=200000 cpu_ns=115747926 wall_ns=115739666 hits=0
+row round=12 event=rename arm=tp n=200000 cpu_ns=178454817 wall_ns=178451858 hits=200000
+row round=12 event=rename arm=btf n=200000 cpu_ns=140254779 wall_ns=140246948 hits=200000
+row round=12 event=exec arm=tp n=300 cpu_ns=5428050000 wall_ns=5704233024 hits=300
+row round=12 event=exec arm=btf n=300 cpu_ns=4756216000 wall_ns=4967413387 hits=300
+row round=12 event=exec arm=spine n=300 cpu_ns=4874919000 wall_ns=5091773686 hits=300
+row round=12 event=exec arm=none n=300 cpu_ns=4839731000 wall_ns=5053160206 hits=0
+row round=12 event=exec arm=none2 n=300 cpu_ns=4965098000 wall_ns=5192787342 hits=0
+nullsys round=13 calls=1000000 total_ns=378592766
+row round=13 event=rename arm=none2 n=200000 cpu_ns=122000109 wall_ns=121983031 hits=0
+row round=13 event=rename arm=tp n=200000 cpu_ns=157018794 wall_ns=157015195 hits=200000
+row round=13 event=rename arm=btf n=200000 cpu_ns=141209359 wall_ns=141202810 hits=200000
+row round=13 event=rename arm=none n=200000 cpu_ns=117439497 wall_ns=117435000 hits=0
+row round=13 event=exec arm=btf n=300 cpu_ns=4912885000 wall_ns=5121485570 hits=300
+row round=13 event=exec arm=spine n=300 cpu_ns=4882040000 wall_ns=5103877574 hits=300
+row round=13 event=exec arm=none n=300 cpu_ns=4977700000 wall_ns=5190202469 hits=0
+row round=13 event=exec arm=none2 n=300 cpu_ns=4845837000 wall_ns=5062208513 hits=0
+row round=13 event=exec arm=tp n=300 cpu_ns=4852259000 wall_ns=5061967803 hits=300
+nullsys round=14 calls=1000000 total_ns=356901838
+row round=14 event=rename arm=tp n=200000 cpu_ns=162198836 wall_ns=162184692 hits=200000
+row round=14 event=rename arm=btf n=200000 cpu_ns=137046689 wall_ns=137040610 hits=200000
+row round=14 event=rename arm=none n=200000 cpu_ns=117350038 wall_ns=117542232 hits=0
+row round=14 event=rename arm=none2 n=200000 cpu_ns=111228595 wall_ns=111222042 hits=0
+row round=14 event=exec arm=spine n=300 cpu_ns=5136462000 wall_ns=5364293634 hits=300
+row round=14 event=exec arm=none n=300 cpu_ns=5112224000 wall_ns=5328765619 hits=0
+row round=14 event=exec arm=none2 n=300 cpu_ns=4960664000 wall_ns=5185874846 hits=0
+row round=14 event=exec arm=tp n=300 cpu_ns=4904254000 wall_ns=5115729538 hits=300
+row round=14 event=exec arm=btf n=300 cpu_ns=5002221000 wall_ns=5296880612 hits=300
+nullsys round=15 calls=1000000 total_ns=388664881
+row round=15 event=rename arm=btf n=200000 cpu_ns=149366422 wall_ns=149351459 hits=200000
+row round=15 event=rename arm=none n=200000 cpu_ns=111675694 wall_ns=111662729 hits=0
+row round=15 event=rename arm=none2 n=200000 cpu_ns=112545607 wall_ns=112538418 hits=0
+row round=15 event=rename arm=tp n=200000 cpu_ns=162735799 wall_ns=162728787 hits=200000
+row round=15 event=exec arm=none n=300 cpu_ns=4996336000 wall_ns=5221950486 hits=0
+row round=15 event=exec arm=none2 n=300 cpu_ns=5006100000 wall_ns=5228259179 hits=0
+row round=15 event=exec arm=tp n=300 cpu_ns=4977181000 wall_ns=5211314577 hits=300
+row round=15 event=exec arm=btf n=300 cpu_ns=4812573000 wall_ns=5026364970 hits=300
+row round=15 event=exec arm=spine n=300 cpu_ns=4843987000 wall_ns=5053250401 hits=300
+nullsys round=16 calls=1000000 total_ns=369333750
+row round=16 event=rename arm=none n=200000 cpu_ns=114503006 wall_ns=114481546 hits=0
+row round=16 event=rename arm=none2 n=200000 cpu_ns=127629385 wall_ns=127622944 hits=0
+row round=16 event=rename arm=tp n=200000 cpu_ns=158878424 wall_ns=158872129 hits=200000
+row round=16 event=rename arm=btf n=200000 cpu_ns=134481660 wall_ns=134471393 hits=200000
+row round=16 event=exec arm=none2 n=300 cpu_ns=4926178000 wall_ns=5133936603 hits=0
+row round=16 event=exec arm=tp n=300 cpu_ns=4888537000 wall_ns=5105049110 hits=300
+row round=16 event=exec arm=btf n=300 cpu_ns=4895793000 wall_ns=5105406414 hits=300
+row round=16 event=exec arm=spine n=300 cpu_ns=4811816000 wall_ns=5025730706 hits=300
+row round=16 event=exec arm=none n=300 cpu_ns=4831329000 wall_ns=5034240258 hits=0
+nullsys round=17 calls=1000000 total_ns=379044247
+row round=17 event=rename arm=none2 n=200000 cpu_ns=116245383 wall_ns=116224932 hits=0
+row round=17 event=rename arm=tp n=200000 cpu_ns=160281363 wall_ns=160270099 hits=200000
+row round=17 event=rename arm=btf n=200000 cpu_ns=133245850 wall_ns=133232781 hits=200000
+row round=17 event=rename arm=none n=200000 cpu_ns=118480266 wall_ns=118696423 hits=0
+row round=17 event=exec arm=tp n=300 cpu_ns=4862347000 wall_ns=5085865759 hits=300
+row round=17 event=exec arm=btf n=300 cpu_ns=4832265000 wall_ns=5046025107 hits=300
+row round=17 event=exec arm=spine n=300 cpu_ns=4739413000 wall_ns=4948478273 hits=300
+row round=17 event=exec arm=none n=300 cpu_ns=4964446000 wall_ns=5184634697 hits=0
+row round=17 event=exec arm=none2 n=300 cpu_ns=5692947000 wall_ns=5998768146 hits=0
+nullsys round=18 calls=1000000 total_ns=402800339
+row round=18 event=rename arm=tp n=200000 cpu_ns=154147235 wall_ns=154137912 hits=200000
+row round=18 event=rename arm=btf n=200000 cpu_ns=280557622 wall_ns=284319468 hits=200000
+row round=18 event=rename arm=none n=200000 cpu_ns=240668208 wall_ns=243614924 hits=0
+row round=18 event=rename arm=none2 n=200000 cpu_ns=254574817 wall_ns=266534520 hits=0
+row round=18 event=exec arm=btf n=300 cpu_ns=4967706000 wall_ns=5306812378 hits=300
+row round=18 event=exec arm=spine n=300 cpu_ns=4860201000 wall_ns=5078057098 hits=300
+row round=18 event=exec arm=none n=300 cpu_ns=4829467000 wall_ns=5031077302 hits=0
+row round=18 event=exec arm=none2 n=300 cpu_ns=4946853000 wall_ns=5150190721 hits=0
+row round=18 event=exec arm=tp n=300 cpu_ns=4843922000 wall_ns=5057881753 hits=300
+nullsys round=19 calls=1000000 total_ns=372802910
+row round=19 event=rename arm=btf n=200000 cpu_ns=187225203 wall_ns=187215183 hits=200000
+row round=19 event=rename arm=none n=200000 cpu_ns=113477164 wall_ns=113507761 hits=0
+row round=19 event=rename arm=none2 n=200000 cpu_ns=114283121 wall_ns=114276669 hits=0
+row round=19 event=rename arm=tp n=200000 cpu_ns=160259994 wall_ns=160253335 hits=200000
+row round=19 event=exec arm=spine n=300 cpu_ns=5089430000 wall_ns=5311639512 hits=300
+row round=19 event=exec arm=none n=300 cpu_ns=4929956000 wall_ns=5146931003 hits=0
+row round=19 event=exec arm=none2 n=300 cpu_ns=5074968000 wall_ns=5327001688 hits=0
+row round=19 event=exec arm=tp n=300 cpu_ns=4858563000 wall_ns=5078099635 hits=300
+row round=19 event=exec arm=btf n=300 cpu_ns=4897213000 wall_ns=5115844105 hits=300
+hook_cost: ok (spine records failing p15_rec_check: 0)
+python3 bench/hook_cost/summarize.py build/hook_cost.txt
+# hook_cost: the classic-tracepoint hook path against tp_btf (ADR-0020 confirmation 5)
+
+Null syscall (getppid), median over rounds: 373.7 ns.
+
+## rename, cpu time per event (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 578.5 ns | 559.9 ns to 587.2 ns |
+| none2 | 564.3 ns | 556.1 ns to 578.7 ns |
+| tp | 797.8 ns | 770.7 ns to 811.9 ns |
+| btf | 678.8 ns | 666.2 ns to 706.0 ns |
+
+- **tp against none:** overhead +38.89 %, 95 % interval +36.45 % to +42.17 %, Wilcoxon p = 0.000586
+  - added per event 217.5 ns (95 % interval 171.8 ns to 231.1 ns), 0.58 null syscalls; ratio of medians 1.3791; effect p = 0.000586
+- **btf against none:** overhead +20.58 %, 95 % interval +16.73 % to +27.48 %, Wilcoxon p = 1.91e-06
+  - added per event 112.9 ns (95 % interval 87.0 ns to 148.9 ns), 0.30 null syscalls; ratio of medians 1.1733; effect p = 1.91e-06
+- **tp against btf (the ADR-0020 question):** overhead +14.30 %, 95 % interval +8.26 % to +18.05 %, Wilcoxon p = 0.00486
+  - added per event 92.7 ns (95 % interval 47.0 ns to 122.9 ns), 0.25 null syscalls; ratio of medians 1.1753; effect p = 0.00486
+
+## rename, wall time per event (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 578.5 ns | 559.8 ns to 588.1 ns |
+| none2 | 564.3 ns | 556.1 ns to 578.7 ns |
+| tp | 797.8 ns | 770.7 ns to 811.9 ns |
+| btf | 678.7 ns | 666.2 ns to 706.0 ns |
+
+- **tp against none:** overhead +38.81 %, 95 % interval +36.38 % to +42.19 %, Wilcoxon p = 0.000586
+  - added per event 217.1 ns (95 % interval 170.7 ns to 231.1 ns), 0.58 null syscalls; ratio of medians 1.3790; effect p = 0.000586
+- **btf against none:** overhead +20.48 %, 95 % interval +16.65 % to +27.46 %, Wilcoxon p = 1.91e-06
+  - added per event 112.7 ns (95 % interval 86.9 ns to 147.8 ns), 0.30 null syscalls; ratio of medians 1.1732; effect p = 1.91e-06
+- **tp against btf (the ADR-0020 question):** overhead +14.31 %, 95 % interval +8.28 % to +18.06 %, Wilcoxon p = 0.00486
+  - added per event 92.8 ns (95 % interval 47.0 ns to 122.9 ns), 0.25 null syscalls; ratio of medians 1.1755; effect p = 0.00486
+
+## exec, cpu time per event (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 16,384,020.0 ns | 16,251,983.3 ns to 16,578,813.3 ns |
+| none2 | 16,459,973.3 ns | 16,390,443.3 ns to 16,687,000.0 ns |
+| tp | 16,228,613.3 ns | 16,146,406.7 ns to 16,590,603.3 ns |
+| btf | 16,321,676.7 ns | 16,177,370.0 ns to 16,559,020.0 ns |
+| spine | 16,292,020.0 ns | 16,189,683.3 ns to 16,601,463.3 ns |
+
+- **tp against none:** not resolved on this host (A/A interval -1.25 % to +1.39 %)
+  - added per event -73,904.2 ns (95 % interval -428,016.7 ns to 349,351.7 ns), -197.77 null syscalls; ratio of medians 0.9905; effect p = 0.841
+- **btf against none:** not resolved on this host (A/A interval -1.25 % to +1.39 %)
+  - added per event 57,635.8 ns (95 % interval -195,730.0 ns to 476,936.7 ns), 154.23 null syscalls; ratio of medians 0.9962; effect p = 0.784
+- **spine EXEC (shipped) against none:** not resolved on this host (A/A interval -1.25 % to +1.39 %)
+  - added per event 12,188.3 ns (95 % interval -179,071.7 ns to 236,393.3 ns), 32.62 null syscalls; ratio of medians 0.9944; effect p = 0.985
+- **tp against btf (the ADR-0020 question):** not resolved on this host (A/A interval -1.25 % to +1.39 %)
+  - added per event -107,691.7 ns (95 % interval -2,024,451.7 ns to 214,838.3 ns), -288.18 null syscalls; ratio of medians 0.9943; effect p = 0.522
+
+## exec, wall time per event (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 17,153,462.3 ns | 16,961,676.7 ns to 17,300,674.9 ns |
+| none2 | 17,167,617.9 ns | 17,110,621.0 ns to 17,425,964.1 ns |
+| tp | 16,950,288.9 ns | 16,859,605.8 ns to 17,362,635.9 ns |
+| btf | 17,046,942.0 ns | 16,906,270.7 ns to 17,656,268.7 ns |
+| spine | 17,058,630.0 ns | 16,917,005.9 ns to 17,363,679.4 ns |
+
+- **tp against none:** not resolved on this host (A/A interval -1.30 % to +1.43 %)
+  - added per event -64,412.6 ns (95 % interval -469,779.1 ns to 368,888.2 ns), -172.37 null syscalls; ratio of medians 0.9882; effect p = 0.841
+- **btf against none:** not resolved on this host (A/A interval -1.30 % to +1.43 %)
+  - added per event 77,615.2 ns (95 % interval -186,375.6 ns to 547,701.8 ns), 207.70 null syscalls; ratio of medians 0.9938; effect p = 0.674
+- **spine EXEC (shipped) against none:** not resolved on this host (A/A interval -1.30 % to +1.43 %)
+  - added per event 35,450.1 ns (95 % interval -151,247.9 ns to 254,790.5 ns), 94.86 null syscalls; ratio of medians 0.9945; effect p = 0.869
+- **tp against btf (the ADR-0020 question):** not resolved on this host (A/A interval -1.30 % to +1.43 %)
+  - added per event -136,495.9 ns (95 % interval -2,139,218.0 ns to 223,944.3 ns), -365.26 null syscalls; ratio of medians 0.9943; effect p = 0.522
+
+---- PASS (517 s)
+
+================ SUMMARY (20261105T114318Z, 7.0.0-38-generic, commit fa8fdf1) ================
+SKIP  1. prerequisites (apt) (FROM=15)
+SKIP  2. checkout feat/net-v2-client-isn (reset to origin: the branch may have been force-pushed) (FROM=15)
+SKIP  3. venv + pinned packages (FROM=15)
+SKIP  4. build (FROM=15)
+SKIP  5. make check (schema, layout, C tests, hardening, exits, Python tests, reader vs C writer, evidence) (FROM=15)
+SKIP  6. C tests under ASan/UBSan (FROM=15)
+SKIP  7. queue under TSan (FROM=15)
+SKIP  8. planted bugs: Python gates, reader, trace (FROM=15)
+SKIP  9. planted bugs: WAL writer (FROM=15)
+SKIP  10. planted bugs: record checks (FROM=15)
+SKIP  11. smoke: verifier load, tp_btf attach, spine self-test (root) (FROM=15)
+SKIP  12. smoke-net: ADR-0004 fexit hooks on THIS kernel (root) (FROM=15)
+SKIP  13. the kernel's skips per design: recur_probe 3 x 2000 (root; ADR-0020 confirmation 1) (FROM=15)
+SKIP  14. p15d end to end, network required, both readers, p15-trace on the real run (root) (FROM=15)
+PASS  15. planted bugs: p15d (root, runs the end-to-end test per mutant) (745 s)  [HOST STALL: 2 soft-lockup report(s) during this step]
+PASS  16. planted bugs: spine EXEC program (root, loads each mutant) (60 s)
+PASS  17. the demo story, with network capture (root) (37 s)
+PASS  18. the hook-path cost, paired, 20 rounds (root; ADR-0020 confirmation 5) (517 s)
+Everything is in /home/ashu/vm-verify-20261105T114318Z. Next: sha256sum /home/ashu/vm-verify-20261105T114318Z/verify.log; then send verify.log (or paste the SUMMARY block).

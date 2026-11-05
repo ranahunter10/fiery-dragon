@@ -1,0 +1,30 @@
+VM run 1 of feat/net-v2-client-isn at fa8fdf1 (vm_verify.sh, 7.0.0-38-generic, 3 vCPUs); the VM froze in
+step 15 (16 soft-lockup reports in that boot, `journalctl -k -b -1`), so its SUMMARY was never printed.
+As pasted by the maintainer.
+
+$ grep -E "^---- (PASS|FAIL)" <run 1>/verify.log | cat -n      (step results, in order)
+     1  ---- PASS (2 s)
+     2  ---- PASS (3 s)
+     3  ---- PASS (3 s)
+     4  ---- PASS (80 s)
+     5  ---- PASS (58 s)
+     6  ---- PASS (20 s)
+     7  ---- PASS (4 s)
+     8  ---- PASS (101 s)
+     9  ---- PASS (259 s)
+    10  ---- PASS (112 s)
+    11  ---- PASS (32 s)
+    12  ---- PASS (1 s)
+    13  ---- PASS (335 s)
+    14  ---- PASS (44 s)
+
+Step 14, case 5 (the end of it, as pasted):
+Connections accepted on port 18077
+  04:58:03.085 (t+0.708s)  127.0.0.1:52758 -> 127.0.0.1:18077  accepted by python3 (pid 183949)  (listener cookie 8261)
+      client: python3 (183951) ← pid 183057 [started before the capture]  (exact, by TCP sequence number; connect at t+0.705s)
+  04:58:03.258 (t+0.881s)  127.0.0.1:52760 -> 127.0.0.1:18077  accepted by python3 (pid 183949)  (listener cookie 8261)
+      client: python3 (183952) ← pid 183057 [started before the capture]  (exact, by TCP sequence number; connect at t+0.880s)
+  ok   p15-trace: both clients joined exactly, by the TCP client sequence number (ADR-0022)
+  ok   p15-trace: 2 exact joins, 0 set aside, every TCP record carries its ISN
+it_p15d: PASS (0 failed checks)
+---- PASS (44 s)
