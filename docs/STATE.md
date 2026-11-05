@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "docs: record the 2026-11-05 decisions; accept ADR-0004 and 0021"
+**Last updated:** 2026-11-05 (UTC), PR "bpf: make the counter maps' increments atomic"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -109,10 +109,13 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - **VM rerun from step 14 on #45 (E-0093):** steps 14–17 pass, so every step of `vm_verify.sh` has now passed on the stack #32–#45.
     - **The failing run's segment** is in the evidence. Re-read by the fixed p15-trace on the VM, it gives 2 of 2 clients, 1 of them with its connect after the accept (E-0094). In the container, both the bug and the fix reproduce from the file (E-0095).
     - **Next:**
-      - merge #32–#46 with merge commits, in order (maintainer's decision 13);
+      - ✅ merged #32–#46 with merge commits, in order (2026-11-05); `main`'s tree is byte-identical to #46's head;
       - ADR-0018's statistics as tested code, and the hook-cost harness; then the VM run that lets ADR-0020 be accepted;
       - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
+
+21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields):
+    - 🔧 **Atomic BPF counters** (PR #47, E-0097). The six network fexit programs shared per-CPU counter slots with a plain `*v += 1`, and on 7.0 they run preemptible with a per-program recursion guard, so a count could be lost silently. Found by checking our code against the pattern of CVE-2026-89580.
 
 ## Decisions taken (now recorded in ADRs where noted)
 

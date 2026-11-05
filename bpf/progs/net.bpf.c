@@ -52,8 +52,11 @@ static __always_inline void count(__u32 kind)
 	__u32 k = P15_CTR_INDEX(P15_T_NET, kind);
 	__u64 *v = bpf_map_lookup_elem(&bulk_counters, &k);
 
+	/* Atomic: all six fexit programs share these slots, and fexit runs with preemption on and a
+	 * per-program recursion guard, so a connect preempted mid-increment and an accept on the same
+	 * CPU would lose one count (E-0097; see spine.bpf.c count()). */
 	if (v)
-		*v += 1;
+		__sync_fetch_and_add(v, 1);
 }
 
 /* Reserve a NET record and fill its header from the current task (the same identity rule as

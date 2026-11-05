@@ -1,0 +1,23 @@
+$ make smoke
+          FORK        2        2               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+
+$ make check
+27 checksum files, 0 failed
+cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
+ok    bpf/vmlinux/SHA256SUMS
+
+$ make it-p15d
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+case 2: stop by SIGTERM
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 4: a bad flag
+it_p15d: PASS (0 failed checks)
+
+$ make mutate-spine
+killed    5 count(P15_T_EXEC, P15_CK_SEEN);
+killed    6 #define P15_EXEC_WAY P15_EXEC_WAY_OUTPUT
+mutation sweep: 7/7 killed
