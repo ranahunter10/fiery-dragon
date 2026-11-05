@@ -1,0 +1,5 @@
+Fresh clone of main at 9e8162d, dev container, after: git submodule update --init --recursive
+$ make check   (tail)
+cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
+ok    bpf/vmlinux/SHA256SUMS
+make check exit=0

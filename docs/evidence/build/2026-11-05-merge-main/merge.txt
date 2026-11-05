@@ -1,0 +1,81 @@
+$ git rev-parse origin/main^{tree} 193c51f^{tree}   (main after the merges; #46's head)
+8e533ccc2ca78edb7177ba77251cb50f758dfaa9
+8e533ccc2ca78edb7177ba77251cb50f758dfaa9
+$ git diff --quiet origin/main 193c51f && echo identical
+identical
+
+$ git log --first-parent --format='%h %s' 9a8c2db..origin/main
+9e8162d Merge pull request #46 from ranahunter10/docs/decisions-2026-11-05
+2568043 Merge pull request #45 from ranahunter10/fix/trace-join
+e99bae2 Merge pull request #44 from ranahunter10/feat/kernel-skips
+7e248d7 Merge pull request #43 from ranahunter10/adr/0020-kernel-skips
+2be1a60 Merge pull request #42 from ranahunter10/probe/recursion-misses
+92397eb Merge pull request #41 from ranahunter10/feat/demo
+9d2142f Merge pull request #40 from ranahunter10/feat/p15-trace
+7d61df3 Merge pull request #39 from ranahunter10/feat/py-reader
+4dbf2ef Merge pull request #38 from ranahunter10/feat/net
+e721ea3 Merge pull request #37 from ranahunter10/docs/codemap
+3b9a156 Merge pull request #36 from ranahunter10/feat/p15d
+e14c80e Merge pull request #35 from ranahunter10/adr/0004-network-intent
+1039b4c Merge pull request #34 from ranahunter10/feat/schema-daemon-records
+13efdc7 Merge pull request #33 from ranahunter10/feat/bpf-exec-exact-size
+8c8ca5c Merge pull request #32 from ranahunter10/chore/daemon-hardening
+
+$ for c in 42eb513 cc757c4 c112803 9407485; do git merge-base --is-ancestor $c origin/main && echo "$c in main"; done
+42eb513 in main
+cc757c4 in main
+c112803 in main
+9407485 in main
+
+$ for b in origin's branches: is its tip an ancestor of main?   (2026-11-05T09:13:13Z)
+contained  adr/0001-platform
+contained  adr/0002-toolchain
+contained  adr/0003-hook-policy
+contained  adr/0004-network-intent
+contained  adr/0006-transport
+contained  adr/0007-wal
+contained  adr/0008-schema
+contained  adr/0009-process-identity
+contained  adr/0012-quantification
+contained  adr/0017-0019-flood-stats-gates
+contained  adr/0020-kernel-skips
+NOT        adr/0022-0023-research-2026-11-05 (4 commits not in main)
+contained  bench/baseline-tool
+contained  bench/baseline-warm-rerun
+contained  bench/census-light-results
+NOT        bench/census-probe (3 commits not in main)
+contained  bench/census-runner
+contained  bench/census-v2
+contained  bench/probe-p11-wheels
+contained  bench/probes-p6-p8
+contained  bpf/spine
+contained  build/scaffolding
+contained  chore/bootstrap-governance
+contained  chore/daemon-hardening
+contained  chore/vm-script-and-runbook
+contained  ci/skeleton
+contained  docs/codemap
+contained  docs/decision-records-and-journals
+contained  docs/decisions-2026-11-05
+contained  docs/import-phase0-evidence
+contained  docs/phase0-audit
+contained  docs/state-adrs-accepted
+contained  evidence/rb-size-vm
+NOT        feat/bench-hook-cost (3 commits not in main)
+NOT        feat/bench-paired-stats (2 commits not in main)
+contained  feat/bpf-exec-exact-size
+contained  feat/demo
+contained  feat/kernel-skips
+contained  feat/net
+contained  feat/p15-trace
+contained  feat/p15d
+contained  feat/py-reader
+contained  feat/schema-daemon-records
+NOT        fix/bench-census-cite-main (5 commits not in main)
+contained  fix/bench-census-on-7.0
+NOT        fix/bpf-atomic-counters (1 commits not in main)
+contained  fix/trace-join
+contained  probe/recursion-misses
+contained  research/measurement-inputs
+contained  schema/generator-spine
+contained  wal/writer
