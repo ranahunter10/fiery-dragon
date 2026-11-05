@@ -24,6 +24,7 @@ To write a new one:
 | [0017](0017-spine-flood-resilience.md) | Spine flood resilience: exact-size records, a drain that never waits on disk, a raised drain priority, located loss, a measured headroom (supersedes ADR-0006 rules 1 and 4) | accepted | 2026-10-25 |
 | [0018](0018-measurement-protocol-v2.md) | Measurement protocol v2: dimensionless headlines, rates against a same-host ceiling, paired timing reported with its raw costs, one shared workload set (supersedes ADR-0012's timing rules) | accepted | 2026-10-25 |
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
+| [0020](0020-kernel-skipped-events.md) | Events the kernel skips: spine exec/exit/rename on classic tracepoints, wake-ups only at a high-water mark, every skip (`recursion_misses`) counted and located (supersedes ADR-0003 rule 1 for those hooks, ADR-0006 rule 3) | proposed | — |
 
 ## Planned (from capture blueprint v1, §8.3)
 
