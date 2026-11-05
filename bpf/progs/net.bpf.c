@@ -20,6 +20,7 @@
 
 #define AF_INET  2
 #define AF_INET6 10
+#define EINPROGRESS 115   /* uapi asm-generic/errno.h; the non-blocking connect that still sent its SYN */
 
 enum { NET_CONNECT = 1, NET_ACCEPT = 2, NET_LISTEN = 3, NET_BIND = 4 };
 
@@ -130,6 +131,51 @@ static __always_inline int finish(struct p15_net *r, int ok)
 	return 0;
 }
 
+/* ADR-0022 rule 2: the client's TCP initial sequence number, the token that joins a connect to its
+ * accept exactly. Each side reads it where the kernel has just set it and the process can't have
+ * moved it yet. On any doubt the record carries no ISN (no P15_F_ISN), never a wrong one; the
+ * reader counts TCP connects and accepts without one (rule 3). */
+
+/* connect: tcp_connect queued the SYN at write_seq and moved write_seq to ISN + 1, and set
+ * snd_nxt = write_seq (tcp_output.c 4365-4388, v7.0). The process can't write before connect
+ * returns, so then snd_nxt == write_seq, and snd_una is ISN (SYN not yet acked) or ISN + 1
+ * (acked). A deferred Fast Open connect (no SYN yet), a repair-mode socket, or any other state
+ * fails this check. The check stands in for reading INET_FLAGS_DEFER_CONNECT, an anonymous
+ * enum that CO-RE can't relocate by name. */
+static __always_inline void client_isn(struct p15_net *r, struct sock *sk, int ret)
+{
+	struct tcp_sock *tp;
+	__u32 wseq, nxt, una;
+
+	if (r->proto != IPPROTO_TCP || (ret != 0 && ret != -EINPROGRESS))
+		return;
+	tp = bpf_skc_to_tcp_sock(sk);
+	if (!tp || BPF_CORE_READ_BITFIELD(tp, repair))
+		return;
+	wseq = tp->write_seq;
+	nxt = tp->snd_nxt;
+	una = tp->snd_una;
+	if (nxt != wseq || (una != wseq - 1 && una != wseq))
+		return;
+	r->tcp_isn = wseq - 1;
+	r->h.flags |= P15_F_ISN;
+}
+
+/* accept: tcp_create_openreq_child set copied_seq = rcv_isn + 1 (tcp_minisocks.c 573-575, v7.0),
+ * and copied_seq moves only when the process reads, which it can't before accept returns. */
+static __always_inline void server_isn(struct p15_net *r, struct sock *sk)
+{
+	struct tcp_sock *tp;
+
+	if (r->proto != IPPROTO_TCP)
+		return;
+	tp = bpf_skc_to_tcp_sock(sk);
+	if (!tp)
+		return;
+	r->tcp_isn = tp->copied_seq - 1;
+	r->h.flags |= P15_F_ISN;
+}
+
 static __always_inline int on_connect(struct socket *sock, void *uaddr, int ret)
 {
 	struct sock *sk = sock->sk;
@@ -157,6 +203,7 @@ static __always_inline int on_connect(struct socket *sock, void *uaddr, int ret)
 			r->rport = bpf_ntohs(BPF_CORE_READ(in6, sin6_port));
 			BPF_CORE_READ_INTO(&r->raddr, in6, sin6_addr);
 		}
+		client_isn(r, sk, ret);
 	}
 	return finish(r, ok);
 }
@@ -189,6 +236,7 @@ int BPF_PROG(net_accept, struct socket *sock, struct socket *newsock, void *arg,
 	if (ok) {
 		r->sock_cookie = bpf_get_socket_cookie(nsk);
 		r->peer_cookie = bpf_get_socket_cookie(lsk);
+		server_isn(r, nsk);
 	}
 	return finish(r, ok);
 }

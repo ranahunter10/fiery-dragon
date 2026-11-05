@@ -1,0 +1,22 @@
+dev container (6.18, no fexit), branch feat/net-v2-client-isn
+$ python3 schema/gen/gen.py --check
+schema check: 14 records, 4 generated files, 0 problems
+$ build/test_records
+daemon/tests/test_records.c: 0 failures
+$ make it-pyreader (C writer -> Python reader, NET v1 and v2 in one run)
+Ran 8 tests in 0.002s
+OK
+$ python3 -m unittest python/tests/test_trace.py python/tests/test_records.py
+
+OK
+$ python3 tools/ci/mutate_py.py
+mutation sweep: 128/128 killed
+$ make mutate-records
+mutation sweep: 28/28 killed
+$ make it-p15d   (case 5 needs fexit: CI and the VM)
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+case 2: stop by SIGTERM
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 4: a bad flag
+it_p15d: PASS (0 failed checks)

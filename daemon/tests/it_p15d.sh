@@ -132,6 +132,8 @@ check "[ $trc -eq 0 ] && [ $trc2 -eq 0 ] && head -c 15 $T/c5-$PORT.html | grep -
 check "grep -q 'Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused' $T/c5-trace.txt" "p15-trace: 1 listener, 2 accepts, both clients found on this host"
 check "grep -qE '^  127.0.0.1:$PORT tcp  cookie $lc  listening from .* by python3 \\($srv\\)' $T/c5-trace.txt" "p15-trace: the listener is the server process ($srv), cookie $lc"
 check "[ \$(grep -cE 'client: python3 \\([0-9]+\\) ← ' $T/c5-trace.txt) -eq 2 ]" "p15-trace: each accept joined to its client process and that process's parent"
+check "[ \$(grep -cE 'client: python3 \\([0-9]+\\) ← .*\\(exact, by TCP sequence number' $T/c5-trace.txt) -eq 2 ]" "p15-trace: both clients joined exactly, by the TCP client sequence number (ADR-0022)"
+check "grep -q 'client -> accept: 2 exact, by the TCP client sequence number' $T/c5-trace.txt && grep -q '0 same-endpoint connect(s) set aside' $T/c5-trace.txt && grep -q ' 0 TCP record(s) without a sequence number' $T/c5-trace.txt" "p15-trace: 2 exact joins, 0 set aside, every TCP record carries its ISN"
 check "grep -qE 'ECONNREFUSED \\(-111\\) +by python3' $T/c5-trace-refused.txt" "p15-trace: the refused connect to port $((PORT + 1)), with its process"
 if [ -n "${P15_IT_KEEP:-}" ]; then     # CI keeps the real run and its reports as an artifact
     mkdir -p "$P15_IT_KEEP" && cp -r "$d5" "$P15_IT_KEEP/" && cp "$T"/c5-trace*.txt "$T/c5-$PORT.html" "$T/c5.txt" "$P15_IT_KEEP/"

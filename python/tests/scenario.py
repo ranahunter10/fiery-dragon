@@ -50,10 +50,12 @@ def ex(t, p, code=0):
     return rec("EXIT", h_ts_ns=t, h_tgid=p[0], h_tid=p[0], h_start_ns=p[1], exit_code=code, group_dead=1)
 
 
-def net(t, p, op, cookie, local, remote="0.0.0.0:0", ret=0, peer=0, proto=6):
+def net(t, p, op, cookie, local, remote="0.0.0.0:0", ret=0, peer=0, proto=6, isn=None):
+    """A NET v2 record; isn sets tcp_isn and P15_F_ISN (ADR-0022), None leaves both unset."""
     la, lp = local.rsplit(":", 1)
     ra, rp = remote.rsplit(":", 1)
-    return rec("NET", h_ts_ns=t, h_tgid=p[0], h_tid=p[0], h_start_ns=p[1], sock_cookie=cookie, peer_cookie=peer,
+    extra = {} if isn is None else {"h_flags": 1 << 2, "tcp_isn": isn}
+    return rec("NET", **extra, h_ts_ns=t, h_tgid=p[0], h_tid=p[0], h_start_ns=p[1], sock_cookie=cookie, peer_cookie=peer,
                laddr=_ip(la), raddr=_ip(ra), lport=int(lp), rport=int(rp), netns=NETNS, ret=ret,
                op={"CONNECT": 1, "ACCEPT": 2, "LISTEN": 3, "BIND": 4}[op], family=2, proto=proto)
 
@@ -79,11 +81,11 @@ def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=Fals
     bulk = [
         net(START + S, SRV, "BIND", 9001, "127.0.0.1:18077"),
         net(START + S + 1, SRV, "LISTEN", 9001, "127.0.0.1:18077"),
-        net(START + 2 * S + 2 * ms, C1, "CONNECT", 9002, "127.0.0.1:41000", "127.0.0.1:18077"),
-        net(START + 2 * S + 3 * ms, SRV, "ACCEPT", 9003, "127.0.0.1:18077", "127.0.0.1:41000", peer=9001),
-        net(START + 3 * S + 2 * ms, C2, "CONNECT", 9004, "127.0.0.1:41002", "127.0.0.1:18077"),
-        net(START + 3 * S + 3 * ms, SRV, "ACCEPT", 9005, "127.0.0.1:18077", "127.0.0.1:41002", peer=9001),
-        net(START + 3 * S + 500 * ms, SRV, "ACCEPT", 9006, "127.0.0.1:18077", "10.0.0.7:52000", peer=9001),
+        net(START + 2 * S + 2 * ms, C1, "CONNECT", 9002, "127.0.0.1:41000", "127.0.0.1:18077", isn=0x1111),
+        net(START + 2 * S + 3 * ms, SRV, "ACCEPT", 9003, "127.0.0.1:18077", "127.0.0.1:41000", peer=9001, isn=0x1111),
+        net(START + 3 * S + 2 * ms, C2, "CONNECT", 9004, "127.0.0.1:41002", "127.0.0.1:18077", isn=0x2222),
+        net(START + 3 * S + 3 * ms, SRV, "ACCEPT", 9005, "127.0.0.1:18077", "127.0.0.1:41002", peer=9001, isn=0x2222),
+        net(START + 3 * S + 500 * ms, SRV, "ACCEPT", 9006, "127.0.0.1:18077", "10.0.0.7:52000", peer=9001, isn=0x3333),
         net(START + 4 * S + 25 * ms, NC, "CONNECT", 9007, "127.0.0.1:0", "127.0.0.1:4444", ret=-111),
     ] if net_on else []
     daemon = [rec("CLOCK_SYNC", h_ts_ns=START + 5 * S, boottime_ns=START + 5 * S, monotonic_ns=START + 5 * S,

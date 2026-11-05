@@ -53,6 +53,14 @@ M = [
   "(unsigned long long)r->exec_build_failed, (unsigned long long)r->fork_build_failed,"),
  ("(unsigned long long)r->spine_written,", "(unsigned long long)r->spine_invalid,"),
  ("printable(b, sizeof(b), (const __u8 *)(r + 1), r->reason_len);", "printable(b, sizeof(b), (const __u8 *)(r + 1), 4);"),
+ # ADR-0022: NET v2, its ISN flag and the bytes around it
+ ("case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;",
+  "case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : 0;"),
+ ("if (h->flags & ~(__u16)(P15_F_TRUNCATED | P15_F_READ_FAILED | P15_F_ISN)) {", "if (0) {"),
+ ("if ((h->flags & P15_F_ISN) && !(h->type == P15_T_NET && h->version >= 2)) {", "if (0) {"),
+ ("if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {", "if (r->reserved) {"),
+ ("if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {", "if (!(h->flags & P15_F_ISN) && r->tcp_isn) {"),
+ ('m += snprintf(buf + m, n - (size_t)m, " isn=%u", r->tcp_isn);', "m += 0;"),
 ]
 
 

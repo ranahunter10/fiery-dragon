@@ -14,10 +14,11 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "a12b53aa4464976fa1a35147448e92713459e3743add663e1ff7201e5fca93aa"
+#define P15_SCHEMA_HASH "aa55a5c8125a151b47748e04a2c60c38c28f046a49715215a9c3bb72afb4fa25"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
+#define P15_F_ISN (1u << 2)   /* NET v2: tcp_isn holds the connection's client initial sequence number (ADR-0022 rule 2); unset when it isn't known (rule 3) */
 
 enum p15_type {
 	P15_T_FORK = 1,
@@ -509,6 +510,41 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_v1, _pad) == 98, "p15_net_v1._pad offset"
 
 #define P15_NET_V1_MAX_SIZE 104
 
+/* NET v2 (NET): One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted. v2 adds the TCP client ISN, which joins an accept to its connect exactly (ADR-0022). */
+struct p15_net_v2 {
+	struct p15_hdr h;
+	__u64 sock_cookie;
+	__u64 peer_cookie;
+	char laddr[16];
+	char raddr[16];
+	__u32 netns;
+	__s32 ret;
+	__u16 op;
+	__u16 family;
+	__u16 proto;
+	__u16 lport;
+	__u16 rport;
+	__u16 reserved;
+	__u32 tcp_isn;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_net_v2) == 104, "p15_net_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, h) == 0, "p15_net_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, sock_cookie) == 32, "p15_net_v2.sock_cookie offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, peer_cookie) == 40, "p15_net_v2.peer_cookie offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, laddr) == 48, "p15_net_v2.laddr offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, raddr) == 64, "p15_net_v2.raddr offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, netns) == 80, "p15_net_v2.netns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, ret) == 84, "p15_net_v2.ret offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, op) == 88, "p15_net_v2.op offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, family) == 90, "p15_net_v2.family offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, proto) == 92, "p15_net_v2.proto offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, lport) == 94, "p15_net_v2.lport offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, rport) == 96, "p15_net_v2.rport offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, reserved) == 98, "p15_net_v2.reserved offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_net_v2, tcp_isn) == 100, "p15_net_v2.tcp_isn offset");
+
+#define P15_NET_V2_MAX_SIZE 104
+
 /* NET_STATS v1 (STATS): The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval. */
 struct p15_net_stats_v1 {
 	struct p15_hdr h;
@@ -601,9 +637,9 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, _pad) == 116, "p15_net_stats_v2
 #define p15_end p15_end_v1
 #define P15_END_MAX_SIZE P15_END_V1_MAX_SIZE
 #define P15_END_REASON_MAX P15_END_V1_REASON_MAX
-#define P15_NET_VERSION 1
-#define p15_net p15_net_v1
-#define P15_NET_MAX_SIZE P15_NET_V1_MAX_SIZE
+#define P15_NET_VERSION 2
+#define p15_net p15_net_v2
+#define P15_NET_MAX_SIZE P15_NET_V2_MAX_SIZE
 #define P15_NET_STATS_VERSION 2
 #define p15_net_stats p15_net_stats_v2
 #define P15_NET_STATS_MAX_SIZE P15_NET_STATS_V2_MAX_SIZE
