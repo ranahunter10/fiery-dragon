@@ -26,6 +26,8 @@ To write a new one:
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
 | [0020](0020-kernel-skipped-events.md) | Events the kernel skips: spine exec/exit/rename on classic tracepoints, wake-ups only at a high-water mark, every skip (`recursion_misses`) counted and located (supersedes ADR-0003 rule 1 for those hooks, ADR-0006 rule 3; rule 6: daemon records in WAL ring 2) | accepted | 2026-11-05 |
 | [0021](0021-vm-three-vcpus.md) | The VM runs with 3 vCPUs (supersedes ADR-0001's VM row) | accepted | 2026-11-05 |
+| [0022](0022-exact-client-join-tcp-isn.md) | Join a TCP client to its accept by the client's initial sequence number (NET v2; supersedes ADR-0004 rules 2 and 6 in part) | proposed | — |
+| [0023](0023-lifecycle-reconciliation.md) | Reconcile the process tree against a closing snapshot | proposed | — |
 
 ## Planned (from capture blueprint v1, §8.3)
 

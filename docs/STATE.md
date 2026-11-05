@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "bench: the hook-cost harness for ADR-0020 confirmation 5" (VM run; ADR-0020 accepted)
+**Last updated:** 2026-11-05 (UTC), PR "adr: propose 0022 and 0023 from the 2026-11-05 research"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -114,10 +114,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
 
-21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields):
+21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
     - 🔧 **Atomic BPF counters** (PR #47, E-0097). The six network fexit programs shared per-CPU counter slots with a plain `*v += 1`, and on 7.0 they run preemptible with a per-program recursion guard, so a count could be lost silently. Found by checking our code against the pattern of CVE-2026-89580.
     - 🔧 **ADR-0018's statistics as code** (PR #48, E-0098): `bench/quant/paired.py`, tested against enumeration, the textbook tables and scipy. The tool ADR-0020's confirmation 5 needs.
     - 🔧 **The hook-cost harness** (PR #49, E-0099): `make bench-hook-cost`, the same trivial body on a classic tracepoint and on `tp_btf`, plus the shipped spine EXEC. Container (not the target): classic costs +13.9 ns per rename event against `tp_btf` (0.15 null syscalls); at exec level nothing resolves. **VM (E-0101): +49.4 ns per rename event (9.8–72.4 ns, p = 0.017); per exec, not resolved. `vm_verify.sh` passes all 18 steps on #47–#49.**
+    - 📝 **ADR-0022 proposed:** an exact client join by the TCP initial sequence number (NET v2), instead of the 5 s time window.
+    - 📝 **ADR-0023 proposed:** reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired.
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -158,4 +160,15 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-None from the 2026-11-05 review.
+1. **Accept ADR-0022** (exact client join by the TCP ISN).
+   - Recommendation: accept, then implement it as NET v2 in one PR, with CI case 5 and the VM run as confirmation.
+   - Why: the join is the edge that links two processes through a socket in the graph Layer 3 learns from. Today it rests on two heuristics (a 5 s window, the nearest pick). The ISN makes it exact with two reads per event and no kernel state.
+   - Evidence: v7.0 source lines in the ADR (SRC), and the 12 µs inversion (E-0092, E-0095).
+2. **Accept ADR-0023** (reconcile against a closing snapshot).
+   - Recommendation: accept. Build it after ADR-0007's snapshot (step 4c), which it extends.
+   - Why: counters tell how many lifecycle events were lost, and this tells which process lost them, repairs a lost FORK, and catches a loss no counter saw.
+   - Evidence: ADR-0007 rule 3, and R-027 (no studied tool checks its completeness).
+3. **Report the 7.0 recursion-miss finding upstream** (bpf@vger.kernel.org)?
+   - The upstream series made tracepoint BPF preemptible without discussing the per-program recursion guard (R-022). We measured 3–10 % skips on the VM (E-0089).
+   - Recommendation: yes, as a short report with the probe and its numbers. It affects Falco's and Tracee's `tp_btf`/raw-tracepoint hooks too (INF: same kernel path).
+   - Your name goes on it, so it's your call.
