@@ -5,6 +5,7 @@
 **Files:**
 - [`vm-verify-20261104T164452Z-summary.txt`](vm-verify-20261104T164452Z-summary.txt): the maintainer's paste of that run's SUMMARY, the recur_probe rows and the end-to-end case 1 lines, as sent;
 - [`container.txt`](container.txt): the fix's tests, the Python mutation sweep and the end-to-end test in the container.
+- [`vm-verify-20261104T181920Z-summary.txt`](vm-verify-20261104T181920Z-summary.txt): the maintainer's paste of the VM rerun from step 14 on this PR's tip (`cc757c4`), as sent.
 
 ## Findings
 
@@ -33,7 +34,14 @@
      - an accept with no candidate is counted in `client_not_found`.
    - The match stays labelled an inference.
 
+6. **The VM passes on the fix (MEAS, VM, run `20261104T181920Z`, commit `cc757c4`).** The run resumed from step 14 (`FROM=14`), on the build from `42eb513`; the fix changes Python only. Steps 14–17 all pass:
+   - step 14, the end-to-end test, with case 5's p15-trace checks (both clients found);
+   - step 15, the p15d planted bugs. One soft lockup touched this step, and the script marked it;
+   - step 16, the spine EXEC planted bugs;
+   - step 17, the demo story.
+   - Steps 1–13 are as in run `20261104T164452Z`, where all of them passed.
+   - The pasted SUMMARY doesn't show how many of the 2 accepts had a connect after them, or the per-check lines. Those are in that run's `verify.log`.
+
 ## Not yet
 
-- The VM rerun of step 14 on this fix (`FROM=14 bash ~/vm_verify.sh`).
-- The failing run's segment and `c5-trace.txt`, from `~/vm-verify-20261104T164452Z/it-runs/`, re-read by the fixed p15-trace.
+- The failing run's segment and `c5-trace.txt`, from `~/vm-verify-20261104T164452Z/it-runs/`, re-read by the fixed p15-trace. The two timestamps in finding 2 are still from the chat paste.

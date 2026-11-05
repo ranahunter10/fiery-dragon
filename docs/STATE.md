@@ -105,8 +105,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - The demo passes.
       - Step 14 failed only in case 5, a p15-trace bug. On the VM an ACCEPT was stamped 12 µs before its own CONNECT, and the join took only earlier connects.
     - 🔧 **The join fix** (PR #45): the connect nearest in time on either side, within 5 s (a heuristic bound). Matches whose connect came after the accept are counted. Container: 100/100 planted bugs caught.
+    - **VM rerun from step 14 on #45 (E-0093):** steps 14–17 pass, so every step of `vm_verify.sh` has now passed on the stack #32–#45.
     - **Next:**
-      - the VM rerun from step 14 (`FROM=14 bash ~/vm_verify.sh`), and the failing run's segment re-read by the fixed p15-trace;
+      - add the failing run's segment, re-read by the fixed p15-trace, to the evidence;
       - then the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
 

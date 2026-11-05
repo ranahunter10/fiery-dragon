@@ -150,7 +150,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`__init__.py`](../python/p15/__init__.py) | Fiery Dragon's analysis tier: reading what the capture wrote (README "python/"). |  |
-| [`net.py`](../python/p15/net.py) | Network intent of a run (ADR-0004): the NET records, and what happened on one port. | `JOIN_WINDOW_NS`, `Event`, `event`, `Listener`, `Conn`, `PortReport`, `port_report` |
+| [`net.py`](../python/p15/net.py) | Network intent of a run (ADR-0004): the NET records, and what happened on one port. | `Event`, `event`, `Listener`, `Conn`, `PortReport`, `port_report` |
 | [`proctree.py`](../python/p15/proctree.py) | The process tree of a run, from the spine records (ADR-0003, ADR-0009). | `Image`, `Proc`, `Gap`, `Tree`, `build` |
 | [`records.py`](../python/p15/records.py) | The ADR-0008 records, decoded from the generated layouts (schema/generated/p15_records.py). | `RecordError`, `Record`, `decode`, `kdev`, `net_addr`, `endpoint`, `comm`, `argv` |
 | [`report_html.py`](../python/p15/report_html.py) | The HTML form of p15-trace's port report: one self-contained page (no scripts, fonts or images from anywhere else), so it can be mailed, archived next to the evidence and opened... | `connection_map`, `timeline`, `render` |

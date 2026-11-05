@@ -1,0 +1,20 @@
+================ SUMMARY (20261104T181920Z, 7.0.0-38-generic, commit cc757c4) ================
+SKIP  1. prerequisites (apt) (FROM=14)
+SKIP  2. checkout feat/kernel-skips (tip of #32-#44) (FROM=14)
+SKIP  3. venv + pinned packages (FROM=14)
+SKIP  4. build (FROM=14)
+SKIP  5. make check (schema, layout, C tests, hardening, exits, Python tests, reader vs C writer, evidence) (FROM=14)
+SKIP  6. C tests under ASan/UBSan (FROM=14)
+SKIP  7. queue under TSan (FROM=14)
+SKIP  8. planted bugs: Python gates, reader, trace (FROM=14)
+SKIP  9. planted bugs: WAL writer (FROM=14)
+SKIP  10. planted bugs: record checks (FROM=14)
+SKIP  11. smoke: verifier load, tp_btf attach, spine self-test (root) (FROM=14)
+SKIP  12. smoke-net: ADR-0004 fexit hooks on THIS kernel (root) (FROM=14)
+SKIP  13. the kernel's skips per design: recur_probe 3 x 2000 (root; ADR-0020 confirmation 1) (FROM=14)
+PASS  14. p15d end to end, network required, both readers, p15-trace on the real run (root) (41 s)
+PASS  15. planted bugs: p15d (root, runs the end-to-end test per mutant) (673 s)  [HOST STALL: 1 soft-lockup report(s) during this step]
+PASS  16. planted bugs: spine EXEC program (root, loads each mutant) (27 s)
+PASS  17. the demo story, with network capture (root) (35 s)
+Everything is in /home/ashu/vm-verify-20261104T181920Z. Next: sha256sum /home/ashu/vm-verify-20261104T181920Z/verify.log; then send verify.log (or paste the SUMMARY block).
+ashu@p15-dev:~/fiery-dragon$
