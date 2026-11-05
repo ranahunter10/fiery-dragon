@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "bench: the hook-cost harness for ADR-0020 confirmation 5" (VM run; ADR-0020 accepted)
+**Last updated:** 2026-11-05 (UTC), PR "adr: propose 0022 and 0023 from the 2026-11-05 research" (accepted in the same PR)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -111,13 +111,17 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - **Next:**
       - ✅ merged #32–#46 with merge commits, in order (2026-11-05); `main`'s tree is byte-identical to #46's head;
       - ✅ ADR-0018's statistics as code, the hook-cost harness and its VM run (#48, #49): ADR-0020 accepted;
+      - ADR-0022: NET v2 with the client ISN, and the exact join in p15-trace (CI case 5 and the VM confirm it);
+      - step 4c, the opening snapshot (ADR-0007), then ADR-0023's closing snapshot and reconciliation;
       - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
       - then the demo.
 
-21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields):
-    - 🔧 **Atomic BPF counters** (PR #47, E-0097). The six network fexit programs shared per-CPU counter slots with a plain `*v += 1`, and on 7.0 they run preemptible with a per-program recursion guard, so a count could be lost silently. Found by checking our code against the pattern of CVE-2026-89580.
-    - 🔧 **ADR-0018's statistics as code** (PR #48, E-0098): `bench/quant/paired.py`, tested against enumeration, the textbook tables and scipy. The tool ADR-0020's confirmation 5 needs.
-    - 🔧 **The hook-cost harness** (PR #49, E-0099): `make bench-hook-cost`, the same trivial body on a classic tracepoint and on `tp_btf`, plus the shipped spine EXEC. Container (not the target): classic costs +13.9 ns per rename event against `tp_btf` (0.15 null syscalls); at exec level nothing resolves. **VM (E-0101): +49.4 ns per rename event (9.8–72.4 ns, p = 0.017); per exec, not resolved. `vm_verify.sh` passes all 18 steps on #47–#49.**
+21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
+    - ✅ **Atomic BPF counters** (PR #47, E-0097). The six network fexit programs shared per-CPU counter slots with a plain `*v += 1`, and on 7.0 they run preemptible with a per-program recursion guard, so a count could be lost silently. Found by checking our code against the pattern of CVE-2026-89580.
+    - ✅ **ADR-0018's statistics as code** (PR #48, E-0098): `bench/quant/paired.py`, tested against enumeration, the textbook tables and scipy. The tool ADR-0020's confirmation 5 needs.
+    - ✅ **The hook-cost harness** (PR #49, E-0099): `make bench-hook-cost`, the same trivial body on a classic tracepoint and on `tp_btf`, plus the shipped spine EXEC. Container (not the target): classic costs +13.9 ns per rename event against `tp_btf` (0.15 null syscalls); at exec level nothing resolves. **VM (E-0101): +49.4 ns per rename event (9.8–72.4 ns, p = 0.017); per exec, not resolved. `vm_verify.sh` passes all 18 steps on #47–#49.**
+    - ✅ **ADR-0022 accepted 2026-11-05** (to build): an exact client join by the TCP initial sequence number (NET v2), instead of the 5 s time window.
+    - ✅ **ADR-0023 accepted 2026-11-05** (to build): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired.
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -156,6 +160,13 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     12. **ADR-0021 accepted** (3 vCPUs; supersedes ADR-0001's VM row).
     13. **Merge #32–#46 with merge commits**, never squash: evidence cites commit hashes, and merge commits keep them in `main`. `CONTRIBUTING.md` now says so. Merged branches whose tips are in `main` are deleted.
 
+14. **The second 2026-11-05 review** (maintainer: "all the recommended decisions are accepted"):
+    1. **#47–#51 merged** with merge commits, in order.
+    2. **ADR-0022 accepted:** join a TCP client to its accept by the client's ISN (NET v2). To build next.
+    3. **ADR-0023 accepted:** reconcile the process tree against a closing snapshot. To build after step 4c.
+    4. **The 7.0 recursion-miss finding goes upstream** (bpf@vger.kernel.org), drafted in the session; the maintainer sends it under his name.
+    5. **From now on, a decision is asked in the message where it arises**, not collected into an end-of-session list.
+
 ## Decisions waiting
 
-None from the 2026-11-05 review.
+None.
