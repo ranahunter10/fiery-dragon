@@ -1,8 +1,8 @@
 ---
-status: proposed
-date: —
+status: accepted
+date: 2026-11-05
 owner: Ashish Rana
-consulted: [ADR-0007 (snapshot per segment), ADR-0020 rule 5 (self_exec_id), Houssel et al. 2026 (R-027), the end-to-end argument (R-030), double-entry bookkeeping, research note 2026-11-05 §5]
+consulted: [ADR-0007 (snapshot per segment), ADR-0020 rule 5 (self_exec_id), Houssel et al. 2026 (R-027), the end-to-end argument (R-030), double-entry bookkeeping, research note 2026-11-05 §5, maintainer's acceptance of 2026-11-05]
 supersedes: none (adds to ADR-0007 rule 3 and ADR-0020 rule 5)
 ---
 

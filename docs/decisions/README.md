@@ -15,7 +15,7 @@ To write a new one:
 | [0001](0001-platform-ubuntu-26-04-kernel-7-0-pinned.md) | Develop and measure on Ubuntu 26.04 LTS with the GA kernel 7.0.0-38, held | accepted; VM row superseded by 0021 | 2026-10-25 |
 | [0002](0002-toolchain-libbpf-co-re-c-daemon.md) | Build with libbpf v1.7.0 + CO-RE skeletons and a C daemon; Python only after the WAL | accepted | 2026-10-25 |
 | [0003](0003-hook-policy-btf-checked-attach-points-self-test.md) | Hook policy: BTF-checked attach points, the spine on `tp_btf` sched tracepoints, argv from the kernel's copy, and a per-pid load-time self-test | accepted; rule 1 superseded for exec, exit and rename by 0020 | 2026-10-25 |
-| [0004](0004-network-intent-hooks.md) | Network intent: fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; one NET record on the bulk ring, keyed by socket cookie | accepted | 2026-11-05 |
+| [0004](0004-network-intent-hooks.md) | Network intent: fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; one NET record on the bulk ring, keyed by socket cookie | accepted; rules 2 and 6 superseded in part by 0022 | 2026-11-05 |
 | [0006](0006-transport-two-bpf-ring-buffers.md) | Two BPF ring buffers (spine never shed, bulk counted), self-paced wakeups, one C drain thread | accepted; rules 1 and 4 superseded by 0017, rule 3 by 0020 | 2026-10-25 |
 | [0007](0007-wal-segmented-crc-batches-snapshot.md) | Write-ahead log P15W v1: segment files with a self-describing header, a process snapshot, CRC-checked batches, and fdatasync every second | accepted | 2026-10-25 |
 | [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte common header on the boot clock | accepted | 2026-10-25 |
@@ -26,8 +26,8 @@ To write a new one:
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
 | [0020](0020-kernel-skipped-events.md) | Events the kernel skips: spine exec/exit/rename on classic tracepoints, wake-ups only at a high-water mark, every skip (`recursion_misses`) counted and located (supersedes ADR-0003 rule 1 for those hooks, ADR-0006 rule 3; rule 6: daemon records in WAL ring 2) | accepted | 2026-11-05 |
 | [0021](0021-vm-three-vcpus.md) | The VM runs with 3 vCPUs (supersedes ADR-0001's VM row) | accepted | 2026-11-05 |
-| [0022](0022-exact-client-join-tcp-isn.md) | Join a TCP client to its accept by the client's initial sequence number (NET v2; supersedes ADR-0004 rules 2 and 6 in part) | proposed | — |
-| [0023](0023-lifecycle-reconciliation.md) | Reconcile the process tree against a closing snapshot | proposed | — |
+| [0022](0022-exact-client-join-tcp-isn.md) | Join a TCP client to its accept by the client's initial sequence number (NET v2; supersedes ADR-0004 rules 2 and 6 in part) | accepted | 2026-11-05 |
+| [0023](0023-lifecycle-reconciliation.md) | Reconcile the process tree against a closing snapshot | accepted | 2026-11-05 |
 
 ## Planned (from capture blueprint v1, §8.3)
 

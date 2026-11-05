@@ -1,8 +1,8 @@
 ---
-status: proposed
-date: —
+status: accepted
+date: 2026-11-05
 owner: Ashish Rana
-consulted: [E-0092 to E-0095 (the accept stamped before its connect), Linux v7.0 net/ipv4/tcp_minisocks.c, tcp_output.c, tcp_ipv4.c, net/ipv6/tcp_ipv6.c, RFC 6528, Lamport 1978, research note 2026-11-05 §4]
+consulted: [E-0092 to E-0095 (the accept stamped before its connect), Linux v7.0 net/ipv4/tcp_minisocks.c, tcp_output.c, tcp_ipv4.c, net/ipv6/tcp_ipv6.c, RFC 6528, Lamport 1978, research note 2026-11-05 §4, maintainer's acceptance of 2026-11-05]
 supersedes: ADR-0004 rule 2 (NET's field table, version 1 → 2) and rule 6 (the self-test gains one check). Every other rule of ADR-0004 stands.
 ---
 
