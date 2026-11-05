@@ -1,0 +1,15 @@
+/tmp/claude-0/demo1/wal/20261102T120307Z-3638fa0c//seg-00000000.p15w: segment 0, 41016 bytes, 262 batches, 265 records, valid to the end
+  run.id = 20261102T120307Z-3638fa0c
+  kernel.release = 6.18.44-fc-v185
+  schema.hash = 92f3bcd9189b56d7f55aa629b69f46cc9ec5676d313ab4ce76648e434f15c9c3
+  hooks.manifest = tp_btf/sched_process_fork,tp_btf/sched_process_exec,tp_btf/sched_process_exit,tp_btf/task_rename
+  drain.sched = SCHED_FIFO 1
+records: spine 230, bulk 0, daemon 35; invalid 0
+  FORK       67
+  EXEC       47
+  EXIT       69
+  RENAME     47
+  CLOCK_SYNC 4
+  STATS      30
+  END        1
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
