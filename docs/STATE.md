@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-10-25 (UTC), PR #30 (ADR-0017..0019 accepted)
+**Last updated:** 2026-10-25 (UTC), step 4b stack, PR 1 of 5 (G2/G3 gates on the existing daemon code)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Phase 0 gate
@@ -59,7 +59,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     3. ✅ spine BPF programs and the load-time self-test (ADR-0003, ADR-0009): pass in the dev container (E-0064) and **on the target VM**: 4 programs attached, self-test 21/21 twice, `reserve_failed` 0, `seen == emitted` (E-0065); other processes captured, EXEC inode matches `stat`, process end = EXIT with `group_dead=1`, which may be a non-leader thread (E-0066). [VM runs](evidence/build/2026-10-25-spine-vm/README.md). PR #26 + #27;
     4. `p15d` drain and WAL writer (ADR-0006, ADR-0007), in three PRs:
        1. ✅ the P15W v1.0 format spec and the C writer: batches with CRC32C, rotation, `fdatasync` interval, torn-tail recovery (E-0068, PR #28);
-       2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown. Per ADR-0017/0019, also: exact-size EXEC, the writer thread and queue, the drain priority, GAP records, STATS, canary, one error path;
+       2. `p15d`: drain both rings into batches, header metadata (boot_id, hooks, self-test, versions), daemon records (clock sync, stats), the accounting invariant at shutdown. Per ADR-0017/0019, also: exact-size EXEC, the writer thread and queue, the drain priority, GAP records, STATS, canary, one error path. A stack of single-purpose PRs:
+          1. 🔧 ADR-0019 G2/G3 on the existing code: `P15_MUST_CHECK` on every fallible function (an ignored result fails the build, gcc and clang), the hardening and warning flags (checked in the binary), `daemon/exitcodes.h`, the exit-call check (E-0074). In review;
+          2. exact-size EXEC records (ADR-0017 layer 1), with a `bpf_stats` cost harness;
+          3. the daemon records STATS, GAP, END, CLOCK_SYNC in the schema;
+          4. the bounded SPSC batch queue, under ThreadSanitizer;
+          5. `p15d` itself: loader, drain, writer, stats, config, the run state machine, `p15_fail`, and the L4 tests (forced overflow, drain stall);
        3. the `bpf_iter/task` process snapshot at each segment open;
     5. Python WAL reader (generated, no defaults, `google-crc32c`), the P15R importer for v3.7 recordings, and the process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
@@ -88,4 +93,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-None open right now.
+1. **Exit-code values** (`daemon/exitcodes.h`, ADR-0019 G2.2 asks for one table but not its values). Proposed: sysexits(3) values where one fits (USAGE 64, CONFIG 78, IO 74, OSERR 71, INTERNAL 70, LOAD 69 "unavailable", SELFTEST 65); DEGRADED 3 and INVALID 4 for an orderly stop of a run that is not valid; 0 only for a valid run. Recommendation: accept; systemd and a person reading `systemctl status` then read the same meaning. Evidence: the table and its test (E-0074).
+2. **How the exit-call check knows the allowed sites:** a same-line comment `exit-ok: <reason>`, every marked site printed in CI, rather than a list of file/function names in the checker. Recommendation: accept; the reason sits next to the call and a new site is visible in the diff. Evidence: `tools/ci/check_exits.py` and its tests (E-0074).
+3. **Scope of the hardening flags:** applied to every userspace binary, the loaders in `bpf/test/` and the C tests included, not only the daemon. Recommendation: accept; one flag set, and the tests then run the code as it ships. Evidence: [build run](evidence/build/2026-10-25-daemon-hardening-container/README.md).

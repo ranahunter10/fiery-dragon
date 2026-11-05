@@ -31,6 +31,8 @@ static void on_signal(int sig)
 	stop = 1;
 }
 
+/* the format attribute lets -Wformat=2 check callers instead of flagging the forwarded fmt */
+__attribute__((format(printf, 2, 0)))
 static int print_libbpf(enum libbpf_print_level level, const char *fmt, va_list ap)
 {
 	return level == LIBBPF_DEBUG ? 0 : vfprintf(stderr, fmt, ap);
@@ -114,7 +116,10 @@ int main(int argc, char **argv)
 	printf("p15-spine: libbpf %s, 4 programs attached\n", libbpf_version_string());
 
 	failed = p15_selftest_run(bpf_map__fd(skel->maps.spine_rb), stdout);
-	printf("selftest: %s (%d failed checks)\n", failed == 0 ? "PASS" : "FAIL", failed);
+	if (failed < 0)
+		printf("selftest: FAIL (could not run: %s)\n", strerror(-failed));
+	else
+		printf("selftest: %s (%d failed checks)\n", failed == 0 ? "PASS" : "FAIL", failed);
 	if (failed != 0)
 		goto out_counters;
 

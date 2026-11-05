@@ -31,7 +31,7 @@ static void add_fork(struct p15_rec_list *l, unsigned by, unsigned long long by_
 	memset(&r, 0, sizeof(r));
 	hdr(&r.h, P15_T_FORK, sizeof(r), by, by_start, ts);
 	r.child_tgid = child; r.child_tid = child; r.child_start_ns = cstart; r.kind = 1;
-	p15_rec_list_add(l, &r, sizeof(r));
+	EXPECT(p15_rec_list_add(l, &r, sizeof(r)) == 0, "record list add");
 }
 
 static void add_rename(struct p15_rec_list *l, const char *old, const char *new, unsigned long long ts)
@@ -42,7 +42,7 @@ static void add_rename(struct p15_rec_list *l, const char *old, const char *new,
 	hdr(&r.h, P15_T_RENAME, sizeof(r), C, SC, ts);
 	strncpy(r.old_comm, old, 15);
 	strncpy(r.new_comm, new, 15);
-	p15_rec_list_add(l, &r, sizeof(r));
+	EXPECT(p15_rec_list_add(l, &r, sizeof(r)) == 0, "record list add");
 }
 
 static void add_exec(struct p15_rec_list *l, const char *file, const char *argv, int argv_len, unsigned long long ts)
@@ -56,7 +56,7 @@ static void add_exec(struct p15_rec_list *l, const char *file, const char *argv,
 	r->old_tid = C; r->filename_len = fl; r->filename_full = fl; r->argv_len = argv_len; r->argv_full = argv_len;
 	memcpy(buf + sizeof(*r), file, fl);
 	memcpy(buf + sizeof(*r) + fl, argv, argv_len);
-	p15_rec_list_add(l, buf, len);
+	EXPECT(p15_rec_list_add(l, buf, len) == 0, "record list add");
 }
 
 static void add_exit(struct p15_rec_list *l, unsigned tgid, unsigned long long start, int code, unsigned long long ts)
@@ -66,7 +66,7 @@ static void add_exit(struct p15_rec_list *l, unsigned tgid, unsigned long long s
 	memset(&r, 0, sizeof(r));
 	hdr(&r.h, P15_T_EXIT, sizeof(r), tgid, start, ts);
 	r.exit_code = code; r.group_dead = 1;
-	p15_rec_list_add(l, &r, sizeof(r));
+	EXPECT(p15_rec_list_add(l, &r, sizeof(r)) == 0, "record list add");
 }
 
 /* the record set a correct spine produces, with one knob per failure to inject */
@@ -105,7 +105,7 @@ static int run(struct knobs k)
 
 		memset(&r, 0, sizeof(r));
 		hdr(&r.h, P15_T_EXIT, 200, C, SC, 70);   /* len beyond the bytes given */
-		p15_rec_list_add(&l, &r, sizeof(r));
+		EXPECT(p15_rec_list_add(&l, &r, sizeof(r)) == 0, "record list add");
 	}
 	failed = p15_selftest_eval(&l, &e, null);
 	fclose(null);

@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <bpf/libbpf.h>
 
+/* the format attribute lets -Wformat=2 check callers instead of flagging the forwarded fmt */
+__attribute__((format(printf, 2, 0)))
 static int print_libbpf(enum libbpf_print_level level, const char *fmt, va_list ap)
 {
 	return level == LIBBPF_DEBUG ? 0 : vfprintf(stderr, fmt, ap);

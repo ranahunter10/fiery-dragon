@@ -129,7 +129,7 @@ static unsigned header_len_with_fake_clock(void)
 	struct p15w *w = open_w(d, 0, 0, 0, NULL);
 	unsigned hl = p15w_stats(w)->file_bytes;
 
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	rmtree(d);
 	free(d);
 	return hl;
@@ -216,7 +216,7 @@ static void test_torn_tail_at_every_offset(void)
 		uint64_t gone;
 		const char *why;
 
-		p15w_scan_buf(b, cut, &s);
+		EXPECT(p15w_scan_buf(b, cut, &s) == 0, "scan: segment header valid");
 		if (cut == last || cut == n)
 			bad_scan += !(s.stop == NULL && s.good_end == cut);
 		else
@@ -228,7 +228,7 @@ static void test_torn_tail_at_every_offset(void)
 		}
 		c = slurp(path, &m);
 		bad_recover += !(m == (cut == n ? n : last) && gone == cut - m);
-		p15w_scan_buf(c, m, &s);
+		EXPECT(p15w_scan_buf(c, m, &s) == 0, "scan: segment header valid");
 		bad_recover += !(s.stop == NULL);
 		free(c);
 	}
@@ -268,14 +268,14 @@ static void test_corruption_is_not_a_torn_tail(void)
 
 	write_reference(d);
 	b = slurp(segpath(d, 0), &n);
-	p15w_scan_buf(b, n, &s);
+	EXPECT(p15w_scan_buf(b, n, &s) == 0, "scan: segment header valid");
 	hl = s.header_len;
 	snprintf(path, sizeof(path), "%s/bad.p15w", d);
 
 	c = malloc(n + 4096);
 	memcpy(c, b, n);
 	c[hl + 40 + 10] ^= 1;                       /* first batch's payload */
-	p15w_scan_buf(c, n, &s);
+	EXPECT(p15w_scan_buf(c, n, &s) == 0, "scan: segment header valid");
 	EXPECT(s.stop && !strcmp(s.stop, "payload crc") && !s.torn && s.good_end == hl, "payload flip: corruption");
 	spit(path, c, n);
 	EXPECT(p15w_recover(path, &gone, &why) == -EUCLEAN && gone == 0, "corruption is never truncated");
@@ -287,7 +287,7 @@ static void test_corruption_is_not_a_torn_tail(void)
 	c = malloc(n + 4096);
 	memcpy(c, b, n);
 	c[hl + 8] ^= 1;                             /* first batch's header */
-	p15w_scan_buf(c, n, &s);
+	EXPECT(p15w_scan_buf(c, n, &s) == 0, "scan: segment header valid");
 	EXPECT(s.stop && !strcmp(s.stop, "batch header crc") && !s.torn, "batch header flip");
 
 	memcpy(c, b, n);
@@ -297,7 +297,7 @@ static void test_corruption_is_not_a_torn_tail(void)
 	memcpy(c, b, n);
 	c[hl + 40 + 4] = 40;                        /* a record len that does not tile, CRCs fixed up */
 	forge_payload_crc(c + hl);
-	p15w_scan_buf(c, n, &s);
+	EXPECT(p15w_scan_buf(c, n, &s) == 0, "scan: segment header valid");
 	EXPECT(s.stop && !strcmp(s.stop, "records do not tile the payload") && !s.torn, "tiling");
 
 	memcpy(c, b, n);
@@ -305,13 +305,13 @@ static void test_corruption_is_not_a_torn_tail(void)
 		size_t second_spine = hl + 40 + 128 + 40 + 40 + 40 + 32;
 		c[second_spine + 16] = 3;               /* first_seq 2 -> 3 */
 		forge_hdr_crc(c + second_spine);
-		p15w_scan_buf(c, n, &s);
+		EXPECT(p15w_scan_buf(c, n, &s) == 0, "scan: segment header valid");
 		EXPECT(s.stop && !strcmp(s.stop, "sequence gap") && !s.torn && s.good_end == second_spine, "sequence gap");
 	}
 
 	memcpy(c, b, n);
 	memset(c + n, 0, 4096);                     /* a zero-filled tail */
-	p15w_scan_buf(c, n + 4096, &s);
+	EXPECT(p15w_scan_buf(c, n + 4096, &s) == 0, "scan: segment header valid");
 	EXPECT(s.stop && !strcmp(s.stop, "batch magic") && s.torn && s.good_end == n, "zero tail is torn");
 	spit(path, c, n + 4096);
 	EXPECT(p15w_recover(path, &gone, &why) == 0 && gone == 4096, "zero tail cut");
@@ -341,14 +341,14 @@ static void test_rotation_by_size(void)
 		size_t n;
 		unsigned char *b = slurp(segpath(d, i), &n);
 		struct p15w_scan s;
-		char v[32];
+		char v[32] = "";
 
 		if (!b) {
 			bad++;
 			continue;
 		}
-		p15w_scan_buf(b, n, &s);
-		p15w_header_get(b, n, "seq.next.spine", v, sizeof(v));
+		EXPECT(p15w_scan_buf(b, n, &s) == 0, "scan: segment header valid");
+		EXPECT(p15w_header_get(b, n, "seq.next.spine", v, sizeof(v)) == 0, "seq.next.spine in the header");
 		bad += !(s.stop == NULL && s.segment_index == i && s.batches == 3 && n <= hl + 3 * 136);
 		bad += strtoull(v, NULL, 10) != seq;
 		seq += s.records;
@@ -371,7 +371,7 @@ static void test_oversize_batch(void)
 	EXPECT(st->segments == 1 && st->oversize_batches == 1, "alone in segment 0, counted");
 	EXPECT(put(w, P15W_RING_BULK, 1, 32, 2) == 0, "next batch");
 	EXPECT(st->segments == 2 && st->rotations_size == 1, "next batch rotates");
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	rmtree(d);
 	free(d);
 }
@@ -384,31 +384,31 @@ static void test_rotation_by_time_and_sync(void)
 	const struct p15w_stats *st = p15w_stats(w);
 
 	fake_ns = t0 + 500000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 0, "no sync before the interval");
 	fake_ns = t0 + 1000000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 1, "sync at the interval (header written)");
 	fake_ns = t0 + 3000000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 1, "no sync when nothing was written");
 	put(w, P15W_RING_SPINE, 1, 32, 1);
 	fake_ns = t0 + 3500000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 2, "sync after a write, interval passed");
 	put(w, P15W_RING_SPINE, 1, 32, 2);
 	fake_ns = t0 + 4000000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 2, "the interval counts from the last sync");
 	fake_ns = t0 + 9999999999ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->segments == 1, "no rotation before the age");
 	EXPECT(st->fsyncs == 3, "the write at +4 s is synced by that tick");
 	fake_ns = t0 + 10000000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->segments == 2 && st->rotations_time == 1 && st->fsyncs == 4, "rotation by age syncs the old one");
 	fake_ns = t0 + 40000000000ull;
-	p15w_tick(w);
+	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->segments == 2, "an empty segment is not rotated by age");
 	EXPECT(p15w_segment_index(w) == 1, "writing segment 1");
 	EXPECT(p15w_close(w) == 0, "close");
@@ -443,14 +443,14 @@ static void test_on_open_writes_first(void)
 	w = open_w(d, hl + 168 + 40 + 64, 0, 0, fake_snapshot);
 	for (int i = 0; i < 4; i++)
 		put(w, P15W_RING_SPINE, 1, 64, i);
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	EXPECT(snapshot_calls == 4, "the callback runs once per segment");
 	for (unsigned i = 0; i < 4; i++) {
 		size_t n;
 		unsigned char *b = slurp(segpath(d, i), &n);
 		struct p15w_scan s;
 
-		p15w_scan_buf(b, n, &s);
+		EXPECT(p15w_scan_buf(b, n, &s) == 0, "scan: segment header valid");
 		bad += !(s.stop == NULL && b[s.header_len + 4] == P15W_RING_DAEMON && s.batches == 2);
 		free(b);
 	}
@@ -462,7 +462,7 @@ static void test_on_open_writes_first(void)
 		struct p15w *x = open_w(e, hl + 10, 0, 0, fake_snapshot_two);
 
 		EXPECT(x && p15w_stats(x)->segments == 1 && p15w_stats(x)->oversize_batches == 2, "no rotation inside on_open");
-		p15w_close(x);
+		EXPECT(p15w_close(x) == 0, "close");
 		rmtree(e);
 		free(e);
 	}
@@ -522,9 +522,9 @@ static void test_short_writes_and_eintr(void)
 	EXPECT(p15w_open(&w, &o) == 0, "open through a trickling writev");
 	EXPECT(put(w, P15W_RING_SPINE, 3, 64, 7) == 0, "append through a trickling writev");
 	EXPECT(p15w_stats(w)->short_writes > 30 && p15w_stats(w)->errors == 0, "short writes counted, not errors");
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	b = slurp(segpath(d, 0), &n);
-	p15w_scan_buf(b, n, &s);
+	EXPECT(p15w_scan_buf(b, n, &s) == 0, "scan: segment header valid");
 	EXPECT(s.stop == NULL && s.records == 3 && b[n - 1] == 7, "the segment is intact");
 	free(b);
 	rmtree(d);
@@ -550,7 +550,7 @@ static void test_bad_batches_rejected(void)
 	EXPECT(p15w_stats(w)->rejected_batches == 7 && p15w_stats(w)->batches == 0, "all counted, none written");
 	mkrec(r, 64, 1);
 	EXPECT(p15w_append(w, 0, 1, r, 64) == 0, "the good one");
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	rmtree(d);
 	free(d);
 }
@@ -581,7 +581,7 @@ static void test_batch_builder(void)
 	EXPECT(p15w_batch_flush(w, &b) == 0 && p15w_stats(w)->batches == 1, "empty flush writes nothing");
 	p15w_batch_free(&b);
 	EXPECT(p15w_batch_init(&b, 7, 128) == -EINVAL && !b.buf, "bad ring");
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	rmtree(d);
 	free(d);
 }
@@ -602,7 +602,7 @@ static void test_open_checks(void)
 	o.meta = NULL; o.nmeta = 0;
 	EXPECT(p15w_open(&w, &o) == 0, "open");
 	EXPECT(p15w_open(&w2, &o) == -EEXIST, "never overwrites a segment");
-	p15w_close(w);
+	EXPECT(p15w_close(w) == 0, "close");
 	o.dir = "/nonexistent/p15w";
 	EXPECT(p15w_open(&w, &o) == -ENOENT, "missing directory");
 	rmtree(d);

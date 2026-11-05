@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "records.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -22,24 +23,24 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 
 	if (size < sizeof(*h)) {
 		*why = "shorter than the header";
-		return -1;
+		return -EINVAL;
 	}
 	if (h->len > size) {
 		*why = "len beyond the bytes received";
-		return -1;
+		return -EINVAL;
 	}
 	if (h->len % 8) {
 		*why = "len not a multiple of 8";
-		return -1;
+		return -EINVAL;
 	}
 	fixed = fixed_size(h->type, h->version);
 	if (!fixed) {
 		*why = "unknown type or version";
-		return -1;
+		return -EINVAL;
 	}
 	if (h->len < fixed) {
 		*why = "len shorter than the fixed part";
-		return -1;
+		return -EINVAL;
 	}
 	if (h->type == P15_T_EXEC) {
 		const struct p15_exec_v1 *e = data;
@@ -47,7 +48,7 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 		if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC_V1_ARGV_MAX ||
 		    fixed + e->filename_len + e->argv_len > h->len) {
 			*why = "variable field beyond len";
-			return -1;
+			return -EINVAL;
 		}
 	}
 	*why = NULL;
