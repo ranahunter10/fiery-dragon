@@ -27,6 +27,7 @@ struct p15_config {
 	uint32_t queue_batches;      /* --queue-batches: 4..1024 (ADR-0017 layer 2) */
 	uint32_t batch_kb;           /* --batch-kb: 16..4096 */
 	int realtime;                /* --no-rt clears it: the drain asks for SCHED_FIFO 1 (ADR-0017 layer 3) */
+	int net;                     /* --no-net clears it: load the ADR-0004 network-intent programs */
 	uint32_t drain_pause_ms;     /* --test-drain-pause-ms: TEST ONLY, sleep after each poll to force overflow */
 };
 

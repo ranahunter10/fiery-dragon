@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include "records.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,6 +17,8 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : 0;
 	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : 0;
 	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : 0;
+	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : 0;
+	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : 0;
 	}
 	return 0;
 }
@@ -134,6 +137,8 @@ const char *p15_type_name(__u16 type)
 	case P15_T_STATS:      return "STATS";
 	case P15_T_GAP:        return "GAP";
 	case P15_T_END:        return "END";
+	case P15_T_NET:        return "NET";
+	case P15_T_NET_STATS:  return "NET_STATS";
 	}
 	return "?";
 }
@@ -214,6 +219,31 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)r->exit_reserve_failed, (unsigned long long)r->rename_reserve_failed,
 				    (unsigned long long)r->fork_build_failed, (unsigned long long)r->exec_build_failed,
 				    (unsigned long long)r->exit_build_failed, (unsigned long long)r->rename_build_failed);
+	}
+	case P15_T_NET: {
+		const struct p15_net *r = data;
+		static const char *const ops[] = { "?", "CONNECT", "ACCEPT", "LISTEN", "BIND" };
+		char l[INET6_ADDRSTRLEN] = "?", rm[INET6_ADDRSTRLEN] = "?";
+		int af = r->family == 10 ? AF_INET6 : AF_INET;
+
+		inet_ntop(af, r->laddr, l, sizeof(l));
+		inet_ntop(af, r->raddr, rm, sizeof(rm));
+		return k + snprintf(buf + k, n - k, " op=%s proto=%s ret=%d local=%s%s%s:%u remote=%s%s%s:%u cookie=%llu peer=%llu netns=%u",
+				    ops[r->op < 5 ? r->op : 0], r->proto == 6 ? "tcp" : r->proto == 17 ? "udp" : "?", r->ret,
+				    af == AF_INET6 ? "[" : "", l, af == AF_INET6 ? "]" : "", r->lport,
+				    af == AF_INET6 ? "[" : "", rm, af == AF_INET6 ? "]" : "", r->rport,
+				    (unsigned long long)r->sock_cookie, (unsigned long long)r->peer_cookie, r->netns);
+	}
+	case P15_T_NET_STATS: {
+		const struct p15_net_stats *r = data;
+
+		return k + snprintf(buf + k, n - k, " seen=%llu emitted=%llu reserve_failed=%llu excluded=%llu drained=%llu "
+				    "invalid=%llu written=%llu drain_lost=%llu fill_max=%llu",
+				    (unsigned long long)r->net_seen, (unsigned long long)r->net_emitted,
+				    (unsigned long long)r->net_reserve_failed, (unsigned long long)r->net_excluded,
+				    (unsigned long long)r->net_drained, (unsigned long long)r->net_invalid,
+				    (unsigned long long)r->net_written, (unsigned long long)r->net_drain_lost,
+				    (unsigned long long)r->bulk_fill_max);
 	}
 	case P15_T_END: {
 		const struct p15_end *r = data;

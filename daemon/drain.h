@@ -20,18 +20,20 @@ struct ring;
 struct p15_drain {
 	struct p15_run *run;
 	struct ring_buffer *rb;
-	struct ring *spine;
-	int ctr_fd;
+	struct ring *spine, *bulk;
+	int ctr_fd, bulk_ctr_fd;
 	int ncpu;
 	uint64_t *ctr_vals;              /* P15_CTR_MAX * ncpu, for one batch lookup */
 	uint32_t *ctr_keys;
 	struct p15q_slot *open;          /* the batch being filled, or NULL */
-	uint64_t prev_ctr[P15_CTR_MAX];
+	uint64_t prev_ctr[P15_CTR_MAX], prev_bulk[P15_CTR_MAX];
 	uint64_t prev_read_ns, last_poll_ns;
 	int queue_full_now;              /* the last poll left records in a ring for want of a batch */
 };
 
-P15_MUST_CHECK int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd);
+/* bulk_rb_fd and bulk_ctr_fd are -1 without network capture. */
+P15_MUST_CHECK int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
+				int bulk_ctr_fd);
 void p15_drain_free(struct p15_drain *d);
 /* One poll of up to timeout_ms, then publish, then the counter read and GAP check. 0 or -errno. */
 P15_MUST_CHECK int p15_drain_poll(struct p15_drain *d, int timeout_ms);

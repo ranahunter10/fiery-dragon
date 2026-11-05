@@ -89,7 +89,7 @@ static const char *raise_priority(int want_rt)
 
 int main(int argc, char **argv)
 {
-	static char run_dir[4096], err[256], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], cut[8] = "0";
+	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
 	static char cfg_vals[16][24];
 	struct p15w_kv meta[40];
 	struct p15_loader ld;
@@ -114,13 +114,17 @@ int main(int argc, char **argv)
 	run.spine_ring_bytes = run.cfg.spine_ring_kb * 1024u;
 	libbpf_set_print(print_libbpf);
 
-	code = p15_loader_start(&ld, run.spine_ring_bytes, err, sizeof(err));
+	run.bulk_ring_bytes = run.cfg.bulk_ring_kb * 1024u;
+	run.net = run.cfg.net;
+	code = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));
 	if (code) {
 		logline("error", "load", err);
 		p15_loader_free(&ld);
 		return code;
 	}
 	run.start_ns = ld.daemon_start_ns;
+	run.spine_selftest_consumed = ld.spine_consumed;
+	run.net_selftest_consumed = ld.net_consumed;
 	sched = raise_priority(run.cfg.realtime);
 
 	/* the run directory: <wal-dir>/<UTC time>-<boot id prefix> (ADR-0007 rule 1) */
@@ -152,6 +156,7 @@ int main(int argc, char **argv)
 	tzset();
 	snprintf(tz, sizeof(tz), "%s", getenv("TZ") ? getenv("TZ") : tzname[0]);
 	snprintf(ring_b, sizeof(ring_b), "%u", run.spine_ring_bytes);
+	snprintf(bulk_b, sizeof(bulk_b), "%u", run.bulk_ring_bytes);
 #define KV(k, v) do { meta[nm].key = (k); meta[nm].value = (v); nm++; } while (0)
 	KV("run.id", run_id);
 	KV("boot_id", boot_id);
@@ -162,8 +167,9 @@ int main(int argc, char **argv)
 	KV("libbpf.version", libbpf_version_string());
 	KV("bpftool.version", P15_BPFTOOL_VERSION);
 	KV("hooks.manifest", ld.manifest);
-	KV("selftest.result", "pass");
+	KV("selftest.result", run.net ? "pass (spine, net)" : "pass (spine)");
 	KV("ring.spine.bytes", ring_b);
+	KV("ring.bulk.bytes", run.net ? bulk_b : "0 (--no-net: no network capture)");
 	KV("tz", tz);
 	KV("drain.sched", sched);
 	KV("recovered.bytes_cut", cut);
@@ -186,7 +192,8 @@ int main(int argc, char **argv)
 		return P15_EXIT_IO;
 	}
 	if (p15q_init(&run.q, run.cfg.queue_batches, run.cfg.batch_kb * 1024u) ||
-	    p15_drain_init(&d, &run, p15_loader_spine_rb_fd(&ld), p15_loader_counters_fd(&ld))) {
+	    p15_drain_init(&d, &run, p15_loader_spine_rb_fd(&ld), p15_loader_counters_fd(&ld), p15_loader_bulk_rb_fd(&ld),
+			   p15_loader_bulk_counters_fd(&ld))) {
 		logline("error", "oserr", "cannot allocate the queue or the drain");
 		return P15_EXIT_OSERR;
 	}
@@ -200,8 +207,8 @@ int main(int argc, char **argv)
 		logline("error", "oserr", "cannot start the writer thread");
 		return P15_EXIT_OSERR;
 	}
-	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u\n", run_dir, sched,
-		run.spine_ring_bytes);
+	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s\n", run_dir, sched,
+		run.spine_ring_bytes, run.net ? "on" : "off (--no-net)");
 	if (run.cfg.duration_s)
 		end_ns = p15_mono_ns() + (uint64_t)run.cfg.duration_s * 1000000000ull;
 

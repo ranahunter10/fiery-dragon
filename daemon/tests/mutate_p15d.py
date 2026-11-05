@@ -32,7 +32,8 @@ M = [
     # drain, writer, run: the books, GAP, END
     ("drain.c", "\t\tif (any)\n\t\t\temit_gap(d, from, to, now_ctr);", "\t\tif (any && 0)\n\t\t\temit_gap(d, from, to, now_ctr);", IT),
     ("drain.c", "\tatomic_fetch_add(&d->run->drained[h->type], 1);", "", IT),
-    ("drain.c", "\t\trun->bpf_base[k] = d->prev_ctr[k];", "", IT),
+    ("writer.c", "\tdrained -= r->spine_selftest_consumed;", "", UNIT),
+    ("writer.c", "\tuint64_t emitted = 0, drained = r->spine_selftest_consumed;", "\tuint64_t emitted = 0, drained = 0;", UNIT),
     ("writer.c", "\tif (inv == P15_INV_BROKEN)\n\t\tp15_run_set_state(r, P15_RUN_INVALID, why);", "", UNIT),
     ("writer.c", "\tif (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost)) {", "\tif (0) {", UNIT),
     ("writer.c", "\tif (emitted != drained + atomic_load(&r->spine_invalid)) {", "\tif (0) {", UNIT),

@@ -85,7 +85,7 @@ static void segment(const char *path)
 	size_t n;
 	unsigned char *b = slurp(path, &n);
 	struct p15w_scan s;
-	char v[160];
+	char v[1100];
 	static const char *const keys[] = { "run.id", "kernel.release", "schema.hash", "hooks.manifest", "drain.sched" };
 
 	if (!b) {

@@ -12,6 +12,14 @@
 #include "p15_records.h"
 #include "writer.h"
 
+/* A NET counter since the run's start (run.h). */
+static uint64_t netc(struct p15_run *r, int kind)
+{
+	int k = P15_CTR_INDEX(P15_T_NET, kind);
+
+	return atomic_load(&r->bulk[k]) - r->bulk_base[k];
+}
+
 /* A BPF counter since the run's start (the self-test's own events excluded, run.h). */
 static uint64_t bpfc(struct p15_run *r, int type, int kind)
 {
@@ -32,13 +40,23 @@ int p15_invariant_check(struct p15_run *r, char *why, size_t n)
 	return inv;
 }
 
+/*
+ * ADR-0006 rule 6, exactly: absolute counters since load, with the records the self-tests took
+ * from the rings counted on the drain side. (A base taken after the self-test would race with
+ * records emitted before it and drained after it.)
+ */
+static uint64_t abs_c(_Atomic uint64_t *a, int type, int kind)
+{
+	return atomic_load(&a[P15_CTR_INDEX(type, kind)]);
+}
+
 static int invariant(struct p15_run *r, char *why, size_t n)
 {
-	uint64_t emitted = 0, drained = 0;
+	uint64_t emitted = 0, drained = r->spine_selftest_consumed;
 
 	for (int t = 1; t < P15_SPINE_TYPES; t++) {
-		uint64_t seen = bpfc(r, t, P15_CK_SEEN), em = bpfc(r, t, P15_CK_EMITTED);
-		uint64_t lost = bpfc(r, t, P15_CK_RESERVE_FAILED) + bpfc(r, t, P15_CK_BUILD_FAILED);
+		uint64_t seen = abs_c(r->bpf, t, P15_CK_SEEN), em = abs_c(r->bpf, t, P15_CK_EMITTED);
+		uint64_t lost = abs_c(r->bpf, t, P15_CK_RESERVE_FAILED) + abs_c(r->bpf, t, P15_CK_BUILD_FAILED);
 
 		if (seen != em + lost) {
 			snprintf(why, n, "type %d: seen %llu != emitted %llu + lost %llu", t, (unsigned long long)seen,
@@ -49,15 +67,37 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		drained += atomic_load(&r->drained[t]);
 	}
 	if (emitted != drained + atomic_load(&r->spine_invalid)) {
-		snprintf(why, n, "emitted %llu != drained %llu + invalid %llu", (unsigned long long)emitted,
-			 (unsigned long long)drained, (unsigned long long)atomic_load(&r->spine_invalid));
+		snprintf(why, n, "emitted %llu != drained %llu (incl. %llu by the self-test) + invalid %llu",
+			 (unsigned long long)emitted, (unsigned long long)drained,
+			 (unsigned long long)r->spine_selftest_consumed, (unsigned long long)atomic_load(&r->spine_invalid));
 		return P15_INV_BROKEN;
 	}
+	drained -= r->spine_selftest_consumed;
 	if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost)) {
 		snprintf(why, n, "drained %llu != written %llu + drain_lost %llu", (unsigned long long)drained,
 			 (unsigned long long)atomic_load(&r->spine_written),
 			 (unsigned long long)atomic_load(&r->spine_drain_lost));
 		return P15_INV_BROKEN;
+	}
+	if (r->net) {
+		uint64_t seen = abs_c(r->bulk, P15_T_NET, P15_CK_SEEN), em = abs_c(r->bulk, P15_T_NET, P15_CK_EMITTED);
+		uint64_t out = abs_c(r->bulk, P15_T_NET, P15_CK_RESERVE_FAILED) + abs_c(r->bulk, P15_T_NET, P15_CK_EXCLUDED);
+		uint64_t nd = atomic_load(&r->net_drained);
+
+		if (seen != em + out) {
+			snprintf(why, n, "NET: seen %llu != emitted %llu + reserve_failed/excluded %llu",
+				 (unsigned long long)seen, (unsigned long long)em, (unsigned long long)out);
+			return P15_INV_BROKEN;
+		}
+		if (em != nd + r->net_selftest_consumed + atomic_load(&r->net_invalid) ||
+		    nd != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
+			snprintf(why, n, "NET: emitted %llu, drained %llu + %llu by the self-test, invalid %llu, written %llu, drain_lost %llu",
+				 (unsigned long long)em, (unsigned long long)nd, (unsigned long long)r->net_selftest_consumed,
+				 (unsigned long long)atomic_load(&r->net_invalid),
+				 (unsigned long long)atomic_load(&r->net_written),
+				 (unsigned long long)atomic_load(&r->net_drain_lost));
+			return P15_INV_BROKEN;
+		}
 	}
 	snprintf(why, n, "closed");
 	return P15_INV_CLOSED;
@@ -69,6 +109,8 @@ static void append(struct p15_writer *w, unsigned ring, uint32_t count, const vo
 
 	if (ring == P15W_RING_SPINE)
 		atomic_fetch_add(rc ? &w->run->spine_drain_lost : &w->run->spine_written, count);
+	else if (ring == P15W_RING_BULK)
+		atomic_fetch_add(rc ? &w->run->net_drain_lost : &w->run->net_written, count);
 	if (rc)
 		p15_fail(w->run, P15_EXIT_IO, "WAL append failed");
 }
@@ -170,10 +212,39 @@ static void textfile(struct p15_writer *w, const struct p15_stats *s)
 	fprintf(f, "# TYPE p15_wal_bytes_total counter\np15_wal_bytes_total %llu\n", (unsigned long long)s->wal_bytes);
 	fprintf(f, "# TYPE p15_poll_gap_max_seconds gauge\np15_poll_gap_max_seconds %.6f\n", (double)s->poll_gap_max_ns / 1e9);
 	fprintf(f, "# TYPE p15_spine_fill_max_bytes gauge\np15_spine_fill_max_bytes %llu\n", (unsigned long long)s->spine_fill_max);
+	if (w->run->net) {
+		static const char *const nk[] = { "seen", "emitted", "reserve_failed" };
+
+		fprintf(f, "# HELP p15_net_events_total NET hook events by cause (ADR-0004).\n# TYPE p15_net_events_total counter\n");
+		for (int k = 0; k < 3; k++)
+			fprintf(f, "p15_net_events_total{cause=\"%s\"} %llu\n", nk[k], (unsigned long long)netc(w->run, k));
+		fprintf(f, "p15_net_events_total{cause=\"excluded\"} %llu\n", (unsigned long long)netc(w->run, P15_CK_EXCLUDED));
+		fprintf(f, "p15_net_events_total{cause=\"written\"} %llu\n", (unsigned long long)atomic_load(&w->run->net_written));
+	}
 	fprintf(f, "# HELP p15_run_state 0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3).\n# TYPE p15_run_state gauge\n");
 	fprintf(f, "p15_run_state %u\n", s->run_state);
 	if (fclose(f) || rename(tmp, w->run->cfg.textfile))
 		p15_run_set_state(w->run, P15_RUN_DEGRADED, "textfile not writable");
+}
+
+static void net_stats(struct p15_writer *w)
+{
+	struct p15_run *r = w->run;
+	struct p15_net_stats s;
+
+	memset(&s, 0, sizeof(s));
+	p15_daemon_hdr(r, &s, P15_T_NET_STATS, P15_NET_STATS_VERSION, sizeof(s));
+	s.net_seen = netc(r, P15_CK_SEEN);
+	s.net_emitted = netc(r, P15_CK_EMITTED);
+	s.net_reserve_failed = netc(r, P15_CK_RESERVE_FAILED);
+	s.net_excluded = netc(r, P15_CK_EXCLUDED);
+	s.net_drained = atomic_load(&r->net_drained);
+	s.net_invalid = atomic_load(&r->net_invalid);
+	s.net_written = atomic_load(&r->net_written);
+	s.net_drain_lost = atomic_load(&r->net_drain_lost);
+	s.bulk_fill_max = atomic_exchange(&r->bulk_fill_max, 0);
+	s.bulk_ring_bytes = r->bulk_ring_bytes;
+	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 }
 
 static void stats(struct p15_writer *w, uint64_t now)
@@ -182,6 +253,8 @@ static void stats(struct p15_writer *w, uint64_t now)
 
 	fill_stats(w, &s, now);
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
+	if (w->run->net)
+		net_stats(w);
 	textfile(w, &s);
 	w->prev_stats_ns = now;
 	if (++w->stats_written % 10 == 0)

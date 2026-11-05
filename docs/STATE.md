@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-02 (UTC), PR "daemon: p15d, the capture daemon"
+**Last updated:** 2026-11-02 (UTC), PR "bpf: network-intent capture into the bulk ring (ADR-0004)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -84,7 +84,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 19. **Demo track (maintainer, 2026-11-02): "given a port, show what happened".** It pulls a network-intent slice of Phase 3 forward. Nothing here is demo-only: each item is a Phase-1 or Phase-3 deliverable.
     1. 🔧 ADR-0004 (proposed): fexit on the IPv4/IPv6 proto_ops for connect, accept, listen and bind; a NET record on the bulk ring, keyed by socket cookie. The probe passes on the CI runner's 7.0.0-1017-azure (E-0079); the VM run is pending. PR #35;
     2. 🔧 `p15d` (step 4b PRs 4–5 in one): the SPSC queue, drain and writer threads, WAL header, STATS/CLOCK_SYNC/GAP/END, run state and invariant, textfile, strict config; `p15w-inspect`. The end-to-end test passes all 4 cases in the dev container, including the forced overflow (INVALID with GAP records, books closed); 17/17 planted bugs caught (E-0080). Not yet: the drain-stall test, the bulk ring (with item 3);
-    3. NET records in the schema, the production NET programs, and the self-test extension (ADR-0004 rule 6);
+    3. 🔧 NET (type 5) and NET_STATS (36) in the schema; `bpf/progs/net.bpf.c` on the bulk ring; the network self-test at load (ADR-0004 rule 6); `p15d` drains both rings, NET loss makes the run DEGRADED, the invariant covers NET; `--no-net` for hosts without fentry/fexit, recorded in the header. Container: the end-to-end test passes with `--no-net`; the network case runs in CI (`P15_IT_NET=1`) and on the VM. Depends on ADR-0004 being accepted;
     4. the Python WAL reader (step 5) and process tree, then `p15-trace --port N`: listeners, accepted connections (joined by cookie), outbound connects, each with its process lineage; text output and a self-contained HTML report;
     5. a scripted demo scenario on the VM, with evidence, plus rehearsal notes.
 

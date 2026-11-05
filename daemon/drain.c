@@ -74,7 +74,31 @@ static int on_spine(void *ctx, void *data, size_t size)
 
 static int read_counters(struct p15_drain *d, uint64_t sum[P15_CTR_MAX]);
 
-int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd)
+static int on_bulk(void *ctx, void *data, size_t size)
+{
+	struct p15_drain *d = ctx;
+	const struct p15_hdr *h = data;
+	const char *why;
+	int rc;
+
+	if (p15_rec_check(data, size, &why) || h->type != P15_T_NET) {
+		atomic_fetch_add(&d->run->net_invalid, 1);
+		p15_run_set_state(d->run, P15_RUN_DEGRADED, "a bulk record failed its checks");
+		return 0;
+	}
+	rc = put(d, P15W_RING_BULK, data, h->len);
+	if (rc) {
+		d->queue_full_now = 1;
+		return rc;
+	}
+	atomic_fetch_add(&d->run->net_drained, 1);
+	return 0;
+}
+
+static int read_map(struct p15_drain *d, int fd, uint64_t sum[P15_CTR_MAX]);
+
+int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
+		   int bulk_ctr_fd)
 {
 	memset(d, 0, sizeof(*d));
 	d->run = run;
@@ -90,6 +114,22 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 	if (!d->rb)
 		return -errno;
 	d->spine = ring_buffer__ring(d->rb, 0);
+	d->bulk_ctr_fd = bulk_ctr_fd;
+	if (bulk_rb_fd >= 0) {
+		if (ring_buffer__add(d->rb, bulk_rb_fd, on_bulk, d))
+			return -errno;
+		d->bulk = ring_buffer__ring(d->rb, 1);
+		{
+			int rc = read_map(d, bulk_ctr_fd, d->prev_bulk);
+
+			if (rc)
+				return rc;
+			for (int k = 0; k < P15_CTR_MAX; k++) {
+				run->bulk_base[k] = d->prev_bulk[k];
+				atomic_store(&run->bulk[k], d->prev_bulk[k]);
+			}
+		}
+	}
 	d->prev_read_ns = d->last_poll_ns = p15_boot_ns();
 	/* the self-test's records were consumed by the self-test: the run's books start here */
 	{
@@ -115,13 +155,13 @@ void p15_drain_free(struct p15_drain *d)
 	d->ctr_keys = NULL;
 }
 
-/* Read and sum the per-CPU counters in one batch lookup. */
-static int read_counters(struct p15_drain *d, uint64_t sum[P15_CTR_MAX])
+/* Read and sum a per-CPU counter map in one batch lookup. */
+static int read_map(struct p15_drain *d, int fd, uint64_t sum[P15_CTR_MAX])
 {
 	__u32 count = P15_CTR_MAX, out_batch;
 	int rc;
 
-	rc = bpf_map_lookup_batch(d->ctr_fd, NULL, &out_batch, d->ctr_keys, d->ctr_vals, &count, NULL);
+	rc = bpf_map_lookup_batch(fd, NULL, &out_batch, d->ctr_keys, d->ctr_vals, &count, NULL);
 	if (rc && errno != ENOENT)
 		return -errno;
 	if (count != P15_CTR_MAX)
@@ -132,6 +172,11 @@ static int read_counters(struct p15_drain *d, uint64_t sum[P15_CTR_MAX])
 			sum[k] += d->ctr_vals[(size_t)k * (size_t)d->ncpu + (size_t)c];
 	}
 	return 0;
+}
+
+static int read_counters(struct p15_drain *d, uint64_t sum[P15_CTR_MAX])
+{
+	return read_map(d, d->ctr_fd, sum);
 }
 
 static void emit_gap(struct p15_drain *d, uint64_t from, uint64_t to, const uint64_t *now_ctr)
@@ -200,6 +245,21 @@ static int after_poll(struct p15_drain *d)
 		return rc;
 	for (int k = 0; k < P15_CTR_MAX; k++)
 		atomic_store(&d->run->bpf[k], now_ctr[k]);
+	if (d->bulk) {
+		uint64_t b[P15_CTR_MAX], f = ring__avail_data_size(d->bulk), bm = atomic_load(&d->run->bulk_fill_max);
+		int k = P15_CTR_INDEX(P15_T_NET, P15_CK_RESERVE_FAILED);
+
+		while (f > bm && !atomic_compare_exchange_weak(&d->run->bulk_fill_max, &bm, f))
+			;
+		rc = read_map(d, d->bulk_ctr_fd, b);
+		if (rc)
+			return rc;
+		for (int i = 0; i < P15_CTR_MAX; i++)
+			atomic_store(&d->run->bulk[i], b[i]);
+		if (b[k] != d->prev_bulk[k])           /* counted bulk loss: DEGRADED, never INVALID (ADR-0004 rule 4) */
+			p15_run_set_state(d->run, P15_RUN_DEGRADED, "NET records lost to a full bulk ring");
+		memcpy(d->prev_bulk, b, sizeof(b));
+	}
 	{
 		int any = 0;
 

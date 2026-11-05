@@ -33,7 +33,7 @@ C_NAMES = {"u8": "__u8", "u16": "__u16", "u32": "__u32", "u64": "__u64", "i32": 
 HEADER_SIZE = 32
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 RECORD_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
-CLASSES = {"SPINE", "FLOW", "OPEN", "CAP", "MARKER", "STATS"}
+CLASSES = {"SPINE", "FLOW", "OPEN", "CAP", "MARKER", "STATS", "NET"}
 LEN_UNKNOWN = 0xFFFFFFFF
 MAX_RECORD = 0xFFFF          # header.len is u16
 

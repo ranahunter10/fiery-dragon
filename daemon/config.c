@@ -31,7 +31,7 @@ static const struct opt OPTS[] = {
 
 void p15_config_usage(FILE *f)
 {
-	fprintf(f, "usage: p15d --wal-dir DIR [--textfile PATH] [--no-rt]");
+	fprintf(f, "usage: p15d --wal-dir DIR [--textfile PATH] [--no-rt] [--no-net]");
 	for (size_t i = 0; i < NOPTS; i++)
 		fprintf(f, " [%s N]", OPTS[i].flag);
 	fprintf(f, "\n");
@@ -56,6 +56,7 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 {
 	memset(c, 0, sizeof(*c));
 	c->realtime = 1;
+	c->net = 1;
 	for (size_t i = 0; i < NOPTS; i++)
 		*(uint32_t *)((char *)c + OPTS[i].off) = OPTS[i].def;
 	for (int a = 1; a < argc; a++) {
@@ -64,6 +65,10 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 
 		if (!strcmp(f, "--no-rt")) {
 			c->realtime = 0;
+			continue;
+		}
+		if (!strcmp(f, "--no-net")) {
+			c->net = 0;
 			continue;
 		}
 		if (!strcmp(f, "--wal-dir") || !strcmp(f, "--textfile")) {
@@ -127,6 +132,12 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 	if (n < max) {
 		snprintf(vals[n], 24, "%s", c->realtime ? "yes" : "no");
 		kv[n].key = "config.realtime";
+		kv[n].value = vals[n];
+		n++;
+	}
+	if (n < max) {
+		snprintf(vals[n], 24, "%s", c->net ? "yes" : "no");
+		kv[n].key = "config.net";
 		kv[n].value = vals[n];
 		n++;
 	}

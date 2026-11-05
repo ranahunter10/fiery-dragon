@@ -19,6 +19,7 @@ enum p15_ctr_kind {
 	P15_CK_READ_FAILED = 3,    /* a memory read for an emitted record failed */
 	P15_CK_TRUNCATED = 4,      /* a variable-length field of an emitted record was cut */
 	P15_CK_BUILD_FAILED = 5,   /* no buffer to build the record in, or a dynptr write refused: no record */
+	P15_CK_EXCLUDED = 6,       /* not recorded by policy (ADR-0006 rule 6 excluded_by_policy), e.g. a failed accept */
 	P15_CK__N = 8,
 };
 

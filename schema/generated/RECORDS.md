@@ -205,3 +205,46 @@ Fixed part 56 bytes; at most 312 bytes with its variable fields.
 Variable-length fields, after the fixed part in this order:
 
 - `reason` (at most 256 bytes): why the run ended, one line of text; 'stop requested' on an orderly stop
+
+## NET (type 5, version 1, class NET)
+
+One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted.
+
+Fixed part 104 bytes; at most 104 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `sock_cookie` | u64 | bpf_get_socket_cookie of the socket; for accept, of the new connection. (boot_id, cookie) names a socket for the run (ADR-0004 rule 5) |
+| 40 | `peer_cookie` | u64 | accept: the listening socket's cookie, which links the connection to its listener; otherwise 0 |
+| 48 | `laddr` | char[16] | local address after the operation; IPv4 in the first 4 bytes, network order |
+| 64 | `raddr` | char[16] | remote address: for connect the requested one (kernel copy), for accept the peer; zero for listen and bind |
+| 80 | `netns` | u32 | network namespace inode (as in /proc/PID/ns/net) |
+| 84 | `ret` | i32 | the hook's return value: 0, -EINPROGRESS, -ECONNREFUSED, -EADDRINUSE, ... (ADR-0004 rule 3) |
+| 88 | `op` | u16 | 1 CONNECT, 2 ACCEPT, 3 LISTEN, 4 BIND |
+| 90 | `family` | u16 | AF_INET 2 or AF_INET6 10 |
+| 92 | `proto` | u16 | IPPROTO_TCP 6 or IPPROTO_UDP 17 |
+| 94 | `lport` | u16 | local port, host order |
+| 96 | `rport` | u16 | remote port, host order |
+| 98 | `_pad` | char[6] | zero; pads the fixed part to 8 *(generated)* |
+
+## NET_STATS (type 36, version 1, class STATS)
+
+The bulk ring's health, written with every STATS record: NET counters and their drain side (ADR-0004 rule 4, ADR-0006 rules 2 and 6). Cumulative from the run's start unless marked interval.
+
+Fixed part 112 bytes; at most 112 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `net_seen` | u64 | NET hook runs, cumulative |
+| 40 | `net_emitted` | u64 | NET records submitted to the bulk ring, cumulative |
+| 48 | `net_reserve_failed` | u64 | NET records lost to a full bulk ring (run DEGRADED), cumulative |
+| 56 | `net_excluded` | u64 | hook runs not recorded by policy: failed accepts, non-IP sockets, no sock (ADR-0004 rule 3), cumulative |
+| 64 | `net_drained` | u64 | NET records the drain copied into a batch, cumulative |
+| 72 | `net_invalid` | u64 | bulk records refused by p15_rec_check, never written, cumulative |
+| 80 | `net_written` | u64 | bulk records in batches the writer appended, cumulative |
+| 88 | `net_drain_lost` | u64 | drained bulk records the writer could not append, cumulative |
+| 96 | `bulk_fill_max` | u64 | the most bytes waiting in the bulk ring at a poll, this interval |
+| 104 | `bulk_ring_bytes` | u32 | the bulk ring's size |
+| 108 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
