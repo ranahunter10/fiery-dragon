@@ -1,0 +1,34 @@
+Attachment trace-join-vm.tgz, sha256 d15655a9a860efc90443ae49b5a68c65a0333c439457d3836283f737fdc8f5bb
+The segment of VM run 20261104T164452Z's case 5 (run 20261104T165025Z-9d6ad54f), committed here as vm-c5-run-seg-00000000.p15w.
+
+$ build/p15w-inspect -v vm-c5-run-seg-00000000.p15w's run   (container, commit 79b9503; the NET records and the END)
+    [1] NET    ts=7015593723427 tgid=105936 tid=105936 start=7015567514223 flags=0x0 op=BIND proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4150 peer=0 netns=4026531833
+    [1] NET    ts=7015593732245 tgid=105936 tid=105936 start=7015567514223 flags=0x0 op=LISTEN proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4150 peer=0 netns=4026531833
+    [2] NET_STATS ts=7016082378151 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=2 emitted=2 reserve_failed=0 excluded=0 drained=2 invalid=0 written=2 drain_lost=0 fill_max=0
+    [1] NET    ts=7016138659796 tgid=105936 tid=105936 start=7015567514223 flags=0x0 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:55246 cookie=4151 peer=4150 netns=4026531833
+    [1] NET    ts=7016138671981 tgid=105938 tid=105938 start=7016079838534 flags=0x0 op=CONNECT proto=tcp ret=0 local=127.0.0.1:55246 remote=127.0.0.1:18077 cookie=116 peer=0 netns=4026531833
+    [1] NET    ts=7016189323586 tgid=105939 tid=105939 start=7016144103329 flags=0x0 op=CONNECT proto=tcp ret=0 local=127.0.0.1:55256 remote=127.0.0.1:18077 cookie=4152 peer=0 netns=4026531833
+    [1] NET    ts=7016189356765 tgid=105936 tid=105936 start=7015567514223 flags=0x0 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:55256 cookie=4153 peer=4150 netns=4026531833
+    [1] NET    ts=7016228228360 tgid=105940 tid=105940 start=7016196293149 flags=0x0 op=CONNECT proto=tcp ret=-111 local=0.0.0.0:0 remote=127.0.0.1:18078 cookie=117 peer=0 netns=4026531833
+    [2] NET_STATS ts=7016598515028 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7017103553149 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7017607341414 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7018111798831 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7018671449135 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7019177073379 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7019683651165 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7020185624998 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7020705491119 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7021308977597 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7021822940813 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+    [2] NET_STATS ts=7022140917662 tgid=105890 tid=105934 start=7012246623959 flags=0x0 seen=7 emitted=7 reserve_failed=0 excluded=0 drained=7 invalid=0 written=7 drain_lost=0 fill_max=0
+records: spine 41, bulk 7, daemon 29; invalid 0
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested"
+
+$ p15-trace --port 18077 <run>   at 42eb513 (before the fix)
+Summary: 1 listener(s); 2 connection(s) accepted, 1 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+  client -> accept: by endpoints on this host (an inference): 1 matched, 0 of them with more than one candidate (the nearest earlier connect taken), 1 not found
+
+$ p15-trace --port 18077 <run>   at 79b9503 (the fix)
+Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+  client -> accept: by endpoints on this host (an inference): 2 matched, 0 of them with more than one candidate (the connect nearest in time taken, within 5 s either side), 1 whose connect returned after the accept, 0 not found

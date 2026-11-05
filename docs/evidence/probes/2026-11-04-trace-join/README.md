@@ -7,6 +7,10 @@
 - [`container.txt`](container.txt): the fix's tests, the Python mutation sweep and the end-to-end test in the container.
 - [`vm-verify-20261104T181920Z-summary.txt`](vm-verify-20261104T181920Z-summary.txt): the maintainer's paste of the VM rerun from step 14 on this PR's tip (`cc757c4`), as sent.
 - [`vm-c5-retrace-20261104T164452Z.txt`](vm-c5-retrace-20261104T164452Z.txt): the maintainer's paste of the fixed p15-trace (`cc757c4`) on the very run that failed, kept on the VM under that run's `it-runs/`.
+- [`vm-c5-run-seg-00000000.p15w`](vm-c5-run-seg-00000000.p15w): that run's WAL segment, from the maintainer's `trace-join-vm.tgz` (sha256 `d15655a9…f5bb`), with the VM's own outputs:
+  - [`vm-c5-trace-before.txt`](vm-c5-trace-before.txt): the failing p15-trace report, made by case 5;
+  - [`vm-c5-retrace-full.txt`](vm-c5-retrace-full.txt): the full report of the fixed p15-trace;
+- [`container-c5-segment.txt`](container-c5-segment.txt): that segment read in the container by `p15w-inspect -v`, and by p15-trace before and after the fix.
 
 ## Findings
 
@@ -14,7 +18,8 @@
 2. **The cause: one ACCEPT is stamped 12 µs before its own CONNECT (MEAS, VM; the maintainer's chat paste of `p15w-inspect -v` on case 5's run).**
    - ACCEPT on 127.0.0.1:18077: `ts_ns` 7016138659796, remote 127.0.0.1:55246.
    - The client's CONNECT: `ts_ns` 7016138671981, local 127.0.0.1:55246.
-   - That is 12,185 ns later. Both values are from the paste. The run's segment is still on the VM, under that run's `it-runs/`, and is to be added here.
+   - That is 12,185 ns later. Both records are in the committed segment, as `p15w-inspect -v` prints them in `container-c5-segment.txt`.
+   - The other client's records are in the usual order: its CONNECT is 33 µs before its ACCEPT.
 3. **Why it can happen (SRC).** Each NET record is stamped by an fexit program, that is, when the call returns. On loopback the server's `accept()` can return as soon as the handshake completes, while the client's `connect()` is still on its way back to user space. p15-trace took only a connect at or before the accept, so it dropped a correct match and counted it as `client_not_found`. That makes it a reader bug, not a capture loss: both records are in the WAL.
 4. **The fix (MEAS, container).** p15-trace now takes the connect with the same endpoints and network namespace that is **nearest in time on either side** of the accept, within `JOIN_WINDOW_NS` = 5 s.
    - A new counter, `connect_after_accept`, counts the matches whose connect came after the accept. Both reports print it.
@@ -50,6 +55,8 @@
    - The text report prints times to the millisecond, so the accept and its connect both show at t+0.612s. The 12,185 ns order shows only in the `connect_after_accept` count and in the raw records.
    - Before the fix, this run gave 1 of 2.
 
-## Not yet
-
-- The run's segment itself (`trace-join-vm.tgz` on the VM), so the two raw timestamps of finding 2 rest on a file here, not only on the chat paste and the count in finding 7.
+8. **Both sides reproduce from the file (MEAS, container).**
+   - The committed segment, read by p15-trace at `42eb513`, gives 1 of 2 matched and 1 not found: the VM's failure.
+   - At the fix, it gives 2 of 2 matched, 1 with its connect after the accept.
+   - The WAL is valid: 77 records, 0 invalid, END exit 0 with the invariant closed.
+   - Anyone can re-run both in a fresh clone.

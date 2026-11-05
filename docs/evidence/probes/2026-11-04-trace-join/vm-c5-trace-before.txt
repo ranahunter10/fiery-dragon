@@ -1,0 +1,48 @@
+p15-trace: port 18077
+run 20261104T165025Z-9d6ad54f on p15-dev, kernel 7.0.0-38-generic, captured from 16:50:25.111 UTC
+
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  kernel-skipped events: none (every hook ran for every event)
+  NET records: 7 captured, 0 lost to a full ring, 0 excluded by policy (failed accepts, non-IP sockets)
+
+Summary: 1 listener(s); 2 connection(s) accepted, 1 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+
+Listeners on port 18077
+  127.0.0.1:18077 tcp  cookie 4150  listening from 16:50:25.178 (t+0.067s)  by python3 (105936) ← pid 105028 [started before the capture]
+
+Connections accepted on port 18077
+  16:50:25.723 (t+0.612s)  127.0.0.1:55246 -> 127.0.0.1:18077  accepted by python3 (pid 105936)  (listener cookie 4150)
+      client: not on this host, or its connect is not in the run
+  16:50:25.774 (t+0.662s)  127.0.0.1:55256 -> 127.0.0.1:18077  accepted by python3 (pid 105936)  (listener cookie 4150)
+      client: python3 (105939) ← pid 105028 [started before the capture]  (matched by endpoints, connect at t+0.662s)
+
+Connects to port 18077
+  16:50:25.723 (t+0.612s)  127.0.0.1:55246 -> 127.0.0.1:18077 tcp  ok                      by python3 (105938) ← pid 105028 [started before the capture]
+  16:50:25.774 (t+0.662s)  127.0.0.1:55256 -> 127.0.0.1:18077 tcp  ok                      by python3 (105939) ← pid 105028 [started before the capture]
+
+Processes involved (4, with their ancestors)
+  pid 105936  python3 -c 
+import socket, time
+s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 18077)); s.listen(8)
+for _ in range(2):
+    c, _ = s.accept(); c.close()
+time.sleep(0.2)
+
+            started t+0.041s; exited 0 at t+0.869s
+            parent: pid 105028 [started before the capture]
+  pid 105028  (no program recorded)
+            started before the capture (its parent comes with the snapshot, step 4c); still running at the end of the run
+  pid 105938  python3 -c import socket; socket.create_connection(('127.0.0.1', 18077)).close()
+            started t+0.553s; exited 0 at t+0.616s
+            parent: pid 105028 [started before the capture]
+  pid 105939  python3 -c import socket; socket.create_connection(('127.0.0.1', 18077)).close()
+            started t+0.617s; exited 0 at t+0.668s
+            parent: pid 105028 [started before the capture]
+
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: by endpoints on this host (an inference): 1 matched, 0 of them with more than one candidate (the nearest earlier connect taken), 1 not found
+  process tree: 13 processes, 4 started before the capture (their parents come with the snapshot, step 4c), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+HTML report: /tmp/p15d-it-aFSmb2/c5-18077.html
