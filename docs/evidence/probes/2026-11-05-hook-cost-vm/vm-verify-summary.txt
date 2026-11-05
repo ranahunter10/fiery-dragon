@@ -1,0 +1,21 @@
+================ SUMMARY (20261105T025005Z, 7.0.0-38-generic, commit e1ddd83) ================
+PASS  1. prerequisites (apt) (1 s)
+PASS  2. checkout feat/bench-hook-cost (reset to origin: the branch may have been force-pushed) (3 s)
+PASS  3. venv + pinned packages (2 s)
+PASS  4. build (35 s)
+PASS  5. make check (schema, layout, C tests, hardening, exits, Python tests, reader vs C writer, evidence) (196 s)
+PASS  6. C tests under ASan/UBSan (7 s)
+PASS  7. queue under TSan (1 s)
+PASS  8. planted bugs: Python gates, reader, trace (33 s)
+PASS  9. planted bugs: WAL writer (88 s)
+PASS  10. planted bugs: record checks (31 s)
+PASS  11. smoke: verifier load, tp_btf attach, spine self-test (root) (13 s)
+PASS  12. smoke-net: ADR-0004 fexit hooks on THIS kernel (root) (1 s)
+PASS  13. the kernel's skips per design: recur_probe 3 x 2000 (root; ADR-0020 confirmation 1) (92 s)
+PASS  14. p15d end to end, network required, both readers, p15-trace on the real run (root) (37 s)
+PASS  15. planted bugs: p15d (root, runs the end-to-end test per mutant) (383 s)
+PASS  16. planted bugs: spine EXEC program (root, loads each mutant) (35 s)
+PASS  17. the demo story, with network capture (root) (33 s)
+PASS  18. the hook-path cost, paired, 20 rounds (root; ADR-0020 confirmation 5) (189 s)
+Everything is in /home/ashu/vm-verify-20261105T025005Z. Next: sha256sum /home/ashu/vm-verify-20261105T025005Z/verify.log; then send verify.log (or paste the SUMMARY block).
+ashu@p15-dev:~/fiery-dragon$
