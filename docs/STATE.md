@@ -5,6 +5,19 @@
 **Last updated:** 2026-11-02 (UTC), PR "daemon: p15d, the capture daemon"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
+## Resuming a session (read this first, then stop reading)
+
+So that no session re-reads the repo to find its place (the maintainer's request, 2026-11-02; the idea borrowed from Graphify, without installing it):
+1. This file: **Next step** (the demo track, §19) and **Decisions waiting**.
+2. [`docs/CODEMAP.md`](CODEMAP.md): one row per source file (its job and public names). Open a file only when its row says it is the one.
+3. The ADRs the task names, nothing else. The research notes are for decisions, not for every session.
+4. Open PRs: `gh api 'repos/ranahunter10/fiery-dragon/pulls?state=open' --jq '.[]|"#\(.number) \(.head.ref) \(.title)"'`. Stacked PRs say "Stacked on #N" in their first line.
+5. CI logs can be fetched: `gh api repos/ranahunter10/fiery-dragon/actions/jobs/<job id>/logs`.
+6. Facts that cost a round trip to learn:
+   - the dev container can't load fentry/fexit (E-0078); CI's runner (7.0.0-1017-azure) and the VM can;
+   - CI runs on pull requests and on `main` only, so a pushed branch without a PR has no CI;
+   - `pkill -f <pattern>` can match your own shell command: kill by PID.
+
 ## Phase 0 gate
 
 | Item | Status | Evidence |
