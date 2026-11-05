@@ -97,5 +97,7 @@ jobs:
           path: build/it-runs
           if-no-files-found: warn
           retention-days: 30
+      - name: Recursion-miss probe (E-0089; which hook and wake-up design the kernel skips least; runner kernel, not the target)
+        run: sudo make probe-recursion ROUNDS=3 EXECS=2000
       - name: Network-intent probe (fexit hooks of ADR-0004; runner kernel, not the target)
         run: uname -r && sudo make smoke-net

@@ -1,0 +1,10 @@
+# VM p15-dev-2604, 7.0.0-38-generic, 3 vCPUs. ~/rmcheck.sh output as the maintainer pasted it in the session chat (2026-11-04).
+# p15d (build of feat/demo 23bf46b) + 200 /bin/true; recursion_misses read with bpftool while p15d was attached.
+## drain at SCHED_FIFO 1 (default)
+--- run 1: spine_fork 0, spine_exec 13, spine_exit 12, spine_rename 14, all net_* 0 | FORK 210 EXEC 195 EXIT 198
+--- run 2: spine_fork 0, spine_exec 22, spine_exit 14, spine_rename 12, all net_* 0 | FORK 208 EXEC 184 EXIT 194
+--- run 3: spine_fork 0, spine_exec 15, spine_exit 17, spine_rename 10, all net_* 0 | FORK 211 EXEC 193 EXIT 193
+## drain with --no-rt
+--- run 1: spine_fork 0, spine_exec 7, spine_exit 28, spine_rename 4, all net_* 0 | FORK 210 EXEC 201 EXIT 182
+--- run 2: spine_fork 0, spine_exec 0, spine_exit 1, spine_rename 0, all net_* 0 | FORK 208 EXEC 206 EXIT 207
+--- run 3: spine_fork 0, spine_exec 3, spine_exit 10, spine_rename 2, all net_* 0 | FORK 210 EXEC 205 EXIT 200
