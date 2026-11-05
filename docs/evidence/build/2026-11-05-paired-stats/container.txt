@@ -1,0 +1,50 @@
+$ python3 -m unittest -v bench/quant/test_paired.py   (container, Python 3.13.16, scipy 1.18.1)
+test_estimate_is_median_of_walsh (bench.quant.test_paired.HodgesLehmannTest.test_estimate_is_median_of_walsh) ... ok
+test_interval_inverts_the_test (bench.quant.test_paired.HodgesLehmannTest.test_interval_inverts_the_test) ... ok
+test_n10_uses_the_ninth_order_statistics (bench.quant.test_paired.HodgesLehmannTest.test_n10_uses_the_ninth_order_statistics) ... ok
+test_too_few_rounds (bench.quant.test_paired.HodgesLehmannTest.test_too_few_rounds) ... ok
+test_means (bench.quant.test_paired.MedianTest.test_means) ... ok
+test_median (bench.quant.test_paired.MedianTest.test_median) ... ok
+test_median_ci_matches_enumeration (bench.quant.test_paired.MedianTest.test_median_ci_matches_enumeration) ... ok
+test_median_ci_n10 (bench.quant.test_paired.MedianTest.test_median_ci_n10) ... ok
+test_median_ci_too_small (bench.quant.test_paired.MedianTest.test_median_ci_too_small) ... ok
+test_bad_input (bench.quant.test_paired.ReportTest.test_bad_input) ... ok
+test_clear_effect_is_quotable (bench.quant.test_paired.ReportTest.test_clear_effect_is_quotable) ... ok
+test_drift_flag (bench.quant.test_paired.ReportTest.test_drift_flag) ... ok
+test_effect_inside_the_floor_is_not_quoted (bench.quant.test_paired.ReportTest.test_effect_inside_the_floor_is_not_quoted) ... ok
+test_floor_is_aa_against_untraced (bench.quant.test_paired.ReportTest.test_floor_is_aa_against_untraced) ... ok
+test_no_effect_is_not_resolved (bench.quant.test_paired.ReportTest.test_no_effect_is_not_resolved) ... ok
+test_p_must_be_below_five_percent (bench.quant.test_paired.ReportTest.test_p_must_be_below_five_percent) ... ok
+test_too_few_rounds_is_said (bench.quant.test_paired.ReportTest.test_too_few_rounds_is_said) ... ok
+test_zero_differences_are_reported (bench.quant.test_paired.ReportTest.test_zero_differences_are_reported) ... ok
+test_all_positive (bench.quant.test_paired.SignedRankTest.test_all_positive) ... ok
+test_counts_match_enumeration (bench.quant.test_paired.SignedRankTest.test_counts_match_enumeration) ... ok
+test_known_tail (bench.quant.test_paired.SignedRankTest.test_known_tail) ... ok
+test_p_matches_enumeration (bench.quant.test_paired.SignedRankTest.test_p_matches_enumeration) ... ok
+test_p_matches_scipy (bench.quant.test_paired.SignedRankTest.test_p_matches_scipy) ... ok
+test_ties_counted (bench.quant.test_paired.SignedRankTest.test_ties_counted) ... ok
+test_zeros_dropped_and_counted (bench.quant.test_paired.SignedRankTest.test_zeros_dropped_and_counted) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 0.149s
+
+OK
+
+$ python3 tools/ci/mutate_py.py   (the paired.py mutants and the total)
+killed    100 paired.py nxt[w + r] += c
+killed    101 paired.py r = (i + j + 2) / 2
+killed    102 paired.py lo = sum(counts[: math.floor(w) + 1])
+killed    103 paired.py p = min(1.0, 2 * min(lo, hi) / total)
+killed    104 paired.py est = median(w)
+killed    105 paired.py Interval(w[k - 1], w[m - k],
+killed    106 paired.py Interval(s[j - 1], s[n - j],
+killed    107 paired.py a = [math.log(v / u) for v, u in zip(aa, untraced)]
+killed    108 paired.py and not floor.ci.lo <= effect.estimate <= floor.ci.hi)
+killed    109 paired.py et.p_two_sided < 0.05
+killed    110 paired.py drift = abs(rom - math.exp(effect.estimate)) >
+killed    111 paired.py return len(xs) / math.fsum(1 / x for x in xs)
+killed    112 paired.py if t.zeros:
+mutation sweep: 113/113 killed
+
+$ tools/ci/run-tests.sh
+15 test files, 0 failed
