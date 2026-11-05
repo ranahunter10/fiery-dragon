@@ -54,8 +54,14 @@ static __always_inline void count(__u32 type, __u32 kind)
 	__u32 k = P15_CTR_INDEX(type, kind);
 	__u64 *v = bpf_map_lookup_elem(&spine_counters, &k);
 
+	/* Atomic, though the slot is per-CPU: on 7.0 a tp_btf or fentry/fexit program runs with
+	 * preemption on (rcu_read_lock_dont_migrate, kernel/bpf/trampoline.c), and the kernel's
+	 * recursion guard is per program, so two programs that share a slot can interleave on one
+	 * CPU. A plain `*v += 1` is a load, an add and a store: the preempted one would overwrite
+	 * the other's count, and the books would no longer close (E-0097). Today each spine slot has
+	 * one writer, but nothing enforces that; the atomic add makes it not matter. */
 	if (v)
-		*v += 1; /* per-CPU slot: no atomics needed */
+		__sync_fetch_and_add(v, 1);
 }
 
 static __always_inline void fill_hdr(struct p15_hdr *h, __u16 type, __u16 version, __u16 len, __u16 flags,

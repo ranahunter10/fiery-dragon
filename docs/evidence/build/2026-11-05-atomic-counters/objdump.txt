@@ -1,0 +1,4 @@
+$ llvm-objdump -d build/{spine,net}.bpf.o | grep -c 'lock *(u64'   (commit 9e8162d + this change)
+spine.bpf.o: 13 atomic adds
+net.bpf.o: 24 atomic adds
+      12:	db 10 00 00 00 00 00 00	lock *(u64 *)(r0 + 0x0) += r1
