@@ -1,0 +1,66 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && git fetch -q && git checkout feat/exec-v2-provenance
+make -s build/p15-spine && sudo build/p15-spine selftest 2>&1 | tee ~/selftest-v2.txt
+sudo python3 bpf/test/mutate_spine_exec.py 2>&1 | tee ~/mutate-spine-v2.txt
+Already on 'feat/exec-v2-provenance'
+Your branch is up to date with 'origin/feat/exec-v2-provenance'.
+p15-spine: libbpf v1.7, 4 programs attached
+selftest: daemon 87808, child 87810, grandchild 87811; 7 records collected, 0 invalid
+  ok    test child exited 0
+  ok    every record passes the length checks (none invalid)
+  ok    no record dropped for lack of memory
+  ok    every record takes exactly its len in the ring (ADR-0017; 0 do not)
+  ok    exactly one FORK of the child by the daemon (found 1)
+  ok      ... as a new process (kind 1)
+  ok    every child record carries the start_ns its FORK announced (ADR-0009)
+  ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+  ok    exactly 2 RENAMEs from the child (found 2)
+  ok      ... first: daemon comm -> "fd-selftest" (prctl)
+  ok      ... second: "fd-selftest" -> "true" (exec)
+  ok    exactly one FORK of the grandchild by the child (found 1)
+  ok      ... a new process with its own start_ns
+  ok    exactly one EXEC from the child (found 1)
+  ok      ... filename "/bin/true", not truncated
+  ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+  ok      ... no flags; old_tid is the child
+  ok      ... the current EXEC version (v2, ADR-0025)
+  ok      ... exe ino and dev as stat(2) gives them
+  ok      ... exe nlink, mode and owner as stat(2) gives them
+  ok      ... exe filesystem magic as statfs(2) gives it
+  ok      ... exe ctime and mtime as stat(2) gives them (record 1792548341912494361 1787670447000000000, stat 1792548341912494361 1787670447000000000)
+  ok      ... exe_name is the basename of the resolved path, not truncated
+  ok      ... uid, euid, gid, egid, fsuid, fsgid are the daemon's
+  ok      ... fds 0, 1, 2 are the daemon's (ino, dev, rdev, mode as fstat(2) gives them)
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=9719337699943 tgid=87808 tid=87808 start=9719163797068 flags=0x0 child=87810/87810 child_start=9719337675074 kind=process
+    RENAME ts=9719338656243 tgid=87810 tid=87810 start=9719337675074 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=9719340839446 tgid=87810 tid=87810 start=9719337675074 flags=0x0 child=87811/87811 child_start=9719340826834 kind=process
+    EXIT   ts=9719342789565 tgid=87811 tid=87811 start=9719340826834 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=9719347021651 tgid=87810 tid=87810 start=9719337675074 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=9719347229429 tgid=87810 tid=87810 start=9719337675074 flags=0x0 old_tid=87810 exe=8388610:526290 gen=3505084858 name="gnutrue" nlink=1 fsmagic=0xef53 mode=0100755 uid=0 euid=0 self_exec_id=9 file="/bin/true" (9/9) argv="true fd-selftest " (17/17) stdin=4:020600 stdout=33959:010600 stderr=33959:010600
+    EXIT   ts=9719365967226 tgid=87810 tid=87810 start=9719337675074 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+          FORK        3        3               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+killed    0 if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {
+killed    1 len = exec_len(end);
+killed    2 r->argv_len = av_len;
+killed    3 r->filename_len = fn_len;
+killed    4 count(P15_T_EXEC, P15_CK_EMITTED);
+killed    5 count(P15_T_EXEC, P15_CK_SEEN);
+killed    6 (BPF_CORE_READ(ei, i_ctime_nsec) & P15_CTIME_NSEC_MASK)
+killed    7 BPF_CORE_READ(ei, i_mtime_nsec);
+killed    8 r->exe_nlink = BPF_CORE_READ(ei, __i_nlink);
+killed    9 r->exe_fs_magic = (__u32)BPF_CORE_READ(ei, i_sb, s_magic);
+killed    10 r->egid = BPF_CORE_READ(c, egid.val);
+killed    11 n = bpf_probe_read_kernel_str(tail + at, P15_EXEC_EXE_NAME_MAX, nm);
+killed    12 fd_identity(fdarr, max_fds, 2, &r->stderr_ino
+killed    13 *mode = BPF_CORE_READ(ino_p, i_mode);
+mutation sweep: 14/14 killed
+ashu@p15-dev:~/fiery-dragon$

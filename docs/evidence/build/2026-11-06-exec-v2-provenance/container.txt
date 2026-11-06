@@ -1,0 +1,91 @@
+# dev container (kernel 6.18.44-fc-v242, not the target), commit e14c035, 2026-11-06T16:56:19Z
+# tracefs: /sys/kernel/tracing is a mountpoint
+
+## 1. the bug, reproduced: the ctime mask removed (mutant 6 of mutate_spine_exec.py), self-test run
+  FAIL    ... exe ctime and mtime as stat(2) gives them (record 1787670545147483648 1787670543000000000, stat 1787670543000000000 1787670543000000000)
+selftest: FAIL (1 failed checks)
+(source restored, git diff clean)
+
+## 2. the fixed source: the self-test
+p15-spine: libbpf v1.7, 4 programs attached
+selftest: daemon 4548, child 4549, grandchild 4550; 7 records collected, 0 invalid
+  ok    test child exited 0
+  ok    every record passes the length checks (none invalid)
+  ok    no record dropped for lack of memory
+  ok    every record takes exactly its len in the ring (ADR-0017; 0 do not)
+  ok    exactly one FORK of the child by the daemon (found 1)
+  ok      ... as a new process (kind 1)
+  ok    every child record carries the start_ns its FORK announced (ADR-0009)
+  ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+  ok    exactly 2 RENAMEs from the child (found 2)
+  ok      ... first: daemon comm -> "fd-selftest" (prctl)
+  ok      ... second: "fd-selftest" -> "true" (exec)
+  ok    exactly one FORK of the grandchild by the child (found 1)
+  ok      ... a new process with its own start_ns
+  ok    exactly one EXEC from the child (found 1)
+  ok      ... filename "/bin/true", not truncated
+  ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+  ok      ... no flags; old_tid is the child
+  ok      ... the current EXEC version (v2, ADR-0025)
+  ok      ... exe ino and dev as stat(2) gives them
+  ok      ... exe nlink, mode and owner as stat(2) gives them
+  ok      ... exe filesystem magic as statfs(2) gives it
+  ok      ... exe ctime and mtime as stat(2) gives them (record 1787670543000000000 1787670543000000000, stat 1787670543000000000 1787670543000000000)
+  ok      ... exe_name is the basename of the resolved path, not truncated
+  ok      ... uid, euid, gid, egid, fsuid, fsgid are the daemon's
+  ok      ... fds 0, 1, 2 are the daemon's (ino, dev, rdev, mode as fstat(2) gives them)
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=225544566378 tgid=4548 tid=4548 start=225526567899 flags=0x0 child=4549/4549 child_start=225544563512 kind=process
+    RENAME ts=225544632357 tgid=4549 tid=4549 start=225544563512 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=225544747075 tgid=4549 tid=4549 start=225544563512 flags=0x0 child=4550/4550 child_start=225544744854 kind=process
+    EXIT   ts=225544810544 tgid=4550 tid=4550 start=225544744854 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=225545125495 tgid=4549 tid=4549 start=225544563512 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=225545163307 tgid=4549 tid=4549 start=225544563512 flags=0x0 old_tid=4549 exe=266338304:343334 gen=0 name="true" nlink=1 fsmagic=0xef53 mode=0100755 uid=0 euid=0 self_exec_id=8 file="/bin/true" (9/9) argv="true fd-selftest " (17/17) stdin=3:020666 stdout=1286704:0100644 stderr=1286704:0100644
+    EXIT   ts=225545836545 tgid=4549 tid=4549 start=225544563512 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+          FORK        2        2               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+
+## 3. planted bugs in the spine's EXEC program (root, real loads)
+killed    0 if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {
+killed    1 len = exec_len(end);
+killed    2 r->argv_len = av_len;
+killed    3 r->filename_len = fn_len;
+killed    4 count(P15_T_EXEC, P15_CK_EMITTED);
+killed    5 count(P15_T_EXEC, P15_CK_SEEN);
+killed    6 (BPF_CORE_READ(ei, i_ctime_nsec) & P15_CTIME_NSEC_MASK)
+killed    7 BPF_CORE_READ(ei, i_mtime_nsec);
+killed    8 r->exe_nlink = BPF_CORE_READ(ei, __i_nlink);
+killed    9 r->exe_fs_magic = (__u32)BPF_CORE_READ(ei, i_sb, s_magic);
+killed    10 r->egid = BPF_CORE_READ(c, egid.val);
+killed    11 n = bpf_probe_read_kernel_str(tail + at, P15_EXEC_EXE_NAME_MAX, nm);
+killed    12 fd_identity(fdarr, max_fds, 2, &r->stderr_ino
+killed    13 *mode = BPF_CORE_READ(ino_p, i_mode);
+mutation sweep: 14/14 killed
+
+## 4. C unit tests
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_run.c: 0 failures
+daemon/tests/test_snapshot.c: 0 failures
+
+## 5. planted bugs in records.c
+mutation sweep: 44/44 killed
+
+## 6. Python tests and their planted bugs
+17 test files, 0 failed
+mutation sweep: 143/143 killed
+
+## 7. lint as CI runs it
+All checks passed!
