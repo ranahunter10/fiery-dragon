@@ -2,7 +2,8 @@
 /*
  * The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record,
  * copies it at its own len into a queue batch, and publishes batches to the writer. It never
- * touches the disk. After every poll it reads the BPF loss counters and the kernel's per-program
+ * touches the disk. After every poll it reads the BPF loss counters (through their mapping, never a
+ * map syscall: ADR-0026) and the kernel's per-program
  * skip counters (recursion_misses, ADR-0020 rule 3); if spine records were lost or skipped since
  * the previous read it emits a GAP record that brackets the loss in time. Records don't wake it
  * below the rings' high-water mark (ADR-0020 rule 2), so every poll ends with a consume.
@@ -14,6 +15,7 @@
 #include <stdint.h>
 
 #include "compiler.h"
+#include "counters.h"
 #include "run.h"
 
 struct ring_buffer;
@@ -23,10 +25,8 @@ struct p15_drain {
 	struct p15_run *run;
 	struct ring_buffer *rb;
 	struct ring *spine, *bulk;
-	int ctr_fd, bulk_ctr_fd;
+	struct p15_counters ctr, bulk_ctr; /* mapped counter rows (ADR-0026); bulk_ctr unmapped without network */
 	int ncpu;
-	uint64_t *ctr_vals;              /* P15_CTR_MAX * ncpu, for one batch lookup */
-	uint32_t *ctr_keys;
 	struct p15q_slot *open;          /* the batch being filled, or NULL */
 	uint64_t prev_ctr[P15_CTR_MAX], prev_bulk[P15_CTR_MAX];
 	uint64_t prev_missed[P15_SPINE_TYPES], prev_net_missed;
