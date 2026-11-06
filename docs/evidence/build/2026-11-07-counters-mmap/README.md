@@ -16,5 +16,8 @@
 | p15d sweep: 28/30 killed in the full run; the other two (1 and 7) did not compile as first written (each left a parameter unused, which `-Werror` refuses), were rewritten to compile, and are killed in a rerun of those two. So 30/30, in two runs | MEAS | §9 |
 | Spine EXEC sweep 14/14, records 44/44, Python 143/143; 17 Python test files 0 failed; CI lint clean | MEAS | §10–12 |
 
+## CI (7.0.0-1017-azure, network capture on)
+- The first CI run of this PR failed case 7 with "got: 1": with network capture on, the loader loaded the net object, and libbpf wrote its rodata, after the spine was attached. The dev container runs with `--no-net`, so it could not see this. Fixed in `loader.c` (every object loaded before any attach); the next CI run passes case 7 with 0 map syscalls after attach and 2,864 info calls, and the whole end-to-end test (PR #57's checks).
+
 ## Not yet
 - The VM run: `it_p15d.sh` (case 7 under strace) and `mutate_p15d.py`.
