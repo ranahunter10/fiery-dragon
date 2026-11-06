@@ -81,7 +81,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
           3. 🔧 the daemon records CLOCK_SYNC (32), STATS (33), GAP (34), END (35) in the schema, version 1, each field tied to an ADR line; the schema hash for the WAL header; `p15_rec_check` knows them and requires fixed-size records to have exactly their size (E-0077). In review;
           4. the bounded SPSC batch queue, under ThreadSanitizer;
           5. `p15d` itself: loader, drain, writer, stats, config, the run state machine, `p15_fail`, and the L4 tests (forced overflow, drain stall);
-       3. 🔧 the process snapshot at each segment open, and the closing one at an orderly stop (ADR-0007 rule 3, ADR-0023; how it is taken: ADR-0024, proposed). Built and verified on the VM (E-0107): 18 of 18 steps pass, every snapshot is complete with its books closed, every user process has its path, pid 1 included. Case 1 and a live run reconcile complete; case 3 locates 10 lost EXITs within the 320 counted. A snapshot takes 0.21–0.91 ms for about 165 tasks;
+       3. 🔧 the process snapshot at each segment open, and the closing one at an orderly stop (ADR-0007 rule 3, ADR-0023; how it is taken: ADR-0024, accepted 2026-11-06). Built and verified on the VM (E-0107): 18 of 18 steps pass, every snapshot is complete with its books closed, every user process has its path, pid 1 included. Case 1 and a live run reconcile complete; case 3 locates 10 lost EXITs within the 320 counted. A snapshot takes 0.21–0.91 ms for about 165 tasks;
     5. Python WAL reader (generated, no defaults, `google-crc32c`), the P15R importer for v3.7 recordings, and the process tree (process end = the EXIT with `group_dead=1`, E-0066; the device number needs converting from the kernel's encoding);
     6. L0–L4 tests and the Phase-1 gate run on the VM (knee ≥ 10× v3.7, oracle diff).
 19. **Demo track (maintainer, 2026-11-02): "given a port, show what happened".** It pulls a network-intent slice of Phase 3 forward. Nothing here is demo-only: each item is a Phase-1 or Phase-3 deliverable.
@@ -172,4 +172,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **ADR-0024 (proposed):** how the snapshot is taken: the path from the pinned mapping, books that close, the closing snapshot on the writer thread with END v2, and a window that sets aside processes forked during the closing snapshot (supersedes ADR-0023 rule 2 in part). Recommendation: accept. Its confirmations 1–3 have passed, on the VM included. Evidence: [E-0106, E-0107](evidence/build/2026-11-05-snapshot-4c/README.md), kernel v7.0 source cited in the ADR.
+None.

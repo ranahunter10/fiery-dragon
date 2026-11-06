@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-05
+accepted: 2026-11-06
 owner: Ashish Rana
 consulted: [ADR-0007 rule 3, ADR-0023 rules 1-2, kernel v7.0 source (kernel/bpf/bpf_iter.c, kernel/bpf/task_iter.c, kernel/trace/bpf_trace.c, fs/bpf_fs_kfuncs.c), the kernel's selftest bpf_iter_task_vmas.c, ARIES fuzzy checkpoints (research note 2026-11-05)]
 supersedes: ADR-0023 rule 2 in part (the "gone by the end" check gains a window)
