@@ -36,7 +36,13 @@ static int fake_clock(clockid_t id, struct timespec *ts)
 
 static char *tmpdir(void)
 {
-	char tmpl[] = "/tmp/p15w-test-XXXXXX";
+	/* Honour $TMPDIR so the mutation sweep can give each mutant its own scratch directory
+	 * and reclaim it even when a planted bug makes the test run away and the timeout kills
+	 * it mid-write (E-0107: a killed test left 2.9 GB in /tmp and filled the per-user quota). */
+	const char *base = getenv("TMPDIR");
+	char tmpl[256];
+
+	snprintf(tmpl, sizeof(tmpl), "%s/p15w-test-XXXXXX", base && *base ? base : "/tmp");
 	char *d = mkdtemp(tmpl);
 
 	return d ? strdup(d) : NULL;
