@@ -125,20 +125,23 @@ int main(int argc, char **argv)
 
 	run.bulk_ring_bytes = run.cfg.bulk_ring_kb * 1024u;
 	run.net = run.cfg.net;
-	code = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));
-	if (code) {
-		logline("error", "load", err);
-		p15_loader_free(&ld);
-		return code;
-	}
-	run.start_ns = ld.daemon_start_ns;
+	/* The snapshot object first: loading it writes its .bss with a map update, which holds
+	 * bpf_prog_active while preemptible, so it must happen before any program is attached. From
+	 * the spine's attach on, p15d makes no map syscall (ADR-0026). */
 	code = p15_snapshot_init(&snap, &run, err, sizeof(err));
 	if (code) {
 		logline("error", "load", err);
 		p15_snapshot_free(&snap);
-		p15_loader_free(&ld);
 		return code;
 	}
+	code = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));
+	if (code) {
+		logline("error", "load", err);
+		p15_loader_free(&ld);
+		p15_snapshot_free(&snap);
+		return code;
+	}
+	run.start_ns = ld.daemon_start_ns;
 	for (int t = 0; t < P15_SPINE_TYPES; t++)
 		run.miss_fd[t] = ld.miss_fd[t];
 	for (int i = 0; i < ld.n_net_miss; i++)

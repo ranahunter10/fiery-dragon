@@ -24,13 +24,13 @@ M = [
     # row a CPU counts into (bpf/progs/*.bpf.c count()): every row is summed, so the choice changes
     # cache-line sharing, never a total.
     ("counters.c", "for (int r = 0; r <= ncpu; r++)", "for (int r = 0; r < ncpu; r++)", UNIT),
-    ("counters.c", "\t*ncpu_rodata = (uint32_t)ncpu;", "", UNIT),
+    ("counters.c", "\t*ncpu_rodata = (uint32_t)ncpu;", "\t(void)ncpu_rodata;", UNIT),
     ("counters.c", "if (ncpu <= 0 || ncpu > P15_CTR_NCPU_MAX)\n\t\treturn -EINVAL;\n\trc =", "if (ncpu > P15_CTR_NCPU_MAX)\n\t\treturn -EINVAL;\n\trc =", UNIT),
     ("counters.c", "bpf_map__type(map) != BPF_MAP_TYPE_ARRAY ||", "", UNIT),
     ("counters.c", "!(bpf_map__map_flags(map) & BPF_F_MMAPABLE) ||", "", UNIT),
     ("counters.c", "bpf_map__value_size(map) != sizeof(uint64_t) ||", "", UNIT),
     ("counters.c", "bpf_map__max_entries(map) != P15_CTR_ENTRIES((uint32_t)ncpu))", "0)", UNIT),
-    ("drain.c", "\tp15_counters_sum(c, sum);\n\treturn 0;", "\tmemset(sum, 0, sizeof(uint64_t) * P15_CTR_MAX);\n\treturn 0;", IT),
+    ("drain.c", "\tp15_counters_sum(c, sum);\n\treturn 0;", "\t(void)c;\n\tmemset(sum, 0, sizeof(uint64_t) * P15_CTR_MAX);\n\treturn 0;", IT),
     ("loader.c", "if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counters, &l->spine->rodata->spine_counters_ncpu,\n\t\t\t\t\t\t   l->ncpu)) {",
      "if (l->ncpu <= 0) {", IT),
     ("p15d.c", '\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\tcode = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n',

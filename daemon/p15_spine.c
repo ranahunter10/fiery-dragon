@@ -61,7 +61,7 @@ static int on_dump(void *ctx, void *data, size_t size)
 	return 0;
 }
 
-/* Sum the per-CPU counters. Returns 0 if no spine record was lost and every type's books close. */
+/* Sum the counter rows, read through their mapping (ADR-0026). Returns 0 if no spine record was lost and every type's books close. */
 static int print_counters(struct spine_bpf *skel)
 {
 	static const char *types[] = { "?", "FORK", "EXEC", "EXIT", "RENAME" };

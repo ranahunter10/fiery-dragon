@@ -117,6 +117,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ ADR-0022 (PR #52; CI and the VM join both clients exactly, E-0104): NET v2 with the client ISN, and the exact join in p15-trace (CI case 5 and the VM confirm it);
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
       - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
+      - 🔧 **ADR-0026** (proposed): the counters are an mmapable array, and p15d makes no map syscall once a program is attached; built and passing in the container (E-0119, E-0120). PR `fix/counters-mmap`. Next: CI, the VM run, acceptance;
+      - then slice B (STATE decisions taken 15.5);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -175,6 +177,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     2. **Socket → NET join deferred** to the data-flow slice, where `bpf_get_socket_cookie` is allowed. *(E-0118)*
     3. **Standard streams in PROC v2 deferred.** *(E-0118)*
     4. **#56 merged** with a merge commit at its tested head.
+5. **Slice B's plan** (maintainer, 2026-11-06: "accept recommended"): first the counter fix (ADR-0026), then a VM probe that measures fexit, kprobe+kretprobe and kprobe.session on the read/write paths (skips against a known count, cost, workload slowdown) and the path hook at open; then ADR-0015 (file identity) and ADR-0005 (filtering, Xu et al.'s merge rule read in the paper first) with those numbers; then the code. Scope as recommended; how PIDSMaker sees the code-provenance edges is deferred to the graph phase. Research: [`research/2026-11-06-dataflow-slice-b/`](research/2026-11-06-dataflow-slice-b/README.md) (on its branch). *(E-0119)*
 
 ## Decisions waiting
 
