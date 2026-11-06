@@ -54,11 +54,12 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
-         $(OUT)/exec_cost $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run
+         $(OUT)/exec_cost $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
+         $(OUT)/test_snapshot
 DAEMON_COMMON := daemon/records.c daemon/selftest.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
-            daemon/selftest_net.c \
+            daemon/selftest_net.c daemon/snapshot.c daemon/snapshot_frame.c \
             $(DAEMON_COMMON) $(WAL_SRC)
 # provenance for the WAL header (ADR-0007): the daemon's commit and the vendored bpftool's tag
 GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
@@ -124,7 +125,7 @@ $(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_rec
 $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
-$(OUT)/p15d: $(P15D_SRC) daemon/*.h $(OUT)/spine.skel.h $(OUT)/net.skel.h $(LIBBPF_A)
+$(OUT)/p15d: $(P15D_SRC) daemon/*.h $(OUT)/spine.skel.h $(OUT)/net.skel.h $(OUT)/snap.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) -DP15_GIT_COMMIT='"$(GIT_COMMIT)"' -DP15_BPFTOOL_VERSION='"$(BPFTOOL_TAG)"' $(LDFLAGS) \
 	  $(P15D_SRC) $(LDLIBS) -lpthread -o $@
 
@@ -154,6 +155,10 @@ $(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
 $(OUT)/test_records: daemon/tests/test_records.c daemon/records.c daemon/records.h schema/generated/p15_records.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $@
 
+$(OUT)/test_snapshot: daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/*.h \
+                      bpf/include/p15_snap.h schema/generated/p15_records.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c -o $@
+
 # The C writer's output, for the Python reader's cross-check (python/tests/it_wal_c.py).
 $(OUT)/wal_fixture: daemon/tests/wal_fixture.c $(WAL_SRC) daemon/wal.h schema/generated/p15_records.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/wal_fixture.c $(WAL_SRC) -o $@
@@ -165,7 +170,7 @@ it-pyreader: $(OUT)/wal_fixture
 	P15_WAL_FIXTURE=$(OUT)/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
 
 test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records $(OUT)/test_queue \
-        $(OUT)/test_config $(OUT)/test_run must-check-test
+        $(OUT)/test_config $(OUT)/test_run $(OUT)/test_snapshot must-check-test
 	$(OUT)/test_selftest
 	$(OUT)/test_wal
 	$(OUT)/test_exitcodes
@@ -173,6 +178,7 @@ test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_r
 	$(OUT)/test_queue
 	$(OUT)/test_config
 	$(OUT)/test_run
+	$(OUT)/test_snapshot
 
 # The queue's producer and consumer threads under ThreadSanitizer (ADR-0017 layer 2, ADR-0019 G3.4).
 test-c-tsan: | $(OUT)
@@ -197,12 +203,15 @@ test-c-asan: $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_records.c daemon/records.c -o $(OUT)/asan/test_records
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_queue.c daemon/queue.c -lpthread -o $(OUT)/asan/test_queue
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_config.c daemon/config.c -o $(OUT)/asan/test_config
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c \
+	  -o $(OUT)/asan/test_snapshot
 	$(OUT)/asan/test_queue
 	$(OUT)/asan/test_config
 	$(OUT)/asan/test_wal
 	$(OUT)/asan/test_selftest
 	$(OUT)/asan/test_exitcodes
 	$(OUT)/asan/test_records
+	$(OUT)/asan/test_snapshot
 
 # ADR-0019 G2.2: no exit(), _exit() or abort() in daemon/ outside the sites marked "exit-ok".
 exit-check:

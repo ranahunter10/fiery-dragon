@@ -3,7 +3,8 @@
  * The WAL writer thread (ADR-0017 layer 2): the only code that touches the disk. It appends
  * the drain's batches in order, ticks the WAL (rotation, fdatasync), writes STATS every stats
  * interval and CLOCK_SYNC every tenth, rewrites the Prometheus text file, and at the end
- * checks the accounting invariant (ADR-0006 rule 6) and writes the final STATS and END.
+ * checks the accounting invariant (ADR-0006 rule 6) and writes the final STATS and END. When main
+ * asks (run.h closing_req), it takes the closing process snapshot (ADR-0023 rule 1) before END.
  */
 #ifndef P15_WRITER_H
 #define P15_WRITER_H
@@ -12,9 +13,15 @@
 #include "run.h"
 #include "wal.h"
 
+/* Takes the closing snapshot into the WAL (ADR-0023 rule 1): 0 complete, > 0 incomplete (the run
+ * is then INVALID), < 0 a WAL failure. p15d passes the snapshot module; tests pass a fake. */
+typedef int (*p15_writer_snap_fn)(void *ctx, struct p15w *w);
+
 struct p15_writer {
 	struct p15_run *run;
 	struct p15w *wal;           /* owned by the writer once the thread starts */
+	p15_writer_snap_fn closing; /* NULL: no closing snapshot; the opening ones come through the WAL's on_open */
+	void *closing_ctx;
 	uint64_t prev_stats_ns;
 	unsigned stats_written;
 	int close_rc;               /* p15w_close's result, for main */

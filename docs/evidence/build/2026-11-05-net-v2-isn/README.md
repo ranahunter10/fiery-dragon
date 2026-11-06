@@ -37,4 +37,4 @@
 - **Rerun from step 15** ([`vm-verify-20261105T114318Z-steps15-18.log`](vm-verify-20261105T114318Z-steps15-18.log)): steps 15–18 pass.
   - Step 15: the p15d planted-bug sweep, 20/20 caught, marked with 2 soft lockups.
   - Step 17: the demo. Its attack connection to 4444 is now joined exactly: `nc (6947) ← sh (6945) ← python3 (6921)`, "exact, by TCP sequence number".
-  - Step 18: a second ADR-0020 cost run. Classic against `tp_btf` costs +92.7 ns per rename event (47.0–122.9 ns, p = 0.005). Per exec it isn't resolved (A/A ±1.3 %, about 16 ms per exec on this slower day; the null syscall was 374 ns, against 164 ns in E-0101's run).
+  - Step 18: a second ADR-0020 cost run. Classic against `tp_btf` costs +92.7 ns per rename event (47.0–122.9 ns, p = 0.005). Per exec it isn't resolved (A/A ±1.3 %, about 16 ms per exec on this slower day; the null syscall was 374 ns, against 164 ns in E-0101's run). The maintainer reports that the laptop ran **on battery, in the balanced power mode**, during this run. That likely explains the slower host (INF). Timing runs that count are to be made on mains power.

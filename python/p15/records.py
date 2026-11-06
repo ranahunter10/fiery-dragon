@@ -41,6 +41,8 @@ F_KNOWN = F_TRUNCATED | F_READ_FAILED | F_ISN
 NET_OPS = {1: "CONNECT", 2: "ACCEPT", 3: "LISTEN", 4: "BIND"}
 RUN_STATES = {0: "RUNNING", 1: "DEGRADED", 2: "INVALID"}
 INVARIANT = {0: "not checked", 1: "closed", 2: "broken"}
+SNAP_KINDS = {1: "opening", 2: "closing"}
+PROC_KTHREAD, PROC_EXITING = 1, 2      # PROC pflags (bpf/include/p15_snap.h)
 
 
 class RecordError(ValueError):
@@ -104,6 +106,12 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
     if lay.name == "NET" and h["version"] >= 2 and (f["reserved"] or (not h["flags"] & F_ISN and f["tcp_isn"])):
         # every byte has one meaning (records.c): the alignment field is zero, and so is an ISN nobody read
         raise RecordError("NET v2: non-zero reserved, or tcp_isn without P15_F_ISN", off)
+    if lay.name == "END" and h["version"] >= 2 and f["reserved"]:
+        raise RecordError("END v2: non-zero reserved", off)
+    if lay.name == "PROC" and (f["reserved"] or f["kind"] not in (1, 2) or f["pflags"] & ~3):
+        raise RecordError("PROC: non-zero reserved, unknown kind or unknown pflags", off)
+    if lay.name == "SNAP_DONE" and f["kind"] not in (1, 2):
+        raise RecordError("SNAP_DONE: unknown kind", off)
     var = {}
     if lay.var:
         used = 0
@@ -162,7 +170,7 @@ def comm(raw: bytes) -> str:
 
 
 def argv(rec: Record) -> list[str]:
-    """An EXEC record's argv, split at NULs."""
+    """An EXEC or PROC record's argv, split at NULs."""
     a = rec.var["argv"]
     if a.endswith(b"\0"):
         a = a[:-1]

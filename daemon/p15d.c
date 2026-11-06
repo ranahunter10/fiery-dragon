@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 /*
  * p15d: the capture daemon (Phase 1 step 4b; ADR-0006, 0007, 0017, 0019). Wiring only:
- *   config -> load + attach + self-test -> run directory and WAL -> writer thread ->
- *   drain loop on this thread (SCHED_FIFO 1) -> on stop: detach, empty the rings, join
- *   the writer (final STATS, invariant, END) -> exit with the run's code (exitcodes.h).
+ *   config -> load + attach + self-test -> the snapshot iterator -> run directory and WAL (its
+ *   first segment opens with a process snapshot, as every later one does: ADR-0007 rule 3) ->
+ *   writer thread -> drain loop on this thread (SCHED_FIFO 1) -> on stop: the closing snapshot
+ *   while the hooks are attached (ADR-0023 rule 1), detach, empty the rings, join the writer
+ *   (final STATS, invariant, END) -> exit with the run's code (exitcodes.h).
  *
  *   p15d --wal-dir /var/lib/p15 [--duration S] [--textfile PATH] [...]   (root)
  */
@@ -28,6 +30,7 @@
 #include "loader.h"
 #include "p15_records.h"
 #include "run.h"
+#include "snapshot.h"
 #include "wal.h"
 #include "writer.h"
 
@@ -39,6 +42,12 @@
 #endif
 
 static struct p15_run run;
+static struct p15_snapshot snap;   /* ~18 KiB of read buffer: not on the stack */
+
+static int take_closing(void *ctx, struct p15w *w)
+{
+	return p15_snapshot_take(ctx, P15_SNAP_CLOSING, w);
+}
 
 static void on_signal(int sig)
 {
@@ -123,6 +132,13 @@ int main(int argc, char **argv)
 		return code;
 	}
 	run.start_ns = ld.daemon_start_ns;
+	code = p15_snapshot_init(&snap, &run, err, sizeof(err));
+	if (code) {
+		logline("error", "load", err);
+		p15_snapshot_free(&snap);
+		p15_loader_free(&ld);
+		return code;
+	}
 	for (int t = 0; t < P15_SPINE_TYPES; t++)
 		run.miss_fd[t] = ld.miss_fd[t];
 	for (int i = 0; i < ld.n_net_miss; i++)
@@ -188,8 +204,12 @@ int main(int argc, char **argv)
 	wo.sync_ns = (uint64_t)run.cfg.sync_ms * 1000000ull;
 	wo.meta = meta;
 	wo.nmeta = nm;
+	wo.on_open = p15_snapshot_on_open;
+	wo.on_open_ctx = &snap;
 	memset(&w, 0, sizeof(w));
 	w.run = &run;
+	w.closing = take_closing;
+	w.closing_ctx = &snap;
 	rc = p15w_open(&w.wal, &wo);
 	if (rc) {
 		logline("error", "io", "cannot open the first WAL segment");
@@ -224,6 +244,16 @@ int main(int argc, char **argv)
 			usleep(run.cfg.drain_pause_ms * 1000u);   /* TEST ONLY: config.test_drain_pause_ms in the header */
 	}
 
+	/* ADR-0023 rule 1: the closing snapshot, while the hooks are attached, so a process that starts
+	 * or ends during it is in the snapshot, in an event, or both. The writer takes it (it owns the
+	 * WAL); this thread keeps draining meanwhile. Not on the fatal path: END then says 0. */
+	if (!atomic_load(&run.fatal_code)) {
+		atomic_store(&run.closing_req, P15_CLOSING_ASKED);
+		p15q_kick(&run.q);
+		while (atomic_load(&run.closing_req) != P15_CLOSING_DONE && !atomic_load(&run.fatal_code))
+			if (p15_drain_poll(&d, 10))
+				p15_fail(&run, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
+	}
 	p15_loader_detach(&ld);
 	if (p15_drain_finish(&d))
 		p15_fail(&run, P15_EXIT_INTERNAL, "drain: final emptying failed");
@@ -236,6 +266,7 @@ int main(int argc, char **argv)
 		atomic_load(&run.reason_set) ? run.reason : "stop requested");
 	p15_drain_free(&d);
 	p15q_free(&run.q);
+	p15_snapshot_free(&snap);
 	p15_loader_free(&ld);
 	return code;
 }

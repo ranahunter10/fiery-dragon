@@ -290,6 +290,7 @@ static void end_record(struct p15_writer *w)
 	buf.e.run_state = (uint32_t)atomic_load(&w->run->state);
 	buf.e.invariant = (uint32_t)inv;
 	buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);
+	buf.e.closing_snapshot = atomic_load(&w->run->closing_result);
 	buf.e.reason_full = (uint32_t)rl;
 	buf.e.reason_len = (uint16_t)rl;
 	memcpy(buf.tail, reason, rl);
@@ -306,6 +307,20 @@ static void drain_queue(struct p15_writer *w)
 	}
 }
 
+/* ADR-0023 rule 1: the closing snapshot, on this thread because it owns the WAL. The batches the
+ * drain published before the request go first, so the snapshot follows them in the WAL. */
+static void closing_snapshot(struct p15_writer *w)
+{
+	int rc;
+
+	drain_queue(w);
+	rc = w->closing ? w->closing(w->closing_ctx, w->wal) : -ENOSYS;
+	if (rc < 0 && rc != -ENOSYS)
+		p15_fail(w->run, P15_EXIT_IO, "WAL append failed in the closing snapshot");
+	atomic_store(&w->run->closing_result, rc == 0 ? 1 : rc < 0 ? rc : -EPROTO);
+	atomic_store(&w->run->closing_req, P15_CLOSING_DONE);
+}
+
 void *p15_writer_main(void *arg)
 {
 	struct p15_writer *w = arg;
@@ -320,6 +335,8 @@ void *p15_writer_main(void *arg)
 		if (p15q_wait(&r->q, 100))
 			p15_fail(r, P15_EXIT_OSERR, "writer: wait on the queue failed");
 		drain_queue(w);
+		if (atomic_load(&r->closing_req) == P15_CLOSING_ASKED)
+			closing_snapshot(w);
 		if (p15w_tick(w->wal))
 			p15_fail(r, P15_EXIT_IO, "WAL tick (rotate or fdatasync) failed");
 		now = p15_boot_ns();

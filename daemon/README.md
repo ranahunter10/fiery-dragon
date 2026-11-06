@@ -7,7 +7,7 @@ Phase-1 steps 3–4: the spine loader, record checks, the load-time self-test, a
 | [`records.c`](records.c) | `p15_rec_check`: a record is used only if its header, `len` and variable fields are all inside the bytes received (ADR-0008 rule 5). For EXEC, also: `len` is exactly the fields' padded size (unless `READ_FAILED`) and the bytes after the fields are zero, since EXEC is built in a reused scratch buffer (ADR-0017). Also `p15_rec_format`: one line per record |
 | [`selftest.c`](selftest.c) | The load-time self-test (ADR-0003). A test child renames itself, forks a grandchild that exits 7, and execs `/bin/true fd-selftest`. **Only records attributed to the child, the grandchild and the daemon's fork of the child are judged, with exact counts and field values.** 22 checks, including that every record takes exactly its `len` in the ring (ADR-0017 layer 1) |
 | [`p15_spine.c`](p15_spine.c) | `p15-spine selftest` / `p15-spine dump SECONDS`: attach the spine, run the self-test, optionally print records, then detach and print the per-cause counters. Fails if any record was lost or a type's books do not close (`seen = emitted + reserve_failed + build_failed`) |
-| [`tests/test_records.c`](tests/test_records.c), [`tests/mutate_records.py`](tests/mutate_records.py) | The record checks on every type: exact sizes, END's reason, EXEC's slack rules, buffers of exactly `len` under ASan; and the formatter. The sweep plants 20 bugs in `records.c` and runs the tests under ASan |
+| [`tests/test_records.c`](tests/test_records.c), [`tests/mutate_records.py`](tests/mutate_records.py) | The record checks on every type: exact sizes, END's reason, EXEC's slack rules, buffers of exactly `len` under ASan; and the formatter. The sweep plants 39 bugs in `records.c` and runs these tests and `test_snapshot.c` under ASan |
 | [`tests/test_selftest.c`](tests/test_selftest.c) | Unit tests on synthetic records: each failure the self-test must catch, injected one at a time |
 | [`wal.c`](wal.c), [`wal.h`](wal.h) | The P15W v1.0 writer (ADR-0007, format in [`docs/formats/p15w-v1.md`](../docs/formats/p15w-v1.md)): segments with a self-describing header, one `writev` per batch with CRC32C, per-ring sequence numbers, rotation by size and age, `fdatasync` every interval. Also the batch builder (copies each record at its own `len`), the scanner (the reader's rules) and torn-tail recovery. Time and writes go through injectable functions, so tests drive them exactly |
 | [`crc32c.c`](crc32c.c) | CRC32C (Castagnoli), table-driven |
@@ -35,12 +35,13 @@ The C unit tests caught 12 of 12 deliberate bugs in the evaluation and the recor
 
 | File | What |
 |---|---|
-| [`p15d.c`](p15d.c) | `main`: wiring only. Load and self-test, run directory and WAL header, writer thread, drain loop, orderly stop |
+| [`p15d.c`](p15d.c) | `main`: wiring only. Load and self-test, the snapshot iterator, run directory and WAL header (the first segment opens with a snapshot), writer thread, drain loop, the closing snapshot, orderly stop |
 | [`config.c`](config.c) | strict command line; the effective config is echoed into the WAL header |
 | [`loader.c`](loader.c) | open, size, load and attach the spine, then the self-test; the hook manifest |
 | [`drain.c`](drain.c) | poll the ring, check each record, batch it at its own `len`, publish; counter reads and GAP records. Never touches the disk |
 | [`queue.c`](queue.c) | the bounded SPSC queue between the drain and the writer |
-| [`writer.c`](writer.c) | the only code that writes the WAL: batches, STATS, CLOCK_SYNC, the textfile, the invariant, END |
+| [`writer.c`](writer.c) | the only code that writes the WAL: batches, STATS, CLOCK_SYNC, the textfile, the invariant, the closing snapshot when main asks for it (ADR-0023 rule 1), END |
+| [`snapshot.c`](snapshot.c), [`snapshot_frame.c`](snapshot_frame.c) | the process snapshot (ADR-0007 rule 3, ADR-0024): run the task iterator of [`bpf/progs/snap.bpf.c`](../bpf/progs/snap.bpf.c), check every PROC record, append them and SNAP_DONE to the daemon ring. The opening one runs at every segment open (`p15w_opts.on_open`), the closing one at an orderly stop. `snapshot_frame.c` is the part with no BPF and no I/O: framing across reads, the checks, the books; [`tests/test_snapshot.c`](tests/test_snapshot.c) tests it |
 | [`run.c`](run.c) | the run state machine and `p15_fail`, the single fatal path |
 | [`p15w_inspect.c`](p15w_inspect.c) | `p15w-inspect RUN_DIR`: validate every segment and record, count by type, print the END verdict |
 

@@ -1,0 +1,156 @@
+# Container evidence for the process snapshot (ADR-0007 rule 3, ADR-0023, ADR-0024 proposed)
+# date: 2026-11-05T12:52:13Z  host kernel: 6.18.44-fc-v236  branch: feat/snapshot-4c  base: 0da4b59
+
+## schema check
+schema check: 17 records, 4 generated files, 0 problems
+
+## layout check (generator vs BTF vs numpy)
+layout check: 18 structs x 3 views, 0 disagreements
+
+## C unit tests
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_run.c: 0 failures
+daemon/tests/test_snapshot.c: 0 failures
+
+## C unit tests under ASan/UBSan
+daemon/tests/test_queue.c: 0 failures
+daemon/tests/test_config.c: 0 failures
+daemon/tests/test_wal.c: 0 failures
+daemon/tests/test_selftest.c: 0 failures
+daemon/tests/test_exitcodes.c: 0 failures
+daemon/tests/test_records.c: 0 failures
+daemon/tests/test_snapshot.c: 0 failures
+
+## Python unit tests
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 2.169s
+ok    bench/census/test_run.py: Ran 25 tests in 0.575s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.019s
+ok    bench/hook_cost/test_summarize.py: Ran 7 tests in 0.029s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.008s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.000s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.006s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.012s
+ok    bench/quant/test_paired.py: Ran 25 tests in 0.123s
+ok    bench/rb_cost/test_summarize.py: Ran 8 tests in 0.002s
+ok    python/tests/test_reconcile.py: Ran 14 tests in 0.027s
+ok    python/tests/test_records.py: Ran 10 tests in 0.002s
+ok    python/tests/test_trace.py: Ran 24 tests in 0.057s
+ok    python/tests/test_wal.py: Ran 23 tests in 0.663s
+ok    schema/gen/test_gen.py: Ran 31 tests in 0.199s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.011s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.001s
+17 test files, 0 failed
+
+## C writer -> Python reader cross-check
+Ran 9 tests in 0.002s
+
+OK
+
+## planted bugs: record checks
+mutation sweep: 39/39 killed
+
+## planted bugs: Python
+mutation sweep: 148/148 killed
+
+## lint (CI's ruff selection)
+All checks passed!
+
+## end-to-end: P15_IT_PID1=0 daemon/tests/it_p15d.sh build (container: no fexit, no pid 1 in task iterators, E-0105)
+network capture: off (--no-net: fentry/fexit not loadable here)
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 41)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:68:1 closing:67:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+case 2: stop by SIGTERM
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+  reconciliation: repaired 0 27 358 383 opening:68:1 closing:67:1
+  ok   ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss (repaired)
+  ok   unexplained forks 0 <= counted 358, exits 27 <= counted 383
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 4: a bad flag
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
+
+## one run, inspected: the snapshot records of the user processes and both SNAP_DONE
+p15d level=info code=start run_dir=/tmp/p15snap/20261105T125448Z-7cf91b0e sched="normal (--no-rt)" spine_ring=4194304 net=off (--no-net)
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+[2] PROC   ts=2909265686441 tgid=67 tid=67 start=2387160529 flags=0x0 snap=0/opening parent=1 parent_start=277511882 comm="6" pflags=0x0 exe=1:1024 gen=3311313075 path="/memfd:sbx-telemetry-collector (deleted)" (40/40) argv="sbx-telemetry-collector " (24/24)
+[2] PROC   ts=2909265690771 tgid=68 tid=68 start=2393014227 flags=0x0 snap=0/opening parent=1 parent_start=277511882 comm="rclone-filestor" pflags=0x0 exe=266338320:1 gen=0 path="/opt/rclone/rclone-filestore" (28/28) argv="/opt/rclone/rclone-filestore multimount --config /dev/shm/rclone-boot/config.json " (82/82)
+[2] PROC   ts=2909265698547 tgid=79 tid=79 start=2739810814 flags=0x1 snap=0/opening parent=1 parent_start=277511882 comm="sh" pflags=0x0 exe=266338304:343122 gen=0 path="/usr/bin/dash" (13/13) argv="/bin/sh -c if ! { [ ! -L /var/lib/ccr-ca-store ] && { [ ! -e /var/lib/ccr-ca-store ] || { [ -d /var/lib/ccr-ca-store ] && [ -O /va
+[2] PROC   ts=2909265702672 tgid=86 tid=86 start=2775253152 flags=0x0 snap=0/opening parent=79 parent_start=2739810814 comm="environment-man" pflags=0x0 exe=266338352:12 gen=0 path="/opt/env-runner/environment-manager" (35/35) argv="/usr/local/bin/environment-manager task-run --stdin --session cse_011UeE9rbX4ox1jUQQGbfEAZ --sess
+[2] PROC   ts=2909265708581 tgid=93 tid=93 start=2820222479 flags=0x0 snap=0/opening parent=86 parent_start=2775253152 comm="claude" pflags=0x0 exe=266338336:13 gen=0 path="/opt/claude-code/bin/claude" (27/27) argv="/opt/claude-code/bin/claude --preload /home/claude/.claude/remote/spare.sock " (77/77)
+[2] PROC   ts=2909265722957 tgid=14594 tid=14594 start=2876086685853 flags=0x1 snap=0/opening parent=93 parent_start=2820222479 comm="bash" pflags=0x0 exe=266338304:343100 gen=0 path="/usr/bin/bash" (13/13) argv="/bin/bash -c source /root/.claude/shell-snapshots/snapshot-bash-1793880538490-ro4ss0.sh 2>/dev/null || true && \built
+[2] PROC   ts=2909265728687 tgid=15659 tid=15659 start=2908866811985 flags=0x0 snap=0/opening parent=14594 parent_start=2876086685853 comm="p15d" pflags=0x0 exe=266338304:1466491 gen=643468376 path="/home/claude/fiery-dragon/build/p15d" (36/36) argv="build/p15d --wal-dir /tmp/p15snap --duration 2 --no-rt --no-net " (64/64)
+[2] SNAP_DONE ts=2909265771466 tgid=15659 tid=15659 start=2908866811985 flags=0x0 snap=0/opening error=0 duration=123817 tasks=86 threads=22 emitted=64 write_failed=0 entries=64 invalid=0 unwritten=0 kthreads=57 exiting=0 argv_failed=0 path_unlocked=0 path_not_found=0 path_failed=0 truncated=2
+[2] PROC   ts=2911272691244 tgid=67 tid=67 start=2387160529 flags=0x0 snap=1/closing parent=1 parent_start=277511882 comm="6" pflags=0x0 exe=1:1024 gen=3311313075 path="/memfd:sbx-telemetry-collector (deleted)" (40/40) argv="sbx-telemetry-collector " (24/24)
+[2] PROC   ts=2911272696572 tgid=68 tid=68 start=2393014227 flags=0x0 snap=1/closing parent=1 parent_start=277511882 comm="rclone-filestor" pflags=0x0 exe=266338320:1 gen=0 path="/opt/rclone/rclone-filestore" (28/28) argv="/opt/rclone/rclone-filestore multimount --config /dev/shm/rclone-boot/config.json " (82/82)
+[2] PROC   ts=2911272705456 tgid=79 tid=79 start=2739810814 flags=0x1 snap=1/closing parent=1 parent_start=277511882 comm="sh" pflags=0x0 exe=266338304:343122 gen=0 path="/usr/bin/dash" (13/13) argv="/bin/sh -c if ! { [ ! -L /var/lib/ccr-ca-store ] && { [ ! -e /var/lib/ccr-ca-store ] || { [ -d /var/lib/ccr-ca-store ] && [ -O /va
+[2] PROC   ts=2911272710826 tgid=86 tid=86 start=2775253152 flags=0x0 snap=1/closing parent=79 parent_start=2739810814 comm="environment-man" pflags=0x0 exe=266338352:12 gen=0 path="/opt/env-runner/environment-manager" (35/35) argv="/usr/local/bin/environment-manager task-run --stdin --session cse_011UeE9rbX4ox1jUQQGbfEAZ --sess
+[2] PROC   ts=2911272718003 tgid=93 tid=93 start=2820222479 flags=0x0 snap=1/closing parent=86 parent_start=2775253152 comm="claude" pflags=0x0 exe=266338336:13 gen=0 path="/opt/claude-code/bin/claude" (27/27) argv="/opt/claude-code/bin/claude --preload /home/claude/.claude/remote/spare.sock " (77/77)
+[2] PROC   ts=2911272733658 tgid=14594 tid=14594 start=2876086685853 flags=0x1 snap=1/closing parent=93 parent_start=2820222479 comm="bash" pflags=0x0 exe=266338304:343100 gen=0 path="/usr/bin/bash" (13/13) argv="/bin/bash -c source /root/.claude/shell-snapshots/snapshot-bash-1793880538490-ro4ss0.sh 2>/dev/null || true && \built
+[2] PROC   ts=2911272741593 tgid=15659 tid=15659 start=2908866811985 flags=0x0 snap=1/closing parent=14594 parent_start=2876086685853 comm="p15d" pflags=0x0 exe=266338304:1466491 gen=643468376 path="/home/claude/fiery-dragon/build/p15d" (36/36) argv="build/p15d --wal-dir /tmp/p15snap --duration 2 --no-rt --no-net " (64/64)
+[2] SNAP_DONE ts=2911272817815 tgid=15659 tid=15662 start=2908866811985 flags=0x0 snap=1/closing error=0 duration=141640 tasks=87 threads=23 emitted=64 write_failed=0 entries=64 invalid=0 unwritten=0 kthreads=57 exiting=0 argv_failed=0 path_unlocked=0 path_not_found=0 path_failed=0 truncated=2
+[2] END    ts=2911516163232 tgid=15659 tid=15662 start=2908866811985 flags=0x0 exit=0 state=0 invariant=1 signal=0 closing_snapshot=1 reason="stop requested"
+END        1
+PROC       128
+SNAP_DONE  2
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+records: spine 1, bulk 0, daemon 135; invalid 0
+  FORK       1
+  CLOCK_SYNC 1
+  STATS      3
+  END        1
+  PROC       128
+  SNAP_DONE  2
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+
+## the Trust block of p15-trace on that run
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  NETWORK CAPTURE WAS OFF in this run (--no-net): no NET record means nothing is known, not that nothing happened
+  kernel-skipped events: none (every hook ran for every event)
+  process tree check (ADR-0023): complete: every process alive at the end is explained, and every one gone has its exit (0 fork(s) and 0 exit(s) unexplained; counted losses: fork 0, exit 0)
+
+
+## E-0105: the container kernel's task iterator never shows pid 1 (scratch harness snapdbg, a copy of snap.bpf.c counting calls)
+$ grep -E 'Tgid|Pid|PPid' /proc/1/status
+Tgid:	1
+Pid:	1
+PPid:	0
+$ snapdbg (all tasks): first task shown, calls, end-of-iteration calls, saw pid 1
+first 2 calls 88 null 1 saw1 0 bytes 9496 last n 0 tasks 87 threads 22 emitted 65
+$ snapdbg with link_info tid=1:
+first 0 calls 1 null 1 saw1 0 bytes 0 last n 0 tasks 0 threads 0 emitted 0
+$ snapdbg with link_info tid=2:
+first 2 calls 2 null 1 saw1 0 bytes 104 last n 0 tasks 1 threads 0 emitted 1
+
+## ADR-0024 evidence 4: snap.bpf.c without bpf_rcu_read_lock is refused by the verifier (container kernel 6.18.44-fc-v236)
+R1 type=untrusted_ptr_ expected=ptr_, trusted_ptr_, rcu_ptr_
+libbpf: prog 'snap_task': failed to load: -EACCES
+libbpf: failed to load object 'snapd_bpf'
+libbpf: failed to load BPF skeleton 'snapd_bpf': -EACCES

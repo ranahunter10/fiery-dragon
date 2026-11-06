@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "aa55a5c8125a151b47748e04a2c60c38c28f046a49715215a9c3bb72afb4fa25"
+#define P15_SCHEMA_HASH "23772a79261eb103211e451d652dbf2a1de6d40ca14b1ae5b837223cb51cce3d"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -31,6 +31,8 @@ enum p15_type {
 	P15_T_GAP = 34,
 	P15_T_END = 35,
 	P15_T_NET_STATS = 36,
+	P15_T_PROC = 37,
+	P15_T_SNAP_DONE = 38,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -477,6 +479,34 @@ P15_ASSERT(P15_OFFSETOF(struct p15_end_v1, _pad) == 54, "p15_end_v1._pad offset"
 #define P15_END_V1_MAX_SIZE 312
 #define P15_END_V1_REASON_MAX 256
 
+/* END v2 (MARKER): v2 adds closing_snapshot (ADR-0023 rule 1). The last record of a run: its verdict (ADR-0019 G2.2, G2.3). Written after the final STATS, on an orderly stop and by p15_fail. A run whose last segment has no END did not end in order. */
+struct p15_end_v2 {
+	struct p15_hdr h;
+	__u32 exit_code;
+	__u32 run_state;
+	__u32 invariant;
+	__u32 signal;
+	__s32 closing_snapshot;
+	__u32 reserved;
+	__u32 reason_full;   /* generated */
+	__u16 reason_len;   /* generated */
+	char _pad[2];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_end_v2) == 64, "p15_end_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, h) == 0, "p15_end_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, exit_code) == 32, "p15_end_v2.exit_code offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, run_state) == 36, "p15_end_v2.run_state offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, invariant) == 40, "p15_end_v2.invariant offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, signal) == 44, "p15_end_v2.signal offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, closing_snapshot) == 48, "p15_end_v2.closing_snapshot offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, reserved) == 52, "p15_end_v2.reserved offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, reason_full) == 56, "p15_end_v2.reason_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, reason_len) == 60, "p15_end_v2.reason_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_end_v2, _pad) == 62, "p15_end_v2._pad offset");
+
+#define P15_END_V2_MAX_SIZE 320
+#define P15_END_V2_REASON_MAX 256
+
 /* NET v1 (NET): One connect, accept, listen or bind on an IPv4/IPv6 socket, from fexit on the proto_ops (ADR-0004 rules 1-3). The header names the process (ADR-0009); for accept it is the process that accepted. */
 struct p15_net_v1 {
 	struct p15_hdr h;
@@ -609,6 +639,94 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, _pad) == 116, "p15_net_stats_v2
 
 #define P15_NET_STATS_V2_MAX_SIZE 120
 
+/* PROC v1 (MARKER): One live thread group in a process snapshot (ADR-0007 rule 3): the opening one at every segment open, the closing one at an orderly stop (ADR-0023). The header names the process (ADR-0009) and its ts_ns is when the iterator saw it. Hooks are attached for the whole snapshot, so a process created during it is in the snapshot, in an event, or both (the fuzzy-checkpoint rule). */
+struct p15_proc_v1 {
+	struct p15_hdr h;
+	__u64 parent_start_ns;
+	__u64 exe_ino;
+	__u32 parent_tgid;
+	__u32 exe_dev;
+	__u32 exe_gen;
+	__u32 pflags;
+	__u32 snap_id;
+	char comm[16];
+	__u16 kind;
+	__u16 reserved;
+	__u32 exe_path_full;   /* generated */
+	__u32 argv_full;   /* generated */
+	__u16 exe_path_len;   /* generated */
+	__u16 argv_len;   /* generated */
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_proc_v1) == 104, "p15_proc_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, h) == 0, "p15_proc_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, parent_start_ns) == 32, "p15_proc_v1.parent_start_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, exe_ino) == 40, "p15_proc_v1.exe_ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, parent_tgid) == 48, "p15_proc_v1.parent_tgid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, exe_dev) == 52, "p15_proc_v1.exe_dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, exe_gen) == 56, "p15_proc_v1.exe_gen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, pflags) == 60, "p15_proc_v1.pflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, snap_id) == 64, "p15_proc_v1.snap_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, comm) == 68, "p15_proc_v1.comm offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, kind) == 84, "p15_proc_v1.kind offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, reserved) == 86, "p15_proc_v1.reserved offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, exe_path_full) == 88, "p15_proc_v1.exe_path_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, argv_full) == 92, "p15_proc_v1.argv_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, exe_path_len) == 96, "p15_proc_v1.exe_path_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, argv_len) == 98, "p15_proc_v1.argv_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, _pad) == 100, "p15_proc_v1._pad offset");
+
+#define P15_PROC_V1_MAX_SIZE 1384
+#define P15_PROC_V1_EXE_PATH_MAX 256
+#define P15_PROC_V1_ARGV_MAX 1024
+
+/* SNAP_DONE v1 (MARKER): The books of one process snapshot, written right after its PROC records. They close: tasks = threads + emitted + write_failed (the BPF side) and emitted = entries + invalid + unwritten (p15d's side); a reader that finds them open marks the run INVALID. A closing snapshot's SNAP_DONE precedes END (ADR-0023 rule 1). */
+struct p15_snap_done_v1 {
+	struct p15_hdr h;
+	__u64 duration_ns;
+	__u64 tasks;
+	__u64 threads;
+	__u64 emitted;
+	__u64 write_failed;
+	__u64 entries;
+	__u64 invalid;
+	__u64 unwritten;
+	__u64 kthreads;
+	__u64 exiting;
+	__u64 argv_failed;
+	__u64 path_unlocked;
+	__u64 path_not_found;
+	__u64 path_failed;
+	__u64 truncated;
+	__u32 snap_id;
+	__s32 error;
+	__u16 kind;
+	char _pad[6];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_snap_done_v1) == 168, "p15_snap_done_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, h) == 0, "p15_snap_done_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, duration_ns) == 32, "p15_snap_done_v1.duration_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, tasks) == 40, "p15_snap_done_v1.tasks offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, threads) == 48, "p15_snap_done_v1.threads offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, emitted) == 56, "p15_snap_done_v1.emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, write_failed) == 64, "p15_snap_done_v1.write_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, entries) == 72, "p15_snap_done_v1.entries offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, invalid) == 80, "p15_snap_done_v1.invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, unwritten) == 88, "p15_snap_done_v1.unwritten offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, kthreads) == 96, "p15_snap_done_v1.kthreads offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, exiting) == 104, "p15_snap_done_v1.exiting offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, argv_failed) == 112, "p15_snap_done_v1.argv_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, path_unlocked) == 120, "p15_snap_done_v1.path_unlocked offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, path_not_found) == 128, "p15_snap_done_v1.path_not_found offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, path_failed) == 136, "p15_snap_done_v1.path_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, truncated) == 144, "p15_snap_done_v1.truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, snap_id) == 152, "p15_snap_done_v1.snap_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, error) == 156, "p15_snap_done_v1.error offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, kind) == 160, "p15_snap_done_v1.kind offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, _pad) == 162, "p15_snap_done_v1._pad offset");
+
+#define P15_SNAP_DONE_V1_MAX_SIZE 168
+
 /* The current version of each record type: what the BPF programs emit. */
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
@@ -633,15 +751,23 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, _pad) == 116, "p15_net_stats_v2
 #define P15_GAP_VERSION 2
 #define p15_gap p15_gap_v2
 #define P15_GAP_MAX_SIZE P15_GAP_V2_MAX_SIZE
-#define P15_END_VERSION 1
-#define p15_end p15_end_v1
-#define P15_END_MAX_SIZE P15_END_V1_MAX_SIZE
-#define P15_END_REASON_MAX P15_END_V1_REASON_MAX
+#define P15_END_VERSION 2
+#define p15_end p15_end_v2
+#define P15_END_MAX_SIZE P15_END_V2_MAX_SIZE
+#define P15_END_REASON_MAX P15_END_V2_REASON_MAX
 #define P15_NET_VERSION 2
 #define p15_net p15_net_v2
 #define P15_NET_MAX_SIZE P15_NET_V2_MAX_SIZE
 #define P15_NET_STATS_VERSION 2
 #define p15_net_stats p15_net_stats_v2
 #define P15_NET_STATS_MAX_SIZE P15_NET_STATS_V2_MAX_SIZE
+#define P15_PROC_VERSION 1
+#define p15_proc p15_proc_v1
+#define P15_PROC_MAX_SIZE P15_PROC_V1_MAX_SIZE
+#define P15_PROC_EXE_PATH_MAX P15_PROC_V1_EXE_PATH_MAX
+#define P15_PROC_ARGV_MAX P15_PROC_V1_ARGV_MAX
+#define P15_SNAP_DONE_VERSION 1
+#define p15_snap_done p15_snap_done_v1
+#define P15_SNAP_DONE_MAX_SIZE P15_SNAP_DONE_V1_MAX_SIZE
 
 #endif /* P15_RECORDS_H */

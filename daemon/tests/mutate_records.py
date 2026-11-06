@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6).
 
-Each mutant plants one bug in daemon/records.c, rebuilds daemon/tests/test_records.c and
-daemon/tests/test_selftest.c against it, and expects at least one of them to fail. The source
+Each mutant plants one bug in daemon/records.c, rebuilds daemon/tests/test_records.c,
+daemon/tests/test_selftest.c and daemon/tests/test_snapshot.c against it, and expects at least
+one of them to fail. The source
 is restored after every mutant, also on error or Ctrl-C.
 
     python3 daemon/tests/mutate_records.py        (or: make mutate-records)
@@ -44,15 +45,33 @@ M = [
  ("h->flags & P15_F_READ_FAILED, why))", "h->flags & P15_F_TRUNCATED, why))"),
  ("if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC_V1_ARGV_MAX) {",
   "if (e->filename_len > P15_EXEC_V1_FILENAME_MAX) {"),
- ("if (e->reason_len > P15_END_V1_REASON_MAX) {", "if (0) {"),
- ("if (check_tail(data, fixed, e->reason_len, 0, why))", "if (check_tail(data, fixed, e->reason_len, 1, why))"),
+ ("if (rl > P15_END_V1_REASON_MAX) {", "if (0) {"),
+ ("if (check_tail(data, fixed, rl, 0, why))", "if (check_tail(data, fixed, rl, 1, why))"),
+ # END v2 (ADR-0023 rule 1)
+ ("case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : version == 2 ? sizeof(struct p15_end_v2) : 0;",
+  "case P15_T_END:    return version >= 1 ? sizeof(struct p15_end_v1) : 0;"),
+ ("__u16 rl = h->version == 1 ? ((const struct p15_end_v1 *)data)->reason_len",
+  "__u16 rl = h->version >= 1 ? ((const struct p15_end_v1 *)data)->reason_len"),
+ ("if (h->version >= 2 && ((const struct p15_end_v2 *)data)->reserved) {", "if (0) {"),
+ ('m += snprintf(buf + m, n - (size_t)m, " closing_snapshot=%d", r2->closing_snapshot);', "m += 0;"),
+ # PROC and SNAP_DONE (ADR-0007 rule 3): checked by test_snapshot.c
+ ("case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : 0;", "case P15_T_PROC:   return 0;"),
+ ("if (r->exe_path_len > P15_PROC_V1_EXE_PATH_MAX || r->argv_len > P15_PROC_V1_ARGV_MAX) {",
+  "if (r->exe_path_len > P15_PROC_V1_EXE_PATH_MAX) {"),
+ ("if (r->reserved || (r->kind != 1 && r->kind != 2) || (r->pflags & ~3u)) {", "if (r->reserved || (r->pflags & ~3u)) {"),
+ ("if (r->reserved || (r->kind != 1 && r->kind != 2) || (r->pflags & ~3u)) {",
+  "if (r->reserved || (r->kind != 1 && r->kind != 2)) {"),
+ ("if (check_tail(data, fixed, (size_t)r->exe_path_len + r->argv_len, 0, why))",
+  "if (check_tail(data, fixed, (size_t)r->exe_path_len + r->argv_len, 1, why))"),
+ ("((const struct p15_snap_done_v1 *)data)->kind != 2) {", "((const struct p15_snap_done_v1 *)data)->kind != 0) {"),
+ ("printable(a, sizeof(a), tail + r->exe_path_len, r->argv_len);", "printable(a, sizeof(a), tail, r->argv_len);"),
  # names and formatting
  ('case P15_T_END:        return "END";', 'case P15_T_END:        return "?";'),
  ('case P15_T_GAP:        return "GAP";', 'case P15_T_GAP:        return "END";'),
  ("(unsigned long long)r->fork_build_failed, (unsigned long long)r->exec_build_failed,",
   "(unsigned long long)r->exec_build_failed, (unsigned long long)r->fork_build_failed,"),
  ("(unsigned long long)r->spine_written,", "(unsigned long long)r->spine_invalid,"),
- ("printable(b, sizeof(b), (const __u8 *)(r + 1), r->reason_len);", "printable(b, sizeof(b), (const __u8 *)(r + 1), 4);"),
+ ("printable(b, sizeof(b), (const __u8 *)(r1 + 1), r1->reason_len);", "printable(b, sizeof(b), (const __u8 *)(r1 + 1), 4);"),
  # ADR-0022: NET v2, its ISN flag and the bytes around it
  ("case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;",
   "case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : 0;"),
@@ -79,11 +98,13 @@ def main() -> int:
                 build = subprocess.run(
                     f"{CC} -std=gnu11 -O1 {inc} daemon/tests/test_records.c daemon/records.c -o {tmp}/r && "
                     f"{CC} -std=gnu11 -O1 {inc} daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c "
-                    f"build/libbpf/libbpf.a -lelf -lz -o {tmp}/s", shell=True, cwd=ROOT, capture_output=True, text=True)
+                    f"build/libbpf/libbpf.a -lelf -lz -o {tmp}/s && "
+                    f"{CC} -std=gnu11 -O1 {inc} daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c "
+                    f"-o {tmp}/n", shell=True, cwd=ROOT, capture_output=True, text=True)
                 if build.returncode != 0:
                     print(f"mutant {i} does not compile: not a valid mutant; fix this sweep\n{build.stderr[-400:]}")
                     return 2
-                r = subprocess.run(f"timeout 60 {tmp}/r && timeout 60 {tmp}/s", shell=True, cwd=ROOT,
+                r = subprocess.run(f"timeout 60 {tmp}/r && timeout 60 {tmp}/s && timeout 60 {tmp}/n", shell=True, cwd=ROOT,
                                    capture_output=True, text=True)
                 SRC.write_text(orig)
                 dead = r.returncode != 0

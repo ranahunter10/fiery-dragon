@@ -21,7 +21,8 @@
 
 static unsigned long long by_type[64], bad_records, ring_recs[P15W_NRINGS];
 static int problems, have_end, verbose;
-static struct p15_end last_end;
+static struct p15_end_v1 last_end;   /* the fields END v1 and v2 share */
+static int end_closing = -100;         /* END v2 closing_snapshot; -100: a v1 END has none */
 static char end_reason[300];
 
 static unsigned char *slurp(const char *path, size_t *n)
@@ -64,12 +65,20 @@ static void records(const unsigned char *p, uint32_t len, unsigned ring)
 			by_type[h->type < 64 ? h->type : 0]++;
 			ring_recs[ring]++;
 			if (h->type == P15_T_END) {
-				const struct p15_end *e = (const void *)h;
+				const struct p15_end_v1 *e1 = (const void *)h;
+				const struct p15_end_v2 *e2 = (const void *)h;
 
 				have_end = 1;
-				last_end = *e;
-				snprintf(end_reason, sizeof(end_reason), "%.*s", (int)e->reason_len,
-					 (const char *)(e + 1));
+				last_end = *e1;
+				if (h->version == 1) {
+					end_closing = -100;
+					snprintf(end_reason, sizeof(end_reason), "%.*s", (int)e1->reason_len,
+						 (const char *)(e1 + 1));
+				} else {
+					end_closing = e2->closing_snapshot;
+					snprintf(end_reason, sizeof(end_reason), "%.*s", (int)e2->reason_len,
+						 (const char *)(e2 + 1));
+				}
 			}
 			if (verbose) {
 				p15_rec_format(h, line, sizeof(line));
@@ -162,10 +171,13 @@ int main(int argc, char **argv)
 	for (int t = 1; t < 64; t++)
 		if (by_type[t])
 			printf("  %-10s %llu\n", p15_type_name((unsigned)t), by_type[t]);
-	if (have_end)
-		printf("END: exit %u, state %u, invariant %u, signal %u, reason \"%s\"\n", last_end.exit_code,
+	if (have_end) {
+		printf("END: exit %u, state %u, invariant %u, signal %u, reason \"%s\"", last_end.exit_code,
 		       last_end.run_state, last_end.invariant, last_end.signal, end_reason);
-	else
+		if (end_closing != -100)
+			printf(", closing snapshot %d", end_closing);
+		printf("\n");
+	} else
 		printf("END: none (the run did not stop in order, or the WAL is cut)\n");
 	return problems || bad_records || !have_end ? 1 : 0;
 }

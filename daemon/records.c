@@ -16,7 +16,9 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_CLOCK_SYNC: return version == 1 ? sizeof(struct p15_clock_sync_v1) : 0;
 	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : version == 2 ? sizeof(struct p15_stats_v2) : 0;
 	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;
-	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : 0;
+	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : version == 2 ? sizeof(struct p15_end_v2) : 0;
+	case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : 0;
+	case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : 0;
 	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;
 	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
 	}
@@ -92,6 +94,11 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 			return -EINVAL;
 		}
 	}
+	if (h->type == P15_T_SNAP_DONE && ((const struct p15_snap_done_v1 *)data)->kind != 1 &&
+	    ((const struct p15_snap_done_v1 *)data)->kind != 2) {
+		*why = "SNAP_DONE: unknown kind";
+		return -EINVAL;
+	}
 	if (h->type == P15_T_EXEC) {
 		const struct p15_exec_v1 *e = data;
 
@@ -103,13 +110,33 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 		if (check_tail(data, fixed, (size_t)e->filename_len + e->argv_len, h->flags & P15_F_READ_FAILED, why))
 			return -EINVAL;
 	} else if (h->type == P15_T_END) {
-		const struct p15_end_v1 *e = data;
+		/* v2 appends closing_snapshot and reserved to the fixed part; reason_len stays in place
+		 * relative to the end of it, so each version is read through its own struct */
+		__u16 rl = h->version == 1 ? ((const struct p15_end_v1 *)data)->reason_len
+					   : ((const struct p15_end_v2 *)data)->reason_len;
 
-		if (e->reason_len > P15_END_V1_REASON_MAX) {
+		if (rl > P15_END_V1_REASON_MAX) {
 			*why = "variable field beyond len";
 			return -EINVAL;
 		}
-		if (check_tail(data, fixed, e->reason_len, 0, why))
+		if (h->version >= 2 && ((const struct p15_end_v2 *)data)->reserved) {
+			*why = "END v2: non-zero reserved";
+			return -EINVAL;
+		}
+		if (check_tail(data, fixed, rl, 0, why))
+			return -EINVAL;
+	} else if (h->type == P15_T_PROC) {
+		const struct p15_proc_v1 *r = data;
+
+		if (r->exe_path_len > P15_PROC_V1_EXE_PATH_MAX || r->argv_len > P15_PROC_V1_ARGV_MAX) {
+			*why = "variable field beyond len";
+			return -EINVAL;
+		}
+		if (r->reserved || (r->kind != 1 && r->kind != 2) || (r->pflags & ~3u)) {
+			*why = "PROC: non-zero reserved, unknown kind or unknown pflags";
+			return -EINVAL;
+		}
+		if (check_tail(data, fixed, (size_t)r->exe_path_len + r->argv_len, 0, why))
 			return -EINVAL;
 	} else if (h->len != fixed) {
 		*why = "len differs from the fixed size";
@@ -156,6 +183,8 @@ const char *p15_type_name(__u16 type)
 	case P15_T_END:        return "END";
 	case P15_T_NET:        return "NET";
 	case P15_T_NET_STATS:  return "NET_STATS";
+	case P15_T_PROC:       return "PROC";
+	case P15_T_SNAP_DONE:  return "SNAP_DONE";
 	}
 	return "?";
 }
@@ -266,11 +295,51 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)r->bulk_fill_max);
 	}
 	case P15_T_END: {
-		const struct p15_end *r = data;
+		const struct p15_end_v1 *r1 = data;
+		const struct p15_end_v2 *r2 = data;
+		int m;
 
-		printable(b, sizeof(b), (const __u8 *)(r + 1), r->reason_len);
-		return k + snprintf(buf + k, n - k, " exit=%u state=%u invariant=%u signal=%u reason=\"%s\"",
-				    r->exit_code, r->run_state, r->invariant, r->signal, b);
+		if (h->version == 1)
+			printable(b, sizeof(b), (const __u8 *)(r1 + 1), r1->reason_len);
+		else
+			printable(b, sizeof(b), (const __u8 *)(r2 + 1), r2->reason_len);
+		m = k + snprintf(buf + k, n - k, " exit=%u state=%u invariant=%u signal=%u", r1->exit_code, r1->run_state,
+				 r1->invariant, r1->signal);
+		if (h->version >= 2 && m >= 0 && (size_t)m < n)
+			m += snprintf(buf + m, n - (size_t)m, " closing_snapshot=%d", r2->closing_snapshot);
+		if (m >= 0 && (size_t)m < n)
+			m += snprintf(buf + m, n - (size_t)m, " reason=\"%s\"", b);
+		return m;
+	}
+	case P15_T_PROC: {
+		const struct p15_proc_v1 *r = data;
+		const __u8 *tail = (const __u8 *)(r + 1);
+		char c[17];
+
+		printable(b, sizeof(b), tail, r->exe_path_len);
+		printable(a, sizeof(a), tail + r->exe_path_len, r->argv_len);
+		printable(c, sizeof(c), (const __u8 *)r->comm, strnlen(r->comm, sizeof(r->comm)));
+		return k + snprintf(buf + k, n - k, " snap=%u/%s parent=%u parent_start=%llu comm=\"%s\" pflags=0x%x "
+				    "exe=%u:%llu gen=%u path=\"%s\" (%u/%u) argv=\"%s\" (%u/%u)", r->snap_id,
+				    r->kind == 1 ? "opening" : "closing", r->parent_tgid, (unsigned long long)r->parent_start_ns,
+				    c, r->pflags, r->exe_dev, (unsigned long long)r->exe_ino, r->exe_gen, b, r->exe_path_len,
+				    r->exe_path_full, a, r->argv_len, r->argv_full);
+	}
+	case P15_T_SNAP_DONE: {
+		const struct p15_snap_done_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " snap=%u/%s error=%d duration=%llu tasks=%llu threads=%llu emitted=%llu "
+				    "write_failed=%llu entries=%llu invalid=%llu unwritten=%llu kthreads=%llu exiting=%llu "
+				    "argv_failed=%llu path_unlocked=%llu path_not_found=%llu path_failed=%llu truncated=%llu",
+				    r->snap_id, r->kind == 1 ? "opening" : "closing", r->error,
+				    (unsigned long long)r->duration_ns, (unsigned long long)r->tasks,
+				    (unsigned long long)r->threads, (unsigned long long)r->emitted,
+				    (unsigned long long)r->write_failed, (unsigned long long)r->entries,
+				    (unsigned long long)r->invalid, (unsigned long long)r->unwritten,
+				    (unsigned long long)r->kthreads, (unsigned long long)r->exiting,
+				    (unsigned long long)r->argv_failed, (unsigned long long)r->path_unlocked,
+				    (unsigned long long)r->path_not_found, (unsigned long long)r->path_failed,
+				    (unsigned long long)r->truncated);
 	}
 	}
 	return k;

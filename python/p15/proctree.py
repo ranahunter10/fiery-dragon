@@ -10,10 +10,14 @@ carries, stable across exec. The tree is built from:
 - EXIT with group_dead = 1: the process ended (E-0066; one EXIT per thread, only the last one
   ends the process).
 
-Nothing is guessed: a process whose FORK the run doesn't hold (it started before the capture,
-or its FORK was lost in a GAP) has `parent = None`, and `origin` says which of the two it is.
-The bpf_iter snapshot (step 4c) will give pre-existing processes their parents. Every case the
-builder can't place is counted in `Tree.counts`.
+- the opening process snapshot (ADR-0007 rule 3): every thread group alive when the capture
+  began, with its parent's key, its program and argv. Those processes, whose FORK came before
+  the capture, get their parent from it.
+
+Nothing is guessed: a process whose FORK the run doesn't hold and that the opening snapshot
+doesn't list either has `parent = None`, and `origin` says why. Every case the builder can't
+place is counted in `Tree.counts`. The closing snapshot is for the reconciliation
+(p15/reconcile.py, ADR-0023), which may repair a parent and says so in `origin`.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from . import records as R
+from . import snapshot as S
 
 Key = tuple[int, int]   # (tgid, start_ns)
 
@@ -32,6 +37,7 @@ class Image:
     argv: list[str]
     truncated: bool
     exe: tuple[int, int, int]     # (major, minor, inode) of the file that was executed
+    seen_in: str = "exec"         # "exec": an EXEC record; "snapshot": what the opening snapshot showed
 
 
 @dataclass
@@ -46,6 +52,7 @@ class Proc:
     children: list[Key] = field(default_factory=list)
     origin: str = "forked in the run"
     in_gap: bool = False                   # alive during a GAP window: records may be missing
+    kthread: bool = False                  # a kernel thread (from a snapshot)
 
     @property
     def pid(self) -> int:
@@ -105,12 +112,25 @@ class Tree:
         return self.procs[key]
 
 
-def build(recs, run_start_ns: int | None = None) -> Tree:
+def _snapshot_image(p: R.Record) -> Image | None:
+    """A process's program as the snapshot saw it; None for a kernel thread or when nothing was read."""
+    path = p.var["exe_path"].decode("utf-8", "backslashreplace")
+    args = R.argv(p)
+    if S.is_kthread(p) or (not path and not args):
+        return None
+    k0, k1 = R.kdev(p.f["exe_dev"])
+    return Image(p.h["ts_ns"], path or (args[0] if args else ""), args, bool(p.h["flags"] & R.F_TRUNCATED),
+                 (k0, k1, p.f["exe_ino"]), seen_in="snapshot")
+
+
+def build(recs, run_start_ns: int | None = None, opening: S.Snapshot | None = None) -> Tree:
     """Build the tree from records in ring order (spine) or time order. `run_start_ns`: the
     capture's start (the first record's time if None): a process with no FORK whose start_ns is
-    before it started before the capture."""
+    before it started before the capture. `opening`: the run's first opening snapshot, whose
+    processes join the tree with their parents and programs."""
     counts = dict.fromkeys(("fork_process", "fork_thread", "exec", "rename", "exit_thread", "exit_process",
-                            "exit_twice", "fork_twice", "placeholder", "pre_existing", "fork_missing"), 0)
+                            "exit_twice", "fork_twice", "placeholder", "pre_existing", "fork_missing",
+                            "from_snapshot", "pre_existing_unlisted"), 0)
     procs: dict[Key, Proc] = {}
     gaps: list[Gap] = []
     first_ts = None
@@ -161,15 +181,31 @@ def build(recs, run_start_ns: int | None = None) -> Tree:
             lost = sum(v for k, v in r.f.items() if k.endswith(("_reserve_failed", "_build_failed", "_missed")))
             gaps.append(Gap(r.f["from_ns"], r.f["to_ns"], lost))
     start = run_start_ns if run_start_ns is not None else first_ts
+    listed = opening.procs if opening is not None else {}
+    for k, pr in listed.items():
+        p = proc(k)
+        p.kthread = S.is_kthread(pr)
+        p.comm = p.comm or R.comm(pr.f["comm"])
+        im = _snapshot_image(pr)
+        if im is not None:
+            p.images.insert(0, im)
+            p.images.sort(key=lambda i: i.ts_ns)
+        if p.fork_ns is None:
+            p.parent = S.parent_key(pr)
+            if p.parent is not None:
+                proc(p.parent).children.append(k)
+            p.origin = "started before the capture (parent and program from the opening snapshot)"
+            counts["from_snapshot"] += 1
     for p in procs.values():
-        if p.fork_ns is not None:
+        if p.fork_ns is not None or p.key in listed:
             continue
         if start is not None and p.key[1] < start:
-            p.origin = "started before the capture (its parent comes with the snapshot, step 4c)"
-            counts["pre_existing"] += 1
+            p.origin = "started before the capture, and not in the opening snapshot"
+            counts["pre_existing_unlisted"] += 1
         else:
             p.origin = "started during the run, but its FORK is not in the run"
             counts["fork_missing"] += 1
+    counts["pre_existing"] = counts["from_snapshot"] + counts["pre_existing_unlisted"]
     for p in procs.values():
         born = p.key[1]
         died = p.exit_ns if p.exit_ns is not None else float("inf")

@@ -25,8 +25,11 @@ EXITS, HARD, SUMM = "tools/ci/check_exits.py", "tools/ci/check_hardening.py", "b
 WAL, REC = "python/p15/wal.py", "python/p15/records.py"
 TREE, NET, TRACE, HTML = "python/p15/proctree.py", "python/p15/net.py", "python/p15/trace.py", "python/p15/report_html.py"
 QUANT, HOOKS = "bench/quant/paired.py", "bench/hook_cost/summarize.py"
-TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: "python/tests/test_trace.py",
-         NET: "python/tests/test_trace.py", TRACE: "python/tests/test_trace.py", HTML: "python/tests/test_trace.py"}
+SNAP, RECON = "python/p15/snapshot.py", "python/p15/reconcile.py"
+_TT, _TR = "python/tests/test_trace.py", "python/tests/test_reconcile.py"
+# a file's tests: one or several; a mutant is killed when any of them fails
+TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
+         NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -167,6 +170,29 @@ M = [
  (HOOKS, 'out[a].append(got[a][metric] / got[a]["n"])', 'out[a].append(got[a][metric])'),
  (HOOKS, "if hits != want:", "if False:"),
  (HOOKS, 'return "\\n".join(out), 1 if bad else 0', 'return "\\n".join(out), 0'),
+ # ADR-0007 rule 3 and ADR-0023: the snapshots, the tree's opening balance, the reconciliation
+ (REC, 'if lay.name == "PROC" and (f["reserved"] or f["kind"] not in (1, 2) or f["pflags"] & ~3):',
+  'if lay.name == "PROC" and f["reserved"]:'),
+ (REC, 'if lay.name == "END" and h["version"] >= 2 and f["reserved"]:', "if False:"),
+ (SNAP, 'if d["tasks"] != d["threads"] + d["emitted"] + d["write_failed"]:', "if False:"),
+ (SNAP, 'if d["emitted"] != d["entries"] + d["invalid"] + d["unwritten"]:', "if False:"),
+ (SNAP, 'if d["entries"] != len(self.procs) + self.duplicates:', "if False:"),
+ (SNAP, 'return None if p.f["parent_tgid"] == 0 else', 'return None if False else'),
+ (SNAP, "return None if self.done is None else self.done.h[\"ts_ns\"] - self.done.f[\"duration_ns\"]",
+  "return None if self.done is None else self.done.h[\"ts_ns\"] + 10**12"),
+ (TREE, "        if p.fork_ns is None:\n            p.parent = S.parent_key(pr)", "        if False:\n            p.parent = S.parent_key(pr)"),
+ (TREE, "p.images.insert(0, im)", "pass"),
+ (TREE, "proc(p.parent).children.append(k)", "pass"),
+ (RECON, "if k in opening.procs or (p is not None and p.fork_ns is not None):", "if k in opening.procs:"),
+ (RECON, "if p.fork_ns is not None and p.fork_ns >= began:", "if p.fork_ns is not None and p.fork_ns <= began:"),
+ (RECON, "if p.exit_ns is None:\n            rec.exit_unexplained.append(k)", "if False:\n            rec.exit_unexplained.append(k)"),
+ (RECON, 'p.parent = S.parent_key(pr)', "pass"),
+ (RECON, "if fork_l is not None and len(rec.fork_unexplained) > fork_l:", "if False:"),
+ (RECON, "if exit_l is not None and len(rec.exit_unexplained) > exit_l:", "if False:"),
+ (RECON, 'elif end.f["closing_snapshot"] != 1:', "elif False:"),
+ (RECON, "why += s.problems()", "pass"),
+ (RECON, 'n = f[f"{kind}_reserve_failed"] + f[f"{kind}_build_failed"]', 'n = f[f"{kind}_reserve_failed"] + 10'),
+ (TRACE, "out.append(self.recon.line())", "pass"),
 ]
 
 
@@ -185,11 +211,11 @@ def main() -> int:
                 print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep")
                 return 2
             (ROOT / f).write_text(originals[f].replace(old, new))
-            test = ROOT / TESTS[f] if f in TESTS else (ROOT / f).parent / f"test_{(ROOT / f).name}"
-            r = subprocess.run([sys.executable, "-B", "-m", "unittest", str(test)], capture_output=True, text=True,
-                               env=env)
+            t = TESTS.get(f, str((ROOT / f).parent.relative_to(ROOT) / f"test_{(ROOT / f).name}"))
+            tests = [ROOT / x for x in ((t,) if isinstance(t, str) else t)]
+            dead = any(subprocess.run([sys.executable, "-B", "-m", "unittest", str(x)], capture_output=True,
+                                      text=True, env=env).returncode != 0 for x in tests)
             (ROOT / f).write_text(originals[f])
-            dead = r.returncode != 0
             killed += dead
             print(("killed   " if dead else "SURVIVED "), i, pathlib.Path(f).name, old.strip()[:60])
     finally:

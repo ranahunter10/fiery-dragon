@@ -55,6 +55,21 @@ class Refusals(unittest.TestCase):
         self.assertEqual(dec(rec("NET", h_flags=R.F_ISN, tcp_isn=0)).f["tcp_isn"], 0)
         self.assertEqual(dec(rec("NET", version=1)).h["version"], 1)
 
+    def test_snapshot_and_end_v2(self):
+        """PROC, SNAP_DONE (ADR-0007 rule 3) and END v2 (ADR-0023 rule 1): records.c's rules."""
+        p = dec(rec("PROC", kind=2, pflags=3, var={"exe_path": b"/usr/bin/x", "argv": b"x\0-v\0"}))
+        self.assertEqual((p.var["exe_path"], R.argv(p), R.SNAP_KINDS[p.f["kind"]]), (b"/usr/bin/x", ["x", "-v"], "closing"))
+        why = "PROC: non-zero reserved, unknown kind or unknown pflags"
+        self.why(rec("PROC", kind=3), why)
+        self.why(rec("PROC", kind=1, pflags=4), why)
+        self.why(rec("PROC", kind=1, reserved=1), why)
+        self.why(rec("PROC", kind=1, var={"exe_path": b"/x"}, length=120), "len larger than its fields need")
+        self.why(rec("SNAP_DONE", kind=0), "SNAP_DONE: unknown kind")
+        e = dec(rec("END", closing_snapshot=-71, var={"reason": b"stop requested"}))
+        self.assertEqual((e.h["version"], e.f["closing_snapshot"], e.var["reason"]), (2, -71, b"stop requested"))
+        self.why(rec("END", reserved=1), "END v2: non-zero reserved")
+        self.assertEqual(dec(rec("END", version=1, var={"reason": b"x"})).h["version"], 1)
+
     def test_slack_after_a_failed_read(self):
         r = dec(rec("EXEC", var={"filename": b"/bin/x"}, length=80, h_flags=R.F_READ_FAILED))
         self.assertEqual(r.var, {"filename": b"/bin/x", "argv": b""})
@@ -77,7 +92,8 @@ class Decoding(unittest.TestCase):
     def test_every_type_round_trips(self):
         for name, t in R.TYPES.items():
             with self.subTest(name=name):
-                r = dec(rec(name, h_ts_ns=123))
+                extra = {"kind": 1} if name in ("PROC", "SNAP_DONE") else {}   # kind 0 is not a kind
+                r = dec(rec(name, h_ts_ns=123, **extra))
                 self.assertEqual((r.name, r.h["type"], r.h["ts_ns"]), (name, t, 123))
                 self.assertIsInstance(r.h["ts_ns"], int)
 

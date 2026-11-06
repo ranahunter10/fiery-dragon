@@ -11,12 +11,17 @@ The story (times from the capture's start at boottime 1 s, 2026-11-02T10:00:00Z)
   │         └─ nc 127.0.0.1 4444 (640): connect to 127.0.0.1:4444 refused (ECONNREFUSED)
   ├─ curl http://127.0.0.1:18077/ (610): connect from 127.0.0.1:41000, exits 0
   └─ curl http://127.0.0.1:18077/x (620): connect from 127.0.0.1:41002, exits 0
+
+With snap=True the run also has an opening snapshot (init, pid 1, and bash) and a closing one
+(init, bash, and the server, still running), so the ADR-0023 reconciliation can run; `drop`
+removes records by (type, process) to make a loss, and fork_lost/exit_lost are the losses STATS
+counts.
 """
 
 import socket
 from pathlib import Path
 
-from p15w_build import batch, header, meta_for, rec, write_run
+from p15w_build import R, batch, header, meta_for, rec, write_run
 
 S = 1_000_000_000
 START = 1 * S
@@ -64,7 +69,30 @@ SRV, C1, C2, SH, NC = (600, START + 500), (610, START + 2 * S), (620, START + 3 
     (640, START + 4 * S + 10)
 
 
-def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=False) -> Path:
+INIT = (1, 50)
+
+
+def proc(t, p, parent, snap_id, kind, path, argv, comm, pflags=0):
+    a = b"\0".join(x.encode() for x in argv) + b"\0" if argv else b""
+    return rec("PROC", var={"exe_path": path.encode(), "argv": a}, h_ts_ns=t, h_tgid=p[0], h_tid=p[0], h_start_ns=p[1],
+               parent_tgid=parent[0], parent_start_ns=parent[1], snap_id=snap_id, kind=kind, comm=comm.encode(),
+               exe_ino=2000 + p[0], exe_dev=(8 << 20) | 1, pflags=pflags)
+
+
+def snapshot(t, snap_id, kind, procs, **books):
+    """PROC records and their SNAP_DONE, whose books close unless `books` says otherwise."""
+    out = [proc(t + i, k, par, snap_id, kind, path, argv, comm) for i, (k, par, path, argv, comm) in enumerate(procs)]
+    n = len(procs)
+    f = {"tasks": n, "threads": 0, "emitted": n, "entries": n, **books}
+    return out + [rec("SNAP_DONE", h_ts_ns=t + 1000, duration_ns=2000, snap_id=snap_id, kind=kind, **f)]
+
+
+OPENING = [(INIT, (0, 0), "/usr/lib/systemd/systemd", ["/sbin/init"], "systemd"),
+           (BASH, INIT, "/usr/bin/bash", ["-bash"], "bash")]
+
+
+def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=False, snap=False, drop=(),
+          fork_lost=0, exit_lost=0, closing_books=None, late_fork=False) -> Path:
     ms = 1_000_000
     spine = [
         fork(START + 500, BASH, SRV), exe(START + 600, SRV, "/usr/bin/python3", ["python3", "-m", "http.server", "18077"]),
@@ -78,6 +106,14 @@ def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=Fals
         ex(START + 4 * S + 30 * ms, NC, 1 << 8), ex(START + 4 * S + 31 * ms, SH, 1 << 8),
         ex(START + 3 * S + 60 * ms, C2, 0),
     ]
+    if late_fork:   # a child of bash forked while the closing snapshot runs, and missed by it
+        spine.append(fork(START + 5 * S + S // 2 + 500, BASH, (700, START + 5 * S + S // 2 + 500)))
+    if drop:
+        def who(r):
+            h = R.decode(memoryview(r), 0, 0, 0)
+            k = (h.f["child_tgid"], h.f["child_start_ns"]) if h.name == "FORK" else h.proc
+            return (h.name, k)
+        spine = [r for r in spine if who(r) not in drop]
     bulk = [
         net(START + S, SRV, "BIND", 9001, "127.0.0.1:18077"),
         net(START + S + 1, SRV, "LISTEN", 9001, "127.0.0.1:18077"),
@@ -88,7 +124,8 @@ def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=Fals
         net(START + 3 * S + 500 * ms, SRV, "ACCEPT", 9006, "127.0.0.1:18077", "10.0.0.7:52000", peer=9001, isn=0x3333),
         net(START + 4 * S + 25 * ms, NC, "CONNECT", 9007, "127.0.0.1:0", "127.0.0.1:4444", ret=-111),
     ] if net_on else []
-    daemon = [rec("CLOCK_SYNC", h_ts_ns=START + 5 * S, boottime_ns=START + 5 * S, monotonic_ns=START + 5 * S,
+    daemon = snapshot(START - 5000, 0, 1, OPENING) if snap else []
+    daemon += [rec("CLOCK_SYNC", h_ts_ns=START + 5 * S, boottime_ns=START + 5 * S, monotonic_ns=START + 5 * S,
                   realtime_ns=WALL + 5 * S)]
     if gap:
         daemon.append(rec("GAP", h_ts_ns=START + 4 * S + 40 * ms, from_ns=START + 4 * S, to_ns=START + 4 * S + 40 * ms,
@@ -96,12 +133,17 @@ def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=Fals
     if stats_v1:
         daemon.append(rec("STATS", version=1, h_ts_ns=START + 6 * S, run_state=0))
     else:
-        daemon.append(rec("STATS", h_ts_ns=START + 6 * S, run_state=2 if skipped else 0, exec_missed=skipped))
+        daemon.append(rec("STATS", h_ts_ns=START + 6 * S, run_state=2 if skipped else 0, exec_missed=skipped,
+                          fork_reserve_failed=fork_lost, exit_reserve_failed=exit_lost))
     daemon.append(rec("NET_STATS", h_ts_ns=START + 6 * S, net_seen=len(bulk), net_emitted=len(bulk),
                       net_drained=len(bulk), net_written=len(bulk)))
+    if snap:
+        daemon += snapshot(START + 5 * S + S // 2, 1, 2, OPENING + [
+            (SRV, BASH, "/usr/bin/python3.14", ["python3", "-m", "http.server", "18077"], "python3")],
+            **(closing_books or {}))
     if end:
         daemon.append(rec("END", var={"reason": b"stop requested"}, h_ts_ns=START + 6 * S + 1, exit_code=0,
-                          run_state=0, invariant=1))
+                          run_state=0, invariant=1, closing_snapshot=1 if snap else 0))
     m = meta_for(**{"clock.boottime_ns": str(START), "clock.realtime_ns": str(WALL), "clock.monotonic_ns": str(START),
                     "config.net": "yes" if net_on else "no", "hostname": "p15-demo", "kernel.release": "7.0.0-38-generic",
                     "run.id": "20261102T100000Z-scenario"})

@@ -88,12 +88,14 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`p15_counters.h`](../bpf/include/p15_counters.h) | Per-cause counters shared by the BPF programs and the daemon (ADR-0006, accounting invariant). |  |
+| [`p15_snap.h`](../bpf/include/p15_snap.h) | The process snapshot's books (ADR-0007 rule 3, ADR-0023), shared by snap.bpf.c, which counts, and p15d, which zeroes them before each snapshot and copies them into SNAP_DONE aft... |  |
 
 ## bpf/progs
 
 | File | Job | Public names |
 |---|---|---|
 | [`net.bpf.c`](../bpf/progs/net.bpf.c) | network intent (ADR-0004). | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
+| [`snap.bpf.c`](../bpf/progs/snap.bpf.c) | the process snapshot (ADR-0007 rule 3, ADR-0023). | `iter.s/task` |
 | [`spine.bpf.c`](../bpf/progs/spine.bpf.c) | the process spine (ADR-0003, ADR-0020). | `tp_btf/sched_process_fork → spine_fork`, `tracepoint/sched/sched_process_exec`, `tracepoint/sched/sched_process_exit`, `tracepoint/task/task_rename` |
 
 ## bpf/test
@@ -139,6 +141,9 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
 | [`selftest_net.c`](../daemon/selftest_net.c) | The network-intent self-test (ADR-0004 rule 6). | `p15_selftest_net` |
 | [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). | `p15_selftest_net` |
+| [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
+| [`snapshot.h`](../daemon/snapshot.h) | The process snapshot (ADR-0007 rule 3, ADR-0023). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_books_close`, `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
+| [`snapshot_frame.c`](../daemon/snapshot_frame.c) | Framing and checking a process snapshot's output (ADR-0007 rule 3). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_books_close` |
 | [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_take_fsync_max`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf`, `p15w_recover` |
 | [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush` (+3) |
 | [`writer.c`](../daemon/writer.c) | The WAL writer thread (ADR-0017 layer 2, ADR-0019 G4.1). | `p15_invariant_check`, `p15_writer_main` |
@@ -148,7 +153,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips` |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
 | [`mutate_wal.py`](../daemon/tests/mutate_wal.py) | Mutation sweep for the WAL writer (CONTRIBUTING: every gate is checked by mutation sweeps). |  |
@@ -158,6 +163,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`test_records.c`](../daemon/tests/test_records.c) | Unit tests for p15_rec_check and p15_rec_format on the daemon records (CLOCK_SYNC, STATS, GAP, END) and the fixed-size rule for every type. |  |
 | [`test_run.c`](../daemon/tests/test_run.c) | Unit tests for the run state machine, the exit code and the accounting invariant (daemon/run.c, daemon/writer.c p15_invariant_check; ADR-0006 rule 6, ADR-0019 G2). |  |
 | [`test_selftest.c`](../daemon/tests/test_selftest.c) | Unit tests for the record checks and the self-test evaluation, on synthetic records. |  |
+| [`test_snapshot.c`](../daemon/tests/test_snapshot.c) | Unit tests for the snapshot's framing and books (daemon/snapshot_frame.c): records split across reads, a record that fails its check, one from another snapshot, a WAL that refus... |  |
 | [`test_wal.c`](../daemon/tests/test_wal.c) | Unit tests for the P15W writer, batch builder, scanner and recovery (docs/formats/p15w-v1.md). |  |
 | [`wal_fixture.c`](../daemon/tests/wal_fixture.c) | write a small P15W run with one or more records of every type, through the C writer (daemon/wal.c), so the Python reader's test (python/tests/it_wal_c.py) can check that it deco... |  |
 
@@ -168,8 +174,10 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`__init__.py`](../python/p15/__init__.py) | Fiery Dragon's analysis tier: reading what the capture wrote (README "python/"). |  |
 | [`net.py`](../python/p15/net.py) | Network intent of a run (ADR-0004): the NET records, and what happened on one port. | `Event`, `event`, `Listener`, `Conn`, `PortReport`, `port_report` |
 | [`proctree.py`](../python/p15/proctree.py) | The process tree of a run, from the spine records (ADR-0003, ADR-0009). | `Image`, `Proc`, `Gap`, `Tree`, `build` |
+| [`reconcile.py`](../python/p15/reconcile.py) | Reconcile the process tree against the run's closing snapshot (ADR-0023 rule 2). | `Reconciliation`, `reconcile` |
 | [`records.py`](../python/p15/records.py) | The ADR-0008 records, decoded from the generated layouts (schema/generated/p15_records.py). | `RecordError`, `Record`, `decode`, `kdev`, `net_addr`, `endpoint`, `comm`, `argv` |
 | [`report_html.py`](../python/p15/report_html.py) | The HTML form of p15-trace's port report: one self-contained page (no scripts, fonts or images from anywhere else), so it can be mailed, archived next to the evidence and opened... | `connection_map`, `timeline`, `render` |
+| [`snapshot.py`](../python/p15/snapshot.py) | Process snapshots in a run (ADR-0007 rule 3, ADR-0023): the PROC records of each snapshot and its SNAP_DONE books. | `Snapshot`, `collect`, `parent_key`, `is_kthread` |
 | [`trace.py`](../python/p15/trace.py) | what happened on a port, from one capture run (STATE 19.4). | `Context`, `load`, `proc_line`, `chain`, `involved`, `proc_block`, `text_report` |
 | [`wal.py`](../python/p15/wal.py) | segments and runs (docs/formats/p15w-v1.md, ADR-0007). | `crc32c`, `HeaderError`, `RunError`, `Batch`, `Stop`, `Segment`, `parse_header`, `read_segment`, `Run`, `read_run`, `summary` |
 
@@ -179,7 +187,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_wal_c.py`](../python/tests/it_wal_c.py) | decode, field by field, the run that daemon/tests/wal_fixture.c wrote through daemon/wal.c. | `CWriterRun` |
 | [`p15w_build.py`](../python/tests/p15w_build.py) | build P15W segments and ADR-0008 records in memory, with every field open to being broken on purpose. | `rec`, `batch`, `header`, `meta_for`, `write_run` |
-| [`scenario.py`](../python/tests/scenario.py) | a small synthetic p15d run with a known story, for the process tree, the port query and the reports. | `fork`, `exe`, `ren`, `ex`, `net`, `build` |
+| [`scenario.py`](../python/tests/scenario.py) | a small synthetic p15d run with a known story, for the process tree, the port query and the reports. | `fork`, `exe`, `ren`, `ex`, `net`, `proc`, `snapshot`, `build` |
+| [`test_reconcile.py`](../python/tests/test_reconcile.py) | Tests for the process snapshots (snapshot.py), the tree's use of the opening one (proctree.py) and the ADR-0023 reconciliation (reconcile.py), on scenario.py's run with snapshots. | `Base`, `Snapshots`, `TreeFromSnapshot`, `Reconcile` |
 | [`test_records.py`](../python/tests/test_records.py) | Tests for the record decoder (python/p15/records.py): every refusal p15_rec_check makes (daemon/records.c, same wording), no defaults, and the field helpers. | `dec`, `Refusals`, `Decoding`, `Helpers` |
 | [`test_trace.py`](../python/tests/test_trace.py) | Tests for the process tree (proctree.py), the port query (net.py) and p15-trace's two reports (trace.py, report_html.py), on the synthetic run of scenario.py, whose story is known. | `Base`, `Tree`, `Port`, `TextReport`, `Html`, `Checker`, `Cli` |
 | [`test_wal.py`](../python/tests/test_wal.py) | Tests for the P15W reader (python/p15/wal.py) against docs/formats/p15w-v1.md: every header check, every §4 stop cause and its torn/corrupt verdict, the run rules, and random da... | `Tmp`, `Crc`, `Header`, `Batches`, `Runs`, `BadRecords`, `Damage` |

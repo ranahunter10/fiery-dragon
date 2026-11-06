@@ -28,7 +28,9 @@ from pathlib import Path
 
 from . import net as N
 from . import proctree as P
+from . import reconcile as C
 from . import records as R
+from . import snapshot as S
 from . import wal as W
 
 
@@ -44,6 +46,8 @@ class Context:
     anchors: list[tuple[int, int]]  # (boottime, realtime) pairs: segment headers and CLOCK_SYNC
     net_on: bool
     record_errors: list
+    snapshots: list[S.Snapshot]
+    recon: C.Reconciliation          # the process tree against the closing snapshot (ADR-0023)
 
     def wall(self, ts: int) -> str:
         """CLOCK_BOOTTIME -> UTC wall time, through the nearest earlier clock anchor (ADR-0007 L5)."""
@@ -87,6 +91,7 @@ class Context:
             out.append("NETWORK CAPTURE WAS OFF in this run (--no-net): no NET record means nothing is known, "
                        "not that nothing happened")
         out += self.skip_lines()
+        out.append(self.recon.line())
         if self.net_stats is not None:
             ns = self.net_stats.f
             out.append(f"NET records: {ns['net_emitted']} captured, {ns['net_reserve_failed']} lost to a full ring, "
@@ -118,13 +123,16 @@ def load(path: Path) -> Context:
     start = int(run.meta["clock.boottime_ns"])
     anchors = sorted({(int(s.meta["clock.boottime_ns"]), int(s.meta["clock.realtime_ns"])) for s in run.segments} |
                      {(r.f["boottime_ns"], r.f["realtime_ns"]) for r in daemon if r.name == "CLOCK_SYNC"})
-    tree = P.build(spine + [r for r in daemon if r.name == "GAP"], start)
+    snaps = S.collect(daemon)
+    opening = next((s for s in snaps if s.kind == "opening"), None)
+    tree = P.build(spine + [r for r in daemon if r.name == "GAP"], start, opening)
     events = sorted((N.event(r) for r in bulk if r.name == "NET"), key=lambda e: (e.ts_ns, e.seq))
     last = {}
     for r in daemon:
         last[r.name] = r
+    recon = C.reconcile(tree, snaps, last.get("STATS"), last.get("END"))
     return Context(run, tree, events, last.get("END"), last.get("STATS"), last.get("NET_STATS"), start, anchors,
-                   run.meta["config.net"] == "yes", errors)
+                   run.meta["config.net"] == "yes", errors, snaps, recon)
 
 
 def proc_line(ctx: Context, key) -> str:
@@ -140,6 +148,8 @@ def chain(ctx: Context, key) -> str:
         if p.parent is None and p.fork_ns is None:
             parts[-1] += " [started before the capture]" if p.origin.startswith("started before") else \
                 " [FORK not in the run]"
+        elif p.fork_ns is None and p.origin.startswith("its FORK is missing"):
+            parts[-1] += " [FORK lost: parent from the closing snapshot]"
     return " ← ".join(parts)
 
 
@@ -225,7 +235,8 @@ def text_report(ctx: Context, rep: N.PortReport) -> str:
           f"connect(s) set aside as a different connection; {c['client_not_found']} not found; "
           f"{c['tcp_without_isn']} TCP record(s) without a sequence number",
           f"  process tree: {len(ctx.tree.procs)} processes, {t['pre_existing']} started before the capture "
-          f"(their parents come with the snapshot, step 4c), {t['fork_missing']} with a missing FORK; "
+          f"({t['from_snapshot']} with parent and program from the opening snapshot, {t['pre_existing_unlisted']} not "
+          f"in it), {t['fork_missing']} with a missing FORK; "
           f"ADR-0009 checks: {t['exit_twice']} double exits, {t['fork_twice']} double forks (must be 0)"]
     return "\n".join(L) + "\n"
 
