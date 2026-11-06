@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Mutation sweep for the Python gates and harnesses (CONTRIBUTING §6: every gate is checked by a
-mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, bench/rb_cost/summarize.py,
+mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py,
 the WAL reader (python/p15/wal.py, records.py) and the port query (proctree.py, net.py,
 trace.py, report_html.py).
 
@@ -21,15 +21,16 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-EXITS, HARD, SUMM = "tools/ci/check_exits.py", "tools/ci/check_hardening.py", "bench/rb_cost/summarize.py"
+EXITS, HARD = "tools/ci/check_exits.py", "tools/ci/check_hardening.py"
 WAL, REC = "python/p15/wal.py", "python/p15/records.py"
 TREE, NET, TRACE, HTML = "python/p15/proctree.py", "python/p15/net.py", "python/p15/trace.py", "python/p15/report_html.py"
 QUANT, HOOKS = "bench/quant/paired.py", "bench/hook_cost/summarize.py"
 SNAP, RECON = "python/p15/snapshot.py", "python/p15/reconcile.py"
-_TT, _TR = "python/tests/test_trace.py", "python/tests/test_reconcile.py"
+PROV = "python/p15/provenance.py"
+_TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
-         NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR}
+         NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -53,19 +54,6 @@ M = [
  (HARD, '"canary": bool(re.search(r"\\b__stack_chk_fail\\b", syms)),', '"canary": True,'),
  (HARD, '"fortify": bool(re.search(r"\\b__\\w+_chk\\b", syms)),', '"fortify": True,'),
  (HARD, r'\bIBT\b.*\bSHSTK\b', r'\bIBT\b'),
- (SUMM, 'if word not in ("row", "nullsys", "selftest"):', 'if word not in ("row", "selftest"):'),
- (SUMM, 'if set(kv) != set(ROW_KEYS) or kv["way"] not in WAYS:', 'if kv["way"] not in WAYS:'),
- (SUMM, 'if row["run_cnt"] <= 0:', 'if row["run_cnt"] < 0:'),
- (SUMM, 'if kv["way"] not in WAYS or verdict not in ("PASS", "FAIL"):', 'if kv["way"] not in WAYS:'),
- (SUMM, 'if r["ours"] != r["execs"] or r["invalid"]', 'if r["invalid"]'),
- (SUMM, 'or r["wrong_size"] or r["wrong_argv"]:', 'or r["wrong_argv"]:'),
- (SUMM, 'if any(s != sets[0] for s in sets):', 'if False:'),
- (SUMM, 'return r["run_time_ns"] / r["run_cnt"]', 'return r["run_time_ns"] / r["execs"] * 1.0'),
- (SUMM, 'diffs = sorted(by[(argv, w)][k] - base[k]', 'diffs = sorted(base[k] - by[(argv, w)][k]'),
- (SUMM, 'below = sum(x < 0 for x in diffs)', 'below = sum(x <= 0 for x in diffs)'),
- (SUMM, 'ratio = f"{m / nmed:.1f}"', 'ratio = f"{m / null[0]:.1f}"'),
- (SUMM, 'foreign = sum(r["foreign"] for r in d["rows"])', 'foreign = 0'),
- (SUMM, 'return 1 if probs else 0', 'return 0'),
  (WAL, "if magic != SEG_MAGIC:", "if False:"),
  (WAL, "if (major, minor) != (MAJOR, MINOR):", "if major != MAJOR:"),
  (WAL, "if hlen < PREFIX.size or hlen % 8 or hlen > len(buf):", "if hlen > len(buf):"),
@@ -193,6 +181,15 @@ M = [
  (RECON, "why += s.problems()", "pass"),
  (RECON, 'n = f[f"{kind}_reserve_failed"] + f[f"{kind}_build_failed"]', 'n = f[f"{kind}_reserve_failed"] + 10'),
  (TRACE, "out.append(self.recon.line())", "pass"),
+ # code provenance (ADR-0025): the backing classes, the writable test and the pipe join
+ (PROV, "return \"memory\" if nlink == 0 or name.startswith(b\"memfd:\") else \"tmpfs\"", "return \"tmpfs\""),
+ (PROV, "if nlink == 0:\n        return \"deleted\"", "if False:\n        return \"deleted\""),
+ (PROV, "if magic == OVERLAYFS:", "if False and magic == OVERLAYFS:"),
+ (PROV, "if mode & _WOTH:\n        return True", "if False:\n        return True"),
+ (PROV, "and not (fsuid == 0 and rec.f[\"exe_uid\"] == 0)", "and not (fsuid == 99999)"),
+ (PROV, "if sin == \"socket\" and sout == \"socket\":", "if sin == \"socket\" or sout == \"socket\":"),
+ (PROV, "w = writers.get((e.f[\"stdin_dev\"], e.f[\"stdin_ino\"]))", "w = writers.get((e.f[\"stdin_dev\"], 0))"),
+ (PROV, "if w is not None and w is not e:", "if w is not None:"),
 ]
 
 

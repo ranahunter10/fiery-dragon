@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "23772a79261eb103211e451d652dbf2a1de6d40ca14b1ae5b837223cb51cce3d"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "f72ad91f524f63e1b1ac9b5521cd17bb1078c1dab15097b88c89820037b66f24"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -93,9 +93,15 @@ RECORDS = {
     (36, 2): Layout('NET_STATS', 36, 2, 'STATS',
         np.dtype({'names': ['h', 'net_seen', 'net_emitted', 'net_reserve_failed', 'net_excluded', 'net_drained', 'net_invalid', 'net_written', 'net_drain_lost', 'bulk_fill_max', 'net_missed', 'bulk_ring_bytes', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', 'S4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 116], 'itemsize': 120}),
         120, 120, ()),
+    (2, 2): Layout('EXEC', 2, 2, 'SPINE',
+        np.dtype({'names': ['h', 'exe_ino', 'self_exec_id', 'exe_ctime_ns', 'exe_mtime_ns', 'stdin_ino', 'stdout_ino', 'stderr_ino', 'exe_dev', 'exe_gen', 'exe_nlink', 'exe_fs_magic', 'exe_mode', 'exe_uid', 'exe_gid', 'old_tid', 'uid', 'euid', 'gid', 'egid', 'fsuid', 'fsgid', 'stdin_dev', 'stdin_rdev', 'stdin_mode', 'stdout_dev', 'stdout_rdev', 'stdout_mode', 'stderr_dev', 'stderr_rdev', 'stderr_mode', 'filename_full', 'argv_full', 'exe_name_full', 'filename_len', 'argv_len', 'exe_name_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', '<u2', '<u2', 'S2'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 148, 152, 156, 160, 164, 168, 172, 176, 180, 184, 188, 192, 194, 196, 198], 'itemsize': 200}),
+        200, 1544, (('filename', 256), ('argv', 1024), ('exe_name', 64))),
     (37, 1): Layout('PROC', 37, 1, 'MARKER',
         np.dtype({'names': ['h', 'parent_start_ns', 'exe_ino', 'parent_tgid', 'exe_dev', 'exe_gen', 'pflags', 'snap_id', 'comm', 'kind', 'reserved', 'exe_path_full', 'argv_full', 'exe_path_len', 'argv_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', 'S16', '<u2', '<u2', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 84, 86, 88, 92, 96, 98, 100], 'itemsize': 104}),
         104, 1384, (('exe_path', 256), ('argv', 1024))),
+    (37, 2): Layout('PROC', 37, 2, 'MARKER',
+        np.dtype({'names': ['h', 'parent_start_ns', 'exe_ino', 'self_exec_id', 'exe_ctime_ns', 'exe_mtime_ns', 'parent_tgid', 'exe_dev', 'exe_gen', 'exe_nlink', 'exe_fs_magic', 'exe_mode', 'exe_uid', 'exe_gid', 'uid', 'euid', 'gid', 'egid', 'fsuid', 'fsgid', 'pflags', 'snap_id', 'comm', 'kind', 'reserved', 'exe_path_full', 'argv_full', 'exe_path_len', 'argv_len'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', 'S16', '<u2', '<u2', '<u4', '<u4', '<u2', '<u2'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 152, 154, 156, 160, 164, 166], 'itemsize': 168}),
+        168, 1448, (('exe_path', 256), ('argv', 1024))),
     (38, 1): Layout('SNAP_DONE', 38, 1, 'MARKER',
         np.dtype({'names': ['h', 'duration_ns', 'tasks', 'threads', 'emitted', 'write_failed', 'entries', 'invalid', 'unwritten', 'kthreads', 'exiting', 'argv_failed', 'path_unlocked', 'path_not_found', 'path_failed', 'truncated', 'snap_id', 'error', 'kind', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<i4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 156, 160, 162], 'itemsize': 168}),
         168, 168, ()),

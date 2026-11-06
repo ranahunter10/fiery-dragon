@@ -55,6 +55,7 @@ static void add_exec(struct p15_rec_list *l, const char *file, const char *argv,
 
 	memset(buf, 0, sizeof(buf));
 	hdr(&r->h, P15_T_EXEC, len, C, SC, ts);
+	r->h.version = P15_EXEC_VERSION;   /* a current (v2) record; exe_name_len stays 0 (buf is zeroed) */
 	r->old_tid = C; r->filename_len = fl; r->filename_full = fl; r->argv_len = argv_len; r->argv_full = argv_len;
 	memcpy(buf + sizeof(*r), file, fl);
 	memcpy(buf + sizeof(*r) + fl, argv, argv_len);
@@ -120,7 +121,8 @@ static void test_record_checks(void)
 {
 	struct p15_exit x;
 	unsigned char buf[P15_EXEC_MAX_SIZE];
-	struct p15_exec *r = (void *)buf;
+	struct p15_exec_v1 *r = (void *)buf;   /* this block tests the var-field tail rules on the v1 layout,
+						* which the checker must still accept (old WALs); offsets are v1's */
 	const char *why;
 
 	memset(&x, 0, sizeof(x));

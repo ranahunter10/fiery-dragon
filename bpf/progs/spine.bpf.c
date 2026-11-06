@@ -101,24 +101,14 @@ int BPF_PROG(spine_fork, struct task_struct *parent, struct task_struct *child)
 }
 
 /*
- * EXEC records are variable-length. ADR-0017 layer 1: each takes only its own len in the
- * ring. The way is chosen at build time, so the cost harness (bench/rb_cost) measures this
- * code itself, not a copy of it:
- *   FIXED   reserve the maximum and fill it in place (the first build; the harness's baseline);
- *   OUTPUT  fill a per-CPU scratch record, then bpf_ringbuf_output() exactly len bytes;
- *   DYNPTR  fill the fixed part and the filename in scratch, bpf_ringbuf_reserve_dynptr() of
- *           exactly len, copy them in, and read argv straight into the ring.
+ * EXEC records are variable-length. ADR-0017 layer 1: each takes only its own len in the ring.
+ * They are filled in a per-CPU scratch record and copied to the ring with bpf_ringbuf_output()
+ * of exactly len bytes (decision 4; the cost of this way vs. the two earlier ones was measured
+ * in E-0076 and on the VM in E-0108, and the two were removed with EXEC v2).
  */
-#define P15_EXEC_WAY_FIXED 0
-#define P15_EXEC_WAY_OUTPUT 1
-#define P15_EXEC_WAY_DYNPTR 2
-#ifndef P15_EXEC_WAY
-#define P15_EXEC_WAY P15_EXEC_WAY_OUTPUT
-#endif
-
 #define EXEC_TAIL (P15_EXEC_MAX_SIZE - (int)sizeof(struct p15_exec))
 
-/* the record is built here when it is not built in the ring (OUTPUT, DYNPTR) */
+/* the record is built here, then copied to the ring */
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
@@ -126,10 +116,67 @@ struct {
 	__type(value, __u8[P15_EXEC_MAX_SIZE]);
 } exec_scratch SEC(".maps");
 
+#define P15_S_IFMT   0170000
+#define P15_S_IFSOCK 0140000
+
+/* One standard-stream descriptor's identity into (*ino, *dev, *rdev, *mode), from current's
+ * file table (ADR-0025 rule 5). fd is a small constant (0, 1, 2). A closed or absent descriptor
+ * leaves all four zero. The inode is the backing object's: for a pipe it is the pipe inode, so
+ * fd 0 of a reader and fd 1 of its writer share it; the file type is in the mode bits. (No socket
+ * cookie: bpf_get_socket_cookie is barred in a classic tracepoint, and 7.0 has no stable
+ * sk_cookie field, so a socket-to-NET join waits for a helper-capable hook.) */
+static __always_inline void fd_identity(struct file **fdarr, __u32 max_fds, __u32 fd, __u64 *ino, __u32 *dev,
+					__u32 *rdev, __u32 *mode)
+{
+	struct file *f = NULL;
+	struct inode *ino_p;
+
+	*ino = 0; *dev = 0; *rdev = 0; *mode = 0;
+	if (fd >= max_fds || !fdarr)
+		return;
+	bpf_probe_read_kernel(&f, sizeof(f), &fdarr[fd]);
+	if (!f)
+		return;
+	ino_p = BPF_CORE_READ(f, f_inode);
+	*ino = BPF_CORE_READ(ino_p, i_ino);
+	*dev = BPF_CORE_READ(ino_p, i_sb, s_dev);
+	*rdev = BPF_CORE_READ(ino_p, i_rdev);
+	*mode = BPF_CORE_READ(ino_p, i_mode);
+}
+
+/* Code provenance (ADR-0025): the executable's own facts, the committed credentials,
+ * self_exec_id and the identity of fds 0/1/2. All CO-RE reads of current's own objects. */
+static __always_inline void exec_provenance(struct p15_exec *r, struct task_struct *p)
+{
+	struct inode *ei = BPF_CORE_READ(p, mm, exe_file, f_inode);
+	const struct cred *c = BPF_CORE_READ(p, cred);
+	struct file **fdarr = BPF_CORE_READ(p, files, fdt, fd);
+	__u32 max_fds = BPF_CORE_READ(p, files, fdt, max_fds);
+
+	r->exe_nlink = BPF_CORE_READ(ei, __i_nlink);
+	r->exe_fs_magic = (__u32)BPF_CORE_READ(ei, i_sb, s_magic);
+	r->exe_mode = BPF_CORE_READ(ei, i_mode);
+	r->exe_uid = BPF_CORE_READ(ei, i_uid.val);
+	r->exe_gid = BPF_CORE_READ(ei, i_gid.val);
+	r->exe_ctime_ns = (__u64)BPF_CORE_READ(ei, i_ctime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_ctime_nsec);
+	r->exe_mtime_ns = (__u64)BPF_CORE_READ(ei, i_mtime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_mtime_nsec);
+	r->self_exec_id = BPF_CORE_READ(p, self_exec_id);
+	r->uid = BPF_CORE_READ(c, uid.val);
+	r->euid = BPF_CORE_READ(c, euid.val);
+	r->gid = BPF_CORE_READ(c, gid.val);
+	r->egid = BPF_CORE_READ(c, egid.val);
+	r->fsuid = BPF_CORE_READ(c, fsuid.val);
+	r->fsgid = BPF_CORE_READ(c, fsgid.val);
+	fd_identity(fdarr, max_fds, 0, &r->stdin_ino, &r->stdin_dev, &r->stdin_rdev, &r->stdin_mode);
+	fd_identity(fdarr, max_fds, 1, &r->stdout_ino, &r->stdout_dev, &r->stdout_rdev, &r->stdout_mode);
+	fd_identity(fdarr, max_fds, 2, &r->stderr_ino, &r->stderr_dev, &r->stderr_rdev, &r->stderr_mode);
+}
+
 /* Exe identity, old tid and the filename (into tail). Returns the filename bytes copied.
  * The exec'd file is current->mm->exe_file: begin_new_exec set it to bprm->file before the
  * tracepoint (fs/exec.c, v7.0; ADR-0020 rule 1). The filename is the tracepoint's own copy of
- * bprm->filename (its __data_loc field). */
+ * bprm->filename (its __data_loc field). exe_name (the dentry basename) goes into the tail at
+ * exe_off (after filename and argv, the schema's last var field). */
 static __always_inline __u32 exec_head(struct p15_exec *r, __u8 *tail, pid_t old_pid, const char *filename,
 				       struct task_struct *p, __u16 *flags)
 {
@@ -141,6 +188,7 @@ static __always_inline __u32 exec_head(struct p15_exec *r, __u8 *tail, pid_t old
 	r->exe_dev = BPF_CORE_READ(exe, f_inode, i_sb, s_dev);
 	r->exe_gen = BPF_CORE_READ(exe, f_inode, i_generation);
 	r->old_tid = old_pid;
+	exec_provenance(r, p);
 
 	/* filename: the name as passed (bprm->filename); NUL not stored. */
 	n = bpf_probe_read_kernel_str(tail, P15_EXEC_FILENAME_MAX, filename);
@@ -197,8 +245,41 @@ static __always_inline __u32 exec_len(__u32 end)
 	return len > P15_EXEC_MAX_SIZE ? P15_EXEC_MAX_SIZE : len;
 }
 
-#if P15_EXEC_WAY != P15_EXEC_WAY_DYNPTR
-/* Fill a whole EXEC record at r: P15_EXEC_MAX_SIZE bytes of ring or scratch memory. Returns its len. */
+/* exe_name: the executable's dentry basename, into the tail at `at`. Sets exe_name_len/full,
+ * flags truncation. Returns the bytes written (no NUL). */
+static __always_inline __u32 exec_name(struct p15_exec *r, __u8 *tail, __u32 at, struct task_struct *p, __u16 *flags)
+{
+	const unsigned char *nm = BPF_CORE_READ(p, mm, exe_file, f_path.dentry, d_name.name);
+	__u32 en = 0;
+	long n;
+
+	at &= 2 * P15_EXEC_ARGV_MAX - 1;                 /* for the verifier: at <= fn+av < tail size */
+	if (at > EXEC_TAIL - P15_EXEC_EXE_NAME_MAX)
+		at = EXEC_TAIL - P15_EXEC_EXE_NAME_MAX;      /* cannot happen (fn+av leave room); bound anyway */
+	n = bpf_probe_read_kernel_str(tail + at, P15_EXEC_EXE_NAME_MAX, nm);
+	if (n <= 0) {
+		*flags |= P15_F_READ_FAILED;
+		count(P15_T_EXEC, P15_CK_READ_FAILED);
+		r->exe_name_full = P15_LEN_UNKNOWN;
+	} else {
+		en = n - 1;
+		if (n == P15_EXEC_EXE_NAME_MAX) {
+			*flags |= P15_F_TRUNCATED;
+			count(P15_T_EXEC, P15_CK_TRUNCATED);
+			r->exe_name_full = P15_LEN_UNKNOWN;
+		} else {
+			r->exe_name_full = en;
+		}
+	}
+	if (en > P15_EXEC_EXE_NAME_MAX - 1)
+		en = P15_EXEC_EXE_NAME_MAX - 1;
+	r->exe_name_len = en;
+	return en;
+}
+
+/* Fill a whole EXEC record at r (per-CPU scratch), tail packed filename, argv, exe_name in the
+ * schema's var order. Returns its len. The record is then copied to the ring by bpf_ringbuf_output
+ * (ADR-0017 layer 1, decision 4: the one build way; E-0076, E-0108). */
 static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p, pid_t old_pid,
 				       const char *filename)
 {
@@ -206,7 +287,7 @@ static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p
 	__u16 flags = 0;
 	__u64 a0;
 	__u32 fn_len = exec_head(r, tail, old_pid, filename, p, &flags);
-	__u32 av_len = exec_argv_span(r, p, &a0, &flags), end, len;
+	__u32 av_len = exec_argv_span(r, p, &a0, &flags), en_len, end, len;
 
 	if (av_len && bpf_probe_read_user(tail + fn_len, av_len, (const void *)a0)) {
 		flags |= P15_F_READ_FAILED;
@@ -214,9 +295,10 @@ static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p
 		av_len = 0;
 	}
 	r->argv_len = av_len;
+	en_len = exec_name(r, tail, fn_len + av_len, p, &flags);
 
 	/* zero the bytes between the data and the 8-byte end of the record */
-	end = fn_len + av_len;
+	end = fn_len + av_len + en_len;
 	for (int i = 0; i < 8; i++) {
 		__u32 o = end + i;
 
@@ -229,7 +311,6 @@ static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p
 	fill_hdr(&r->h, P15_T_EXEC, P15_EXEC_VERSION, len, flags, p);
 	return len;
 }
-#endif
 
 SEC("tracepoint/sched/sched_process_exec")
 int spine_exec(struct trace_event_raw_sched_process_exec *ctx)
@@ -238,22 +319,9 @@ int spine_exec(struct trace_event_raw_sched_process_exec *ctx)
 	const char *filename = (const char *)ctx + (ctx->__data_loc_filename & 0xFFFF);
 	pid_t old_pid = ctx->old_pid;
 	struct p15_exec *r;
-#if P15_EXEC_WAY != P15_EXEC_WAY_FIXED
-	__u32 zero = 0;
-#endif
+	__u32 zero = 0, len;
 
 	count(P15_T_EXEC, P15_CK_SEEN);
-#if P15_EXEC_WAY == P15_EXEC_WAY_FIXED
-	r = bpf_ringbuf_reserve(&spine_rb, P15_EXEC_MAX_SIZE, 0);
-	if (!r) {
-		count(P15_T_EXEC, P15_CK_RESERVE_FAILED);
-		return 0;
-	}
-	exec_fill(r, p, old_pid, filename);
-	bpf_ringbuf_submit(r, wake());
-#elif P15_EXEC_WAY == P15_EXEC_WAY_OUTPUT
-	__u32 len;
-
 	r = bpf_map_lookup_elem(&exec_scratch, &zero);
 	if (!r) {
 		count(P15_T_EXEC, P15_CK_BUILD_FAILED);
@@ -264,46 +332,10 @@ int spine_exec(struct trace_event_raw_sched_process_exec *ctx)
 		count(P15_T_EXEC, P15_CK_RESERVE_FAILED);
 		return 0;
 	}
-#else /* DYNPTR */
-	struct bpf_dynptr d;
-	__u16 flags = 0;
-	__u64 a0;
-	__u32 fn_len, av_len, head, end, len;
-
-	r = bpf_map_lookup_elem(&exec_scratch, &zero);
-	if (!r) {
-		count(P15_T_EXEC, P15_CK_BUILD_FAILED);
-		return 0;
-	}
-	fn_len = exec_head(r, (__u8 *)(r + 1), old_pid, filename, p, &flags);
-	av_len = exec_argv_span(r, p, &a0, &flags);
-	len = exec_len(fn_len + av_len);
-	if (bpf_ringbuf_reserve_dynptr(&spine_rb, len, 0, &d)) {
-		bpf_ringbuf_discard_dynptr(&d, BPF_RB_NO_WAKEUP);
-		count(P15_T_EXEC, P15_CK_RESERVE_FAILED);
-		return 0;
-	}
-	head = sizeof(*r) + fn_len;
-	if (av_len && bpf_probe_read_user_dynptr(&d, head, av_len, (const void *)a0)) {
-		flags |= P15_F_READ_FAILED;
-		count(P15_T_EXEC, P15_CK_READ_FAILED);
-		av_len = 0;
-	}
-	r->argv_len = av_len;
-	fill_hdr(&r->h, P15_T_EXEC, P15_EXEC_VERSION, len, flags, p);
-	end = head + av_len;
-	/* ring memory is not zeroed: the padding, and argv's bytes after a failed read, are cleared */
-	if ((end < len && bpf_dynptr_memset(&d, end, len - end, 0)) ||
-	    bpf_dynptr_write(&d, 0, r, head, 0)) {
-		bpf_ringbuf_discard_dynptr(&d, BPF_RB_NO_WAKEUP);
-		count(P15_T_EXEC, P15_CK_BUILD_FAILED);
-		return 0;
-	}
-	bpf_ringbuf_submit_dynptr(&d, wake());
-#endif
 	count(P15_T_EXEC, P15_CK_EMITTED);
 	return 0;
 }
+
 
 SEC("tracepoint/sched/sched_process_exit")
 int spine_exit(struct trace_event_raw_sched_process_exit *ctx)

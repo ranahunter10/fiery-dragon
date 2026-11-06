@@ -28,6 +28,7 @@ from pathlib import Path
 
 from . import net as N
 from . import proctree as P
+from . import provenance as PV
 from . import reconcile as C
 from . import records as R
 from . import snapshot as S
@@ -48,6 +49,7 @@ class Context:
     record_errors: list
     snapshots: list[S.Snapshot]
     recon: C.Reconciliation          # the process tree against the closing snapshot (ADR-0023)
+    exec_records: list[R.Record]     # EXEC records in ts order, for pipe-link provenance (ADR-0025)
 
     def wall(self, ts: int) -> str:
         """CLOCK_BOOTTIME -> UTC wall time, through the nearest earlier clock anchor (ADR-0007 L5)."""
@@ -127,12 +129,13 @@ def load(path: Path) -> Context:
     opening = next((s for s in snaps if s.kind == "opening"), None)
     tree = P.build(spine + [r for r in daemon if r.name == "GAP"], start, opening)
     events = sorted((N.event(r) for r in bulk if r.name == "NET"), key=lambda e: (e.ts_ns, e.seq))
+    exec_recs = sorted((r for r in spine if r.name == "EXEC"), key=lambda r: (r.h["ts_ns"], r.seq))
     last = {}
     for r in daemon:
         last[r.name] = r
     recon = C.reconcile(tree, snaps, last.get("STATS"), last.get("END"))
     return Context(run, tree, events, last.get("END"), last.get("STATS"), last.get("NET_STATS"), start, anchors,
-                   run.meta["config.net"] == "yes", errors, snaps, recon)
+                   run.meta["config.net"] == "yes", errors, snaps, recon, exec_recs)
 
 
 def proc_line(ctx: Context, key) -> str:
@@ -169,11 +172,33 @@ def proc_block(ctx: Context, p: P.Proc) -> list[str]:
            f"            {'; '.join(life)}"]
     for im in p.images[:-1]:
         out.append(f"            earlier image at {ctx.rel(im.ts_ns)}: {' '.join(im.argv) or im.filename}")
+    if p.images and p.images[-1].notes:
+        out.append(f"            unusual: {'; '.join(p.images[-1].notes)}")
     if p.parent is not None:
         out.append(f"            parent: {chain(ctx, p.parent)}")
     if p.in_gap:
         out.append("            alive during a GAP window: some of its records may be missing")
     return out
+
+
+def provenance_block(ctx: Context) -> list[str]:
+    """Code provenance across the whole run (ADR-0025): every process whose latest image has an
+    unusual note, and every producer→interpreter pipe. Empty when the run is ordinary."""
+    flagged = [p for p in ctx.tree.procs.values() if p.images and p.images[-1].notes]
+    links = PV.pipe_links(ctx.exec_records)
+    if not flagged and not links:
+        return []
+    L = ["", "Code provenance (ADR-0025)"]
+    for p in sorted(flagged, key=lambda p: p.images[-1].ts_ns):
+        L.append(f"  pid {p.pid:<7} {p.cmdline}: {'; '.join(p.images[-1].notes)}")
+    def nm(e):
+        return (e.var.get("exe_name") or e.var["filename"].rsplit(b"/", 1)[-1]).decode("utf-8", "backslashreplace")
+    for w, rd in links:
+        L.append(f"  pipe: {nm(w)} (pid {w.h['tgid']}) -> {nm(rd)} (pid {rd.h['tgid']}) "
+                 f"[same pipe inode {rd.f['stdin_ino']}]")
+    if not flagged:
+        L.append("  no process ran from an unusual backing")
+    return L
 
 
 def text_report(ctx: Context, rep: N.PortReport) -> str:
@@ -222,6 +247,7 @@ def text_report(ctx: Context, rep: N.PortReport) -> str:
     L += ["", f"Processes involved ({len(ps)}, with their ancestors)"]
     for p in ps:
         L += proc_block(ctx, p)
+    L += provenance_block(ctx)
     if not rep.events:
         L += ["", f"Nothing in this run names port {rep.port}" +
               (": network capture was off, so this says nothing." if not ctx.net_on else ".")]

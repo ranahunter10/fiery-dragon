@@ -10,14 +10,14 @@ static size_t fixed_size(__u16 type, __u16 version)
 {
 	switch (type) {
 	case P15_T_FORK:   return version == 1 ? sizeof(struct p15_fork_v1) : 0;
-	case P15_T_EXEC:   return version == 1 ? sizeof(struct p15_exec_v1) : 0;
+	case P15_T_EXEC:   return version == 1 ? sizeof(struct p15_exec_v1) : version == 2 ? sizeof(struct p15_exec_v2) : 0;
 	case P15_T_EXIT:   return version == 1 ? sizeof(struct p15_exit_v1) : 0;
 	case P15_T_RENAME: return version == 1 ? sizeof(struct p15_rename_v1) : 0;
 	case P15_T_CLOCK_SYNC: return version == 1 ? sizeof(struct p15_clock_sync_v1) : 0;
 	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : version == 2 ? sizeof(struct p15_stats_v2) : 0;
 	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;
 	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : version == 2 ? sizeof(struct p15_end_v2) : 0;
-	case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : 0;
+	case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : version == 2 ? sizeof(struct p15_proc_v2) : 0;
 	case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : 0;
 	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;
 	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
@@ -100,14 +100,28 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 		return -EINVAL;
 	}
 	if (h->type == P15_T_EXEC) {
-		const struct p15_exec_v1 *e = data;
+		size_t tail;
 
-		if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC_V1_ARGV_MAX) {
-			*why = "variable field beyond len";
-			return -EINVAL;
+		if (h->version == 1) {
+			const struct p15_exec_v1 *e = data;
+
+			if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC_V1_ARGV_MAX) {
+				*why = "variable field beyond len";
+				return -EINVAL;
+			}
+			tail = (size_t)e->filename_len + e->argv_len;
+		} else {
+			const struct p15_exec_v2 *e = data;
+
+			if (e->filename_len > P15_EXEC_V2_FILENAME_MAX || e->argv_len > P15_EXEC_V2_ARGV_MAX ||
+			    e->exe_name_len > P15_EXEC_V2_EXE_NAME_MAX) {
+				*why = "variable field beyond len";
+				return -EINVAL;
+			}
+			tail = (size_t)e->filename_len + e->argv_len + e->exe_name_len;
 		}
-		/* slack only after a failed read: the DYNPTR way keeps its reservation */
-		if (check_tail(data, fixed, (size_t)e->filename_len + e->argv_len, h->flags & P15_F_READ_FAILED, why))
+		/* slack only after a failed read */
+		if (check_tail(data, fixed, tail, h->flags & P15_F_READ_FAILED, why))
 			return -EINVAL;
 	} else if (h->type == P15_T_END) {
 		/* v2 appends closing_snapshot and reserved to the fixed part; reason_len stays in place
@@ -126,17 +140,33 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 		if (check_tail(data, fixed, rl, 0, why))
 			return -EINVAL;
 	} else if (h->type == P15_T_PROC) {
-		const struct p15_proc_v1 *r = data;
+		__u16 ep_len, av_len, reserved, kind;
+		__u32 pflags;
 
-		if (r->exe_path_len > P15_PROC_V1_EXE_PATH_MAX || r->argv_len > P15_PROC_V1_ARGV_MAX) {
-			*why = "variable field beyond len";
-			return -EINVAL;
+		if (h->version == 1) {
+			const struct p15_proc_v1 *r = data;
+
+			ep_len = r->exe_path_len; av_len = r->argv_len; reserved = r->reserved; kind = r->kind;
+			pflags = r->pflags;
+			if (ep_len > P15_PROC_V1_EXE_PATH_MAX || av_len > P15_PROC_V1_ARGV_MAX) {
+				*why = "variable field beyond len";
+				return -EINVAL;
+			}
+		} else {
+			const struct p15_proc_v2 *r = data;
+
+			ep_len = r->exe_path_len; av_len = r->argv_len; reserved = r->reserved; kind = r->kind;
+			pflags = r->pflags;
+			if (ep_len > P15_PROC_V2_EXE_PATH_MAX || av_len > P15_PROC_V2_ARGV_MAX) {
+				*why = "variable field beyond len";
+				return -EINVAL;
+			}
 		}
-		if (r->reserved || (r->kind != 1 && r->kind != 2) || (r->pflags & ~3u)) {
+		if (reserved || (kind != 1 && kind != 2) || (pflags & ~3u)) {
 			*why = "PROC: non-zero reserved, unknown kind or unknown pflags";
 			return -EINVAL;
 		}
-		if (check_tail(data, fixed, (size_t)r->exe_path_len + r->argv_len, 0, why))
+		if (check_tail(data, fixed, (size_t)ep_len + av_len, 0, why))
 			return -EINVAL;
 	} else if (h->len != fixed) {
 		*why = "len differs from the fixed size";
@@ -207,15 +237,35 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    r->kind == 1 ? "process" : r->kind == 2 ? "thread" : "?");
 	}
 	case P15_T_EXEC: {
-		const struct p15_exec *r = data;
-		__u16 fl, al;
-		const __u8 *f = p15_exec_filename(r, &fl), *v = p15_exec_argv(r, &al);
+		if (h->version == 1) {
+			const struct p15_exec_v1 *r = data;
+			const __u8 *tail = (const __u8 *)(r + 1);
 
-		printable(b, sizeof(b), f, fl);
-		printable(a, sizeof(a), v, al);
-		return k + snprintf(buf + k, n - k, " old_tid=%u exe=%u:%llu gen=%u file=\"%s\" (%u/%u) argv=\"%s\" (%u/%u)",
-				    r->old_tid, r->exe_dev, (unsigned long long)r->exe_ino, r->exe_gen, b, fl,
-				    r->filename_full, a, al, r->argv_full);
+			printable(b, sizeof(b), tail, r->filename_len);
+			printable(a, sizeof(a), tail + r->filename_len, r->argv_len);
+			return k + snprintf(buf + k, n - k,
+					    " old_tid=%u exe=%u:%llu gen=%u file=\"%s\" (%u/%u) argv=\"%s\" (%u/%u)", r->old_tid,
+					    r->exe_dev, (unsigned long long)r->exe_ino, r->exe_gen, b, r->filename_len,
+					    r->filename_full, a, r->argv_len, r->argv_full);
+		} else {
+			const struct p15_exec_v2 *r = data;
+			const __u8 *tail = (const __u8 *)(r + 1);
+			char nm[80];
+
+			printable(b, sizeof(b), tail, r->filename_len);
+			printable(a, sizeof(a), tail + r->filename_len, r->argv_len);
+			printable(nm, sizeof(nm), tail + r->filename_len + r->argv_len, r->exe_name_len);
+			return k + snprintf(buf + k, n - k,
+					    " old_tid=%u exe=%u:%llu gen=%u name=\"%s\" nlink=%u fsmagic=0x%x mode=0%o "
+					    "uid=%u euid=%u self_exec_id=%llu file=\"%s\" (%u/%u) argv=\"%s\" (%u/%u) "
+					    "stdin=%llu:0%o stdout=%llu:0%o stderr=%llu:0%o", r->old_tid,
+					    r->exe_dev, (unsigned long long)r->exe_ino, r->exe_gen, nm, r->exe_nlink,
+					    r->exe_fs_magic, r->exe_mode, r->uid, r->euid, (unsigned long long)r->self_exec_id,
+					    b, r->filename_len, r->filename_full, a, r->argv_len, r->argv_full,
+					    (unsigned long long)r->stdin_ino, r->stdin_mode,
+					    (unsigned long long)r->stdout_ino, r->stdout_mode,
+					    (unsigned long long)r->stderr_ino, r->stderr_mode);
+		}
 	}
 	case P15_T_EXIT: {
 		const struct p15_exit *r = data;
@@ -312,18 +362,37 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 		return m;
 	}
 	case P15_T_PROC: {
-		const struct p15_proc_v1 *r = data;
-		const __u8 *tail = (const __u8 *)(r + 1);
-		char c[17];
+		if (h->version == 1) {
+			const struct p15_proc_v1 *r = data;
+			const __u8 *tail = (const __u8 *)(r + 1);
+			char c[17];
 
-		printable(b, sizeof(b), tail, r->exe_path_len);
-		printable(a, sizeof(a), tail + r->exe_path_len, r->argv_len);
-		printable(c, sizeof(c), (const __u8 *)r->comm, strnlen(r->comm, sizeof(r->comm)));
-		return k + snprintf(buf + k, n - k, " snap=%u/%s parent=%u parent_start=%llu comm=\"%s\" pflags=0x%x "
-				    "exe=%u:%llu gen=%u path=\"%s\" (%u/%u) argv=\"%s\" (%u/%u)", r->snap_id,
-				    r->kind == 1 ? "opening" : "closing", r->parent_tgid, (unsigned long long)r->parent_start_ns,
-				    c, r->pflags, r->exe_dev, (unsigned long long)r->exe_ino, r->exe_gen, b, r->exe_path_len,
-				    r->exe_path_full, a, r->argv_len, r->argv_full);
+			printable(b, sizeof(b), tail, r->exe_path_len);
+			printable(a, sizeof(a), tail + r->exe_path_len, r->argv_len);
+			printable(c, sizeof(c), (const __u8 *)r->comm, strnlen(r->comm, sizeof(r->comm)));
+			return k + snprintf(buf + k, n - k, " snap=%u/%s parent=%u parent_start=%llu comm=\"%s\" pflags=0x%x "
+					    "exe=%u:%llu gen=%u path=\"%s\" (%u/%u) argv=\"%s\" (%u/%u)", r->snap_id,
+					    r->kind == 1 ? "opening" : "closing", r->parent_tgid,
+					    (unsigned long long)r->parent_start_ns, c, r->pflags, r->exe_dev,
+					    (unsigned long long)r->exe_ino, r->exe_gen, b, r->exe_path_len, r->exe_path_full, a,
+					    r->argv_len, r->argv_full);
+		} else {
+			const struct p15_proc_v2 *r = data;
+			const __u8 *tail = (const __u8 *)(r + 1);
+			char c[17];
+
+			printable(b, sizeof(b), tail, r->exe_path_len);
+			printable(a, sizeof(a), tail + r->exe_path_len, r->argv_len);
+			printable(c, sizeof(c), (const __u8 *)r->comm, strnlen(r->comm, sizeof(r->comm)));
+			return k + snprintf(buf + k, n - k, " snap=%u/%s parent=%u parent_start=%llu comm=\"%s\" pflags=0x%x "
+					    "exe=%u:%llu gen=%u nlink=%u fsmagic=0x%x mode=0%o uid=%u self_exec_id=%llu "
+					    "path=\"%s\" (%u/%u) argv=\"%s\" (%u/%u)", r->snap_id,
+					    r->kind == 1 ? "opening" : "closing", r->parent_tgid,
+					    (unsigned long long)r->parent_start_ns, c, r->pflags, r->exe_dev,
+					    (unsigned long long)r->exe_ino, r->exe_gen, r->exe_nlink, r->exe_fs_magic, r->exe_mode,
+					    r->exe_uid, (unsigned long long)r->self_exec_id, b, r->exe_path_len, r->exe_path_full,
+					    a, r->argv_len, r->argv_full);
+		}
 	}
 	case P15_T_SNAP_DONE: {
 		const struct p15_snap_done_v1 *r = data;

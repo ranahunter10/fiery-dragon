@@ -159,6 +159,8 @@ int snap_task(struct bpf_iter__task *ctx)
 	pf = t->flags;
 	mm = t->mm;
 
+	const struct cred *cr = BPF_CORE_READ(t, cred);
+
 	r->parent_start_ns = BPF_CORE_READ(t, real_parent, group_leader, start_boottime);
 	r->parent_tgid = BPF_CORE_READ(t, real_parent, tgid);
 	r->pflags = (pf & PF_KTHREAD ? P15_PROC_KTHREAD : 0) | (pf & PF_EXITING ? P15_PROC_EXITING : 0);
@@ -170,19 +172,42 @@ int snap_task(struct bpf_iter__task *ctx)
 	r->exe_ino = 0;
 	r->exe_dev = 0;
 	r->exe_gen = 0;
+	r->exe_nlink = 0;
+	r->exe_fs_magic = 0;
+	r->exe_mode = 0;
+	r->exe_uid = 0;
+	r->exe_gid = 0;
+	r->exe_ctime_ns = 0;
+	r->exe_mtime_ns = 0;
 	r->exe_path_full = 0;
 	r->argv_full = 0;
-	__builtin_memset(r->_pad, 0, sizeof(r->_pad));
+	/* self_exec_id and the credentials of the leader (ADR-0025 rule 6) */
+	r->self_exec_id = BPF_CORE_READ(t, self_exec_id);
+	r->uid = BPF_CORE_READ(cr, uid.val);
+	r->euid = BPF_CORE_READ(cr, euid.val);
+	r->gid = BPF_CORE_READ(cr, gid.val);
+	r->egid = BPF_CORE_READ(cr, egid.val);
+	r->fsuid = BPF_CORE_READ(cr, fsuid.val);
+	r->fsgid = BPF_CORE_READ(cr, fsgid.val);
 
 	if (pf & PF_KTHREAD) {
 		inc(&books.kthreads);
 	} else if (!mm) {
 		inc(&books.exiting);                /* a leader that has exited while its threads live on */
 	} else {
-		exe_inode = (__u64)BPF_CORE_READ(mm, exe_file, f_inode);
-		r->exe_ino = BPF_CORE_READ(mm, exe_file, f_inode, i_ino);
-		r->exe_dev = BPF_CORE_READ(mm, exe_file, f_inode, i_sb, s_dev);
-		r->exe_gen = BPF_CORE_READ(mm, exe_file, f_inode, i_generation);
+		struct inode *ei = BPF_CORE_READ(mm, exe_file, f_inode);
+
+		exe_inode = (__u64)(long)BPF_CORE_READ(mm, exe_file, f_inode);
+		r->exe_ino = BPF_CORE_READ(ei, i_ino);
+		r->exe_dev = BPF_CORE_READ(ei, i_sb, s_dev);
+		r->exe_gen = BPF_CORE_READ(ei, i_generation);
+		r->exe_nlink = BPF_CORE_READ(ei, __i_nlink);
+		r->exe_fs_magic = (__u32)BPF_CORE_READ(ei, i_sb, s_magic);
+		r->exe_mode = BPF_CORE_READ(ei, i_mode);
+		r->exe_uid = BPF_CORE_READ(ei, i_uid.val);
+		r->exe_gid = BPF_CORE_READ(ei, i_gid.val);
+		r->exe_ctime_ns = (__u64)BPF_CORE_READ(ei, i_ctime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_ctime_nsec);
+		r->exe_mtime_ns = (__u64)BPF_CORE_READ(ei, i_mtime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_mtime_nsec);
 		/* schema order: exe_path, then argv. read_exe_path takes and drops the mmap lock before
 		 * read_argv, whose bpf_copy_from_user_task takes it again: never nested. */
 		plen = read_exe_path(r, tail, t, mm, exe_inode, &flags);

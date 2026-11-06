@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from . import provenance as PV
 from . import records as R
 from . import snapshot as S
 
@@ -38,6 +39,8 @@ class Image:
     truncated: bool
     exe: tuple[int, int, int]     # (major, minor, inode) of the file that was executed
     seen_in: str = "exec"         # "exec": an EXEC record; "snapshot": what the opening snapshot showed
+    backing: str = "disk"         # where the code came from (provenance.backing); "disk" for v1 records
+    notes: list[str] = field(default_factory=list)   # provenance.unusual() for this image
 
 
 @dataclass
@@ -120,7 +123,7 @@ def _snapshot_image(p: R.Record) -> Image | None:
         return None
     k0, k1 = R.kdev(p.f["exe_dev"])
     return Image(p.h["ts_ns"], path or (args[0] if args else ""), args, bool(p.h["flags"] & R.F_TRUNCATED),
-                 (k0, k1, p.f["exe_ino"]), seen_in="snapshot")
+                 (k0, k1, p.f["exe_ino"]), seen_in="snapshot", backing=PV.backing(p), notes=PV.unusual(p))
 
 
 def build(recs, run_start_ns: int | None = None, opening: S.Snapshot | None = None) -> Tree:
@@ -162,7 +165,8 @@ def build(recs, run_start_ns: int | None = None, opening: S.Snapshot | None = No
             k0, k1 = R.kdev(r.f["exe_dev"])
             proc(r.proc).images.append(Image(
                 r.h["ts_ns"], r.var["filename"].decode("utf-8", "backslashreplace"), R.argv(r),
-                bool(r.h["flags"] & R.F_TRUNCATED), (k0, k1, r.f["exe_ino"])))
+                bool(r.h["flags"] & R.F_TRUNCATED), (k0, k1, r.f["exe_ino"]),
+                backing=PV.backing(r), notes=PV.unusual(r)))
         elif n == "RENAME":
             counts["rename"] += 1
             proc(r.proc).comm = R.comm(r.f["new_comm"])

@@ -422,6 +422,50 @@ fields = [
 # ---- process snapshot (ADR-0007 rule 3, ADR-0023): built by the bpf_iter/task program, written by p15d into
 # the daemon ring (ADR-0020 rule 6). Types 37 and 38 follow the daemon records.
 [[record]]
+name = "EXEC"
+type = 2
+version = 2
+class = "SPINE"
+doc = "A process replaced its program image (tp_btf/sched_process_exec). v2 adds code provenance (ADR-0025): the executable's own facts, the new credentials, self_exec_id (ADR-0020 rule 5), and the identity of standard in/out/err. The header names the process after the exec; argv is the kernel's copy on the new stack (ADR-0003, E-0049). Filled after begin_new_exec has set mm->exe_file, closed close-on-exec fds and committed creds (v7.0 fs/exec.c), so every field describes what the new program starts with."
+fields = [
+  { name = "exe_ino",       c = "u64", doc = "mm->exe_file inode number (was bprm->file; identical here)" },
+  { name = "self_exec_id",  c = "u64", doc = "task->self_exec_id after this exec: a per-process exec counter, +1 per successful exec (ADR-0020 rule 5). A gap across a process's EXEC records is a skipped exec" },
+  { name = "exe_ctime_ns",  c = "u64", doc = "exe inode i_ctime in ns (metadata change time): a binary written just before exec is a dropper signal" },
+  { name = "exe_mtime_ns",  c = "u64", doc = "exe inode i_mtime in ns (content change time)" },
+  { name = "stdin_ino",     c = "u64", doc = "fd 0 inode number, 0 if the fd is closed" },
+  { name = "stdout_ino",    c = "u64", doc = "fd 1 inode number" },
+  { name = "stderr_ino",    c = "u64", doc = "fd 2 inode number" },
+  { name = "exe_dev",       c = "u32", doc = "mm->exe_file superblock s_dev (kernel encoding, not st_dev)" },
+  { name = "exe_gen",       c = "u32", doc = "mm->exe_file inode i_generation" },
+  { name = "exe_nlink",     c = "u32", doc = "exe inode link count. 0 = an unlinked backing: a memfd, a deleted file, or an O_TMPFILE (ADR-0025 fact 1)" },
+  { name = "exe_fs_magic",  c = "u32", doc = "low 32 bits of the exe superblock s_magic: tmpfs 0x01021994, hugetlbfs 0x958458f6, overlayfs 0x794c7630 (include/uapi/linux/magic.h)" },
+  { name = "exe_mode",      c = "u32", doc = "exe inode i_mode (type and permission bits)" },
+  { name = "exe_uid",       c = "u32", doc = "exe inode owner uid" },
+  { name = "exe_gid",       c = "u32", doc = "exe inode owner gid" },
+  { name = "old_tid",       c = "u32", doc = "the exec'ing thread's tid before exec (differs from tgid after a non-leader exec)" },
+  { name = "uid",           c = "u32", doc = "task real uid after the exec's commit_creds" },
+  { name = "euid",          c = "u32", doc = "task effective uid (a setuid exe raises this above uid)" },
+  { name = "gid",           c = "u32", doc = "task real gid" },
+  { name = "egid",          c = "u32", doc = "task effective gid" },
+  { name = "fsuid",         c = "u32", doc = "task fsuid (the uid used for filesystem access checks)" },
+  { name = "fsgid",         c = "u32", doc = "task fsgid" },
+  { name = "stdin_dev",     c = "u32", doc = "fd 0 superblock s_dev" },
+  { name = "stdin_rdev",    c = "u32", doc = "fd 0 inode i_rdev (device node id; a tty's identity)" },
+  { name = "stdin_mode",    c = "u32", doc = "fd 0 inode i_mode: the file type says terminal/char/regular/pipe (pipefs)/socket (sockfs). For a pipe, stdin_ino is the pipe inode and joins to the writer stdout_ino; a socket-to-NET join waits for a helper-capable hook (ADR-0025)" },
+  { name = "stdout_dev",    c = "u32", doc = "fd 1 superblock s_dev" },
+  { name = "stdout_rdev",   c = "u32", doc = "fd 1 inode i_rdev" },
+  { name = "stdout_mode",   c = "u32", doc = "fd 1 inode i_mode" },
+  { name = "stderr_dev",    c = "u32", doc = "fd 2 superblock s_dev" },
+  { name = "stderr_rdev",   c = "u32", doc = "fd 2 inode i_rdev" },
+  { name = "stderr_mode",   c = "u32", doc = "fd 2 inode i_mode" },
+]
+var = [
+  { name = "filename", max = 256,  doc = "bprm->filename: the path as passed to execve, or /dev/fd/N for execveat (not resolved). The 256 cap is an inference, revisited with data; truncation counted" },
+  { name = "argv",     max = 1024, doc = "mm->arg_start..arg_end at sched_process_exec, NUL-separated. The 1024 cap is an inference, revisited with data; truncation counted" },
+  { name = "exe_name", max = 64,   doc = "mm->exe_file dentry basename (e.g. a.out, or \"memfd:<name>\" for a memfd). Not the path; the path joins from FILE_OPEN (Phase 2) and the snapshot. Truncation counted" },
+]
+
+[[record]]
 name = "PROC"
 type = 37
 version = 1
@@ -433,6 +477,43 @@ fields = [
   { name = "parent_tgid",     c = "u32", doc = "real_parent->tgid" },
   { name = "exe_dev",         c = "u32", doc = "mm->exe_file superblock s_dev (kernel encoding, not st_dev)" },
   { name = "exe_gen",         c = "u32", doc = "mm->exe_file inode i_generation" },
+  { name = "pflags",          c = "u32", doc = "bit 0 kernel thread (PF_KTHREAD: no mm, no argv, no exe), bit 1 exiting (PF_EXITING)" },
+  { name = "snap_id",         c = "u32", doc = "which snapshot of the run: 0, 1, 2, ... in the order they were taken" },
+  { name = "comm",            c = "char[16]", doc = "task->comm of the leader, NUL-padded" },
+  { name = "kind",            c = "u16", doc = "1 opening (segment open), 2 closing (orderly stop, ADR-0023)" },
+  { name = "reserved",        c = "u16", doc = "zero" },
+]
+var = [
+  { name = "exe_path", max = 256,  doc = "bpf_d_path of mm->exe_file, without the NUL; empty for a kernel thread or when the read failed (P15_F_READ_FAILED). A cut path is flagged TRUNCATED" },
+  { name = "argv",     max = 1024, doc = "mm->arg_start..arg_end read with bpf_copy_from_user_task, NUL-separated; the same cap as EXEC's argv" },
+]
+
+[[record]]
+name = "PROC"
+type = 37
+version = 2
+class = "MARKER"
+doc = "One live thread group in a process snapshot (ADR-0007 rule 3, ADR-0023). v2 adds the code-provenance facts of EXEC v2 (ADR-0025): the executable's own facts, the leader's credentials and self_exec_id, so a process already running when capture began is described like one that execs during it. It does not carry standard streams (ADR-0025 rule 6). The header names the process (ADR-0009); ts_ns is when the iterator saw it."
+fields = [
+  { name = "parent_start_ns", c = "u64", doc = "real_parent's thread-group leader start_boottime: with parent_tgid, the parent's key (ADR-0009)" },
+  { name = "exe_ino",         c = "u64", doc = "mm->exe_file inode number; 0 for a kernel thread" },
+  { name = "self_exec_id",    c = "u64", doc = "leader task->self_exec_id (ADR-0020 rule 5): matches the last EXEC of this process when the run holds it" },
+  { name = "exe_ctime_ns",    c = "u64", doc = "exe inode i_ctime in ns; 0 for a kernel thread" },
+  { name = "exe_mtime_ns",    c = "u64", doc = "exe inode i_mtime in ns; 0 for a kernel thread" },
+  { name = "parent_tgid",     c = "u32", doc = "real_parent->tgid" },
+  { name = "exe_dev",         c = "u32", doc = "mm->exe_file superblock s_dev (kernel encoding, not st_dev)" },
+  { name = "exe_gen",         c = "u32", doc = "mm->exe_file inode i_generation" },
+  { name = "exe_nlink",       c = "u32", doc = "exe inode link count; 0 = unlinked backing (memfd, deleted, O_TMPFILE); 0 for a kernel thread" },
+  { name = "exe_fs_magic",    c = "u32", doc = "low 32 bits of the exe superblock s_magic (see EXEC); 0 for a kernel thread" },
+  { name = "exe_mode",        c = "u32", doc = "exe inode i_mode; 0 for a kernel thread" },
+  { name = "exe_uid",         c = "u32", doc = "exe inode owner uid; 0 for a kernel thread" },
+  { name = "exe_gid",         c = "u32", doc = "exe inode owner gid; 0 for a kernel thread" },
+  { name = "uid",             c = "u32", doc = "leader real uid (from task->cred)" },
+  { name = "euid",            c = "u32", doc = "leader effective uid" },
+  { name = "gid",             c = "u32", doc = "leader real gid" },
+  { name = "egid",            c = "u32", doc = "leader effective gid" },
+  { name = "fsuid",           c = "u32", doc = "leader fsuid" },
+  { name = "fsgid",           c = "u32", doc = "leader fsgid" },
   { name = "pflags",          c = "u32", doc = "bit 0 kernel thread (PF_KTHREAD: no mm, no argv, no exe), bit 1 exiting (PF_EXITING)" },
   { name = "snap_id",         c = "u32", doc = "which snapshot of the run: 0, 1, 2, ... in the order they were taken" },
   { name = "comm",            c = "char[16]", doc = "task->comm of the leader, NUL-padded" },

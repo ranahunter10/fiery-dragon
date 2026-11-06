@@ -75,14 +75,6 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`paired.py`](../bench/quant/paired.py) | the paired-timing statistics, as code with tests (never by hand). | `median`, `mean`, `harmonic_mean`, `Interval`, `median_ci`, `signed_rank_counts`, `Wilcoxon`, `wilcoxon_exact`, `walsh_averages`, `HodgesLehmann`, `hodges_lehmann`, `Arm` (+2) |
 | [`test_paired.py`](../bench/quant/test_paired.py) | Tests for paired.py. | `brute_counts`, `brute_p`, `SignedRankTest`, `HodgesLehmannTest`, `MedianTest`, `ReportTest` |
 
-## bench/rb_cost
-
-| File | Job | Public names |
-|---|---|---|
-| [`exec_cost.c`](../bench/rb_cost/exec_cost.c) | the CPU cost of the spine's EXEC program, built three ways (ADR-0017 layer 1: FIXED reserves the maximum, OUTPUT copies from per-CPU scratch, DYNPTR reserves exactly and reads a... |  |
-| [`summarize.py`](../bench/rb_cost/summarize.py) | Summarize exec_cost output (bench/rb_cost/exec_cost.c) as Markdown. | `ParseError`, `parse`, `problems`, `ns_per_run`, `report` |
-| [`test_summarize.py`](../bench/rb_cost/test_summarize.py) | Tests for bench/rb_cost/summarize.py on synthetic exec_cost output. | `row`, `Summarize` |
-
 ## bpf/include
 
 | File | Job | Public names |
@@ -174,11 +166,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`__init__.py`](../python/p15/__init__.py) | Fiery Dragon's analysis tier: reading what the capture wrote (README "python/"). |  |
 | [`net.py`](../python/p15/net.py) | Network intent of a run (ADR-0004): the NET records, and what happened on one port. | `Event`, `event`, `Listener`, `Conn`, `PortReport`, `port_report` |
 | [`proctree.py`](../python/p15/proctree.py) | The process tree of a run, from the spine records (ADR-0003, ADR-0009). | `Image`, `Proc`, `Gap`, `Tree`, `build` |
+| [`provenance.py`](../python/p15/provenance.py) | Code provenance (ADR-0025): where a program's code came from, and what its standard streams are connected to, derived from the raw facts on an EXEC v2 or PROC v2 record. | `stream_kind`, `backing`, `runner_can_write`, `unusual`, `pipe_links` |
 | [`reconcile.py`](../python/p15/reconcile.py) | Reconcile the process tree against the run's closing snapshot (ADR-0023 rule 2). | `Reconciliation`, `reconcile` |
 | [`records.py`](../python/p15/records.py) | The ADR-0008 records, decoded from the generated layouts (schema/generated/p15_records.py). | `RecordError`, `Record`, `decode`, `kdev`, `net_addr`, `endpoint`, `comm`, `argv` |
 | [`report_html.py`](../python/p15/report_html.py) | The HTML form of p15-trace's port report: one self-contained page (no scripts, fonts or images from anywhere else), so it can be mailed, archived next to the evidence and opened... | `connection_map`, `timeline`, `render` |
 | [`snapshot.py`](../python/p15/snapshot.py) | Process snapshots in a run (ADR-0007 rule 3, ADR-0023): the PROC records of each snapshot and its SNAP_DONE books. | `Snapshot`, `collect`, `parent_key`, `is_kthread` |
-| [`trace.py`](../python/p15/trace.py) | what happened on a port, from one capture run (STATE 19.4). | `Context`, `load`, `proc_line`, `chain`, `involved`, `proc_block`, `text_report` |
+| [`trace.py`](../python/p15/trace.py) | what happened on a port, from one capture run (STATE 19.4). | `Context`, `load`, `proc_line`, `chain`, `involved`, `proc_block`, `provenance_block`, `text_report` |
 | [`wal.py`](../python/p15/wal.py) | segments and runs (docs/formats/p15w-v1.md, ADR-0007). | `crc32c`, `HeaderError`, `RunError`, `Batch`, `Stop`, `Segment`, `parse_header`, `read_segment`, `Run`, `read_run`, `summary` |
 
 ## python/tests
@@ -188,6 +181,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`it_wal_c.py`](../python/tests/it_wal_c.py) | decode, field by field, the run that daemon/tests/wal_fixture.c wrote through daemon/wal.c. | `CWriterRun` |
 | [`p15w_build.py`](../python/tests/p15w_build.py) | build P15W segments and ADR-0008 records in memory, with every field open to being broken on purpose. | `rec`, `batch`, `header`, `meta_for`, `write_run` |
 | [`scenario.py`](../python/tests/scenario.py) | a small synthetic p15d run with a known story, for the process tree, the port query and the reports. | `fork`, `exe`, `ren`, `ex`, `net`, `proc`, `snapshot`, `build` |
+| [`test_provenance.py`](../python/tests/test_provenance.py) | Code-provenance derivation (python/p15/provenance.py, ADR-0025): the classes computed from the raw EXEC v2 / PROC v2 facts. | `dec`, `exe`, `Backing`, `Streams`, `Writable`, `Unusual`, `Pipes` |
 | [`test_reconcile.py`](../python/tests/test_reconcile.py) | Tests for the process snapshots (snapshot.py), the tree's use of the opening one (proctree.py) and the ADR-0023 reconciliation (reconcile.py), on scenario.py's run with snapshots. | `Base`, `Snapshots`, `TreeFromSnapshot`, `Reconcile` |
 | [`test_records.py`](../python/tests/test_records.py) | Tests for the record decoder (python/p15/records.py): every refusal p15_rec_check makes (daemon/records.c, same wording), no defaults, and the field helpers. | `dec`, `Refusals`, `Decoding`, `Helpers` |
 | [`test_trace.py`](../python/tests/test_trace.py) | Tests for the process tree (proctree.py), the port query (net.py) and p15-trace's two reports (trace.py, report_html.py), on the synthetic run of scenario.py, whose story is known. | `Base`, `Tree`, `Port`, `TextReport`, `Html`, `Checker`, `Cli` |
@@ -220,7 +214,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`check-evidence.sh`](../tools/ci/check-evidence.sh) | Verify every SHA256SUMS under docs/evidence/: raw evidence must stay byte for byte. |  |
 | [`check_exits.py`](../tools/ci/check_exits.py) | One fatal path (ADR-0019 G2.2): no exit(), _exit(), _Exit(), quick_exit() or abort() in the daemon's C code, except at sites marked on the same line with a comment `exit-ok: <re... | `code_only`, `scan` |
 | [`check_hardening.py`](../tools/ci/check_hardening.py) | Check that daemon binaries really carry the ADR-0019 G3.3 hardening, not just that the flags were passed: a later flag (or a default) can silently undo an earlier one. | `checks`, `run` |
-| [`mutate_py.py`](../tools/ci/mutate_py.py) | Mutation sweep for the Python gates and harnesses (CONTRIBUTING §6: every gate is checked by a mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, bench/rb_co... |  |
+| [`mutate_py.py`](../tools/ci/mutate_py.py) | Mutation sweep for the Python gates and harnesses (CONTRIBUTING §6: every gate is checked by a mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, the WAL rea... |  |
 | [`run-tests.sh`](../tools/ci/run-tests.sh) | Run every unit-test file on its own (several share module names, e.g. |  |
 | [`test_check_exits.py`](../tools/ci/test_check_exits.py) | Tests for tools/ci/check_exits.py (ADR-0019 G2.2). | `run`, `CheckExits` |
 | [`test_check_hardening.py`](../tools/ci/test_check_hardening.py) | Tests for tools/ci/check_hardening.py, on readelf/nm lines copied from build/p15-spine. | `verdict`, `CheckHardening` |

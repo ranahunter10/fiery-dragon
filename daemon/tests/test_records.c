@@ -97,6 +97,15 @@ static void test_fixed_sizes(void)
 	sd->kind = 2;
 	sd->h.len += 8;
 	EXPECT(!ok(), "SNAP_DONE 8 bytes longer refused");
+	{   /* a PROC v1 record (old WALs) still validates; argv over its maximum is refused via the v1 branch */
+		struct p15_proc_v1 *pr = (void *)mk(P15_T_PROC, sizeof(struct p15_proc_v1));
+
+		pr->kind = 1;
+		EXPECT(ok(), "PROC v1 at its size accepted");
+		pr->argv_len = P15_PROC_V1_ARGV_MAX + 1;   /* tiles exactly, so only the bound catches it */
+		pr->h.len = (sizeof(*pr) + pr->argv_len + 7) & ~7u;
+		EXPECT(pr->h.len <= sizeof(buf) && !ok(), "PROC v1 argv_len above its maximum refused even when it tiles");
+	}
 	mk(P15_T_GAP, sizeof(struct p15_gap_v1));
 	EXPECT(ok_exact(sizeof(struct p15_gap_v1)), "GAP accepted from a buffer of exactly its size");
 	EXPECT(!ok_exact(sizeof(struct p15_gap_v1) - 8), "GAP refused from a buffer 8 bytes short");
@@ -197,10 +206,12 @@ static void test_end_v2(void)
 	EXPECT(!ok(), "unknown END version refused");
 }
 
-/* EXEC with READ_FAILED may keep slack after its fields (the DYNPTR way), but nothing else gives */
+/* EXEC v1 with READ_FAILED may keep slack after its fields, but nothing else gives. This exercises
+ * the generic tail/slack rules on the v1 layout, which the checker must still accept (old WALs). */
 static void test_exec_slack_rules(void)
 {
-	struct p15_exec *x = (void *)mk(P15_T_EXEC, 80);
+	const unsigned f1 = sizeof(struct p15_exec_v1);
+	struct p15_exec_v1 *x = (void *)mk(P15_T_EXEC, 80);
 
 	x->h.flags = P15_F_READ_FAILED;
 	x->filename_len = 9;
@@ -209,19 +220,55 @@ static void test_exec_slack_rules(void)
 	EXPECT(!ok(), "len not a multiple of 8 refused, slack or not");
 	x->h.len = 72;
 	x->filename_len = 9;
-	x->argv_len = 4;                       /* 64 + 13 = 77 > 72 */
+	x->argv_len = 4;                       /* f1 + 13 > 72 */
 	EXPECT(!ok(), "fields beyond len refused, slack or not");
 	x->h.len = 56;
 	x->argv_len = 0;
 	x->filename_len = 0;
 	EXPECT(!ok_exact(56), "EXEC shorter than its fixed part refused without reading past it");
-	x = (void *)mk(P15_T_EXEC, P15_EXEC_MAX_SIZE);
-	x->filename_len = P15_EXEC_FILENAME_MAX - 1;
-	x->argv_len = P15_EXEC_ARGV_MAX + 1;   /* 64 + 255 + 1025 = 1344: tiles exactly */
-	EXPECT(!ok() && P15_EXEC_MAX_SIZE <= sizeof(buf), "argv_len above its maximum refused even when it tiles");
-	x->filename_len = P15_EXEC_FILENAME_MAX + 1;
-	x->argv_len = P15_EXEC_ARGV_MAX - 1;
+	x = (void *)mk(P15_T_EXEC, f1 + (P15_EXEC_V1_FILENAME_MAX - 1) + (P15_EXEC_V1_ARGV_MAX + 1));
+	x->filename_len = P15_EXEC_V1_FILENAME_MAX - 1;
+	x->argv_len = P15_EXEC_V1_ARGV_MAX + 1; /* tiles exactly, yet argv_len is one past its maximum */
+	EXPECT(!ok() && x->h.len <= sizeof(buf), "argv_len above its maximum refused even when it tiles");
+	x->filename_len = P15_EXEC_V1_FILENAME_MAX + 1;
+	x->argv_len = P15_EXEC_V1_ARGV_MAX - 1;
 	EXPECT(!ok(), "filename_len above its maximum refused even when it tiles");
+}
+
+/* EXEC v2 (ADR-0025): the three var fields (filename, argv, exe_name) and the provenance format. */
+static void test_exec_v2(void)
+{
+	struct p15_exec_v2 *x;
+	const unsigned f2 = sizeof(struct p15_exec_v2);
+	char line[800];
+
+	x = (void *)mk(P15_T_EXEC, (f2 + 9 + 6 + 4 + 7) & ~7u);
+	x->h.version = 2;
+	x->filename_len = x->filename_full = 9;
+	x->argv_len = x->argv_full = 6;
+	x->exe_name_len = x->exe_name_full = 4;
+	memcpy(buf + f2, "/bin/true", 9);
+	memcpy(buf + f2 + 9, "true\0", 6);
+	memcpy(buf + f2 + 9 + 6, "true", 4);
+	x->exe_nlink = 0;                      /* an in-memory / deleted backing */
+	x->exe_fs_magic = 0x01021994;          /* tmpfs */
+	x->stdin_mode = 0140666;               /* a socket on stdin */
+	EXPECT(ok(), "a well-formed EXEC v2 is accepted");
+	EXPECT(p15_rec_format(buf, line, sizeof(line)) > 0 && strstr(line, "name=\"true\"") && strstr(line, "nlink=0") &&
+	       strstr(line, "fsmagic=0x1021994") && strstr(line, "stdin=0:0140666"),
+	       "EXEC v2 formats exe_name, nlink, fsmagic and a socket stdin");
+	x->exe_name_len = P15_EXEC_V2_EXE_NAME_MAX + 1;
+	EXPECT(!ok(), "exe_name_len above its maximum refused");
+	x->exe_name_len = x->exe_name_full = 4;
+	x->h.len += 8;                         /* slack past the three fields */
+	EXPECT(!ok(), "slack after EXEC v2's fields refused");
+	/* exe_name one past its maximum, but the record tiles exactly: only the bound catches it */
+	x = (void *)mk(P15_T_EXEC, (f2 + P15_EXEC_V2_EXE_NAME_MAX + 1 + 7) & ~7u);
+	x->h.version = 2;
+	x->filename_len = x->filename_full = 0;
+	x->argv_len = x->argv_full = 0;
+	x->exe_name_len = x->exe_name_full = P15_EXEC_V2_EXE_NAME_MAX + 1;
+	EXPECT(!ok(), "exe_name_len above its maximum refused even when the record tiles exactly");
 }
 
 static void test_format(void)
@@ -339,6 +386,7 @@ int main(void)
 	test_fixed_sizes();
 	test_end();
 	test_exec_slack_rules();
+	test_exec_v2();
 	test_format();
 	test_net_format();
 	test_net_v2();
