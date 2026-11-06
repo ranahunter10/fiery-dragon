@@ -60,23 +60,6 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 		snprintf(err, errlen, "spine: the loaded counter map is not the mmapable array asked for (ADR-0026)");
 		return P15_EXIT_INTERNAL;
 	}
-	if (access("/sys/kernel/tracing/events/sched/sched_process_exec", F_OK)) {
-		snprintf(err, errlen, "tracefs is not mounted at /sys/kernel/tracing (the spine's exec, exit and rename "
-			 "hooks are classic tracepoints, ADR-0020): mount -t tracefs nodev /sys/kernel/tracing");
-		return P15_EXIT_LOAD;
-	}
-	if (spine_bpf__attach(l->spine)) {
-		snprintf(err, errlen, "spine: attach failed: %s", strerror(errno));
-		return P15_EXIT_LOAD;
-	}
-	l->miss_fd[1] = bpf_program__fd(l->spine->progs.spine_fork);
-	l->miss_fd[2] = bpf_program__fd(l->spine->progs.spine_exec);
-	l->miss_fd[3] = bpf_program__fd(l->spine->progs.spine_exit);
-	l->miss_fd[4] = bpf_program__fd(l->spine->progs.spine_rename);
-	if (manifest_add(l, l->spine->obj, &off)) {
-		snprintf(err, errlen, "hook manifest too long");
-		return P15_EXIT_INTERNAL;
-	}
 	if (net) {
 		l->net = net_bpf__open();
 		if (!l->net) {
@@ -101,6 +84,27 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 			snprintf(err, errlen, "net: the loaded counter map is not the mmapable array asked for (ADR-0026)");
 			return P15_EXIT_INTERNAL;
 		}
+	}
+	/* Every object is loaded and its maps written before anything attaches: from the first attach
+	 * on, p15d makes no map syscall (ADR-0026). Then the spine, then the network programs. */
+	if (access("/sys/kernel/tracing/events/sched/sched_process_exec", F_OK)) {
+		snprintf(err, errlen, "tracefs is not mounted at /sys/kernel/tracing (the spine's exec, exit and rename "
+			 "hooks are classic tracepoints, ADR-0020): mount -t tracefs nodev /sys/kernel/tracing");
+		return P15_EXIT_LOAD;
+	}
+	if (spine_bpf__attach(l->spine)) {
+		snprintf(err, errlen, "spine: attach failed: %s", strerror(errno));
+		return P15_EXIT_LOAD;
+	}
+	l->miss_fd[1] = bpf_program__fd(l->spine->progs.spine_fork);
+	l->miss_fd[2] = bpf_program__fd(l->spine->progs.spine_exec);
+	l->miss_fd[3] = bpf_program__fd(l->spine->progs.spine_exit);
+	l->miss_fd[4] = bpf_program__fd(l->spine->progs.spine_rename);
+	if (manifest_add(l, l->spine->obj, &off)) {
+		snprintf(err, errlen, "hook manifest too long");
+		return P15_EXIT_INTERNAL;
+	}
+	if (l->net) {
 		if (net_bpf__attach(l->net)) {
 			snprintf(err, errlen, "net: attach failed: %s (fentry/fexit unavailable? --no-net runs without "
 				 "network capture)", strerror(errno));
