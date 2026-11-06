@@ -54,7 +54,7 @@ The process graph knows *that* a program started, and from which file identity. 
 ### Confirmation
 
 1. The loader self-test checks every EXEC v2 fact of its test child's exec against `stat(2)`, `statfs(2)` and `fstat(2)` of the same objects, taken by the daemon just before the fork: the executable's ino, dev, nlink, mode, owner, filesystem magic, ctime, mtime and name, the six credentials, and fds 0-2 (inherited from the daemon). Not checked there: `exe_gen` (only a filesystem-specific ioctl gives it) and `self_exec_id` (a process cannot read its own). Built and passing in the dev container, with `bpf/test/mutate_spine_exec.py` catching 14 of 14 planted bugs; the VM run is pending.
-2. `it_p15d.sh` runs a program from an in-memory file and one each with stdin a pipe, stdout a regular file and stderr a socket, and checks those records' facts; and that a running process's PROC v2 matches its EXEC v2 where both exist. Built as case 6 with `daemon/tests/it_provenance.py`, passing in the dev container (E-0116); CI and the VM are pending.
+2. `it_p15d.sh` runs a program from an in-memory file and one each with stdin a pipe, stdout a regular file and stderr a socket, and checks those records' facts; and that a running process's PROC v2 matches its EXEC v2 where both exist. Built as case 6 with `daemon/tests/it_provenance.py`, passing in the dev container (E-0116), in CI on 7.0.0-1017-azure and on the VM (E-0117).
 3. On the VM, ADR-0018's harness shows the exec cost difference v1 → v2 is not resolved or is below 1 % of an exec.
 
 ### Falsifier
