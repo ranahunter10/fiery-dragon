@@ -114,6 +114,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
 | [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_config_meta` |
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
+| [`counters.c`](../daemon/counters.c) | (no header comment) | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum_rows`, `p15_counters_sum` |
+| [`counters.h`](../daemon/counters.h) | The BPF loss counters, read without a bpf() map call (ADR-0026). | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum`, `p15_counters_sum_rows` |
 | [`crc32c.c`](../daemon/crc32c.c) | Table-driven CRC32C, one byte per step. | `p15_crc32c` |
 | [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c` |
 | [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
@@ -148,10 +150,11 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1` |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
-| [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run. |  |
+| [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
 | [`mutate_wal.py`](../daemon/tests/mutate_wal.py) | Mutation sweep for the WAL writer (CONTRIBUTING: every gate is checked by mutation sweeps). |  |
 | [`test_config.c`](../daemon/tests/test_config.c) | Unit tests for p15d's strict configuration parser (daemon/config.c, ADR-0019 G1). |  |
+| [`test_counters.c`](../daemon/tests/test_counters.c) | Unit tests for the counter storage (ADR-0026): the row layout and its sum, and configure verify against the spine's real map definition (the skeleton is opened, never loaded, so... |  |
 | [`test_exitcodes.c`](../daemon/tests/test_exitcodes.c) | The exit-code table (daemon/exitcodes.h, ADR-0019 G2.2): every code is distinct, documented, and outside the values the runtime and the shell use (1, 2, 126 and above). |  |
 | [`test_queue.c`](../daemon/tests/test_queue.c) | Unit tests for the SPSC batch queue (daemon/queue.c), single-threaded and with a real producer and consumer thread. |  |
 | [`test_records.c`](../daemon/tests/test_records.c) | Unit tests for p15_rec_check and p15_rec_format on the daemon records (CLOCK_SYNC, STATS, GAP, END) and the fixed-size rule for every type. |  |

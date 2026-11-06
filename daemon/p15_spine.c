@@ -19,6 +19,7 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 
+#include "counters.h"
 #include "p15_counters.h"
 #include "records.h"
 #include "selftest.h"
@@ -60,24 +61,18 @@ static int on_dump(void *ctx, void *data, size_t size)
 	return 0;
 }
 
-/* Sum the per-CPU counters. Returns 0 if no spine record was lost and every type's books close. */
+/* Sum the counter rows, read through their mapping (ADR-0026). Returns 0 if no spine record was lost and every type's books close. */
 static int print_counters(struct spine_bpf *skel)
 {
 	static const char *types[] = { "?", "FORK", "EXEC", "EXIT", "RENAME" };
-	int ncpu = libbpf_num_possible_cpus(), fd = bpf_map__fd(skel->maps.spine_counters), bad = 0;
-	__u64 *vals, sum[P15_CTR_MAX] = { 0 };
+	struct p15_counters c;
+	uint64_t sum[P15_CTR_MAX];
+	int bad = 0;
 
-	if (ncpu <= 0 || !(vals = calloc(ncpu, sizeof(*vals))))
+	if (p15_counters_map(&c, bpf_map__fd(skel->maps.spine_counters), libbpf_num_possible_cpus()))
 		return -1;
-	for (__u32 k = 0; k < P15_CTR_MAX; k++) {
-		if (bpf_map_lookup_elem(fd, &k, vals)) {
-			free(vals);
-			return -1;
-		}
-		for (int c = 0; c < ncpu; c++)
-			sum[k] += vals[c];
-	}
-	free(vals);
+	p15_counters_sum(&c, sum);   /* through the mapping, as p15d reads them (ADR-0026) */
+	p15_counters_unmap(&c);
 	printf("counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated\n");
 	for (int t = 1; t <= 4; t++) {
 		__u64 seen = sum[P15_CTR_INDEX(t, P15_CK_SEEN)], em = sum[P15_CTR_INDEX(t, P15_CK_EMITTED)],
@@ -106,10 +101,16 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	libbpf_set_print(print_libbpf);
-	skel = spine_bpf__open_and_load();
+	skel = spine_bpf__open();
 	if (!skel) {
-		fprintf(stderr, "load failed: %s\n", strerror(errno));
+		fprintf(stderr, "open failed: %s\n", strerror(errno));
 		return 1;
+	}
+	if (p15_counters_configure(skel->maps.spine_counters, &skel->rodata->spine_counters_ncpu,
+				   libbpf_num_possible_cpus()) || spine_bpf__load(skel) ||
+	    p15_counters_verify(skel->maps.spine_counters, libbpf_num_possible_cpus())) {
+		fprintf(stderr, "load failed: %s\n", strerror(errno));
+		goto out;
 	}
 	if (spine_bpf__attach(skel)) {
 		fprintf(stderr, "attach failed: %s\n", strerror(errno));

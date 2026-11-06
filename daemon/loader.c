@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <bpf/libbpf.h>
 
+#include "counters.h"
 #include "exitcodes.h"
 #include "loader.h"
 #include "selftest.h"
@@ -45,10 +46,47 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 		return P15_EXIT_CONFIG;
 	}
 	l->spine->rodata->spine_wake_bytes = spine_ring_bytes / 4;   /* ADR-0020 rule 2 */
+	l->ncpu = libbpf_num_possible_cpus();
+	if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counters, &l->spine->rodata->spine_counters_ncpu,
+						   l->ncpu)) {
+		snprintf(err, errlen, "spine: cannot size the counters for %d possible CPUs (ADR-0026)", l->ncpu);
+		return P15_EXIT_LOAD;
+	}
 	if (spine_bpf__load(l->spine)) {
 		snprintf(err, errlen, "spine: load failed: %s", strerror(errno));
 		return P15_EXIT_LOAD;
 	}
+	if (p15_counters_verify(l->spine->maps.spine_counters, l->ncpu)) {
+		snprintf(err, errlen, "spine: the loaded counter map is not the mmapable array asked for (ADR-0026)");
+		return P15_EXIT_INTERNAL;
+	}
+	if (net) {
+		l->net = net_bpf__open();
+		if (!l->net) {
+			snprintf(err, errlen, "net: open failed: %s", strerror(errno));
+			return P15_EXIT_LOAD;
+		}
+		if (bpf_map__set_max_entries(l->net->maps.bulk_rb, bulk_ring_bytes)) {
+			snprintf(err, errlen, "net: bulk ring size %u refused", bulk_ring_bytes);
+			return P15_EXIT_CONFIG;
+		}
+		l->net->rodata->bulk_wake_bytes = bulk_ring_bytes / 4;   /* ADR-0020 rule 2 */
+		if (p15_counters_configure(l->net->maps.bulk_counters, &l->net->rodata->bulk_counters_ncpu, l->ncpu)) {
+			snprintf(err, errlen, "net: cannot size the counters for %d possible CPUs (ADR-0026)", l->ncpu);
+			return P15_EXIT_LOAD;
+		}
+		if (net_bpf__load(l->net)) {
+			snprintf(err, errlen, "net: load failed: %s (fentry/fexit unavailable? --no-net runs without "
+				 "network capture)", strerror(errno));
+			return P15_EXIT_LOAD;
+		}
+		if (p15_counters_verify(l->net->maps.bulk_counters, l->ncpu)) {
+			snprintf(err, errlen, "net: the loaded counter map is not the mmapable array asked for (ADR-0026)");
+			return P15_EXIT_INTERNAL;
+		}
+	}
+	/* Every object is loaded and its maps written before anything attaches: from the first attach
+	 * on, p15d makes no map syscall (ADR-0026). Then the spine, then the network programs. */
 	if (access("/sys/kernel/tracing/events/sched/sched_process_exec", F_OK)) {
 		snprintf(err, errlen, "tracefs is not mounted at /sys/kernel/tracing (the spine's exec, exit and rename "
 			 "hooks are classic tracepoints, ADR-0020): mount -t tracefs nodev /sys/kernel/tracing");
@@ -66,19 +104,9 @@ int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t b
 		snprintf(err, errlen, "hook manifest too long");
 		return P15_EXIT_INTERNAL;
 	}
-	if (net) {
-		l->net = net_bpf__open();
-		if (!l->net) {
-			snprintf(err, errlen, "net: open failed: %s", strerror(errno));
-			return P15_EXIT_LOAD;
-		}
-		if (bpf_map__set_max_entries(l->net->maps.bulk_rb, bulk_ring_bytes)) {
-			snprintf(err, errlen, "net: bulk ring size %u refused", bulk_ring_bytes);
-			return P15_EXIT_CONFIG;
-		}
-		l->net->rodata->bulk_wake_bytes = bulk_ring_bytes / 4;   /* ADR-0020 rule 2 */
-		if (net_bpf__load(l->net) || net_bpf__attach(l->net)) {
-			snprintf(err, errlen, "net: load or attach failed: %s (fentry/fexit unavailable? --no-net runs without "
+	if (l->net) {
+		if (net_bpf__attach(l->net)) {
+			snprintf(err, errlen, "net: attach failed: %s (fentry/fexit unavailable? --no-net runs without "
 				 "network capture)", strerror(errno));
 			return P15_EXIT_LOAD;
 		}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run.
+"""Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup.
 
 Each mutant plants one bug, rebuilds, and runs the tests that should catch it: the unit
 tests for queue and config (no root), the end-to-end test daemon/tests/it_p15d.sh for the
@@ -14,10 +14,27 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-UNIT = "make -s build/test_queue build/test_config build/test_run && build/test_queue && build/test_config && build/test_run"
+UNIT = ("make -s build/test_queue build/test_config build/test_run build/test_counters && build/test_queue && "
+        "build/test_config && build/test_run && build/test_counters")
 IT = "make -s build/p15d build/p15w-inspect && daemon/tests/it_p15d.sh build"
 
 M = [
+    # counters (ADR-0026): the row sum, configure and verify; the drain's mapped read; the loader;
+    # the startup order (case 7 of it_p15d.sh traces map syscalls). Left out as equivalent: which
+    # row a CPU counts into (bpf/progs/*.bpf.c count()): every row is summed, so the choice changes
+    # cache-line sharing, never a total.
+    ("counters.c", "for (int r = 0; r <= ncpu; r++)", "for (int r = 0; r < ncpu; r++)", UNIT),
+    ("counters.c", "\t*ncpu_rodata = (uint32_t)ncpu;", "\t(void)ncpu_rodata;", UNIT),
+    ("counters.c", "if (ncpu <= 0 || ncpu > P15_CTR_NCPU_MAX)\n\t\treturn -EINVAL;\n\trc =", "if (ncpu > P15_CTR_NCPU_MAX)\n\t\treturn -EINVAL;\n\trc =", UNIT),
+    ("counters.c", "bpf_map__type(map) != BPF_MAP_TYPE_ARRAY ||", "", UNIT),
+    ("counters.c", "!(bpf_map__map_flags(map) & BPF_F_MMAPABLE) ||", "", UNIT),
+    ("counters.c", "bpf_map__value_size(map) != sizeof(uint64_t) ||", "", UNIT),
+    ("counters.c", "bpf_map__max_entries(map) != P15_CTR_ENTRIES((uint32_t)ncpu))", "0)", UNIT),
+    ("drain.c", "\tp15_counters_sum(c, sum);\n\treturn 0;", "\t(void)c;\n\tmemset(sum, 0, sizeof(uint64_t) * P15_CTR_MAX);\n\treturn 0;", IT),
+    ("loader.c", "if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counters, &l->spine->rodata->spine_counters_ncpu,\n\t\t\t\t\t\t   l->ncpu)) {",
+     "if (l->ncpu <= 0) {", IT),
+    ("p15d.c", '\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\tcode = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n',
+     '\tcode = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n', IT),   # snapshot loaded after attach
     # queue: capacity, ordering, publication
     ("queue.c", "if (h - t >= q->n) {", "if (h - t > q->n) {", UNIT),
     ("queue.c", "\tatomic_store_explicit(&q->head, h, memory_order_release);", "", UNIT),

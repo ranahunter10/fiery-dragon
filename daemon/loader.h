@@ -28,6 +28,7 @@ struct p15_loader {
 	int miss_fd[5];            /* program fds by spine record type 1..4, for recursion_misses (ADR-0020) */
 	int net_miss_fd[8];
 	int n_net_miss;
+	int ncpu;                   /* possible CPUs: the counter maps' row count (ADR-0026) */
 };
 
 /* Returns 0, or a P15_EXIT_* code with a reason in err. */
