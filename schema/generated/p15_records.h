@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "23772a79261eb103211e451d652dbf2a1de6d40ca14b1ae5b837223cb51cce3d"
+#define P15_SCHEMA_HASH "f72ad91f524f63e1b1ac9b5521cd17bb1078c1dab15097b88c89820037b66f24"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -639,6 +639,92 @@ P15_ASSERT(P15_OFFSETOF(struct p15_net_stats_v2, _pad) == 116, "p15_net_stats_v2
 
 #define P15_NET_STATS_V2_MAX_SIZE 120
 
+/* EXEC v2 (SPINE): A process replaced its program image (tp_btf/sched_process_exec). v2 adds code provenance (ADR-0025): the executable's own facts, the new credentials, self_exec_id (ADR-0020 rule 5), and the identity of standard in/out/err. The header names the process after the exec; argv is the kernel's copy on the new stack (ADR-0003, E-0049). Filled after begin_new_exec has set mm->exe_file, closed close-on-exec fds and committed creds (v7.0 fs/exec.c), so every field describes what the new program starts with. */
+struct p15_exec_v2 {
+	struct p15_hdr h;
+	__u64 exe_ino;
+	__u64 self_exec_id;
+	__u64 exe_ctime_ns;
+	__u64 exe_mtime_ns;
+	__u64 stdin_ino;
+	__u64 stdout_ino;
+	__u64 stderr_ino;
+	__u32 exe_dev;
+	__u32 exe_gen;
+	__u32 exe_nlink;
+	__u32 exe_fs_magic;
+	__u32 exe_mode;
+	__u32 exe_uid;
+	__u32 exe_gid;
+	__u32 old_tid;
+	__u32 uid;
+	__u32 euid;
+	__u32 gid;
+	__u32 egid;
+	__u32 fsuid;
+	__u32 fsgid;
+	__u32 stdin_dev;
+	__u32 stdin_rdev;
+	__u32 stdin_mode;
+	__u32 stdout_dev;
+	__u32 stdout_rdev;
+	__u32 stdout_mode;
+	__u32 stderr_dev;
+	__u32 stderr_rdev;
+	__u32 stderr_mode;
+	__u32 filename_full;   /* generated */
+	__u32 argv_full;   /* generated */
+	__u32 exe_name_full;   /* generated */
+	__u16 filename_len;   /* generated */
+	__u16 argv_len;   /* generated */
+	__u16 exe_name_len;   /* generated */
+	char _pad[2];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_exec_v2) == 200, "p15_exec_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, h) == 0, "p15_exec_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_ino) == 32, "p15_exec_v2.exe_ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, self_exec_id) == 40, "p15_exec_v2.self_exec_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_ctime_ns) == 48, "p15_exec_v2.exe_ctime_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_mtime_ns) == 56, "p15_exec_v2.exe_mtime_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdin_ino) == 64, "p15_exec_v2.stdin_ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdout_ino) == 72, "p15_exec_v2.stdout_ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stderr_ino) == 80, "p15_exec_v2.stderr_ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_dev) == 88, "p15_exec_v2.exe_dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_gen) == 92, "p15_exec_v2.exe_gen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_nlink) == 96, "p15_exec_v2.exe_nlink offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_fs_magic) == 100, "p15_exec_v2.exe_fs_magic offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_mode) == 104, "p15_exec_v2.exe_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_uid) == 108, "p15_exec_v2.exe_uid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_gid) == 112, "p15_exec_v2.exe_gid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, old_tid) == 116, "p15_exec_v2.old_tid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, uid) == 120, "p15_exec_v2.uid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, euid) == 124, "p15_exec_v2.euid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, gid) == 128, "p15_exec_v2.gid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, egid) == 132, "p15_exec_v2.egid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, fsuid) == 136, "p15_exec_v2.fsuid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, fsgid) == 140, "p15_exec_v2.fsgid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdin_dev) == 144, "p15_exec_v2.stdin_dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdin_rdev) == 148, "p15_exec_v2.stdin_rdev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdin_mode) == 152, "p15_exec_v2.stdin_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdout_dev) == 156, "p15_exec_v2.stdout_dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdout_rdev) == 160, "p15_exec_v2.stdout_rdev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stdout_mode) == 164, "p15_exec_v2.stdout_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stderr_dev) == 168, "p15_exec_v2.stderr_dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stderr_rdev) == 172, "p15_exec_v2.stderr_rdev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, stderr_mode) == 176, "p15_exec_v2.stderr_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, filename_full) == 180, "p15_exec_v2.filename_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, argv_full) == 184, "p15_exec_v2.argv_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_name_full) == 188, "p15_exec_v2.exe_name_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, filename_len) == 192, "p15_exec_v2.filename_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, argv_len) == 194, "p15_exec_v2.argv_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, exe_name_len) == 196, "p15_exec_v2.exe_name_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_exec_v2, _pad) == 198, "p15_exec_v2._pad offset");
+
+#define P15_EXEC_V2_MAX_SIZE 1544
+#define P15_EXEC_V2_FILENAME_MAX 256
+#define P15_EXEC_V2_ARGV_MAX 1024
+#define P15_EXEC_V2_EXE_NAME_MAX 64
+
 /* PROC v1 (MARKER): One live thread group in a process snapshot (ADR-0007 rule 3): the opening one at every segment open, the closing one at an orderly stop (ADR-0023). The header names the process (ADR-0009) and its ts_ns is when the iterator saw it. Hooks are attached for the whole snapshot, so a process created during it is in the snapshot, in an event, or both (the fuzzy-checkpoint rule). */
 struct p15_proc_v1 {
 	struct p15_hdr h;
@@ -679,6 +765,73 @@ P15_ASSERT(P15_OFFSETOF(struct p15_proc_v1, _pad) == 100, "p15_proc_v1._pad offs
 #define P15_PROC_V1_MAX_SIZE 1384
 #define P15_PROC_V1_EXE_PATH_MAX 256
 #define P15_PROC_V1_ARGV_MAX 1024
+
+/* PROC v2 (MARKER): One live thread group in a process snapshot (ADR-0007 rule 3, ADR-0023). v2 adds the code-provenance facts of EXEC v2 (ADR-0025): the executable's own facts, the leader's credentials and self_exec_id, so a process already running when capture began is described like one that execs during it. It does not carry standard streams (ADR-0025 rule 6). The header names the process (ADR-0009); ts_ns is when the iterator saw it. */
+struct p15_proc_v2 {
+	struct p15_hdr h;
+	__u64 parent_start_ns;
+	__u64 exe_ino;
+	__u64 self_exec_id;
+	__u64 exe_ctime_ns;
+	__u64 exe_mtime_ns;
+	__u32 parent_tgid;
+	__u32 exe_dev;
+	__u32 exe_gen;
+	__u32 exe_nlink;
+	__u32 exe_fs_magic;
+	__u32 exe_mode;
+	__u32 exe_uid;
+	__u32 exe_gid;
+	__u32 uid;
+	__u32 euid;
+	__u32 gid;
+	__u32 egid;
+	__u32 fsuid;
+	__u32 fsgid;
+	__u32 pflags;
+	__u32 snap_id;
+	char comm[16];
+	__u16 kind;
+	__u16 reserved;
+	__u32 exe_path_full;   /* generated */
+	__u32 argv_full;   /* generated */
+	__u16 exe_path_len;   /* generated */
+	__u16 argv_len;   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_proc_v2) == 168, "p15_proc_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, h) == 0, "p15_proc_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, parent_start_ns) == 32, "p15_proc_v2.parent_start_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_ino) == 40, "p15_proc_v2.exe_ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, self_exec_id) == 48, "p15_proc_v2.self_exec_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_ctime_ns) == 56, "p15_proc_v2.exe_ctime_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_mtime_ns) == 64, "p15_proc_v2.exe_mtime_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, parent_tgid) == 72, "p15_proc_v2.parent_tgid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_dev) == 76, "p15_proc_v2.exe_dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_gen) == 80, "p15_proc_v2.exe_gen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_nlink) == 84, "p15_proc_v2.exe_nlink offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_fs_magic) == 88, "p15_proc_v2.exe_fs_magic offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_mode) == 92, "p15_proc_v2.exe_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_uid) == 96, "p15_proc_v2.exe_uid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_gid) == 100, "p15_proc_v2.exe_gid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, uid) == 104, "p15_proc_v2.uid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, euid) == 108, "p15_proc_v2.euid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, gid) == 112, "p15_proc_v2.gid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, egid) == 116, "p15_proc_v2.egid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, fsuid) == 120, "p15_proc_v2.fsuid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, fsgid) == 124, "p15_proc_v2.fsgid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, pflags) == 128, "p15_proc_v2.pflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, snap_id) == 132, "p15_proc_v2.snap_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, comm) == 136, "p15_proc_v2.comm offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, kind) == 152, "p15_proc_v2.kind offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, reserved) == 154, "p15_proc_v2.reserved offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_path_full) == 156, "p15_proc_v2.exe_path_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, argv_full) == 160, "p15_proc_v2.argv_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, exe_path_len) == 164, "p15_proc_v2.exe_path_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_proc_v2, argv_len) == 166, "p15_proc_v2.argv_len offset");
+
+#define P15_PROC_V2_MAX_SIZE 1448
+#define P15_PROC_V2_EXE_PATH_MAX 256
+#define P15_PROC_V2_ARGV_MAX 1024
 
 /* SNAP_DONE v1 (MARKER): The books of one process snapshot, written right after its PROC records. They close: tasks = threads + emitted + write_failed (the BPF side) and emitted = entries + invalid + unwritten (p15d's side); a reader that finds them open marks the run INVALID. A closing snapshot's SNAP_DONE precedes END (ADR-0023 rule 1). */
 struct p15_snap_done_v1 {
@@ -731,11 +884,12 @@ P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, _pad) == 162, "p15_snap_done_v1
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
 #define P15_FORK_MAX_SIZE P15_FORK_V1_MAX_SIZE
-#define P15_EXEC_VERSION 1
-#define p15_exec p15_exec_v1
-#define P15_EXEC_MAX_SIZE P15_EXEC_V1_MAX_SIZE
-#define P15_EXEC_FILENAME_MAX P15_EXEC_V1_FILENAME_MAX
-#define P15_EXEC_ARGV_MAX P15_EXEC_V1_ARGV_MAX
+#define P15_EXEC_VERSION 2
+#define p15_exec p15_exec_v2
+#define P15_EXEC_MAX_SIZE P15_EXEC_V2_MAX_SIZE
+#define P15_EXEC_FILENAME_MAX P15_EXEC_V2_FILENAME_MAX
+#define P15_EXEC_ARGV_MAX P15_EXEC_V2_ARGV_MAX
+#define P15_EXEC_EXE_NAME_MAX P15_EXEC_V2_EXE_NAME_MAX
 #define P15_EXIT_VERSION 1
 #define p15_exit p15_exit_v1
 #define P15_EXIT_MAX_SIZE P15_EXIT_V1_MAX_SIZE
@@ -761,11 +915,11 @@ P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, _pad) == 162, "p15_snap_done_v1
 #define P15_NET_STATS_VERSION 2
 #define p15_net_stats p15_net_stats_v2
 #define P15_NET_STATS_MAX_SIZE P15_NET_STATS_V2_MAX_SIZE
-#define P15_PROC_VERSION 1
-#define p15_proc p15_proc_v1
-#define P15_PROC_MAX_SIZE P15_PROC_V1_MAX_SIZE
-#define P15_PROC_EXE_PATH_MAX P15_PROC_V1_EXE_PATH_MAX
-#define P15_PROC_ARGV_MAX P15_PROC_V1_ARGV_MAX
+#define P15_PROC_VERSION 2
+#define p15_proc p15_proc_v2
+#define P15_PROC_MAX_SIZE P15_PROC_V2_MAX_SIZE
+#define P15_PROC_EXE_PATH_MAX P15_PROC_V2_EXE_PATH_MAX
+#define P15_PROC_ARGV_MAX P15_PROC_V2_ARGV_MAX
 #define P15_SNAP_DONE_VERSION 1
 #define p15_snap_done p15_snap_done_v1
 #define P15_SNAP_DONE_MAX_SIZE P15_SNAP_DONE_V1_MAX_SIZE

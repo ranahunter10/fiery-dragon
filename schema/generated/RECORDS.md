@@ -410,6 +410,59 @@ Fixed part 120 bytes; at most 120 bytes with its variable fields.
 | 112 | `bulk_ring_bytes` | u32 | the bulk ring's size |
 | 116 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
 
+## EXEC (type 2, version 2, class SPINE)
+
+A process replaced its program image (tp_btf/sched_process_exec). v2 adds code provenance (ADR-0025): the executable's own facts, the new credentials, self_exec_id (ADR-0020 rule 5), and the identity of standard in/out/err. The header names the process after the exec; argv is the kernel's copy on the new stack (ADR-0003, E-0049). Filled after begin_new_exec has set mm->exe_file, closed close-on-exec fds and committed creds (v7.0 fs/exec.c), so every field describes what the new program starts with.
+
+Fixed part 200 bytes; at most 1544 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `exe_ino` | u64 | mm->exe_file inode number (was bprm->file; identical here) |
+| 40 | `self_exec_id` | u64 | task->self_exec_id after this exec: a per-process exec counter, +1 per successful exec (ADR-0020 rule 5). A gap across a process's EXEC records is a skipped exec |
+| 48 | `exe_ctime_ns` | u64 | exe inode i_ctime in ns (metadata change time): a binary written just before exec is a dropper signal |
+| 56 | `exe_mtime_ns` | u64 | exe inode i_mtime in ns (content change time) |
+| 64 | `stdin_ino` | u64 | fd 0 inode number, 0 if the fd is closed |
+| 72 | `stdout_ino` | u64 | fd 1 inode number |
+| 80 | `stderr_ino` | u64 | fd 2 inode number |
+| 88 | `exe_dev` | u32 | mm->exe_file superblock s_dev (kernel encoding, not st_dev) |
+| 92 | `exe_gen` | u32 | mm->exe_file inode i_generation |
+| 96 | `exe_nlink` | u32 | exe inode link count. 0 = an unlinked backing: a memfd, a deleted file, or an O_TMPFILE (ADR-0025 fact 1) |
+| 100 | `exe_fs_magic` | u32 | low 32 bits of the exe superblock s_magic: tmpfs 0x01021994, hugetlbfs 0x958458f6, overlayfs 0x794c7630 (include/uapi/linux/magic.h) |
+| 104 | `exe_mode` | u32 | exe inode i_mode (type and permission bits) |
+| 108 | `exe_uid` | u32 | exe inode owner uid |
+| 112 | `exe_gid` | u32 | exe inode owner gid |
+| 116 | `old_tid` | u32 | the exec'ing thread's tid before exec (differs from tgid after a non-leader exec) |
+| 120 | `uid` | u32 | task real uid after the exec's commit_creds |
+| 124 | `euid` | u32 | task effective uid (a setuid exe raises this above uid) |
+| 128 | `gid` | u32 | task real gid |
+| 132 | `egid` | u32 | task effective gid |
+| 136 | `fsuid` | u32 | task fsuid (the uid used for filesystem access checks) |
+| 140 | `fsgid` | u32 | task fsgid |
+| 144 | `stdin_dev` | u32 | fd 0 superblock s_dev |
+| 148 | `stdin_rdev` | u32 | fd 0 inode i_rdev (device node id; a tty's identity) |
+| 152 | `stdin_mode` | u32 | fd 0 inode i_mode: the file type says terminal/char/regular/pipe (pipefs)/socket (sockfs). For a pipe, stdin_ino is the pipe inode and joins to the writer stdout_ino; a socket-to-NET join waits for a helper-capable hook (ADR-0025) |
+| 156 | `stdout_dev` | u32 | fd 1 superblock s_dev |
+| 160 | `stdout_rdev` | u32 | fd 1 inode i_rdev |
+| 164 | `stdout_mode` | u32 | fd 1 inode i_mode |
+| 168 | `stderr_dev` | u32 | fd 2 superblock s_dev |
+| 172 | `stderr_rdev` | u32 | fd 2 inode i_rdev |
+| 176 | `stderr_mode` | u32 | fd 2 inode i_mode |
+| 180 | `filename_full` | u32 | full length of filename in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 184 | `argv_full` | u32 | full length of argv in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 188 | `exe_name_full` | u32 | full length of exe_name in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 192 | `filename_len` | u16 | bytes of filename present in this record *(generated)* |
+| 194 | `argv_len` | u16 | bytes of argv present in this record *(generated)* |
+| 196 | `exe_name_len` | u16 | bytes of exe_name present in this record *(generated)* |
+| 198 | `_pad` | char[2] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `filename` (at most 256 bytes): bprm->filename: the path as passed to execve, or /dev/fd/N for execveat (not resolved). The 256 cap is an inference, revisited with data; truncation counted
+- `argv` (at most 1024 bytes): mm->arg_start..arg_end at sched_process_exec, NUL-separated. The 1024 cap is an inference, revisited with data; truncation counted
+- `exe_name` (at most 64 bytes): mm->exe_file dentry basename (e.g. a.out, or "memfd:<name>" for a memfd). Not the path; the path joins from FILE_OPEN (Phase 2) and the snapshot. Truncation counted
+
 ## PROC (type 37, version 1, class MARKER)
 
 One live thread group in a process snapshot (ADR-0007 rule 3): the opening one at every segment open, the closing one at an orderly stop (ADR-0023). The header names the process (ADR-0009) and its ts_ns is when the iterator saw it. Hooks are attached for the whole snapshot, so a process created during it is in the snapshot, in an event, or both (the fuzzy-checkpoint rule).
@@ -434,6 +487,49 @@ Fixed part 104 bytes; at most 1384 bytes with its variable fields.
 | 96 | `exe_path_len` | u16 | bytes of exe_path present in this record *(generated)* |
 | 98 | `argv_len` | u16 | bytes of argv present in this record *(generated)* |
 | 100 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `exe_path` (at most 256 bytes): bpf_d_path of mm->exe_file, without the NUL; empty for a kernel thread or when the read failed (P15_F_READ_FAILED). A cut path is flagged TRUNCATED
+- `argv` (at most 1024 bytes): mm->arg_start..arg_end read with bpf_copy_from_user_task, NUL-separated; the same cap as EXEC's argv
+
+## PROC (type 37, version 2, class MARKER)
+
+One live thread group in a process snapshot (ADR-0007 rule 3, ADR-0023). v2 adds the code-provenance facts of EXEC v2 (ADR-0025): the executable's own facts, the leader's credentials and self_exec_id, so a process already running when capture began is described like one that execs during it. It does not carry standard streams (ADR-0025 rule 6). The header names the process (ADR-0009); ts_ns is when the iterator saw it.
+
+Fixed part 168 bytes; at most 1448 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `parent_start_ns` | u64 | real_parent's thread-group leader start_boottime: with parent_tgid, the parent's key (ADR-0009) |
+| 40 | `exe_ino` | u64 | mm->exe_file inode number; 0 for a kernel thread |
+| 48 | `self_exec_id` | u64 | leader task->self_exec_id (ADR-0020 rule 5): matches the last EXEC of this process when the run holds it |
+| 56 | `exe_ctime_ns` | u64 | exe inode i_ctime in ns; 0 for a kernel thread |
+| 64 | `exe_mtime_ns` | u64 | exe inode i_mtime in ns; 0 for a kernel thread |
+| 72 | `parent_tgid` | u32 | real_parent->tgid |
+| 76 | `exe_dev` | u32 | mm->exe_file superblock s_dev (kernel encoding, not st_dev) |
+| 80 | `exe_gen` | u32 | mm->exe_file inode i_generation |
+| 84 | `exe_nlink` | u32 | exe inode link count; 0 = unlinked backing (memfd, deleted, O_TMPFILE); 0 for a kernel thread |
+| 88 | `exe_fs_magic` | u32 | low 32 bits of the exe superblock s_magic (see EXEC); 0 for a kernel thread |
+| 92 | `exe_mode` | u32 | exe inode i_mode; 0 for a kernel thread |
+| 96 | `exe_uid` | u32 | exe inode owner uid; 0 for a kernel thread |
+| 100 | `exe_gid` | u32 | exe inode owner gid; 0 for a kernel thread |
+| 104 | `uid` | u32 | leader real uid (from task->cred) |
+| 108 | `euid` | u32 | leader effective uid |
+| 112 | `gid` | u32 | leader real gid |
+| 116 | `egid` | u32 | leader effective gid |
+| 120 | `fsuid` | u32 | leader fsuid |
+| 124 | `fsgid` | u32 | leader fsgid |
+| 128 | `pflags` | u32 | bit 0 kernel thread (PF_KTHREAD: no mm, no argv, no exe), bit 1 exiting (PF_EXITING) |
+| 132 | `snap_id` | u32 | which snapshot of the run: 0, 1, 2, ... in the order they were taken |
+| 136 | `comm` | char[16] | task->comm of the leader, NUL-padded |
+| 152 | `kind` | u16 | 1 opening (segment open), 2 closing (orderly stop, ADR-0023) |
+| 154 | `reserved` | u16 | zero |
+| 156 | `exe_path_full` | u32 | full length of exe_path in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 160 | `argv_full` | u32 | full length of argv in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 164 | `exe_path_len` | u16 | bytes of exe_path present in this record *(generated)* |
+| 166 | `argv_len` | u16 | bytes of argv present in this record *(generated)* |
 
 Variable-length fields, after the fixed part in this order:
 

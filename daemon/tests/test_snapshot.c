@@ -20,13 +20,13 @@ static int failures;
 /* One PROC record of snapshot 7 (opening) with `path` and `argv`, at out; returns its len. */
 static unsigned mk_proc(unsigned char *out, unsigned tgid, const char *path, const char *argv, size_t argv_len)
 {
-	struct p15_proc_v1 *r = (void *)out;
+	struct p15_proc *r = (void *)out;      /* the current version (v2) */
 	size_t pl = strlen(path);
 	unsigned len = (unsigned)((sizeof(*r) + pl + argv_len + 7) & ~(size_t)7);
 
 	memset(out, 0, len);
 	r->h.type = P15_T_PROC;
-	r->h.version = 1;
+	r->h.version = P15_PROC_VERSION;
 	r->h.len = (__u16)len;
 	r->h.ts_ns = 1000 + tgid;
 	r->h.tgid = r->h.tid = tgid;
@@ -104,7 +104,7 @@ static void test_split_reads(void)
 static void test_invalid_and_foreign(void)
 {
 	size_t n = 0, second;
-	struct p15_proc_v1 *r;
+	struct p15_proc *r;
 
 	n += mk_proc(stream + n, 20, "/a", "a\0", 2);
 	second = n;
@@ -197,7 +197,7 @@ static void test_records(void)
 {
 	static unsigned char rec[2048];
 	unsigned len = mk_proc(rec, 60, "/usr/bin/x", "x\0-y\0", 5);
-	struct p15_proc_v1 *r = (void *)rec;
+	struct p15_proc *r = (void *)rec;
 	const char *why;
 	char line[1700];
 

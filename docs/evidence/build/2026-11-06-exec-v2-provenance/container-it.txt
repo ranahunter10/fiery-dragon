@@ -1,0 +1,99 @@
+# dev container (kernel 6.18.44-fc-v242, not the target), commit ba8dd8b plus the uncommitted case 6 shown in this PR; P15_IT_PID1=0 (E-0105)
+# P15_IT_PID1=0 daemon/tests/it_p15d.sh build
+network capture: off (--no-net: fentry/fexit not loadable here)
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+p15d level=info code=start run_dir=/tmp/p15d-it-djnWCq/c1/20261106T172100Z-b7b91942 sched="SCHED_FIFO 1" spine_ring=4194304 net=off (--no-net)
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-djnWCq/c1/20261106T172100Z-b7b91942//seg-00000000.p15w: segment 0, 130672 bytes, 65 batches, 991 records, valid to the end
+  run.id = 20261106T172100Z-b7b91942
+  kernel.release = 6.18.44-fc-v242
+  schema.hash = f72ad91f524f63e1b1ac9b5521cd17bb1078c1dab15097b88c89820037b66f24
+records: spine 812, bulk 0, daemon 179; invalid 0
+  FORK       203
+  EXEC       202
+  EXIT       205
+  RENAME     202
+  CLOCK_SYNC 5
+  STATS      40
+  END        1
+  PROC       131
+  SNAP_DONE  2
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 40)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:66:1 closing:65:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+case 2: stop by SIGTERM
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+p15d level=info code=start run_dir=/tmp/p15d-it-djnWCq/c3/20261106T172115Z-b7b91942 sched="normal (--no-rt)" spine_ring=4096 net=off (--no-net)
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 43, bulk 0, daemon 142; invalid 0
+  FORK       14
+  EXEC       9
+  EXIT       10
+  RENAME     10
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        1
+  END        1
+  PROC       131
+  SNAP_DONE  2
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)", closing snapshot 1
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 1)
+  ok   END: INVALID, and the books still close (loss is counted)
+  reconciliation: repaired 0 4 390 394 opening:66:1 closing:65:1
+  ok   ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss (repaired)
+  ok   unexplained forks 0 <= counted 390, exits 4 <= counted 394
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2
+  ok   the Python reader's counts equal p15w-inspect's (c6)
+  ok   exit 0, WAL valid
+  ok   the memfd program ran (exit 0, vm.memfd_noexec=0)
+  ok   exactly one EXEC of p15-it-memfd (found 1)
+  ok     ... exe_name is the memfd's name (b'memfd:p15-it')
+  ok     ... nlink 0 on tmpfs (nlink 0, magic 0x1021994)
+  ok     ... the reader classes it 'runs from memory' (['runs from memory (no file on disk)', 'executable is writable by its runner'])
+  ok   the streams program ran
+  ok   exactly one EXEC of p15-it-streams (found 1)
+  ok     ... stdin is the pipe the workload opened (record {'ino': 1000, 'dev': 15, 'mode': 4480}, fstat {'ino': 1000, 'dev': 15, 'mode': 4480})
+  ok     ... stdout is the file the workload opened (record {'ino': 1091889, 'dev': 266338304, 'mode': 33188}, fstat {'ino': 1091889, 'dev': 266338304, 'mode': 33188})
+  ok     ... stderr is the socket the workload opened (record {'ino': 1001, 'dev': 9, 'mode': 49663}, fstat {'ino': 1001, 'dev': 9, 'mode': 49663})
+  ok   the pipeline ran
+  ok   one EXEC each of p15-it-writer and p15-it-reader (found 1, 1)
+  ok     ... joined writer -> reader by their shared pipe inode
+  ok     ... p15-trace's provenance block shows that pipe
+  ok     ... and the process that ran from memory
+  ok   one EXEC of p15-it-live, pid 1428
+  ok   one closing snapshot (found 1)
+  ok     ... it lists p15-it-live under the same process key as its EXEC
+  ok     ... PROC v2 and EXEC v2 agree on all 17 shared facts
+case 4: a bad flag
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
+
+# the case-6 checker against the same kind of run with its expectations tampered (c6neg.sh)
+p15d exit=0
+untampered: exit=0 ok=19 fail=0
+tampered e["streams"]["stdin"]["ino"]+=1: exit=1; FAIL   ... stdin is the pipe the workload opened (record {'ino': 3421, 'dev': 15, 'mode': |
+tampered e["streams"]["stderr"]["mode"]=0o010600: exit=1; FAIL   ... stderr is the socket the workload opened (record {'ino': 3422, 'dev': 9, 'mode'|
+tampered e["live_pid"]+=1: exit=1; FAIL one EXEC of p15-it-live, pid 1920|
+tampered e["memfd_exit"]=1: exit=1; FAIL the memfd program ran (exit 1, vm.memfd_noexec=0)|
+tampered e["pipe_exit"]=[0,1]: exit=1; FAIL the pipeline ran|

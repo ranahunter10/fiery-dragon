@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Mutation sweep for the spine's EXEC program, the way it is built (OUTPUT, ADR-0017 layer 1),
-and the counter books (CONTRIBUTING §6). Root: each mutant is loaded into the kernel.
+"""Mutation sweep for the spine's EXEC program (ADR-0017 layer 1, ADR-0025), its code-provenance
+facts and the counter books (CONTRIBUTING §6). Root: each mutant is loaded into the kernel.
 
 Each mutant plants one bug in bpf/progs/spine.bpf.c, rebuilds build/p15-spine and runs its
 load-time self-test, which then also checks the counters after detaching. The run must fail.
@@ -34,13 +34,22 @@ M = [
  # len larger than the fields: refused by p15_rec_check
  ("\tlen = exec_len(end);\n", "\tlen = exec_len(end + 8);\n"),
  # variable-field lengths not written into the scratch record
- ("\tr->argv_len = av_len;\n\n\t/* zero the bytes", "\n\t/* zero the bytes"),
+ ("\tr->argv_len = av_len;\n\ten_len = exec_name(", "\ten_len = exec_name("),
  ("\tr->filename_len = fn_len;\n\treturn fn_len;", "\treturn fn_len;"),
  # the books: an emitted record not counted, a seen event not counted
- ("#endif\n\tcount(P15_T_EXEC, P15_CK_EMITTED);", "#endif\n"),
- ("\tcount(P15_T_EXEC, P15_CK_SEEN);\n#if P15_EXEC_WAY == P15_EXEC_WAY_FIXED", "#if P15_EXEC_WAY == P15_EXEC_WAY_FIXED"),
- # the default way: back to the maximum reservation
- ("#define P15_EXEC_WAY P15_EXEC_WAY_OUTPUT\n", "#define P15_EXEC_WAY P15_EXEC_WAY_FIXED\n"),
+ ("\tcount(P15_T_EXEC, P15_CK_EMITTED);\n", ""),
+ ("\tcount(P15_T_EXEC, P15_CK_SEEN);\n", ""),
+ # EXEC v2's provenance facts (ADR-0025), each checked by the self-test against stat/statfs/fstat
+ ("(BPF_CORE_READ(ei, i_ctime_nsec) & P15_CTIME_NSEC_MASK)", "BPF_CORE_READ(ei, i_ctime_nsec)"),
+ ("BPF_CORE_READ(ei, i_mtime_nsec);", "BPF_CORE_READ(ei, i_mtime_nsec) + 1;"),
+ ("r->exe_nlink = BPF_CORE_READ(ei, __i_nlink);", "r->exe_nlink = 0;"),
+ ("r->exe_fs_magic = (__u32)BPF_CORE_READ(ei, i_sb, s_magic);", "r->exe_fs_magic = 0;"),
+ ("r->egid = BPF_CORE_READ(c, egid.val);", "r->egid = 1;"),
+ ("n = bpf_probe_read_kernel_str(tail + at, P15_EXEC_EXE_NAME_MAX, nm);",
+  "n = bpf_probe_read_kernel_str(tail + at + 1, P15_EXEC_EXE_NAME_MAX - 1, nm);"),
+ # fds 0-2: the wrong descriptor, the mode not read (the sweep's stdout and stderr are two pipes)
+ ("fd_identity(fdarr, max_fds, 2, &r->stderr_ino", "fd_identity(fdarr, max_fds, 1, &r->stderr_ino"),
+ ("*mode = BPF_CORE_READ(ino_p, i_mode);", "*mode = 0;"),
 ]
 
 

@@ -25,7 +25,7 @@ class Refusals(unittest.TestCase):
         self.assertEqual(cm.exception.why, words)
 
     def test_every_refusal(self):
-        exe = rec("EXEC", var={"filename": b"/bin/xy", "argv": b"x\0"})   # 73 bytes: 7 of padding
+        exe = rec("EXEC", version=1, var={"filename": b"/bin/xy", "argv": b"x\0"})   # v1: 73 bytes, 7 of padding
         self.why(b"\0" * 31, "shorter than the header")
         self.why(rec("EXIT")[:32], "len beyond the bytes received")
         self.why(rec("EXIT", h_len=36) + b"\0" * 4, "len not a multiple of 8")
@@ -33,9 +33,9 @@ class Refusals(unittest.TestCase):
         self.why(rec("EXIT", h_version=2, h_len=40), "unknown type or version")
         self.why(rec("EXIT", h_len=32), "len shorter than the fixed part")
         self.why(rec("FORK", length=72), "len differs from the fixed size")
-        self.why(rec("EXEC", filename_len=257, length=64 + 264), "variable field beyond len")
-        self.why(rec("EXEC", var={"filename": b"/bin/x"}, filename_len=40), "variable field beyond len")
-        self.why(rec("EXEC", var={"filename": b"/bin/x"}, length=80), "len larger than its fields need")
+        self.why(rec("EXEC", version=1, filename_len=257, length=64 + 264), "variable field beyond len")
+        self.why(rec("EXEC", version=1, var={"filename": b"/bin/x"}, filename_len=40), "variable field beyond len")
+        self.why(rec("EXEC", version=1, var={"filename": b"/bin/x"}, length=80), "len larger than its fields need")
         bad_tail = bytearray(exe)
         bad_tail[-1] = 1
         self.why(bytes(bad_tail), "non-zero bytes after the variable fields")
@@ -63,7 +63,8 @@ class Refusals(unittest.TestCase):
         self.why(rec("PROC", kind=3), why)
         self.why(rec("PROC", kind=1, pflags=4), why)
         self.why(rec("PROC", kind=1, reserved=1), why)
-        self.why(rec("PROC", kind=1, var={"exe_path": b"/x"}, length=120), "len larger than its fields need")
+        self.why(rec("PROC", kind=1, var={"exe_path": b"/x"}, length=200), "len larger than its fields need")
+        self.why(rec("PROC", version=1, kind=1, argv_len=1025), "variable field beyond len")
         self.why(rec("SNAP_DONE", kind=0), "SNAP_DONE: unknown kind")
         e = dec(rec("END", closing_snapshot=-71, var={"reason": b"stop requested"}))
         self.assertEqual((e.h["version"], e.f["closing_snapshot"], e.var["reason"]), (2, -71, b"stop requested"))
@@ -71,7 +72,7 @@ class Refusals(unittest.TestCase):
         self.assertEqual(dec(rec("END", version=1, var={"reason": b"x"})).h["version"], 1)
 
     def test_slack_after_a_failed_read(self):
-        r = dec(rec("EXEC", var={"filename": b"/bin/x"}, length=80, h_flags=R.F_READ_FAILED))
+        r = dec(rec("EXEC", version=1, var={"filename": b"/bin/x"}, length=80, h_flags=R.F_READ_FAILED))
         self.assertEqual(r.var, {"filename": b"/bin/x", "argv": b""})
 
     def test_offset_and_wording(self):

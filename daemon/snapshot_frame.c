@@ -22,15 +22,15 @@ void p15_snap_frame_init(struct p15_snap_frame *f, uint32_t snap_id, uint16_t ki
 /* A len that could be a PROC record: framing holds while it does. */
 static int plausible_len(uint16_t len)
 {
-	return len >= sizeof(struct p15_proc_v1) && len <= P15_PROC_MAX_SIZE && len % 8 == 0;
+	return len >= sizeof(struct p15_proc) && len <= P15_PROC_MAX_SIZE && len % 8 == 0;
 }
 
 static void one(struct p15_snap_frame *f, const uint8_t *rec, uint16_t len)
 {
-	const struct p15_proc_v1 *p = (const void *)rec;
+	const struct p15_proc *p = (const void *)rec;
 	const char *why;
 
-	if (p15_rec_check(rec, len, &why) || p->h.type != P15_T_PROC || p->h.version != 1 || p->snap_id != f->snap_id ||
+	if (p15_rec_check(rec, len, &why) || p->h.type != P15_T_PROC || p->h.version != P15_PROC_VERSION || p->snap_id != f->snap_id ||
 	    p->kind != f->kind) {
 		f->done->invalid++;
 		return;

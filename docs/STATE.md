@@ -116,7 +116,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ ADR-0018's statistics as code, the hook-cost harness and its VM run (#48, #49): ADR-0020 accepted;
       - ✅ ADR-0022 (PR #52; CI and the VM join both clients exactly, E-0104): NET v2 with the client ISN, and the exact join in p15-trace (CI case 5 and the VM confirm it);
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
-      - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
+      - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -152,7 +152,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     1. **Exit codes:** sysexits(3) values where one fits (USAGE 64, CONFIG 78, IO 74, OSERR 71, INTERNAL 70, LOAD 69, SELFTEST 65); DEGRADED 3 and INVALID 4; 0 only for a valid run. *(E-0074)*
     2. **Allowed exit sites** are marked in place with `exit-ok: <reason>`, every marked site printed in CI. *(E-0074)*
     3. **Hardening flags** apply to every userspace binary, the BPF test loaders and the C tests included.
-    4. **EXEC takes its exact `len` by `output`** (per-CPU scratch, then `bpf_ringbuf_output`). The `fixed` and `dynptr` ways leave `spine.bpf.c` after the VM repeats `bench-exec-cost`. *(E-0076)*
+    4. **EXEC takes its exact `len` by `output`** (per-CPU scratch, then `bpf_ringbuf_output`). The `fixed` and `dynptr` ways leave `spine.bpf.c` with EXEC v2 (ADR-0025 rule 8). The VM repeat holds the choice: `output` against `fixed` not resolved, `dynptr` dearer. *(E-0076, E-0114)*
     5. **Stricter EXEC checks** in `p15_rec_check`: exact padded `len` unless `READ_FAILED`, zero bytes after the fields. *(E-0075)*
     6. **Daemon-written records in WAL ring 2**, recorded as ADR-0020 rule 6.
     7. **STATS shape:** cumulative counters, four per-interval maxima with `interval_ns`; daemon record types from 32.
@@ -169,6 +169,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     3. **ADR-0023 accepted:** reconcile the process tree against a closing snapshot. To build after step 4c.
     4. **The 7.0 recursion-miss finding goes upstream** (bpf@vger.kernel.org), drafted in the session; the maintainer sends it under his name.
     5. **From now on, a decision is asked in the message where it arises**, not collected into an end-of-session list.
+
+15. **The 2026-11-06 review** (maintainer: "accepted recommended decisions"):
+    1. **ADR-0025 accepted:** code provenance on EXEC v2 and PROC v2. *(E-0118)*
+    2. **Socket → NET join deferred** to the data-flow slice, where `bpf_get_socket_cookie` is allowed. *(E-0118)*
+    3. **Standard streams in PROC v2 deferred.** *(E-0118)*
+    4. **#56 merged** with a merge commit at its tested head.
 
 ## Decisions waiting
 

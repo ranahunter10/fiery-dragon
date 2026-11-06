@@ -31,11 +31,33 @@ struct p15_rec_list {
 P15_MUST_CHECK int p15_rec_list_add(struct p15_rec_list *l, const void *data, size_t size);
 void p15_rec_list_free(struct p15_rec_list *l);
 
+/* What EXEC v2's code-provenance facts (ADR-0025) must be for the test child's exec, taken by the
+ * daemon from stat(2), statfs(2) and fstat(2) of the same objects just before it forks the child:
+ * the child inherits fds 0-2 and the credentials, and execs P15_ST_EXE. Device numbers are in the
+ * kernel's internal encoding (MAJOR << 20 | MINOR), which is what the record carries. Not checked
+ * here: exe_gen (only a filesystem-specific ioctl gives it) and self_exec_id (the daemon cannot
+ * read its own). Kernel uid/gid values equal stat's only in the initial user namespace; in
+ * another, this check fails loudly rather than pass on translated values. */
+struct p15_selftest_exec_facts {
+	__u64 ino, ctime_ns, mtime_ns;
+	__u32 dev, nlink, fs_magic, mode, uid, gid;
+	__u32 cred[6];          /* uid, euid, gid, egid, fsuid, fsgid of the daemon (so of the child) */
+	__u64 std_ino[3];       /* fds 0, 1, 2; all four zero for a closed fd */
+	__u32 std_dev[3], std_rdev[3], std_mode[3];
+	char name[64];          /* the basename of realpath(P15_ST_EXE): the dentry the exec opens */
+};
+
+/* Fill *f for `path` and the calling process. 0, or -errno (stat, statfs or realpath failed;
+ * -ENAMETOOLONG if the resolved basename does not fit `name`; a closed standard fd is not an
+ * error: its facts are zero, as the record's are). */
+P15_MUST_CHECK int p15_selftest_exec_facts(const char *path, struct p15_selftest_exec_facts *f);
+
 struct p15_selftest_expect {
 	__u32 daemon_tgid;
 	char daemon_comm[16];   /* the test child's comm before its rename */
 	__u32 child;            /* tgid of the test child */
 	__u32 grandchild;       /* tgid of the child's child */
+	struct p15_selftest_exec_facts exe;
 };
 
 /* Judge collected records. One line per check to `log`; returns the number of failed checks. */

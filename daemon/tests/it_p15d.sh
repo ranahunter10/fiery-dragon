@@ -4,7 +4,8 @@
 # by the Python reader.
 #   daemon/tests/it_p15d.sh BUILD_DIR          (make it-p15d)
 # Cases: a timed run with a workload; a stop by SIGTERM; a forced spine overflow (ADR-0017
-# confirmation: INVALID and a GAP record); a bad flag (exit 64). Exit 0 only if all pass.
+# confirmation: INVALID and a GAP record); network intent; code provenance (ADR-0025, with
+# daemon/tests/it_provenance.py); a bad flag (exit 64). Exit 0 only if all pass.
 # Every run's process snapshots are checked too (ADR-0007 rule 3, ADR-0023 confirmations 2-3).
 set -u
 B=${1:-build}
@@ -167,6 +168,19 @@ fi
 else
 echo "case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)"
 fi
+
+echo "case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2"
+"$B/p15d" $NET --wal-dir "$T/c6" --duration 6 --stats-ms 500 2>"$T/c6.err" &
+pid=$!
+started "$T/c6.err" && "$PY" daemon/tests/it_provenance.py workload "$T"
+wait $pid; rc=$?
+kill "$(cat "$T/c6-live.pid" 2>/dev/null)" 2>/dev/null
+RUN=$T/c6; inspect >"$T/c6.txt"; irc=$?
+check "[ $rc -eq 0 ] && [ $irc -eq 0 ]" "exit 0, WAL valid"
+d6=$(ls -d "$T"/c6/*/ | head -1)
+while IFS= read -r line; do
+    case "$line" in ok\ *) ok "${line#ok }";; FAIL\ *) bad "${line#FAIL }";; *) bad "unexpected checker output: $line";; esac
+done < <(PYTHONPATH=python "$PY" daemon/tests/it_provenance.py check "$d6" "$T" 2>&1)
 
 echo "case 4: a bad flag"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?

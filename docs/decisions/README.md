@@ -29,6 +29,7 @@ To write a new one:
 | [0022](0022-exact-client-join-tcp-isn.md) | Join a TCP client to its accept by the client's initial sequence number (NET v2; supersedes ADR-0004 rules 2 and 6 in part) | accepted | 2026-11-05 |
 | [0023](0023-lifecycle-reconciliation.md) | Reconcile the process tree against a closing snapshot | accepted | 2026-11-05 |
 | [0024](0024-snapshot-taking-and-closing-window.md) | How the process snapshot is taken (the path from the pinned mapping, books that close, the closing snapshot on the writer thread, END v2) and the closing snapshot's window (supersedes ADR-0023 rule 2 in part) | accepted | 2026-11-06 |
+| [0025](0025-code-provenance-exec-v2.md) | Code provenance on EXEC and PROC: the executable's own facts, credentials, `self_exec_id` and fds 0-2 (EXEC v2, PROC v2) | accepted | 2026-11-06 |
 
 ## Planned (from capture blueprint v1, §8.3)
 
