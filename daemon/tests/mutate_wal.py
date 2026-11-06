@@ -13,6 +13,7 @@ recovering a clean segment by "truncating" it at its own length.
 """
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -62,10 +63,18 @@ def main() -> int:
                     print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep")
                     return 2
                 (ROOT / "daemon" / f).write_text(originals[f].replace(old, new))
-                r = subprocess.run(f"{CC} -std=gnu11 -O1 -Idaemon daemon/tests/test_wal.c daemon/wal.c "
-                                   f"daemon/crc32c.c -o {exe} && timeout 60 {exe}", shell=True, cwd=ROOT,
-                                   capture_output=True, text=True)
+                # Each mutant gets its own scratch dir, handed to test_wal via $TMPDIR and removed
+                # after, so a runaway bug (E-0107) cannot accumulate across the sweep. ulimit -f caps
+                # any single file at 256 MiB: a size-limit bug then dies on SIGXFSZ (still "killed")
+                # instead of filling the disk. The cap is far above the test's largest legitimate file.
+                scratch = pathlib.Path(tmp) / f"m{i}"
+                scratch.mkdir()
+                env = {**os.environ, "TMPDIR": str(scratch)}
+                r = subprocess.run(f"ulimit -f 524288; {CC} -std=gnu11 -O1 -Idaemon daemon/tests/test_wal.c "
+                                   f"daemon/wal.c daemon/crc32c.c -o {exe} && timeout 60 {exe}", shell=True,
+                                   cwd=ROOT, capture_output=True, text=True, env=env)
                 (ROOT / "daemon" / f).write_text(originals[f])
+                shutil.rmtree(scratch, ignore_errors=True)
                 dead = r.returncode != 0
                 killed += dead
                 print(("killed   " if dead else "SURVIVED "), i, old.splitlines()[0].strip()[:72])

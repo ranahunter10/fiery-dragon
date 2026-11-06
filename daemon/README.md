@@ -19,7 +19,7 @@ Phase-1 steps 3–4: the spine loader, record checks, the load-time self-test, a
 ```bash
 make test-c                    # unit tests, no root
 make test-c-asan               # the same under ASan and UBSan
-make mutate-wal                # mutation sweep of the WAL writer
+make mutate-wal                # mutation sweep of the WAL writer (each mutant in its own $TMPDIR, file size capped)
 make mutate-records            # mutation sweep of the record checks, under ASan
 make exit-check                # no exit()/_exit()/abort() outside sites marked "exit-ok: <reason>"
 make hardening-check           # the binaries really are PIE, full RELRO, NX, canaries, FORTIFY, CET
