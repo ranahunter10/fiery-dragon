@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-06
+accepted: 2026-11-06
 owner: Ashish Rana
 consulted: [research note 2026-11-06 §1 and §5 slice A, ADR-0003, ADR-0007 rule 3, ADR-0009, ADR-0017 layer 1, ADR-0020 rule 5, ADR-0024, kernel v7.0 fs/exec.c, include/uapi/linux/magic.h, net/core/sock_diag.c, Falco libs ppm_events_public.h, Tetragon bpf_execve_bprm_commit_creds.c]
 supersedes: ADR-0003's EXEC field table (version 1 → 2) and the snapshot's PROC field table (version 1 → 2). ADR-0020 rule 5 is carried out for EXEC only; FORK and EXIT stay at version 1.
@@ -63,9 +64,9 @@ Reopen if a field read at the tracepoint disagrees with `/proc/<pid>/` for the s
 
 ## Decisions raised
 
-**Socket → NET join.** EXEC v2 records a socket stream's inode and type but not its NET cookie, because no cookie is reachable from a classic tracepoint on 7.0 (rule 5). So a reverse shell is visible (a shell with a socket on stdio) but not yet tied to the exact connection in the NET records. Recommendation: defer; the file/socket data-flow slice adds fexit hooks where `bpf_get_socket_cookie` is allowed, and the join comes with it. The maintainer decides whether to pull it forward (it would need the exec side moved to an fentry on a function that has the task and the fds, which is a larger change).
+**Socket → NET join.** EXEC v2 records a socket stream's inode and type but not its NET cookie, because no cookie is reachable from a classic tracepoint on 7.0 (rule 5). So a reverse shell is visible (a shell with a socket on stdio) but not yet tied to the exact connection in the NET records. Recommendation: defer; the file/socket data-flow slice adds fexit hooks where `bpf_get_socket_cookie` is allowed, and the join comes with it. The maintainer decides whether to pull it forward (it would need the exec side moved to an fentry on a function that has the task and the fds, which is a larger change). **Decided 2026-11-06 (maintainer): deferred** to the data-flow slice (E-0118).
 
-**PROC standard streams.** PROC v2 omits the standard streams (rule 6). The alternative is to walk each snapshotted task's file table in the iterator, as Falco's task iterator does, so a pre-existing reverse shell is visible from the opening snapshot alone. Recommendation: defer. The exec side already captures streams for every process that starts during capture, and a pre-existing process's streams can come from a file-open slice later; the iterator stays simple until that slice needs it. The maintainer decides whether to pull it forward.
+**PROC standard streams.** PROC v2 omits the standard streams (rule 6). The alternative is to walk each snapshotted task's file table in the iterator, as Falco's task iterator does, so a pre-existing reverse shell is visible from the opening snapshot alone. Recommendation: defer. The exec side already captures streams for every process that starts during capture, and a pre-existing process's streams can come from a file-open slice later; the iterator stays simple until that slice needs it. The maintainer decides whether to pull it forward. **Decided 2026-11-06 (maintainer): deferred** (E-0118).
 
 ## Evidence
 

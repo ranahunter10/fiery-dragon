@@ -116,7 +116,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ ADR-0018's statistics as code, the hook-cost harness and its VM run (#48, #49): ADR-0020 accepted;
       - ✅ ADR-0022 (PR #52; CI and the VM join both clients exactly, E-0104): NET v2 with the client ISN, and the exact join in p15-trace (CI case 5 and the VM confirm it);
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
-      - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56. Next: the maintainer's review, ADR-0025's acceptance and the merge;
+      - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -170,8 +170,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     4. **The 7.0 recursion-miss finding goes upstream** (bpf@vger.kernel.org), drafted in the session; the maintainer sends it under his name.
     5. **From now on, a decision is asked in the message where it arises**, not collected into an end-of-session list.
 
+15. **The 2026-11-06 review** (maintainer: "accepted recommended decisions"):
+    1. **ADR-0025 accepted:** code provenance on EXEC v2 and PROC v2. *(E-0118)*
+    2. **Socket → NET join deferred** to the data-flow slice, where `bpf_get_socket_cookie` is allowed. *(E-0118)*
+    3. **Standard streams in PROC v2 deferred.** *(E-0118)*
+    4. **#56 merged** with a merge commit at its tested head.
+
 ## Decisions waiting
 
-1. **Accept ADR-0025** (code provenance, EXEC v2 and PROC v2). Recommendation: accept; all three confirmations hold (self-test and end-to-end on the VM, the cost condition of rule 8). Evidence: E-0111, E-0112, E-0114 to E-0117.
-2. **Defer the stdio socket → NET join** (ADR-0025, decisions raised). Recommendation: defer; `bpf_get_socket_cookie` is barred in a classic tracepoint and 7.0 has no `sk_cookie` field (SRC, the verifier's refusal in the container).
-3. **Defer stdio facts in PROC v2.** Recommendation: defer; a process that execs during capture has them in its EXEC, and a pre-existing one's streams can be read later from its fd table if a case needs it (INF).
+None.
