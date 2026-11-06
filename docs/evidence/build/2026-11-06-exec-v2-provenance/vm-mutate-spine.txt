@@ -1,0 +1,15 @@
+killed    0 if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {
+killed    1 len = exec_len(end);
+killed    2 r->argv_len = av_len;
+killed    3 r->filename_len = fn_len;
+killed    4 count(P15_T_EXEC, P15_CK_EMITTED);
+killed    5 count(P15_T_EXEC, P15_CK_SEEN);
+killed    6 (BPF_CORE_READ(ei, i_ctime_nsec) & P15_CTIME_NSEC_MASK)
+killed    7 BPF_CORE_READ(ei, i_mtime_nsec);
+killed    8 r->exe_nlink = BPF_CORE_READ(ei, __i_nlink);
+killed    9 r->exe_fs_magic = (__u32)BPF_CORE_READ(ei, i_sb, s_magic);
+killed    10 r->egid = BPF_CORE_READ(c, egid.val);
+killed    11 n = bpf_probe_read_kernel_str(tail + at, P15_EXEC_EXE_NAME_MAX, nm);
+killed    12 fd_identity(fdarr, max_fds, 2, &r->stderr_ino
+killed    13 *mode = BPF_CORE_READ(ino_p, i_mode);
+mutation sweep: 14/14 killed
