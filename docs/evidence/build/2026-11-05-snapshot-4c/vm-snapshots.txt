@@ -1,0 +1,18 @@
+== /home/ashu/vm-verify-20261106T074939Z//it-runs/20261106T075530Z-4696aa9a
+[2] SNAP_DONE ts=518875622241 tgid=49466 tid=49466 start=515567927079 flags=0x0 snap=0/opening error=0 duration=913427 tasks=171 threads=30 emitted=141 write_failed=0 entries=141 invalid=0 unwritten=0 kthreads=105 exiting=0 argv_failed=0 path_unlocked=0 path_not_found=0 path_failed=0 truncated=0
+[2] SNAP_DONE ts=524911097728 tgid=49466 tid=49513 start=515567927079 flags=0x0 snap=1/closing error=0 duration=338485 tasks=171 threads=31 emitted=140 write_failed=0 entries=140 invalid=0 unwritten=0 kthreads=105 exiting=0 argv_failed=0 path_unlocked=0 path_not_found=0 path_failed=0 truncated=0
+[2] END    ts=525902443972 tgid=49466 tid=49513 start=515567927079 flags=0x0 exit=0 state=0 invariant=1 signal=0 closing_snapshot=1 reason="stop requested"
+END        1
+SNAP_DONE  2
+    [2] PROC   ts=518875177403 tgid=1 tid=1 start=585455049 flags=0x0 snap=0/opening parent=0 parent_start=0 comm="systemd" pflags=0x0 exe=8388610:551485 gen=1592268403 path="/usr/lib/systemd/systemd" (24/24) argv="/usr/lib/systemd/systemd --switched
+    [2] PROC   ts=524910736990 tgid=1 tid=1 start=585455049 flags=0x0 snap=1/closing parent=0 parent_start=0 comm="systemd" pflags=0x0 exe=8388610:551485 gen=1592268403 path="/usr/lib/systemd/systemd" (24/24) argv="/usr/lib/systemd/systemd --switched
+210
+== /tmp/p15snap/20261106T080928Z-4696aa9a
+[2] SNAP_DONE ts=1356944029219 tgid=86966 tid=86966 start=1356370740777 flags=0x0 snap=0/opening error=0 duration=212560 tasks=165 threads=30 emitted=135 write_failed=0 entries=135 invalid=0 unwritten=0 kthreads=103 exiting=0 argv_failed=0 path_unlocked=0 path_not_found=0 path_failed=0 truncated=0
+[2] SNAP_DONE ts=1366953504836 tgid=86966 tid=86973 start=1356370740777 flags=0x0 snap=1/closing error=0 duration=274291 tasks=166 threads=31 emitted=135 write_failed=0 entries=135 invalid=0 unwritten=0 kthreads=103 exiting=0 argv_failed=0 path_unlocked=0 path_not_found=0 path_failed=0 truncated=0
+[2] END    ts=1367311383513 tgid=86966 tid=86973 start=1356370740777 flags=0x0 exit=0 state=0 invariant=1 signal=0 closing_snapshot=1 reason="stop requested"
+END        1
+SNAP_DONE  2
+    [2] PROC   ts=1356943795062 tgid=1 tid=1 start=585455049 flags=0x0 snap=0/opening parent=0 parent_start=0 comm="systemd" pflags=0x0 exe=8388610:551485 gen=1592268403 path="/usr/lib/systemd/systemd" (24/24) argv="/usr/lib/systemd/systemd --switche
+    [2] PROC   ts=1366953216868 tgid=1 tid=1 start=585455049 flags=0x0 snap=1/closing parent=0 parent_start=0 comm="systemd" pflags=0x0 exe=8388610:551485 gen=1592268403 path="/usr/lib/systemd/systemd" (24/24) argv="/usr/lib/systemd/systemd --switche
+206

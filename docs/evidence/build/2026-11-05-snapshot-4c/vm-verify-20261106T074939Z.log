@@ -1,0 +1,1226 @@
+# vm-verify 20261106T074939Z
+Linux p15-dev 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux
+Ubuntu 26.04.1 LTS
+3
+               total        used        free      shared  buff/cache   available
+Mem:           7.2Gi       463Mi       6.7Gi       980Ki       326Mi       6.8Gi
+Ubuntu clang version 21.1.8 (6ubuntu1)
+Python 3.14.4
+bpftool v7.7.0
+soft-lockup reports so far this boot: 0
+
+================ 1. prerequisites (apt) ================
+$ sudo apt-get install -y -q curl netcat-openbsd python3-venv
+Reading package lists...
+Building dependency tree...
+Reading state information...
+curl is already the newest version (8.18.0-1ubuntu2.8).
+netcat-openbsd is already the newest version (1.234-1).
+python3-venv is already the newest version (3.14.3-0ubuntu2).
+Solving dependencies...
+0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.
+---- PASS (1 s)
+
+================ 2. checkout feat/snapshot-4c (reset to origin: the branch may have been force-pushed) ================
+$ bash -c git fetch -q --prune origin &&     git checkout -q -B feat/snapshot-4c origin/feat/snapshot-4c && git submodule update --init --recursive -q && git log --oneline -1
+6905850 docs: ADR-0024 (proposed), the container evidence for step 4c, STATE and journal
+---- PASS (1 s)
+
+================ 3. venv + pinned packages ================
+$ bash -c [ -x /home/ashu/p15venv/bin/python3 ] || python3 -m venv /home/ashu/p15venv;     /home/ashu/p15venv/bin/pip install -q --require-hashes --only-binary=:all: -r /home/ashu/fiery-dragon/python/requirements.txt &&     /home/ashu/p15venv/bin/pip install -q packaging==26.3 &&     /home/ashu/p15venv/bin/python3 -c 'import numpy, google_crc32c as g; print(numpy.__version__, g.implementation)'
+2.5.4 c
+---- PASS (2 s)
+
+================ 4. build ================
+$ bash -c make clean >/dev/null && make -j$(nproc)
+mkdir -p build
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_wal.c daemon/wal.c daemon/crc32c.c -o build/test_wal
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_exitcodes.c -o build/test_exitcodes
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build/test_records
+make -C third_party/libbpf/src BUILD_STATIC_ONLY=1 OBJDIR=/home/ashu/fiery-dragon/build/libbpf/obj \
+  DESTDIR=/home/ashu/fiery-dragon/build/libbpf INCLUDEDIR= LIBDIR= UAPIDIR= install install_uapi_headers
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+  MKDIR    /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs
+  MKDIR    /home/ashu/fiery-dragon/build/libbpf/obj
+  INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+  INSTALL  ../include/uapi/linux/bpf.h ../include/uapi/linux/bpf_common.h ../include/uapi/linux/btf.h
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/bpf.o
+mkdir -p /home/ashu/fiery-dragon/build/bpftool
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/ashu/fiery-dragon/build/bpftool/ bootstrap
+make[1]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15w_inspect.c daemon/records.c daemon/wal.c daemon/crc32c.c -o build/p15w-inspect
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/btf.o
+...                        libbfd: [ [31mOFF[m ]
+...               clang-bpf-co-re: [ [32mon[m  ]
+...                          llvm: [ [32mon[m  ]
+...                        libcap: [ [31mOFF[m ]
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_queue.c daemon/queue.c -lpthread -o build/test_queue
+  MKDIR    /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf
+  MKDIR    /home/ashu/fiery-dragon/build/bpftool/bootstrap/
+  MKDIR    /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/
+  INSTALL  /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf/hashmap.h
+  INSTALL  /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf/relo_core.h
+  INSTALL  /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/include/bpf/libbpf_internal.h
+make[2]: Entering directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+  MKDIR    /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs
+  INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_config.c daemon/config.c -o build/test_config
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c -o build/test_snapshot
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/libbpf.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/libbpf_utils.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/netlink.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/nlattr.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/libbpf.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/libbpf_probes.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/bpf_prog_linfo.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/btf_dump.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/hashmap.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/ringbuf.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/strset.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/linker.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/gen_loader.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/relo_core.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/usdt.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/zip.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/elf.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/libbpf_utils.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/features.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/netlink.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/btf_iter.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/nlattr.o
+  CC       /home/ashu/fiery-dragon/build/libbpf/obj/staticobjs/btf_relocate.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/libbpf_probes.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/bpf_prog_linfo.o
+  AR       /home/ashu/fiery-dragon/build/libbpf/obj/libbpf.a
+  INSTALL  /home/ashu/fiery-dragon/build/libbpf/obj/libbpf.pc
+  INSTALL  /home/ashu/fiery-dragon/build/libbpf/obj/libbpf.a 
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/libbpf/src'
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf_dump.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/hashmap.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/ringbuf.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/strset.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/linker.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/gen_loader.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/relo_core.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/usdt.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/zip.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/elf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/load_check.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/features.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf_iter.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/staticobjs/btf_relocate.o
+clang -g -O2 -target bpf -Wall -Werror -I/home/ashu/fiery-dragon/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/rb_size.bpf.c -o build/rb_size.bpf.o
+  AR       /home/ashu/fiery-dragon/build/bpftool/bootstrap/libbpf/libbpf.a
+make[2]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/libbpf/src'
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/main.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/net_probe.bpf.c -o build/net_probe.bpf.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/common.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/json_writer.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/gen.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/spine.bpf.c -o build/spine.bpf.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/btf.o
+  CC       /home/ashu/fiery-dragon/build/bpftool/bootstrap/sign.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+mkdir -p build/bench
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -DP15_EXEC_WAY=0 -c bpf/progs/spine.bpf.c -o build/bench/spine-fixed.bpf.o
+  LINK     /home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool
+make[1]: Leaving directory '/home/ashu/fiery-dragon/third_party/bpftool/src'
+mkdir -p build/bench
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -DP15_EXEC_WAY=1 -c bpf/progs/spine.bpf.c -o build/bench/spine-output.bpf.o
+mkdir -p build/bench
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -DP15_EXEC_WAY=2 -c bpf/progs/spine.bpf.c -o build/bench/spine-dynptr.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bench/hook_cost/hook_cost.bpf.c -o build/hook_cost.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/net.bpf.c -o build/net.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/snap.bpf.c -o build/snap.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/rb_size.bpf.o > build/rb_size.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/net_probe.bpf.o > build/net_probe.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/rb_cost/exec_cost.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/exec_cost
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/hook_cost.bpf.o > build/hook_cost.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/net.bpf.o > build/net.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/snap.bpf.o > build/snap.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/core_smoke.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/core_smoke
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/rb_size.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/rb_size
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/net_probe.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/net_probe
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/hook_cost/hook_cost.c daemon/records.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/hook_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"6905850018a4"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+---- PASS (20 s)
+
+================ 5. make check (schema, layout, C tests, hardening, exits, Python tests, reader vs C writer, evidence) ================
+$ make check
+python3 schema/gen/gen.py --check
+schema check: 17 records, 4 generated files, 0 problems
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c schema/generated/p15_layout_probe.bpf.c -o build/p15_layout_probe.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool -j btf dump file build/p15_layout_probe.bpf.o > build/layout_btf.json
+python3 schema/gen/layout_check.py build/layout_btf.json
+layout check: 18 structs x 3 views, 0 disagreements
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+build/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build/test_wal
+daemon/tests/test_wal.c: 0 failures
+build/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build/test_records
+daemon/tests/test_records.c: 0 failures
+build/test_queue
+two threads: 200000 items, queue full 2587910 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+build/test_config
+daemon/tests/test_config.c: 0 failures
+build/test_run
+daemon/tests/test_run.c: 0 failures
+build/test_snapshot
+daemon/tests/test_snapshot.c: 0 failures
+python3 tools/ci/check_exits.py daemon
+allowed  daemon/selftest.c:232: _exit(P15_ST_GRANDCHILD_EXIT);   /* exit-ok: self-test grandchild */
+allowed  daemon/selftest.c:234: _exit(120);                      /* exit-ok: self-test child */
+allowed  daemon/selftest.c:237: _exit(127);                              /* exit-ok: self-test child, exec failed */
+exit check: 39 files, 3 marked sites, 0 unmarked calls
+python3 tools/ci/check_hardening.py build/p15-spine build/p15d
+ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    build/p15d: all of pie, relro, now, nx-stack, canary, fortify, cet
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/wal_fixture.c daemon/wal.c daemon/crc32c.c -o build/wal_fixture
+rm -rf build/wal_fixture_run && mkdir -p build/wal_fixture_run
+build/wal_fixture build/wal_fixture_run
+P15_WAL_FIXTURE=build/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
+test_daemon (python.tests.it_wal_c.CWriterRun.test_daemon) ... ok
+test_daemon_v2 (python.tests.it_wal_c.CWriterRun.test_daemon_v2)
+STATS, GAP and NET_STATS version 2 (ADR-0020): the kernel's skips. ... ok
+test_merged_by_time (python.tests.it_wal_c.CWriterRun.test_merged_by_time) ... ok
+test_net (python.tests.it_wal_c.CWriterRun.test_net) ... ok
+test_net_v2 (python.tests.it_wal_c.CWriterRun.test_net_v2)
+NET version 2 (ADR-0022): the client ISN and its flag, next to v1 records in the same run. ... ok
+test_run_shape (python.tests.it_wal_c.CWriterRun.test_run_shape) ... ok
+test_sequences_per_ring (python.tests.it_wal_c.CWriterRun.test_sequences_per_ring) ... ok
+test_snapshot_and_end_v2 (python.tests.it_wal_c.CWriterRun.test_snapshot_and_end_v2)
+PROC, SNAP_DONE (ADR-0007 rule 3) and END v2 (ADR-0023 rule 1), written by C. ... ok
+test_spine (python.tests.it_wal_c.CWriterRun.test_spine) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.003s
+
+OK
+tools/ci/run-tests.sh
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 4.769s
+ok    bench/census/test_run.py: Ran 25 tests in 0.581s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.023s
+ok    bench/hook_cost/test_summarize.py: Ran 7 tests in 0.030s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.007s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.011s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.002s
+ok    bench/quant/test_paired.py: Ran 25 tests in 0.076s
+ok    bench/rb_cost/test_summarize.py: Ran 8 tests in 0.002s
+ok    python/tests/test_reconcile.py: Ran 14 tests in 0.027s
+ok    python/tests/test_records.py: Ran 10 tests in 0.003s
+ok    python/tests/test_trace.py: Ran 24 tests in 0.052s
+ok    python/tests/test_wal.py: Ran 23 tests in 0.146s
+ok    schema/gen/test_gen.py: Ran 31 tests in 0.192s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.005s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.002s
+17 test files, 0 failed
+tools/ci/check-evidence.sh
+ok    docs/evidence/baseline/2026-10-25-hyperv-ABA/SHA256SUMS
+ok    docs/evidence/baseline/2026-10-25-hyperv-on-warm/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-hardening-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-records-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-exec-exact-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-scaffolding/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-vm/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-net-capture-runner/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-p15d-container/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-p15-trace/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-py-reader/SHA256SUMS
+ok    docs/evidence/build/2026-11-04-kernel-skips-container/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-atomic-counters/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-merge-main/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-net-v2-isn/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-paired-stats/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-snapshot-4c/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T221732Z-light/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T224617Z-v2/SHA256SUMS
+ok    docs/evidence/demo/2026-11-02-container-dry-run/SHA256SUMS
+ok    docs/evidence/phase0/SHA256SUMS
+ok    docs/evidence/platform/2026-10-25-perf-counters/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-exec-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p11/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p6-p8/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p8-32bit/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-02-net-probe/SHA256SUMS
+ok    docs/evidence/probes/2026-11-04-recursion-misses/SHA256SUMS
+ok    docs/evidence/probes/2026-11-04-trace-join/SHA256SUMS
+ok    docs/evidence/probes/2026-11-05-hook-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-11-05-hook-cost-vm/SHA256SUMS
+34 checksum files, 0 failed
+cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
+ok    bpf/vmlinux/SHA256SUMS
+---- PASS (10 s)
+
+================ 6. C tests under ASan/UBSan ================
+$ make test-c-asan
+mkdir -p build/asan
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_wal.c daemon/wal.c daemon/crc32c.c -o build/asan/test_wal
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/asan/test_selftest
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_exitcodes.c -o build/asan/test_exitcodes
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build/asan/test_records
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_queue.c daemon/queue.c -lpthread -o build/asan/test_queue
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_config.c daemon/config.c -o build/asan/test_config
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -pie -Wl,-z,relro,-z,now daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c \
+  -o build/asan/test_snapshot
+build/asan/test_queue
+two threads: 200000 items, queue full 2966792 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+build/asan/test_config
+daemon/tests/test_config.c: 0 failures
+build/asan/test_wal
+daemon/tests/test_wal.c: 0 failures
+build/asan/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build/asan/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build/asan/test_records
+daemon/tests/test_records.c: 0 failures
+build/asan/test_snapshot
+daemon/tests/test_snapshot.c: 0 failures
+---- PASS (5 s)
+
+================ 7. queue under TSan ================
+$ make test-c-tsan
+mkdir -p build/tsan
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -U_FORTIFY_SOURCE -fsanitize=thread -O1 -pie -Wl,-z,relro,-z,now daemon/tests/test_queue.c daemon/queue.c \
+  -lpthread -o build/tsan/test_queue
+build/tsan/test_queue
+two threads: 200000 items, queue full 281988 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+---- PASS (1 s)
+
+================ 8. planted bugs: Python gates, reader, trace ================
+$ make mutate-py
+python3 tools/ci/mutate_py.py
+killed    0 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    1 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    2 check_exits.py CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*
+killed    3 check_exits.py MARK = re.compile(r"exit-ok:\s*[A-Za-z]")
+killed    4 check_exits.py if c == "/" and nxt == "/":
+killed    5 check_exits.py if c == "/" and nxt == "*":
+killed    6 check_exits.py if c in "\"'":
+killed    7 check_exits.py if state == "line":
+killed    8 check_exits.py state, i = "code", i + 2
+killed    9 check_exits.py if CALL.search(code):
+killed    10 check_exits.py return 1 if bad else 0
+killed    11 check_exits.py (ok if MARK.search(line) else bad)
+killed    12 check_exits.py if c == "\\":
+killed    13 check_hardening.py bool(re.search(r"Type:\s+DYN", h)) and
+killed    14 check_hardening.py and bool(re.search(r"FLAGS_1\).*\bPIE\b", d)),
+killed    15 check_hardening.py "relro": "GNU_RELRO" in lw,
+killed    16 check_hardening.py or bool(re.search(r"FLAGS_1\).*\bNOW\b", d)),
+killed    17 check_hardening.py "nx-stack": bool(stack) and "E" not in stack.group(1),
+killed    18 check_hardening.py "canary": bool(re.search(r"\b__stack_chk_fail\b", syms)),
+killed    19 check_hardening.py "fortify": bool(re.search(r"\b__\w+_chk\b", syms)),
+killed    20 check_hardening.py \bIBT\b.*\bSHSTK\b
+killed    21 summarize.py if word not in ("row", "nullsys", "selftest"):
+killed    22 summarize.py if set(kv) != set(ROW_KEYS) or kv["way"] not in WAYS:
+killed    23 summarize.py if row["run_cnt"] <= 0:
+killed    24 summarize.py if kv["way"] not in WAYS or verdict not in ("PASS", "FAIL"):
+killed    25 summarize.py if r["ours"] != r["execs"] or r["invalid"]
+killed    26 summarize.py or r["wrong_size"] or r["wrong_argv"]:
+killed    27 summarize.py if any(s != sets[0] for s in sets):
+killed    28 summarize.py return r["run_time_ns"] / r["run_cnt"]
+killed    29 summarize.py diffs = sorted(by[(argv, w)][k] - base[k]
+killed    30 summarize.py below = sum(x < 0 for x in diffs)
+killed    31 summarize.py ratio = f"{m / nmed:.1f}"
+killed    32 summarize.py foreign = sum(r["foreign"] for r in d["rows"])
+killed    33 summarize.py return 1 if probs else 0
+killed    34 wal.py if magic != SEG_MAGIC:
+killed    35 wal.py if (major, minor) != (MAJOR, MINOR):
+killed    36 wal.py if hlen < PREFIX.size or hlen % 8 or hlen > len(buf):
+killed    37 wal.py zeroed[16:20] = b"\0\0\0\0"
+killed    38 wal.py if any(buf[end:padded]):
+killed    39 wal.py if k in meta:
+killed    40 wal.py if p != hlen:
+killed    41 wal.py elif crc32c(buf[p:p + 32]) != hcrc:
+killed    42 wal.py elif flags or rsv1 or rsv2 or ring > 2:
+killed    43 wal.py plen < R.HEADER_SIZE * count or
+killed    44 wal.py if crc32c(payload) != pcrc:
+killed    45 wal.py elif not _tiles(payload, count):
+killed    46 wal.py elif first != seg.seq_next[ring]:
+killed    47 wal.py torn = (cause in (1, 6) or
+killed    48 wal.py (cause == 7 and end_of_batch == len(buf))
+killed    49 wal.py or not any(buf[p:]))
+killed    50 wal.py seg.seq_next[ring] = first + count
+killed    51 wal.py if seq_expect is not None and hdr_next != seq_expect:
+killed    52 wal.py if out and s.meta[k] != out[0].meta[k]:
+killed    53 wal.py if meta["schema.hash"] != R.SCHEMA_HASH:
+killed    54 wal.py if int(SEG_RE.match(p.name).group(1)) != i:
+killed    55 wal.py yield (r.h["ts_ns"], ring, r.seq), r
+killed    56 wal.py p += struct.unpack_from("<H", b.payload, p + 4)[0]
+killed    57 wal.py return 1 if problems else 0
+killed    58 wal.py return lines, len(errors) + sum(1 for _, st in run.stops if 
+killed    59 records.py if size < HEADER_SIZE:
+killed    60 records.py if n > size:
+killed    61 records.py if n % 8:
+killed    62 records.py if n < lay.fixed_size:
+killed    63 records.py if vl > vmax:
+killed    64 records.py if lay.fixed_size + used > n:
+killed    65 records.py slack_ok = lay.cls == "SPINE" and bool(h["flags"] & F_READ_F
+killed    66 records.py if any(bytes(buf[p:off + n])):
+killed    67 records.py elif n != lay.fixed_size:
+killed    68 records.py bytes(buf[off + o:off + o + dt.itemsize]) if
+killed    69 records.py return (kernel_dev >> 20,
+killed    70 records.py if a.endswith(b"\0"):
+killed    71 proctree.py if r.f["kind"] != 1:
+killed    72 proctree.py if c.fork_ns is not None:
+                counts["fork_twice
+killed    73 proctree.py if not r.f["group_dead"]:
+killed    74 proctree.py if p.exit_ns is not None:
+                counts["exit_twice
+killed    75 proctree.py if start is not None and p.key[1] < start:
+killed    76 proctree.py p.in_gap = any(g.from_ns <= died and born <= g.to_ns for g i
+killed    77 proctree.py return f"exited {st >> 8}"
+killed    78 proctree.py k = self.procs[k].parent
+killed    79 net.py return self.ret == 0 or (self.op == "CONNECT" and self.ret =
+killed    80 net.py if e.op in ("BIND", "LISTEN") and e.lport == port and e.ok:
+killed    81 net.py lst = by_cookie.get(e.peer_cookie)
+killed    82 net.py k.local == e.remote and k.remote == e.local
+killed    83 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    84 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    85 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    86 net.py and k.netns == e.netns and abs(k.ts_ns - e.ts_ns) <= JOIN_WI
+killed    87 net.py c.connect = min(pool, key=lambda k: (abs(k.ts_ns - e.ts_ns),
+killed    88 net.py c.connect = min(pool, key=lambda k: (abs(k.ts_ns - e.ts_ns),
+killed    89 net.py counts["connect_after_accept"] += c.connect.ts_ns > e.ts_ns
+killed    90 net.py refused = [e for e in connects if e.rport == port and not e.
+killed    91 net.py exact = [k for k in cands if e.isn is not None and k.isn == 
+killed    92 net.py exact = [k for k in cands if e.isn is not None and k.isn == 
+killed    93 net.py counts["isn_mismatch"] += len(other_conn)
+killed    94 net.py inferred = [k for k in cands if k not in other_conn]
+killed    95 net.py c.match, pool = "isn", exact
+killed    96 net.py isn = r.f["tcp_isn"] if r.h["flags"] & R.F_ISN else None
+killed    97 net.py sum(1 for c in accepted if c.accept.proto == "tcp" and c.acc
+killed    98 records.py if h["flags"] & ~F_KNOWN:
+killed    99 records.py if h["flags"] & F_ISN and not (lay.name == "NET" and h["vers
+killed    100 records.py f["reserved"] or (not h["flags"] & F_ISN and f["tcp_isn"])
+killed    101 trace.py i = max(0, bisect.bisect_right(self.anchors, (ts, 1 << 64)) 
+killed    102 trace.py if not self.net_on:
+            out.append(
+killed    103 trace.py if self.end is None:
+            out.append(
+killed    104 trace.py run.meta["config.net"] == "yes"
+killed    105 report_html.py def _e(s) -> str:
+    return escape(str(s), quote=True)
+killed    106 report_html.py if ctx.end is None or ctx.end.f["run_state"] == 2 or not ctx
+killed    107 trace.py if self.stats.h["version"] < 2:
+killed    108 trace.py if not any(sk.values()) and not net:
+killed    109 proctree.py "_build_failed", "_missed")
+killed    110 paired.py nxt[w + r] += c
+killed    111 paired.py r = (i + j + 2) / 2
+killed    112 paired.py lo = sum(counts[: math.floor(w) + 1])
+killed    113 paired.py p = min(1.0, 2 * min(lo, hi) / total)
+killed    114 paired.py est = median(w)
+killed    115 paired.py Interval(w[k - 1], w[m - k],
+killed    116 paired.py Interval(s[j - 1], s[n - j],
+killed    117 paired.py a = [math.log(v / u) for v, u in zip(aa, untraced)]
+killed    118 paired.py and not floor.ci.lo <= effect.estimate <= floor.ci.hi)
+killed    119 paired.py et.p_two_sided < 0.05
+killed    120 paired.py drift = abs(rom - math.exp(effect.estimate)) >
+killed    121 paired.py return len(xs) / math.fsum(1 / x for x in xs)
+killed    122 paired.py if t.zeros:
+killed    123 summarize.py want = 0 if arm in UNTRACED else n
+killed    124 summarize.py if rnd >= 0:
+killed    125 summarize.py out[a].append(got[a][metric] / got[a]["n"])
+killed    126 summarize.py if hits != want:
+killed    127 summarize.py return "\n".join(out), 1 if bad else 0
+killed    128 records.py if lay.name == "PROC" and (f["reserved"] or f["kind"] not in
+killed    129 records.py if lay.name == "END" and h["version"] >= 2 and f["reserved"]
+killed    130 snapshot.py if d["tasks"] != d["threads"] + d["emitted"] + d["write_fail
+killed    131 snapshot.py if d["emitted"] != d["entries"] + d["invalid"] + d["unwritte
+killed    132 snapshot.py if d["entries"] != len(self.procs) + self.duplicates:
+killed    133 snapshot.py return None if p.f["parent_tgid"] == 0 else
+killed    134 snapshot.py return None if self.done is None else self.done.h["ts_ns"] -
+killed    135 proctree.py if p.fork_ns is None:
+            p.parent = S.parent_key(pr
+killed    136 proctree.py p.images.insert(0, im)
+killed    137 proctree.py proc(p.parent).children.append(k)
+killed    138 reconcile.py if k in opening.procs or (p is not None and p.fork_ns is not
+killed    139 reconcile.py if p.fork_ns is not None and p.fork_ns >= began:
+killed    140 reconcile.py if p.exit_ns is None:
+            rec.exit_unexplained.appen
+killed    141 reconcile.py p.parent = S.parent_key(pr)
+killed    142 reconcile.py if fork_l is not None and len(rec.fork_unexplained) > fork_l
+killed    143 reconcile.py if exit_l is not None and len(rec.exit_unexplained) > exit_l
+killed    144 reconcile.py elif end.f["closing_snapshot"] != 1:
+killed    145 reconcile.py why += s.problems()
+killed    146 reconcile.py n = f[f"{kind}_reserve_failed"] + f[f"{kind}_build_failed"]
+killed    147 trace.py out.append(self.recon.line())
+mutation sweep: 148/148 killed
+---- PASS (31 s)
+
+================ 9. planted bugs: WAL writer ================
+$ make mutate-wal
+python3 daemon/tests/mutate_wal.py
+killed    0 w->st.next_seq[ring] += count;
+killed    1 put32(h + 24, p15_crc32c(0, payload, len));
+killed    2 put32(h + 32, p15_crc32c(0, h, 32));
+killed    3 w->seg_bytes + total > w->o.max_bytes &&
+killed    4 if (!w->in_open && w->seg_batches > 0
+killed    5 if (w->seg_batches > 0 && t - w->opened_ns >= w->o.max_ns)
+killed    6 if (w->dirty && t - w->last_sync_ns >= w->o.sync_ns)
+killed    7 w->last_sync_ns = t;
+killed    8 s->torn = (off + P15W_BATCH_HDR_LEN + plen == n);
+killed    9 if (all_zero(h, rem))
+killed    10 else if (get64(h + 16) != s->next_seq[ring])
+killed    11 } else if (s.stop && !s.torn) {
+killed    12 if (rl < P15W_REC_MIN || rl % 8 || rl > len - off)
+killed    13 return n == count;
+killed    14 if (len < P15W_REC_MIN || len % 8 || len > size || len > b->cap)
+killed    15 memcpy(b->buf + b->len, rec, len);
+killed    16 if (!w->failed)
+killed    17 if (w->failed)
+killed    18 w->st.rejected_batches++;
+killed    19 OWN("clock.read_spread_ns", "%llu", (unsigned long long)(bt1 - bt0));
+killed    20 !strncmp(k, "clock.", 6) ||
+killed    21 O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC
+killed    22 crc = p15_crc32c(crc, zero4, 4);
+killed    23 w->st.short_writes++;
+killed    24 c = (c >> 1) ^ (0x82F63B78u & (0u - (c & 1)));
+killed    25 w->st.oversize_batches++;
+killed    26 if (ftruncate(fd, s.good_end) || fdatasync(fd))
+mutation sweep: 27/27 killed
+---- PASS (178 s)
+
+================ 10. planted bugs: record checks ================
+$ make mutate-records
+python3 daemon/tests/mutate_records.py
+mutant 0 does not compile: not a valid mutant; fix this sweep
+daemon/tests/test_records.c:348:1: fatal error: error writing to /tmp/cclB6D9T.s: Disk quota exceeded
+  348 | }
+      | ^
+compilation terminated.
+daemon/records.c:346:1: fatal error: error writing to /tmp/cclB6D9T.s: Disk quota exceeded
+  346 | }
+      | ^
+compilation terminated.
+
+make: *** [Makefile:247: mutate-records] Error 2
+---- FAIL (1 s)
+
+================ 11. smoke: verifier load, tp_btf attach, spine self-test (root) ================
+$ sudo make smoke
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_wal.c daemon/wal.c daemon/crc32c.c -o build/test_wal
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build/test_records
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/rb_cost/exec_cost.c daemon/records.c daemon/selftest.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/exec_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/hook_cost/hook_cost.c daemon/records.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/hook_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"6905850018a4"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15w_inspect.c daemon/records.c daemon/wal.c daemon/crc32c.c -o build/p15w-inspect
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c -o build/test_snapshot
+build/load_check build/empty.bpf.o
+loaded fd_empty_exec            section tp_btf/sched_process_exec        fd 4
+loaded fd_empty_syscall         section syscall                          fd 5
+2 programs accepted by the verifier
+build/core_smoke --attach
+loaded: libbpf v1.7
+child 6354: matched 1, start_ns 429033292012; seen 1, reserve_failed 0
+build/rb_size 200
+libbpf v1.7; child argv bytes 200
+mode                      rec len     ring bytes
+fixed (reserve max)           264           1344
+output (exact len)            264            264
+dynptr (exact len)            264            264
+ok: all three modes delivered
+build/p15-spine selftest
+p15-spine: libbpf v1.7, 4 programs attached
+selftest: daemon 6358, child 6359, grandchild 6360; 7 records collected, 0 invalid
+  ok    test child exited 0
+  ok    every record passes the length checks (none invalid)
+  ok    no record dropped for lack of memory
+  ok    every record takes exactly its len in the ring (ADR-0017; 0 do not)
+  ok    exactly one FORK of the child by the daemon (found 1)
+  ok      ... as a new process (kind 1)
+  ok    every child record carries the start_ns its FORK announced (ADR-0009)
+  ok    exactly 5 records from the child: 2 RENAME, FORK, EXEC, EXIT (found 5)
+  ok    exactly 2 RENAMEs from the child (found 2)
+  ok      ... first: daemon comm -> "fd-selftest" (prctl)
+  ok      ... second: "fd-selftest" -> "true" (exec)
+  ok    exactly one FORK of the grandchild by the child (found 1)
+  ok      ... a new process with its own start_ns
+  ok    exactly one EXEC from the child (found 1)
+  ok      ... filename "/bin/true", not truncated
+  ok      ... argv "true\0fd-selftest\0" from the kernel's copy, not truncated
+  ok      ... no flags; old_tid is the child
+  ok    exactly one EXIT from the child (found 1)
+  ok      ... group_dead, exit status 0
+  ok    the grandchild's only record is one EXIT (records 1, EXITs 1)
+  ok      ... group_dead, exit status 7, start_ns as its FORK announced
+  ok    child order by time: RENAME, FORK, RENAME, EXEC, EXIT
+    FORK   ts=429919663457 tgid=6358 tid=6358 start=429629550724 flags=0x0 child=6359/6359 child_start=429919656899 kind=process
+    RENAME ts=429919802525 tgid=6359 tid=6359 start=429919656899 flags=0x0 old="p15-spine" new="fd-selftest"
+    FORK   ts=429920119083 tgid=6359 tid=6359 start=429919656899 flags=0x0 child=6360/6360 child_start=429920116471 kind=process
+    EXIT   ts=429920269324 tgid=6360 tid=6360 start=429920116471 flags=0x0 exit_code=1792 group_dead=1
+    RENAME ts=429920766083 tgid=6359 tid=6359 start=429919656899 flags=0x0 old="fd-selftest" new="true"
+    EXEC   ts=429920810173 tgid=6359 tid=6359 start=429919656899 flags=0x0 old_tid=6359 exe=8388610:526290 gen=3505084858 file="/bin/true" (9/9) argv="true fd-selftest " (17/17)
+    EXIT   ts=429922525768 tgid=6359 tid=6359 start=429919656899 flags=0x0 exit_code=0 group_dead=1
+selftest: PASS (0 failed checks)
+counters: type    seen  emitted  reserve_failed  build_failed  read_failed  truncated
+          FORK        2        2               0             0            0          0
+          EXEC        1        1               0             0            0          0
+          EXIT        2        2               0             0            0          0
+          RENAME      2        2               0             0            0          0
+---- PASS (8 s)
+
+================ 12. smoke-net: ADR-0004 fexit hooks on THIS kernel (root) ================
+$ sudo make smoke-net
+build/net_probe
+net_probe: libbpf v1.7, 6 programs attached
+TCP over IPv4: listener port 48281, client port 59604
+    bind    fam=2  proto=6  ret=0    local=127.0.0.1:48281 remote=0.0.0.0:0 cookie=1 lcookie=0
+    listen  fam=2  proto=6  ret=0    local=127.0.0.1:48281 remote=0.0.0.0:0 cookie=1 lcookie=0
+    connect fam=2  proto=6  ret=0    local=127.0.0.1:59604 remote=127.0.0.1:48281 cookie=2 lcookie=0
+    accept  fam=2  proto=6  ret=0    local=127.0.0.1:48281 remote=127.0.0.1:59604 cookie=3 lcookie=1
+  ok   exactly one bind, listen, connect and accept
+  ok   bind: family, TCP, ret 0, local loopback:port
+  ok   listen: ret 0, same port, same socket cookie as bind
+  ok   connect: ret 0, remote = listener, local = the client's port, its own cookie
+  ok   accept: local = listener port, remote = client, lcookie = the listener, new cookie
+TCP over IPv6: listener port 44195, client port 40918
+    bind    fam=10 proto=6  ret=0    local=::1:44195 remote=:::0 cookie=4 lcookie=0
+    listen  fam=10 proto=6  ret=0    local=::1:44195 remote=:::0 cookie=4 lcookie=0
+    connect fam=10 proto=6  ret=0    local=::1:40918 remote=::1:44195 cookie=5 lcookie=0
+    accept  fam=10 proto=6  ret=0    local=::1:44195 remote=::1:40918 cookie=6 lcookie=4
+  ok   exactly one bind, listen, connect and accept
+  ok   bind: family, TCP, ret 0, local loopback:port
+  ok   listen: ret 0, same port, same socket cookie as bind
+  ok   connect: ret 0, remote = listener, local = the client's port, its own cookie
+  ok   accept: local = listener port, remote = client, lcookie = the listener, new cookie
+  ok   UDP connect succeeds
+UDP connect to 127.0.0.1:9
+    connect fam=2  proto=17 ret=0    local=127.0.0.1:33967 remote=127.0.0.1:9 cookie=7 lcookie=0
+  ok   UDP connect: proto UDP, ret 0, remote port 9, local port assigned
+TCP connect to a closed port 52315 (connect returned -1, errno 111)
+    connect fam=2  proto=6  ret=-111 local=0.0.0.0:0 remote=127.0.0.1:52315 cookie=9 lcookie=0
+  ok   refused connect: ret -ECONNREFUSED recorded
+non-blocking TCP connect to 192.0.2.1:80 (TEST-NET-1)
+    connect fam=2  proto=6  ret=-115 local=10.0.2.15:47694 remote=192.0.2.1:80 cookie=10 lcookie=0
+  ok   non-blocking connect: ret -EINPROGRESS (or -ENETUNREACH without a route)
+  ok   AF_UNIX connect: no record (unix sockets are outside these hooks)
+  ok   no record lost by this probe's buffer
+counters:  op       seen  emitted  excluded  reserve_failed
+           connect      5        5         0               0
+  ok     ... seen = emitted + excluded + reserve_failed
+           accept       2        2         0               0
+  ok     ... seen = emitted + excluded + reserve_failed
+           listen       2        2         0               0
+  ok     ... seen = emitted + excluded + reserve_failed
+           bind         3        3         0               0
+  ok     ... seen = emitted + excluded + reserve_failed
+net_probe: PASS (0 failed checks)
+---- PASS (1 s)
+
+================ 13. the kernel's skips per design: recur_probe 3 x 2000 (root; ADR-0020 confirmation 1) ================
+$ sudo env PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make probe-recursion ROUNDS=3 EXECS=2000
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/test/recur_probe.bpf.c -o build/recur_probe.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/recur_probe.bpf.o > build/recur_probe.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/recur_probe.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/recur_probe
+P15_UNAME="$(uname -r)" build/recur_probe 3 2000
+recur_probe: kernel 7.0.0-38-generic; 3 rounds x 7 variants x 2000 execs, 6 workers, 3 CPUs
+row variant="btf/wake/rt (today)" round=0 execs=2000 spawn_failed=0 exec_seen=1950 exec_missed=50 exec_kernel_misses=50 exit_seen=1928 exit_missed=72 exit_kernel_misses=72 read_ours=3878 read_all=3884 out_failed=0 burst_ms=1945 books=closed
+row variant="btf/wake/normal" round=0 execs=2000 spawn_failed=0 exec_seen=1978 exec_missed=22 exec_kernel_misses=22 exit_seen=1998 exit_missed=2 exit_kernel_misses=2 read_ours=3976 read_all=3982 out_failed=0 burst_ms=1814 books=closed
+row variant="btf/nowake/rt" round=0 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1588 books=closed
+row variant="btf/adaptive/rt" round=0 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1595 books=closed
+row variant="btf+preemptoff/wake/rt" round=0 execs=2000 spawn_failed=0 exec_seen=1952 exec_missed=48 exec_kernel_misses=48 exit_seen=1938 exit_missed=62 exit_kernel_misses=62 read_ours=3890 read_all=3896 out_failed=0 burst_ms=1983 books=closed
+row variant="tracepoint/wake/rt" round=0 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1969 books=closed
+row variant="tracepoint/nowake/rt" round=0 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4010 out_failed=0 burst_ms=1773 books=closed
+row variant="btf/wake/normal" round=1 execs=2000 spawn_failed=0 exec_seen=1987 exec_missed=13 exec_kernel_misses=13 exit_seen=1990 exit_missed=10 exit_kernel_misses=10 read_ours=3977 read_all=3983 out_failed=0 burst_ms=2047 books=closed
+row variant="btf/nowake/rt" round=1 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1917 books=closed
+row variant="btf/adaptive/rt" round=1 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1781 books=closed
+row variant="btf+preemptoff/wake/rt" round=1 execs=2000 spawn_failed=0 exec_seen=1916 exec_missed=84 exec_kernel_misses=84 exit_seen=1893 exit_missed=107 exit_kernel_misses=107 read_ours=3809 read_all=3815 out_failed=0 burst_ms=2185 books=closed
+row variant="tracepoint/wake/rt" round=1 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=2196 books=closed
+row variant="tracepoint/nowake/rt" round=1 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1930 books=closed
+row variant="btf/wake/rt (today)" round=1 execs=2000 spawn_failed=0 exec_seen=1951 exec_missed=49 exec_kernel_misses=49 exit_seen=1911 exit_missed=89 exit_kernel_misses=89 read_ours=3862 read_all=3868 out_failed=0 burst_ms=2271 books=closed
+row variant="btf/nowake/rt" round=2 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4015 out_failed=0 burst_ms=1959 books=closed
+row variant="btf/adaptive/rt" round=2 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=1999 exit_missed=1 exit_kernel_misses=1 read_ours=3999 read_all=4005 out_failed=0 burst_ms=1958 books=closed
+row variant="btf+preemptoff/wake/rt" round=2 execs=2000 spawn_failed=0 exec_seen=1950 exec_missed=50 exec_kernel_misses=50 exit_seen=1957 exit_missed=43 exit_kernel_misses=43 read_ours=3907 read_all=3913 out_failed=0 burst_ms=2232 books=closed
+row variant="tracepoint/wake/rt" round=2 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=2264 books=closed
+row variant="tracepoint/nowake/rt" round=2 execs=2000 spawn_failed=0 exec_seen=2000 exec_missed=0 exec_kernel_misses=0 exit_seen=2000 exit_missed=0 exit_kernel_misses=0 read_ours=4000 read_all=4006 out_failed=0 burst_ms=1891 books=closed
+row variant="btf/wake/rt (today)" round=2 execs=2000 spawn_failed=0 exec_seen=1976 exec_missed=24 exec_kernel_misses=24 exit_seen=1995 exit_missed=5 exit_kernel_misses=5 read_ours=3971 read_all=3977 out_failed=0 burst_ms=2041 books=closed
+row variant="btf/wake/normal" round=2 execs=2000 spawn_failed=0 exec_seen=1939 exec_missed=61 exec_kernel_misses=61 exit_seen=1977 exit_missed=23 exit_kernel_misses=23 read_ours=3916 read_all=3922 out_failed=0 burst_ms=4770 books=closed
+recur_probe: PASS (every run's books closed)
+---- PASS (62 s)
+
+================ 14. p15d end to end, network required, both readers, p15-trace on the real run (root) ================
+$ sudo env PYTHONUNBUFFERED=1 P15_PYTHON=/home/ashu/p15venv/bin/python3 P15_IT_NET=1 P15_IT_KEEP=/home/ashu/vm-verify-20261106T074939Z/it-runs PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make it-p15d
+daemon/tests/it_p15d.sh build
+network capture: on
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+p15d level=info code=start run_dir=/tmp/p15d-it-s8yDQB/c1/20261106T075506Z-4696aa9a sched="SCHED_FIFO 1" spine_ring=4194304 net=on
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-s8yDQB/c1/20261106T075506Z-4696aa9a//seg-00000000.p15w: segment 0, 105192 bytes, 73 batches, 1151 records, valid to the end
+  run.id = 20261106T075506Z-4696aa9a
+  kernel.release = 7.0.0-38-generic
+  schema.hash = 23772a79261eb103211e451d652dbf2a1de6d40ca14b1ae5b837223cb51cce3d
+records: spine 819, bulk 0, daemon 332; invalid 0
+  FORK       205
+  EXEC       204
+  EXIT       206
+  RENAME     204
+  CLOCK_SYNC 3
+  STATS      21
+  END        1
+  NET_STATS  21
+  PROC       284
+  SNAP_DONE  2
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 21)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:143:1 closing:141:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+  ok   pid 1 is in the opening snapshot
+case 2: stop by SIGTERM
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+p15d level=info code=start run_dir=/tmp/p15d-it-s8yDQB/c3/20261106T075521Z-4696aa9a sched="normal (--no-rt)" spine_ring=4096 net=on
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 142, bulk 0, daemon 295; invalid 0
+  FORK       24
+  EXEC       17
+  EXIT       83
+  RENAME     18
+  CLOCK_SYNC 1
+  STATS      5
+  GAP        2
+  END        1
+  NET_STATS  5
+  PROC       279
+  SNAP_DONE  2
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)", closing snapshot 1
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+  reconciliation: repaired 0 10 379 320 opening:140:1 closing:139:1
+  ok   ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss (repaired)
+  ok   unexplained forks 0 <= counted 379, exits 10 <= counted 320
+case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect
+  ok   the Python reader's counts equal p15w-inspect's (c5)
+[1] NET    ts=518901639616 tgid=49515 tid=49515 start=518882685649 flags=0x0 op=BIND proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=23 peer=0 netns=4026531833
+[1] NET    ts=518901647044 tgid=49515 tid=49515 start=518882685649 flags=0x0 op=LISTEN proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=23 peer=0 netns=4026531833
+[1] NET    ts=519414854237 tgid=49522 tid=49522 start=519389101272 flags=0x4 op=CONNECT proto=tcp ret=0 local=127.0.0.1:40514 remote=127.0.0.1:18077 cookie=24 peer=0 netns=4026531833 isn=1279738271
+[1] NET    ts=519415698084 tgid=49515 tid=49515 start=518882685649 flags=0x4 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:40514 cookie=25 peer=23 netns=4026531833 isn=1279738271
+[1] NET    ts=519442189060 tgid=49523 tid=49523 start=519420686146 flags=0x4 op=CONNECT proto=tcp ret=0 local=127.0.0.1:40516 remote=127.0.0.1:18077 cookie=8197 peer=0 netns=4026531833 isn=1296331956
+[1] NET    ts=519442346443 tgid=49515 tid=49515 start=518882685649 flags=0x4 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:40516 cookie=26 peer=23 netns=4026531833 isn=1296331956
+[1] NET    ts=519465861844 tgid=49524 tid=49524 start=519448384082 flags=0x0 op=CONNECT proto=tcp ret=-111 local=0.0.0.0:0 remote=127.0.0.1:18078 cookie=27 peer=0 netns=4026531833
+records: spine 52, bulk 7, daemon 312; invalid 0
+  FORK       14
+  EXEC       12
+  EXIT       14
+  RENAME     12
+  NET        7
+  CLOCK_SYNC 2
+  STATS      13
+  END        1
+  NET_STATS  13
+  PROC       281
+  SNAP_DONE  2
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   the server's LISTEN on port 18077, with its socket cookie (23)
+  ok   two ACCEPTs whose peer cookie is the listener's
+  ok   two CONNECTs to port 18077, ret 0
+  ok   the refused connect, ret -111 (ECONNREFUSED)
+  ok   NET_STATS records written
+Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+
+Listeners on port 18077
+  127.0.0.1:18077 tcp  cookie 23  listening from 07:55:30.182 (t+0.027s)  by python3 (49515) ← bash (48632) ← make (48613) ← sudo (48612) ← sudo (48610) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+
+Connections accepted on port 18077
+  07:55:30.696 (t+0.541s)  127.0.0.1:40514 -> 127.0.0.1:18077  accepted by python3 (pid 49515)  (listener cookie 23)
+      client: python3 (49522) ← bash (48632) ← make (48613) ← sudo (48612) ← sudo (48610) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+0.540s)
+  07:55:30.722 (t+0.568s)  127.0.0.1:40516 -> 127.0.0.1:18077  accepted by python3 (pid 49515)  (listener cookie 23)
+      client: python3 (49523) ← bash (48632) ← make (48613) ← sudo (48612) ← sudo (48610) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+0.568s)
+
+Connects to port 18077
+  07:55:30.695 (t+0.540s)  127.0.0.1:40514 -> 127.0.0.1:18077 tcp  ok                      by python3 (49522) ← bash (48632) ← make (48613) ← sudo (48612) ← sudo (48610) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  07:55:30.722 (t+0.568s)  127.0.0.1:40516 -> 127.0.0.1:18077 tcp  ok                      by python3 (49523) ← bash (48632) ← make (48613) ← sudo (48612) ← sudo (48610) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  ok   p15-trace: text and HTML reports made
+  ok   p15-trace: 1 listener, 2 accepts, both clients found on this host
+  ok   p15-trace: the listener is the server process (49515), cookie 23
+  ok   p15-trace: each accept joined to its client process and that process's parent
+  ok   p15-trace: both clients joined exactly, by the TCP client sequence number (ADR-0022)
+  ok   p15-trace: 2 exact joins, 0 set aside, every TCP record carries its ISN
+  ok   p15-trace: the refused connect to port 18078, with its process
+case 4: a bad flag
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
+---- PASS (33 s)
+
+================ 15. planted bugs: p15d (root, runs the end-to-end test per mutant) ================
+$ sudo env PYTHONUNBUFFERED=1 P15_PYTHON=/home/ashu/p15venv/bin/python3 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make mutate-p15d
+python3 daemon/tests/mutate_p15d.py
+killed   0 queue.c if (h - t >= q->n) {
+killed   1 queue.c atomic_store_explicit(&q->head, h, memory_order_release);
+killed   2 queue.c s->count = 0;
+killed   3 queue.c return t == h ? NULL : &q->slots[t % q->n];
+killed   4 queue.c while (d > m && !atomic_compare_exchange_weak_explicit
+killed   5 config.c snprintf(err, errlen, "unknown argument '%s'", f);
+killed   6 config.c if (v < OPTS[i].lo || v > OPTS[i].hi ||
+killed   7 config.c (OPTS[i].pow2 && (v & (v - 1)))
+killed   8 config.c if (!c->wal_root) {
+killed   9 drain.c if (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_m
+killed   10 drain.c now_missed[t] != prev_missed[t];
+killed   11 drain.c for (int t = 1; t < P15_SPINE_TYPES; t++)
+killed   12 drain.c atomic_fetch_add(&d->run->drained[h->type], 1);
+killed   13 writer.c drained -= r->spine_selftest_consumed;
+killed   14 writer.c uint64_t emitted = 0, drained = r->spine_selftest_consumed;
+killed   15 writer.c if (inv == P15_INV_BROKEN)
+killed   16 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_
+killed   17 writer.c if (emitted != drained + atomic_load(&r->spine_invalid)) {
+killed   18 writer.c buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);
+killed   19 run.c case P15_RUN_DEGRADED:
+mutation sweep: 20/20 killed
+---- PASS (360 s)
+
+================ 16. planted bugs: spine EXEC program (root, loads each mutant) ================
+$ sudo env PYTHONUNBUFFERED=1 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin make mutate-spine
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+python3 bpf/test/mutate_spine_exec.py
+killed    0 if (bpf_ringbuf_output(&spine_rb, r, len, wake())) {
+killed    1 len = exec_len(end);
+killed    2 r->argv_len = av_len;
+killed    3 r->filename_len = fn_len;
+killed    4 #endif
+killed    5 count(P15_T_EXEC, P15_CK_SEEN);
+killed    6 #define P15_EXEC_WAY P15_EXEC_WAY_OUTPUT
+mutation sweep: 7/7 killed
+---- PASS (24 s)
+
+================ 17. the demo story, with network capture (root) ================
+$ sudo env P15_PYTHON=/home/ashu/p15venv/bin/python3 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin tools/demo/run_demo.sh /home/ashu/vm-verify-20261106T074939Z/demo
+08:02:01.286 p15d: start (30 s, network capture on)
+08:02:03.220 1. listener on 4444: nc pid 55085
+08:02:03.227 2. web app on 8080: pid 55089
+08:02:04.283 3. curl /: done
+08:02:04.852 3. curl /about: done
+08:02:06.500 3. curl /lookup?name=localhost: done
+08:02:08.125 4. injected request sent: the app's shell ran nc to 4444
+08:02:09.154 5. scan of port 4441: refused, as expected
+08:02:09.172 5. scan of port 4442: refused, as expected
+08:02:09.192 5. scan of port 4443: refused, as expected
+08:02:12.306 p15d: waiting for the end of its 30 s
+08:02:32.700 p15d: exit 0
+
+p15-trace: port 4444
+run 20261106T080202Z-4696aa9a on p15-dev, kernel 7.0.0-38-generic, captured from 08:02:02.256 UTC
+
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  kernel-skipped events: none (every hook ran for every event)
+  process tree check (ADR-0023): complete: every process alive at the end is explained, and every one gone has its exit (0 fork(s) and 0 exit(s) unexplained; counted losses: fork 0, exit 0)
+  NET records: 24 captured, 0 lost to a full ring, 0 excluded by policy (failed accepts, non-IP sockets)
+
+Summary: 1 listener(s); 1 connection(s) accepted, 1 of them from a process on this host; 1 connect(s) to the port, 0 refused or failed
+
+Listeners on port 4444
+  127.0.0.1:4444 tcp  cookie 4169  listening from 08:02:03.221 (t+0.964s)  by nc (55085) ← bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+
+Connections accepted on port 4444
+  08:02:07.106 (t+4.849s)  127.0.0.1:36534 -> 127.0.0.1:4444  accepted by nc (pid 55085)  (listener cookie 4169)
+      client: nc (55115) ← sh (55113) ← python3 (55089) ← bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+4.849s)
+
+Connects to port 4444
+  08:02:07.106 (t+4.849s)  127.0.0.1:36534 -> 127.0.0.1:4444 tcp  in progress (non-blocking)  by nc (55115) ← sh (55113) ← python3 (55089) ← bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+
+Processes involved (13, with their ancestors)
+  pid 55085   nc -l 127.0.0.1 4444
+            started t+0.956s; exited 0 at t+5.856s
+            parent: bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 55065   bash tools/demo/run_demo.sh /home/ashu/vm-verify-20261106T074939Z/demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 55064   sudo env P15_PYTHON=/home/ashu/p15venv/bin/python3 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin tools/demo/run_demo.sh /home/ashu/vm-verify-20261106T074939Z/demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 55062   sudo env P15_PYTHON=/home/ashu/p15venv/bin/python3 PATH=/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin tools/demo/run_demo.sh /home/ashu/vm-verify-20261106T074939Z/demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 1417    bash /home/ashu/vm_verify.sh
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 1364    -bash
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 1363    sshd-session: ashu@pts/0                
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 1252    sshd-session: ashu [priv]               
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd (1249) ← systemd (1) [started before the capture]
+  pid 1249    sshd: /usr/sbin/ss
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: systemd (1) [started before the capture]
+  pid 1       /usr/lib/systemd/systemd --switched-root --system --deserialize=50
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+  pid 55115   nc -w1 127.0.0.1 4444
+            started t+4.843s; exited 0 at t+5.856s
+            parent: sh (55113) ← python3 (55089) ← bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 55113   /bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null
+            started t+4.837s; exited 0 at t+5.857s
+            parent: python3 (55089) ← bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+  pid 55089   /home/ashu/p15venv/bin/python3 tools/demo/webapp.py 8080
+            started t+0.966s; killed by signal 15 at t+10.042s
+            parent: bash (55065) ← sudo (55064) ← sudo (55062) ← bash (1417) ← bash (1364) ← sshd-session (1363) ← sshd-session (1252) ← sshd (1249) ← systemd (1) [started before the capture]
+
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: 1 exact, by the TCP client sequence number (ADR-0022); 0 inferred from endpoints on this host (0 of them with more than one candidate, the connect nearest in time taken, within 5 s either side); 0 whose connect returned after the accept; 0 same-endpoint connect(s) set aside as a different connection; 0 not found; 0 TCP record(s) without a sequence number
+  process tree: 209 processes, 148 started before the capture (148 with parent and program from the opening snapshot, 0 not in it), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+HTML report: /home/ashu/vm-verify-20261106T074939Z/demo/port-4444.html
+run_demo: p15d exit 0, p15w-inspect exit 0, reports made; files in /home/ashu/vm-verify-20261106T074939Z/demo
+---- PASS (32 s)
+
+================ 18. the hook-path cost, paired, 20 rounds (root; ADR-0020 confirmation 5) ================
+$ bash -c sudo env PATH="/home/ashu/p15venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin" make bench-hook-cost ROUNDS=20 && cp build/hook_cost.txt "/home/ashu/vm-verify-20261106T074939Z/hook_cost.txt"
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/hook_cost/hook_cost.c daemon/records.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/hook_cost
+build/hook_cost build/spine.bpf.o 20 200000 300 \
+	| tee build/hook_cost.txt
+hook_cost: libbpf v1.7, pinned to CPU 2, 20 rounds, 200000 renames and 300 execs per arm
+row round=-1 event=rename arm=none n=20001 cpu_ns=2605909 wall_ns=2596569 hits=0
+row round=-1 event=rename arm=none2 n=20001 cpu_ns=2478182 wall_ns=2477828 hits=0
+row round=-1 event=rename arm=tp n=20001 cpu_ns=3413655 wall_ns=3412352 hits=20001
+row round=-1 event=rename arm=btf n=20001 cpu_ns=3126892 wall_ns=3123818 hits=20001
+row round=-1 event=exec arm=none n=31 cpu_ns=91312000 wall_ns=99214380 hits=0
+row round=-1 event=exec arm=none2 n=31 cpu_ns=79988000 wall_ns=85613281 hits=0
+row round=-1 event=exec arm=tp n=31 cpu_ns=73736000 wall_ns=79199377 hits=31
+row round=-1 event=exec arm=btf n=31 cpu_ns=62979000 wall_ns=66889157 hits=31
+row round=-1 event=exec arm=spine n=31 cpu_ns=65102000 wall_ns=69101911 hits=31
+nullsys round=0 calls=1000000 total_ns=89400832
+row round=0 event=rename arm=none n=200000 cpu_ns=27661923 wall_ns=27650034 hits=0
+row round=0 event=rename arm=none2 n=200000 cpu_ns=29846679 wall_ns=29842772 hits=0
+row round=0 event=rename arm=tp n=200000 cpu_ns=43115889 wall_ns=43183251 hits=200000
+row round=0 event=rename arm=btf n=200000 cpu_ns=30890290 wall_ns=30886180 hits=200000
+row round=0 event=exec arm=none n=300 cpu_ns=702837000 wall_ns=752464473 hits=0
+row round=0 event=exec arm=none2 n=300 cpu_ns=650115000 wall_ns=690880378 hits=0
+row round=0 event=exec arm=tp n=300 cpu_ns=679317000 wall_ns=725823183 hits=300
+row round=0 event=exec arm=btf n=300 cpu_ns=661832000 wall_ns=704655337 hits=300
+row round=0 event=exec arm=spine n=300 cpu_ns=692567000 wall_ns=742458135 hits=300
+nullsys round=1 calls=1000000 total_ns=90675010
+row round=1 event=rename arm=none2 n=200000 cpu_ns=28197922 wall_ns=29569869 hits=0
+row round=1 event=rename arm=tp n=200000 cpu_ns=36911803 wall_ns=36908111 hits=200000
+row round=1 event=rename arm=btf n=200000 cpu_ns=33420884 wall_ns=33417623 hits=200000
+row round=1 event=rename arm=none n=200000 cpu_ns=29828810 wall_ns=29840990 hits=0
+row round=1 event=exec arm=none2 n=300 cpu_ns=679499000 wall_ns=726273010 hits=0
+row round=1 event=exec arm=tp n=300 cpu_ns=665518000 wall_ns=708780888 hits=300
+row round=1 event=exec arm=btf n=300 cpu_ns=764315000 wall_ns=819639203 hits=300
+row round=1 event=exec arm=spine n=300 cpu_ns=694948000 wall_ns=744499470 hits=300
+row round=1 event=exec arm=none n=300 cpu_ns=700971000 wall_ns=749900441 hits=0
+nullsys round=2 calls=1000000 total_ns=95810201
+row round=2 event=rename arm=tp n=200000 cpu_ns=45086151 wall_ns=45082003 hits=200000
+row round=2 event=rename arm=btf n=200000 cpu_ns=33611757 wall_ns=33607569 hits=200000
+row round=2 event=rename arm=none n=200000 cpu_ns=27853216 wall_ns=27864654 hits=0
+row round=2 event=rename arm=none2 n=200000 cpu_ns=27547360 wall_ns=27686857 hits=0
+row round=2 event=exec arm=tp n=300 cpu_ns=727370000 wall_ns=779968100 hits=300
+row round=2 event=exec arm=btf n=300 cpu_ns=705619000 wall_ns=756643892 hits=300
+row round=2 event=exec arm=spine n=300 cpu_ns=672413000 wall_ns=721002209 hits=300
+row round=2 event=exec arm=none n=300 cpu_ns=802146000 wall_ns=866676322 hits=0
+row round=2 event=exec arm=none2 n=300 cpu_ns=841910000 wall_ns=902925333 hits=0
+nullsys round=3 calls=1000000 total_ns=91306498
+row round=3 event=rename arm=btf n=200000 cpu_ns=36719637 wall_ns=36718138 hits=200000
+row round=3 event=rename arm=none n=200000 cpu_ns=27875154 wall_ns=27882758 hits=0
+row round=3 event=rename arm=none2 n=200000 cpu_ns=28366811 wall_ns=28411586 hits=0
+row round=3 event=rename arm=tp n=200000 cpu_ns=37391903 wall_ns=37390007 hits=200000
+row round=3 event=exec arm=btf n=300 cpu_ns=716813000 wall_ns=767187561 hits=300
+row round=3 event=exec arm=spine n=300 cpu_ns=715562000 wall_ns=768710340 hits=300
+row round=3 event=exec arm=none n=300 cpu_ns=696153000 wall_ns=745076689 hits=0
+row round=3 event=exec arm=none2 n=300 cpu_ns=652493000 wall_ns=694335856 hits=0
+row round=3 event=exec arm=tp n=300 cpu_ns=648846000 wall_ns=690094940 hits=300
+nullsys round=4 calls=1000000 total_ns=90007599
+row round=4 event=rename arm=none n=200000 cpu_ns=25786048 wall_ns=25774014 hits=0
+row round=4 event=rename arm=none2 n=200000 cpu_ns=27611895 wall_ns=27605540 hits=0
+row round=4 event=rename arm=tp n=200000 cpu_ns=51242207 wall_ns=51238611 hits=200000
+row round=4 event=rename arm=btf n=200000 cpu_ns=33140054 wall_ns=33137972 hits=200000
+row round=4 event=exec arm=spine n=300 cpu_ns=735481000 wall_ns=783006760 hits=300
+row round=4 event=exec arm=none n=300 cpu_ns=876871000 wall_ns=935894668 hits=0
+row round=4 event=exec arm=none2 n=300 cpu_ns=716509000 wall_ns=764405698 hits=0
+row round=4 event=exec arm=tp n=300 cpu_ns=650325000 wall_ns=689037423 hits=300
+row round=4 event=exec arm=btf n=300 cpu_ns=666709000 wall_ns=710498214 hits=300
+nullsys round=5 calls=1000000 total_ns=94277456
+row round=5 event=rename arm=none2 n=200000 cpu_ns=27821361 wall_ns=27816940 hits=0
+row round=5 event=rename arm=tp n=200000 cpu_ns=38802859 wall_ns=38797826 hits=200000
+row round=5 event=rename arm=btf n=200000 cpu_ns=31191230 wall_ns=31479603 hits=200000
+row round=5 event=rename arm=none n=200000 cpu_ns=29385540 wall_ns=29434408 hits=0
+row round=5 event=exec arm=none n=300 cpu_ns=650284000 wall_ns=691436057 hits=0
+row round=5 event=exec arm=none2 n=300 cpu_ns=660026000 wall_ns=701271140 hits=0
+row round=5 event=exec arm=tp n=300 cpu_ns=645685000 wall_ns=685699458 hits=300
+row round=5 event=exec arm=btf n=300 cpu_ns=642634000 wall_ns=681673570 hits=300
+row round=5 event=exec arm=spine n=300 cpu_ns=714651000 wall_ns=765932688 hits=300
+nullsys round=6 calls=1000000 total_ns=90145373
+row round=6 event=rename arm=tp n=200000 cpu_ns=34901733 wall_ns=34890676 hits=200000
+row round=6 event=rename arm=btf n=200000 cpu_ns=31507313 wall_ns=31503255 hits=200000
+row round=6 event=rename arm=none n=200000 cpu_ns=29012513 wall_ns=29018502 hits=0
+row round=6 event=rename arm=none2 n=200000 cpu_ns=32174218 wall_ns=32235453 hits=0
+row round=6 event=exec arm=none2 n=300 cpu_ns=675939000 wall_ns=718040692 hits=0
+row round=6 event=exec arm=tp n=300 cpu_ns=637320000 wall_ns=676418792 hits=300
+row round=6 event=exec arm=btf n=300 cpu_ns=631693000 wall_ns=670794574 hits=300
+row round=6 event=exec arm=spine n=300 cpu_ns=646374000 wall_ns=687140948 hits=300
+row round=6 event=exec arm=none n=300 cpu_ns=658083000 wall_ns=701234924 hits=0
+nullsys round=7 calls=1000000 total_ns=85613648
+row round=7 event=rename arm=btf n=200000 cpu_ns=30558038 wall_ns=30552345 hits=200000
+row round=7 event=rename arm=none n=200000 cpu_ns=28744556 wall_ns=28756725 hits=0
+row round=7 event=rename arm=none2 n=200000 cpu_ns=29346894 wall_ns=29345565 hits=0
+row round=7 event=rename arm=tp n=200000 cpu_ns=39008259 wall_ns=39002262 hits=200000
+row round=7 event=exec arm=tp n=300 cpu_ns=634017000 wall_ns=672972416 hits=300
+row round=7 event=exec arm=btf n=300 cpu_ns=657283000 wall_ns=697747670 hits=300
+row round=7 event=exec arm=spine n=300 cpu_ns=647417000 wall_ns=688822227 hits=300
+row round=7 event=exec arm=none n=300 cpu_ns=635254000 wall_ns=674811655 hits=0
+row round=7 event=exec arm=none2 n=300 cpu_ns=676853000 wall_ns=719726975 hits=0
+nullsys round=8 calls=1000000 total_ns=93468905
+row round=8 event=rename arm=none n=200000 cpu_ns=29319396 wall_ns=29316371 hits=0
+row round=8 event=rename arm=none2 n=200000 cpu_ns=28154285 wall_ns=28252202 hits=0
+row round=8 event=rename arm=tp n=200000 cpu_ns=36997294 wall_ns=36994542 hits=200000
+row round=8 event=rename arm=btf n=200000 cpu_ns=32299336 wall_ns=32295451 hits=200000
+row round=8 event=exec arm=btf n=300 cpu_ns=678019000 wall_ns=725213580 hits=300
+row round=8 event=exec arm=spine n=300 cpu_ns=635685000 wall_ns=674031346 hits=300
+row round=8 event=exec arm=none n=300 cpu_ns=651353000 wall_ns=691678252 hits=0
+row round=8 event=exec arm=none2 n=300 cpu_ns=681968000 wall_ns=728213814 hits=0
+row round=8 event=exec arm=tp n=300 cpu_ns=713192000 wall_ns=763421684 hits=300
+nullsys round=9 calls=1000000 total_ns=93231043
+row round=9 event=rename arm=none2 n=200000 cpu_ns=28894664 wall_ns=28863024 hits=0
+row round=9 event=rename arm=tp n=200000 cpu_ns=40795271 wall_ns=40791150 hits=200000
+row round=9 event=rename arm=btf n=200000 cpu_ns=39818685 wall_ns=39814098 hits=200000
+row round=9 event=rename arm=none n=200000 cpu_ns=34921102 wall_ns=34916953 hits=0
+row round=9 event=exec arm=spine n=300 cpu_ns=759387000 wall_ns=809364723 hits=300
+row round=9 event=exec arm=none n=300 cpu_ns=728242000 wall_ns=776116967 hits=0
+row round=9 event=exec arm=none2 n=300 cpu_ns=693522000 wall_ns=737533756 hits=0
+row round=9 event=exec arm=tp n=300 cpu_ns=736286000 wall_ns=786021792 hits=300
+row round=9 event=exec arm=btf n=300 cpu_ns=729959000 wall_ns=777113562 hits=300
+nullsys round=10 calls=1000000 total_ns=97418662
+row round=10 event=rename arm=tp n=200000 cpu_ns=41046685 wall_ns=41044077 hits=200000
+row round=10 event=rename arm=btf n=200000 cpu_ns=40362174 wall_ns=40357498 hits=200000
+row round=10 event=rename arm=none n=200000 cpu_ns=35318792 wall_ns=35329501 hits=0
+row round=10 event=rename arm=none2 n=200000 cpu_ns=34917928 wall_ns=35120063 hits=0
+row round=10 event=exec arm=none n=300 cpu_ns=763583000 wall_ns=813651571 hits=0
+row round=10 event=exec arm=none2 n=300 cpu_ns=788108000 wall_ns=840094636 hits=0
+row round=10 event=exec arm=tp n=300 cpu_ns=730208000 wall_ns=777995478 hits=300
+row round=10 event=exec arm=btf n=300 cpu_ns=672850000 wall_ns=715122344 hits=300
+row round=10 event=exec arm=spine n=300 cpu_ns=796619000 wall_ns=851598364 hits=300
+nullsys round=11 calls=1000000 total_ns=94109275
+row round=11 event=rename arm=btf n=200000 cpu_ns=33351882 wall_ns=33348216 hits=200000
+row round=11 event=rename arm=none n=200000 cpu_ns=29860644 wall_ns=29923575 hits=0
+row round=11 event=rename arm=none2 n=200000 cpu_ns=29557446 wall_ns=29554095 hits=0
+row round=11 event=rename arm=tp n=200000 cpu_ns=41061475 wall_ns=41058072 hits=200000
+row round=11 event=exec arm=none2 n=300 cpu_ns=653730000 wall_ns=694063839 hits=0
+row round=11 event=exec arm=tp n=300 cpu_ns=669185000 wall_ns=710145749 hits=300
+row round=11 event=exec arm=btf n=300 cpu_ns=662525000 wall_ns=706267547 hits=300
+row round=11 event=exec arm=spine n=300 cpu_ns=689151000 wall_ns=733038623 hits=300
+row round=11 event=exec arm=none n=300 cpu_ns=674404000 wall_ns=715862821 hits=0
+nullsys round=12 calls=1000000 total_ns=96785065
+row round=12 event=rename arm=none n=200000 cpu_ns=29201312 wall_ns=29190223 hits=0
+row round=12 event=rename arm=none2 n=200000 cpu_ns=29428522 wall_ns=29423824 hits=0
+row round=12 event=rename arm=tp n=200000 cpu_ns=41083183 wall_ns=41080381 hits=200000
+row round=12 event=rename arm=btf n=200000 cpu_ns=36170548 wall_ns=36165955 hits=200000
+row round=12 event=exec arm=tp n=300 cpu_ns=637428000 wall_ns=678201356 hits=300
+row round=12 event=exec arm=btf n=300 cpu_ns=653775000 wall_ns=695576123 hits=300
+row round=12 event=exec arm=spine n=300 cpu_ns=680233000 wall_ns=722507255 hits=300
+row round=12 event=exec arm=none n=300 cpu_ns=663009000 wall_ns=704764635 hits=0
+row round=12 event=exec arm=none2 n=300 cpu_ns=676619000 wall_ns=717386241 hits=0
+nullsys round=13 calls=1000000 total_ns=91832577
+row round=13 event=rename arm=none2 n=200000 cpu_ns=29059487 wall_ns=29055963 hits=0
+row round=13 event=rename arm=tp n=200000 cpu_ns=40944568 wall_ns=40941838 hits=200000
+row round=13 event=rename arm=btf n=200000 cpu_ns=33157516 wall_ns=33154266 hits=200000
+row round=13 event=rename arm=none n=200000 cpu_ns=25572983 wall_ns=25568552 hits=0
+row round=13 event=exec arm=btf n=300 cpu_ns=632294000 wall_ns=671410620 hits=300
+row round=13 event=exec arm=spine n=300 cpu_ns=670080000 wall_ns=712159501 hits=300
+row round=13 event=exec arm=none n=300 cpu_ns=676689000 wall_ns=721009671 hits=0
+row round=13 event=exec arm=none2 n=300 cpu_ns=674536000 wall_ns=716038648 hits=0
+row round=13 event=exec arm=tp n=300 cpu_ns=675857000 wall_ns=716893369 hits=300
+nullsys round=14 calls=1000000 total_ns=89461121
+row round=14 event=rename arm=tp n=200000 cpu_ns=43396075 wall_ns=43394438 hits=200000
+row round=14 event=rename arm=btf n=200000 cpu_ns=32727360 wall_ns=32723922 hits=200000
+row round=14 event=rename arm=none n=200000 cpu_ns=26276254 wall_ns=26284466 hits=0
+row round=14 event=rename arm=none2 n=200000 cpu_ns=27124541 wall_ns=27122594 hits=0
+row round=14 event=exec arm=spine n=300 cpu_ns=666025000 wall_ns=706194949 hits=300
+row round=14 event=exec arm=none n=300 cpu_ns=662575000 wall_ns=703251895 hits=0
+row round=14 event=exec arm=none2 n=300 cpu_ns=649328000 wall_ns=690249625 hits=0
+row round=14 event=exec arm=tp n=300 cpu_ns=658043000 wall_ns=698856555 hits=300
+row round=14 event=exec arm=btf n=300 cpu_ns=622363000 wall_ns=660984639 hits=300
+nullsys round=15 calls=1000000 total_ns=87935107
+row round=15 event=rename arm=btf n=200000 cpu_ns=30330514 wall_ns=30325537 hits=200000
+row round=15 event=rename arm=none n=200000 cpu_ns=27532450 wall_ns=27618097 hits=0
+row round=15 event=rename arm=none2 n=200000 cpu_ns=28616338 wall_ns=28928140 hits=0
+row round=15 event=rename arm=tp n=200000 cpu_ns=39142735 wall_ns=39141404 hits=200000
+row round=15 event=exec arm=none n=300 cpu_ns=638815000 wall_ns=679077260 hits=0
+row round=15 event=exec arm=none2 n=300 cpu_ns=638730000 wall_ns=677959665 hits=0
+row round=15 event=exec arm=tp n=300 cpu_ns=698223000 wall_ns=742599666 hits=300
+row round=15 event=exec arm=btf n=300 cpu_ns=715607000 wall_ns=765472057 hits=300
+row round=15 event=exec arm=spine n=300 cpu_ns=675799000 wall_ns=718176737 hits=300
+nullsys round=16 calls=1000000 total_ns=97561555
+row round=16 event=rename arm=none n=200000 cpu_ns=27072576 wall_ns=27069025 hits=0
+row round=16 event=rename arm=none2 n=200000 cpu_ns=25623182 wall_ns=25621362 hits=0
+row round=16 event=rename arm=tp n=200000 cpu_ns=35868639 wall_ns=35865052 hits=200000
+row round=16 event=rename arm=btf n=200000 cpu_ns=29820315 wall_ns=29816218 hits=200000
+row round=16 event=exec arm=none2 n=300 cpu_ns=625062000 wall_ns=665252214 hits=0
+row round=16 event=exec arm=tp n=300 cpu_ns=668434000 wall_ns=710758661 hits=300
+row round=16 event=exec arm=btf n=300 cpu_ns=716227000 wall_ns=762509787 hits=300
+row round=16 event=exec arm=spine n=300 cpu_ns=661880000 wall_ns=703370648 hits=300
+row round=16 event=exec arm=none n=300 cpu_ns=676797000 wall_ns=718775691 hits=0
+nullsys round=17 calls=1000000 total_ns=91068834
+row round=17 event=rename arm=none2 n=200000 cpu_ns=28973750 wall_ns=28967627 hits=0
+row round=17 event=rename arm=tp n=200000 cpu_ns=38889989 wall_ns=38885917 hits=200000
+row round=17 event=rename arm=btf n=200000 cpu_ns=29720684 wall_ns=29717979 hits=200000
+row round=17 event=rename arm=none n=200000 cpu_ns=25820264 wall_ns=25816448 hits=0
+row round=17 event=exec arm=tp n=300 cpu_ns=642973000 wall_ns=683037095 hits=300
+row round=17 event=exec arm=btf n=300 cpu_ns=676508000 wall_ns=720253183 hits=300
+row round=17 event=exec arm=spine n=300 cpu_ns=747032000 wall_ns=798526656 hits=300
+row round=17 event=exec arm=none n=300 cpu_ns=707231000 wall_ns=754754087 hits=0
+row round=17 event=exec arm=none2 n=300 cpu_ns=825159000 wall_ns=884131236 hits=0
+nullsys round=18 calls=1000000 total_ns=103628060
+row round=18 event=rename arm=tp n=200000 cpu_ns=39434476 wall_ns=39433157 hits=200000
+row round=18 event=rename arm=btf n=200000 cpu_ns=30980757 wall_ns=30976514 hits=200000
+row round=18 event=rename arm=none n=200000 cpu_ns=27382344 wall_ns=27386230 hits=0
+row round=18 event=rename arm=none2 n=200000 cpu_ns=28457561 wall_ns=28499496 hits=0
+row round=18 event=exec arm=btf n=300 cpu_ns=812640000 wall_ns=866619235 hits=300
+row round=18 event=exec arm=spine n=300 cpu_ns=864051000 wall_ns=927283417 hits=300
+row round=18 event=exec arm=none n=300 cpu_ns=710877000 wall_ns=755789421 hits=0
+row round=18 event=exec arm=none2 n=300 cpu_ns=863704000 wall_ns=928944884 hits=0
+row round=18 event=exec arm=tp n=300 cpu_ns=782795000 wall_ns=836033581 hits=300
+nullsys round=19 calls=1000000 total_ns=99386598
+row round=19 event=rename arm=btf n=200000 cpu_ns=38731871 wall_ns=38727882 hits=200000
+row round=19 event=rename arm=none n=200000 cpu_ns=38191510 wall_ns=38271961 hits=0
+row round=19 event=rename arm=none2 n=200000 cpu_ns=36427279 wall_ns=36422677 hits=0
+row round=19 event=rename arm=tp n=200000 cpu_ns=49345934 wall_ns=49341911 hits=200000
+row round=19 event=exec arm=spine n=300 cpu_ns=894602000 wall_ns=961032663 hits=300
+row round=19 event=exec arm=none n=300 cpu_ns=717803000 wall_ns=763206873 hits=0
+row round=19 event=exec arm=none2 n=300 cpu_ns=905777000 wall_ns=973436365 hits=0
+row round=19 event=exec arm=tp n=300 cpu_ns=850867000 wall_ns=911970100 hits=300
+row round=19 event=exec arm=btf n=300 cpu_ns=803329000 wall_ns=859175538 hits=300
+hook_cost: ok (spine records failing p15_rec_check: 0)
+python3 bench/hook_cost/summarize.py build/hook_cost.txt
+# hook_cost: the classic-tracepoint hook path against tp_btf (ADR-0020 confirmation 5)
+
+Null syscall (getppid), median over rounds: 92.5 ns.
+
+## rename, cpu time per event (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 141.5 ns | 136.9 ns to 146.9 ns |
+| none2 | 143.8 ns | 140.8 ns to 147.1 ns |
+| tp | 200.6 ns | 194.0 ns to 205.4 ns |
+| btf | 164.7 ns | 154.9 ns to 168.1 ns |
+
+- **tp against none:** overhead +38.36 %, 95 % interval +30.78 % to +48.08 %, Wilcoxon p = 1.91e-06
+  - added per event 56.1 ns (95 % interval 45.6 ns to 66.9 ns), 0.61 null syscalls; ratio of medians 1.4170; effect p = 1.91e-06
+- **btf against none:** overhead +14.14 %, 95 % interval +10.63 % to +19.17 %, Wilcoxon p = 1.91e-06
+  - added per event 21.1 ns (95 % interval 15.6 ns to 26.6 ns), 0.23 null syscalls; ratio of medians 1.1633; effect p = 1.91e-06
+- **tp against btf (the ADR-0020 question):** overhead +21.90 %, 95 % interval +15.26 % to +28.35 %, Wilcoxon p = 1.91e-06
+  - added per event 36.3 ns (95 % interval 24.6 ns to 46.1 ns), 0.39 null syscalls; ratio of medians 1.2180; effect p = 1.91e-06
+
+## rename, wall time per event (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 141.6 ns | 136.9 ns to 147.2 ns |
+| none2 | 144.7 ns | 141.3 ns to 147.8 ns |
+| tp | 200.6 ns | 194.0 ns to 205.4 ns |
+| btf | 164.7 ns | 154.9 ns to 168.0 ns |
+
+- **tp against none:** overhead +38.32 %, 95 % interval +30.54 % to +48.13 %, Wilcoxon p = 1.91e-06
+  - added per event 55.9 ns (95 % interval 45.4 ns to 66.8 ns), 0.60 null syscalls; ratio of medians 1.4164; effect p = 1.91e-06
+- **btf against none:** overhead +14.08 %, 95 % interval +10.62 % to +19.15 %, Wilcoxon p = 1.91e-06
+  - added per event 21.1 ns (95 % interval 15.4 ns to 26.6 ns), 0.23 null syscalls; ratio of medians 1.1628; effect p = 1.91e-06
+- **tp against btf (the ADR-0020 question):** overhead +21.88 %, 95 % interval +15.26 % to +28.24 %, Wilcoxon p = 1.91e-06
+  - added per event 36.3 ns (95 % interval 24.6 ns to 46.1 ns), 0.39 null syscalls; ratio of medians 1.2181; effect p = 1.91e-06
+
+## exec, cpu time per event (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 2,288,250.0 ns | 2,208,583.3 ns to 2,369,590.0 ns |
+| none2 | 2,255,786.7 ns | 2,179,100.0 ns to 2,388,363.3 ns |
+| tp | 2,229,365.0 ns | 2,162,820.0 ns to 2,377,306.7 ns |
+| btf | 2,248,930.0 ns | 2,190,943.3 ns to 2,387,423.3 ns |
+| spine | 2,302,863.3 ns | 2,233,600.0 ns to 2,451,603.3 ns |
+
+- **tp against none:** not resolved on this host (A/A interval -2.60 % to +5.62 %)
+  - added per event -41,710.0 ns (95 % interval -113,450.0 ns to 63,865.0 ns), -450.76 null syscalls; ratio of medians 0.9743; effect p = 0.216
+- **btf against none:** not resolved on this host (A/A interval -2.60 % to +5.62 %)
+  - added per event -16,854.2 ns (95 % interval -117,975.0 ns to 88,886.7 ns), -182.14 null syscalls; ratio of medians 0.9828; effect p = 0.674
+- **spine EXEC (shipped) against none:** not resolved on this host (A/A interval -2.60 % to +5.62 %)
+  - added per event 40,718.3 ns (95 % interval -27,155.0 ns to 110,120.0 ns), 440.05 null syscalls; ratio of medians 1.0064; effect p = 0.154
+- **tp against btf (the ADR-0020 question):** not resolved on this host (A/A interval -2.60 % to +5.62 %)
+  - added per event -4,787.5 ns (95 % interval -74,570.0 ns to 51,985.0 ns), -51.74 null syscalls; ratio of medians 0.9913; effect p = 0.927
+
+## exec, wall time per event (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 2,443,477.3 ns | 2,344,173.0 ns to 2,519,298.1 ns |
+| none2 | 2,396,279.4 ns | 2,314,452.9 ns to 2,548,019.0 ns |
+| tp | 2,368,174.0 ns | 2,296,791.4 ns to 2,544,738.9 ns |
+| btf | 2,392,292.5 ns | 2,325,825.6 ns to 2,551,573.5 ns |
+| spine | 2,459,161.3 ns | 2,373,865.0 ns to 2,610,022.5 ns |
+
+- **tp against none:** not resolved on this host (A/A interval -2.94 % to +5.51 %)
+  - added per event -47,844.1 ns (95 % interval -127,959.4 ns to 74,313.4 ns), -517.06 null syscalls; ratio of medians 0.9692; effect p = 0.231
+- **btf against none:** not resolved on this host (A/A interval -2.94 % to +5.51 %)
+  - added per event -16,942.3 ns (95 % interval -130,415.8 ns to 100,239.1 ns), -183.10 null syscalls; ratio of medians 0.9791; effect p = 0.729
+- **spine EXEC (shipped) against none:** not resolved on this host (A/A interval -2.94 % to +5.51 %)
+  - added per event 45,352.9 ns (95 % interval -29,500.6 ns to 120,578.7 ns), 490.13 null syscalls; ratio of medians 1.0064; effect p = 0.154
+- **tp against btf (the ADR-0020 question):** not resolved on this host (A/A interval -2.94 % to +5.51 %)
+  - added per event -4,426.6 ns (95 % interval -79,934.0 ns to 59,033.0 ns), -47.84 null syscalls; ratio of medians 0.9899; effect p = 0.841
+
+---- PASS (88 s)
+
+================ SUMMARY (20261106T074939Z, 7.0.0-38-generic, commit 6905850) ================
+PASS  1. prerequisites (apt) (1 s)
+PASS  2. checkout feat/snapshot-4c (reset to origin: the branch may have been force-pushed) (1 s)
+PASS  3. venv + pinned packages (2 s)
+PASS  4. build (20 s)
+PASS  5. make check (schema, layout, C tests, hardening, exits, Python tests, reader vs C writer, evidence) (10 s)
+PASS  6. C tests under ASan/UBSan (5 s)
+PASS  7. queue under TSan (1 s)
+PASS  8. planted bugs: Python gates, reader, trace (31 s)
+PASS  9. planted bugs: WAL writer (178 s)
+FAIL  10. planted bugs: record checks (1 s)
+PASS  11. smoke: verifier load, tp_btf attach, spine self-test (root) (8 s)
+PASS  12. smoke-net: ADR-0004 fexit hooks on THIS kernel (root) (1 s)
+PASS  13. the kernel's skips per design: recur_probe 3 x 2000 (root; ADR-0020 confirmation 1) (62 s)
+PASS  14. p15d end to end, network required, both readers, p15-trace on the real run (root) (33 s)
+PASS  15. planted bugs: p15d (root, runs the end-to-end test per mutant) (360 s)
+PASS  16. planted bugs: spine EXEC program (root, loads each mutant) (24 s)
+PASS  17. the demo story, with network capture (root) (32 s)
+PASS  18. the hook-path cost, paired, 20 rounds (root; ADR-0020 confirmation 5) (88 s)
+Everything is in /home/ashu/vm-verify-20261106T074939Z. Next: sha256sum /home/ashu/vm-verify-20261106T074939Z/verify.log; then send verify.log (or paste the SUMMARY block).
