@@ -116,7 +116,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ ADR-0018's statistics as code, the hook-cost harness and its VM run (#48, #49): ADR-0020 accepted;
       - ✅ ADR-0022 (PR #52; CI and the VM join both clients exactly, E-0104): NET v2 with the client ISN, and the exact join in p15-trace (CI case 5 and the VM confirm it);
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
-      - the record v2s that carry `self_exec_id` and the parent's key (ADR-0020 rule 5);
+      - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116). PR `feat/exec-v2-provenance`. Next: CI, then case 6 on the VM;
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -172,4 +172,6 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-None.
+1. **Accept ADR-0025** (code provenance, EXEC v2 and PROC v2). Recommendation: accept after case 6 passes on the VM. Evidence: E-0111, E-0112, E-0114 to E-0116.
+2. **Defer the stdio socket → NET join** (ADR-0025, decisions raised). Recommendation: defer; `bpf_get_socket_cookie` is barred in a classic tracepoint and 7.0 has no `sk_cookie` field (SRC, the verifier's refusal in the container).
+3. **Defer stdio facts in PROC v2.** Recommendation: defer; a process that execs during capture has them in its EXEC, and a pre-existing one's streams can be read later from its fd table if a case needs it (INF).
