@@ -32,7 +32,7 @@ The process graph knows *that* a program started, and from which file identity. 
 ### Rules
 
 1. **When.** EXEC v2 is filled at `sched_process_exec`. By then `begin_new_exec` has unshared the file table (v7.0 fs/exec.c L1126), set `mm->exe_file` (L1135), closed close-on-exec descriptors (L1186) and committed the new credentials (L1255); the tracepoint fires at L1718. So the fields describe exactly what the new program starts with, and no other thread shares the file table.
-2. **Executable facts** (from `current->mm->exe_file`, all CO-RE reads): `exe_nlink`, `exe_fs_magic` (low 32 bits of `s_magic`), `exe_mode`, `exe_uid`, `exe_gid`, `exe_ctime_ns`, `exe_mtime_ns`, and the executable's own name, `exe_name` (the dentry name, NUL-padded, cut at 31 bytes; `exe_name_len` is the full length, so a cut is visible). The v1 fields (`exe_ino`, `exe_dev`, `exe_gen`, `old_tid`) stay.
+2. **Executable facts** (from `current->mm->exe_file`, all CO-RE reads): `exe_nlink`, `exe_fs_magic` (low 32 bits of `s_magic`), `exe_mode`, `exe_uid`, `exe_gid`, `exe_ctime_ns` (bit 31 of `i_ctime_nsec` masked off: on kernels with multigrain timestamps it is the `I_CTIME_QUERIED` flag, not time, as `inode_get_ctime_nsec()` in include/linux/fs.h shows; the self-test found the unmasked read 2^31 ns off), `exe_mtime_ns`, and the executable's own name, `exe_name` (the dentry name, a variable field of at most 63 bytes after `filename` and `argv`; a longer name is cut, flagged `TRUNCATED`, counted, and its `exe_name_full` is unknown). The v1 fields (`exe_ino`, `exe_dev`, `exe_gen`, `old_tid`) stay.
 3. **Credentials** after the commit: `uid`, `euid`, `gid`, `egid`, `fsuid`, `fsgid`.
 4. **`self_exec_id`** (u64; increments once per successful exec, v7.0 fs/exec.c L1243): ADR-0020 rule 5's per-process exec counter.
 5. **Standard streams.** For each of fds 0, 1 and 2: `ino`, `dev` (superblock `s_dev`), `rdev`, `mode` (full `i_mode`, so the file type is in it). A closed descriptor is all zero. For a pipe, `ino` is the pipe inode, so a reader's fd 0 and its writer's fd 1 share it — the exact "producer piped into interpreter" join, by identity, not a time window. No socket cookie: `bpf_get_socket_cookie` is barred in a classic tracepoint, and 7.0 has no stable `sk_cookie` field to read, so the socket→NET join waits for a helper-capable hook (raised below). A socket stream is still visible as such from `mode`.
@@ -44,17 +44,17 @@ The process graph knows *that* a program started, and from which file identity. 
    - *container layer:* overlayfs (0x794c7630);
    - *writable by its runner:* the mode bits allow `fsuid`/`fsgid` (or others) to write, excluding the case of a root-owned file run as root;
    - *stream kinds:* terminal, character device, regular file, pipe (pipefs 0x50495045), socket (sockfs 0x534F434B), other, closed.
-8. **The EXEC build ways.** Decision 4 removes the `fixed` and `dynptr` ways after the VM repeats `bench-exec-cost`; EXEC v2 is written for the `output` way only once that evidence is in.
+8. **The EXEC build ways.** EXEC v2 is written for the `output` way only, and the `fixed` and `dynptr` ways and `bench/rb_cost` are removed with it. Decision 4 made that removal wait for the VM to repeat `bench-exec-cost`; the only exec-cost evidence so far is the dev container's (E-0076: output and dynptr not resolved apart, fixed 51-379 ns cheaper at 200 B and 1,000 B of argv but 1,344 B of ring per exec). So the VM repeat, run from `main` where `bench/rb_cost` still is, is a condition for merging this ADR's PR. If it shows `output` costing more than the removed ways by more than its A/A floor, that is a decision for the maintainer before merge, not after.
 
 ### Consequences
 
 - Good: every program start says where its code came from and what its streams are, for processes started during capture and before it; pipe identities link a producer's stdout to a consumer's stdin exactly; no new hook.
-- Bad: EXEC grows by about 160 bytes; the name is a basename, not a path (the path stays with the snapshot and, later, file-open records); a mode-bit writability test ignores ACLs and capabilities (stated in the class).
+- Bad: EXEC's fixed part grows by 136 bytes (64 to 200), plus the name (at most 63); the name is a basename, not a path (the path stays with the snapshot and, later, file-open records); a mode-bit writability test ignores ACLs and capabilities (stated in the class).
 
 ### Confirmation
 
-1. The loader self-test starts a program from an in-memory file, and one each with stdin a pipe, stdout a regular file and stderr a socket, and checks every field.
-2. `it_p15d.sh` checks the same facts in a real run, and that a running process's PROC v2 matches its EXEC v2 where both exist.
+1. The loader self-test checks every EXEC v2 fact of its test child's exec against `stat(2)`, `statfs(2)` and `fstat(2)` of the same objects, taken by the daemon just before the fork: the executable's ino, dev, nlink, mode, owner, filesystem magic, ctime, mtime and name, the six credentials, and fds 0-2 (inherited from the daemon). Not checked there: `exe_gen` (only a filesystem-specific ioctl gives it) and `self_exec_id` (a process cannot read its own). Built and passing in the dev container, with `bpf/test/mutate_spine_exec.py` catching 14 of 14 planted bugs; the VM run is pending.
+2. `it_p15d.sh` runs a program from an in-memory file and one each with stdin a pipe, stdout a regular file and stderr a socket, and checks those records' facts; and that a running process's PROC v2 matches its EXEC v2 where both exist.
 3. On the VM, ADR-0018's harness shows the exec cost difference v1 → v2 is not resolved or is below 1 % of an exec.
 
 ### Falsifier

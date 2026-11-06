@@ -27,5 +27,6 @@ int p15_rec_format(const void *data, char *buf, size_t n);
 /* Pointer to a variable-length field's bytes and its length (EXEC only for now). */
 const __u8 *p15_exec_filename(const struct p15_exec *r, __u16 *len);
 const __u8 *p15_exec_argv(const struct p15_exec *r, __u16 *len);
+const __u8 *p15_exec_exe_name(const struct p15_exec *r, __u16 *len);   /* EXEC v2: after filename and argv */
 
 #endif

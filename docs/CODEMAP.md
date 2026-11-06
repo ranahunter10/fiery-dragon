@@ -80,6 +80,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`p15_counters.h`](../bpf/include/p15_counters.h) | Per-cause counters shared by the BPF programs and the daemon (ADR-0006, accounting invariant). |  |
+| [`p15_kernel.h`](../bpf/include/p15_kernel.h) | Kernel facts the BPF programs need that vmlinux.h does not carry (macros are not in BTF). |  |
 | [`p15_snap.h`](../bpf/include/p15_snap.h) | The process snapshot's books (ADR-0007 rule 3, ADR-0023), shared by snap.bpf.c, which counts, and p15d, which zeroes them before each snapshot and copies them into SNAP_DONE aft... |  |
 
 ## bpf/progs
@@ -98,7 +99,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`core_smoke.c`](../bpf/test/core_smoke.c) | load core_smoke.bpf.o through its generated skeleton, built against the vendored libbpf (ADR-0002). |  |
 | [`empty.bpf.c`](../bpf/test/empty.bpf.c) | the CI skeleton's BPF smoke test. | `tp_btf/sched_process_exec`, `syscall` |
 | [`load_check.c`](../bpf/test/load_check.c) | open a BPF object with libbpf and load every program in it, so the kernel's verifier judges them. |  |
-| [`mutate_spine_exec.py`](../bpf/test/mutate_spine_exec.py) | Mutation sweep for the spine's EXEC program, the way it is built (OUTPUT, ADR-0017 layer 1), and the counter books (CONTRIBUTING §6). | `build_and_test` |
+| [`mutate_spine_exec.py`](../bpf/test/mutate_spine_exec.py) | Mutation sweep for the spine's EXEC program (ADR-0017 layer 1, ADR-0025), its code-provenance facts and the counter books (CONTRIBUTING §6). | `build_and_test` |
 | [`net_probe.bpf.c`](../bpf/test/net_probe.bpf.c) | the ADR-0004 candidate hooks for network intent, and what each one can see. | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
 | [`net_probe.c`](../bpf/test/net_probe.c) | attach the ADR-0004 candidate hooks, make known network calls from this process, and check every record against what the calls did. |  |
 | [`rb_size.bpf.c`](../bpf/test/rb_size.bpf.c) | how much ring space a variable-length record takes, three ways (flood-resilience ADR input). | `tp_btf/sched_process_exec → fixed`, `tp_btf/sched_process_exec → output`, `tp_btf/sched_process_exec → dynptr` |
@@ -125,12 +126,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`p15w_inspect.c`](../daemon/p15w_inspect.c) | check and summarise a P15W run directory or segment files (ADR-0007 "tools/wal-inspect"). |  |
 | [`queue.c`](../daemon/queue.c) | Bounded SPSC batch queue (ADR-0017 layer 2). | `p15q_init`, `p15q_free`, `p15q_acquire`, `p15q_publish`, `p15q_peek`, `p15q_release`, `p15q_wait`, `p15q_depth`, `p15q_kick` |
 | [`queue.h`](../daemon/queue.h) | Bounded single-producer/single-consumer queue of batches between the drain thread and the WAL writer thread (ADR-0017 layer 2). | `p15q_init`, `p15q_free`, `p15q_acquire`, `p15q_publish`, `p15q_peek`, `p15q_release`, `p15q_wait`, `p15q_depth`, `p15q_kick` |
-| [`records.c`](../daemon/records.c) | (no header comment) | `p15_rec_check`, `p15_exec_filename`, `p15_exec_argv`, `p15_type_name`, `p15_rec_format` |
-| [`records.h`](../daemon/records.h) | Checking and printing records (ADR-0008 rule 5: never read past len). | `p15_rec_check`, `p15_type_name`, `p15_rec_format`, `p15_exec_filename`, `p15_exec_argv` |
+| [`records.c`](../daemon/records.c) | (no header comment) | `p15_rec_check`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name`, `p15_type_name`, `p15_rec_format` |
+| [`records.h`](../daemon/records.h) | Checking and printing records (ADR-0008 rule 5: never read past len). | `p15_rec_check`, `p15_type_name`, `p15_rec_format`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name` |
 | [`run.c`](../daemon/run.c) | The run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code` |
 | [`run.h`](../daemon/run.h) | everything p15d's two threads share, the run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code`, `p15_boot_ns`, `p15_mono_ns` |
-| [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run_ex`, `p15_selftest_run` |
-| [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
+| [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run_ex`, `p15_selftest_run` |
+| [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
 | [`selftest_net.c`](../daemon/selftest_net.c) | The network-intent self-test (ADR-0004 rule 6). | `p15_selftest_net` |
 | [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). | `p15_selftest_net` |
 | [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |

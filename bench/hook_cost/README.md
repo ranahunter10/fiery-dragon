@@ -30,5 +30,5 @@ sudo make bench-hook-cost ROUNDS=20               # raw lines in build/hook_cost
 ```
 
 **Limits.**
-- The trivial body isolates the hook path. The shipped body's own cost is `bench-exec-cost`'s `bpf_stats` number, and the `spine` arm gives the whole shipped EXEC end to end.
+- The trivial body isolates the hook path. The shipped body's own cost was `bench-exec-cost`'s `bpf_stats` number (E-0076; that bench left with EXEC v2, ADR-0025 rule 8), and the `spine` arm gives the whole shipped EXEC end to end.
 - At exec level the hook's nanoseconds sit far below an exec's run-to-run noise. That arm is expected to be "not resolved", and the rename arm is the one that resolves the hook path.

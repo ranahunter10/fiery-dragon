@@ -20,9 +20,7 @@
 #include <bpf/bpf_tracing.h>
 #include "p15_records.h"
 #include "p15_counters.h"
-
-/* The DYNPTR way's kfuncs, bpf_probe_read_user_dynptr and bpf_dynptr_memset, are declared by
- * vmlinux.h: bpftool emits them from the target's BTF (vmlinux-7.0.0-38.h). */
+#include "p15_kernel.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -103,8 +101,9 @@ int BPF_PROG(spine_fork, struct task_struct *parent, struct task_struct *child)
 /*
  * EXEC records are variable-length. ADR-0017 layer 1: each takes only its own len in the ring.
  * They are filled in a per-CPU scratch record and copied to the ring with bpf_ringbuf_output()
- * of exactly len bytes (decision 4; the cost of this way vs. the two earlier ones was measured
- * in E-0076 and on the VM in E-0108, and the two were removed with EXEC v2).
+ * of exactly len bytes (decision 4). The two other ways (FIXED, DYNPTR) were measured in the dev
+ * container only (E-0076) and are removed with EXEC v2; the VM repeat of that bench, run from
+ * main where bench/rb_cost still is, is ADR-0025 rule 8's condition for merging.
  */
 #define EXEC_TAIL (P15_EXEC_MAX_SIZE - (int)sizeof(struct p15_exec))
 
@@ -158,7 +157,7 @@ static __always_inline void exec_provenance(struct p15_exec *r, struct task_stru
 	r->exe_mode = BPF_CORE_READ(ei, i_mode);
 	r->exe_uid = BPF_CORE_READ(ei, i_uid.val);
 	r->exe_gid = BPF_CORE_READ(ei, i_gid.val);
-	r->exe_ctime_ns = (__u64)BPF_CORE_READ(ei, i_ctime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_ctime_nsec);
+	r->exe_ctime_ns = (__u64)BPF_CORE_READ(ei, i_ctime_sec) * 1000000000ull + (BPF_CORE_READ(ei, i_ctime_nsec) & P15_CTIME_NSEC_MASK);
 	r->exe_mtime_ns = (__u64)BPF_CORE_READ(ei, i_mtime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_mtime_nsec);
 	r->self_exec_id = BPF_CORE_READ(p, self_exec_id);
 	r->uid = BPF_CORE_READ(c, uid.val);
@@ -237,7 +236,7 @@ static __always_inline __u32 exec_argv_span(struct p15_exec *r, struct task_stru
 }
 
 /* The record's len for `end` bytes of variable fields: padded to 8, at most P15_EXEC_MAX_SIZE.
- * The bound is for the verifier only: (64 + 255 + 1024 + 7) & ~7 == 1344, so it never cuts. */
+ * The bound is for the verifier only: (200 + 255 + 1023 + 63 + 7) & ~7 == 1544, so it never cuts. */
 static __always_inline __u32 exec_len(__u32 end)
 {
 	__u32 len = ((__u32)sizeof(struct p15_exec) + end + 7) & ~7u;
@@ -279,7 +278,7 @@ static __always_inline __u32 exec_name(struct p15_exec *r, __u8 *tail, __u32 at,
 
 /* Fill a whole EXEC record at r (per-CPU scratch), tail packed filename, argv, exe_name in the
  * schema's var order. Returns its len. The record is then copied to the ring by bpf_ringbuf_output
- * (ADR-0017 layer 1, decision 4: the one build way; E-0076, E-0108). */
+ * (ADR-0017 layer 1, decision 4: the one build way; E-0076). */
 static __always_inline __u32 exec_fill(struct p15_exec *r, struct task_struct *p, pid_t old_pid,
 				       const char *filename)
 {

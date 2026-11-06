@@ -188,6 +188,12 @@ const __u8 *p15_exec_argv(const struct p15_exec *r, __u16 *len)
 	return (const __u8 *)(r + 1) + r->filename_len;
 }
 
+const __u8 *p15_exec_exe_name(const struct p15_exec *r, __u16 *len)
+{
+	*len = r->exe_name_len;
+	return (const __u8 *)(r + 1) + r->filename_len + r->argv_len;
+}
+
 /* printable copy of a byte string: NUL -> ' ', other non-printables -> '.' */
 static void printable(char *dst, size_t n, const __u8 *src, size_t len)
 {

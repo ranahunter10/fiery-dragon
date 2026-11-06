@@ -6,7 +6,12 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <sys/fsuid.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/statfs.h>
+#include <sys/sysmacros.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -99,6 +104,85 @@ static int fork_of_grandchild(const void *r, const struct p15_selftest_expect *e
 	return ((const struct p15_fork *)r)->child_tgid == e->grandchild;
 }
 
+/* the kernel's internal dev_t (include/linux/kdev_t.h, MKDEV) from a userspace one */
+static __u32 kdev(dev_t d)
+{
+	return (__u32)(major(d) << 20 | minor(d));
+}
+
+int p15_selftest_exec_facts(const char *path, struct p15_selftest_exec_facts *f)
+{
+	char real[PATH_MAX];
+	const char *base;
+	struct statfs sf;
+	struct stat st;
+	uid_t ru, eu, su;
+	gid_t rg, eg, sg;
+
+	memset(f, 0, sizeof(*f));
+	if (stat(path, &st) < 0 || statfs(path, &sf) < 0 || !realpath(path, real))
+		return -errno;
+	if (getresuid(&ru, &eu, &su) < 0 || getresgid(&rg, &eg, &sg) < 0)
+		return -errno;
+	f->ino = st.st_ino;
+	f->dev = kdev(st.st_dev);
+	f->nlink = (__u32)st.st_nlink;
+	f->fs_magic = (__u32)sf.f_type;
+	f->mode = st.st_mode;
+	f->uid = st.st_uid;
+	f->gid = st.st_gid;
+	f->ctime_ns = (__u64)st.st_ctim.tv_sec * 1000000000ull + (__u64)st.st_ctim.tv_nsec;
+	f->mtime_ns = (__u64)st.st_mtim.tv_sec * 1000000000ull + (__u64)st.st_mtim.tv_nsec;
+	f->cred[0] = ru; f->cred[1] = eu; f->cred[2] = rg; f->cred[3] = eg;
+	f->cred[4] = (__u32)setfsuid((uid_t)-1);   /* an invalid id changes nothing and returns the current one */
+	f->cred[5] = (__u32)setfsgid((gid_t)-1);
+	base = strrchr(real, '/');
+	base = base ? base + 1 : real;
+	if (strlen(base) >= sizeof(f->name))
+		return -ENAMETOOLONG;   /* the record would carry it truncated; the test's exe must fit */
+	memcpy(f->name, base, strlen(base) + 1);
+	for (int fd = 0; fd < 3; fd++) {
+		if (fstat(fd, &st) < 0)
+			continue;   /* closed: the record's four fields are zero too */
+		f->std_ino[fd] = st.st_ino;
+		f->std_dev[fd] = kdev(st.st_dev);
+		f->std_rdev[fd] = kdev(st.st_rdev);
+		f->std_mode[fd] = st.st_mode;
+	}
+	return 0;
+}
+
+/* EXEC v2's provenance facts against what the daemon saw (ADR-0025). One check line per group,
+ * so a failure names the group. */
+static void check_exec_facts(struct ctx *c, const struct p15_exec *ex, const struct p15_selftest_exec_facts *f)
+{
+	const __u32 cred[6] = { ex->uid, ex->euid, ex->gid, ex->egid, ex->fsuid, ex->fsgid };
+	const __u64 ino[3] = { ex->stdin_ino, ex->stdout_ino, ex->stderr_ino };
+	const __u32 dev[3] = { ex->stdin_dev, ex->stdout_dev, ex->stderr_dev };
+	const __u32 rdev[3] = { ex->stdin_rdev, ex->stdout_rdev, ex->stderr_rdev };
+	const __u32 mode[3] = { ex->stdin_mode, ex->stdout_mode, ex->stderr_mode };
+	int streams = 1;
+	char what[160];
+	__u16 nl;
+	const __u8 *nm = p15_exec_exe_name(ex, &nl);
+
+	check(c, ex->exe_ino == f->ino && ex->exe_dev == f->dev, "  ... exe ino and dev as stat(2) gives them");
+	check(c, ex->exe_nlink == f->nlink && ex->exe_mode == f->mode && ex->exe_uid == f->uid && ex->exe_gid == f->gid,
+	      "  ... exe nlink, mode and owner as stat(2) gives them");
+	check(c, ex->exe_fs_magic == f->fs_magic, "  ... exe filesystem magic as statfs(2) gives it");
+	snprintf(what, sizeof(what), "  ... exe ctime and mtime as stat(2) gives them (record %llu %llu, stat %llu %llu)",
+		 (unsigned long long)ex->exe_ctime_ns, (unsigned long long)ex->exe_mtime_ns,
+		 (unsigned long long)f->ctime_ns, (unsigned long long)f->mtime_ns);
+	check(c, ex->exe_ctime_ns == f->ctime_ns && ex->exe_mtime_ns == f->mtime_ns, what);
+	check(c, nl == strlen(f->name) && memcmp(nm, f->name, nl) == 0 && ex->exe_name_full == nl,
+	      "  ... exe_name is the basename of the resolved path, not truncated");
+	check(c, memcmp(cred, f->cred, sizeof(cred)) == 0, "  ... uid, euid, gid, egid, fsuid, fsgid are the daemon's");
+	for (int i = 0; i < 3; i++)
+		streams &= ino[i] == f->std_ino[i] && dev[i] == f->std_dev[i] && rdev[i] == f->std_rdev[i] &&
+			   mode[i] == f->std_mode[i];
+	check(c, streams, "  ... fds 0, 1, 2 are the daemon's (ino, dev, rdev, mode as fstat(2) gives them)");
+}
+
 static int comm_is(const char comm[16], const char *want)
 {
 	return strncmp(comm, want, 16) == 0 && (strlen(want) >= 16 || comm[strlen(want)] == '\0');
@@ -175,6 +259,9 @@ int p15_selftest_eval(const struct p15_rec_list *l, const struct p15_selftest_ex
 		check(&c, al == sizeof(argv) && memcmp(a, argv, al) == 0 && ex->argv_full == sizeof(argv),
 		      "  ... argv \"true\\0" P15_ST_NAME "\\0\" from the kernel's copy, not truncated");
 		check(&c, ex->h.flags == 0 && ex->old_tid == e->child, "  ... no flags; old_tid is the child");
+		check(&c, ex->h.version == P15_EXEC_VERSION, "  ... the current EXEC version (v2, ADR-0025)");
+		if (ex->h.version == P15_EXEC_VERSION)   /* v2 fields are only read from a v2 record */
+			check_exec_facts(&c, ex, &e->exe);
 	}
 
 	xc = only(l, P15_T_EXIT, e->child, NULL, e, &n);
@@ -271,6 +358,12 @@ int p15_selftest_run_ex(int spine_rb_fd, FILE *log, __u64 *daemon_start_ns, __u6
 	}
 	fclose(f);
 	e.daemon_comm[strcspn(e.daemon_comm, "\n")] = '\0';
+	rc = p15_selftest_exec_facts(P15_ST_EXE, &e.exe);
+	if (rc) {
+		fprintf(log, "selftest: cannot stat %s: %s\n", P15_ST_EXE, strerror(-rc));
+		ring_buffer__free(rb);
+		return rc;
+	}
 
 	if (pipe2(p, O_CLOEXEC) < 0) {
 		rc = -errno;

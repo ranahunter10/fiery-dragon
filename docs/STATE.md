@@ -152,7 +152,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     1. **Exit codes:** sysexits(3) values where one fits (USAGE 64, CONFIG 78, IO 74, OSERR 71, INTERNAL 70, LOAD 69, SELFTEST 65); DEGRADED 3 and INVALID 4; 0 only for a valid run. *(E-0074)*
     2. **Allowed exit sites** are marked in place with `exit-ok: <reason>`, every marked site printed in CI. *(E-0074)*
     3. **Hardening flags** apply to every userspace binary, the BPF test loaders and the C tests included.
-    4. **EXEC takes its exact `len` by `output`** (per-CPU scratch, then `bpf_ringbuf_output`). The `fixed` and `dynptr` ways leave `spine.bpf.c` after the VM repeats `bench-exec-cost`. *(E-0076)*
+    4. **EXEC takes its exact `len` by `output`** (per-CPU scratch, then `bpf_ringbuf_output`). The `fixed` and `dynptr` ways leave `spine.bpf.c` with EXEC v2 (ADR-0025 rule 8), whose PR merges only after the VM repeats `bench-exec-cost` from `main`. *(E-0076)*
     5. **Stricter EXEC checks** in `p15_rec_check`: exact padded `len` unless `READ_FAILED`, zero bytes after the fields. *(E-0075)*
     6. **Daemon-written records in WAL ring 2**, recorded as ADR-0020 rule 6.
     7. **STATS shape:** cumulative counters, four per-interval maxima with `interval_ns`; daemon record types from 32.

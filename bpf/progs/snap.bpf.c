@@ -28,6 +28,7 @@
 #include <bpf/bpf_tracing.h>
 #include "p15_records.h"
 #include "p15_snap.h"
+#include "p15_kernel.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -206,7 +207,7 @@ int snap_task(struct bpf_iter__task *ctx)
 		r->exe_mode = BPF_CORE_READ(ei, i_mode);
 		r->exe_uid = BPF_CORE_READ(ei, i_uid.val);
 		r->exe_gid = BPF_CORE_READ(ei, i_gid.val);
-		r->exe_ctime_ns = (__u64)BPF_CORE_READ(ei, i_ctime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_ctime_nsec);
+		r->exe_ctime_ns = (__u64)BPF_CORE_READ(ei, i_ctime_sec) * 1000000000ull + (BPF_CORE_READ(ei, i_ctime_nsec) & P15_CTIME_NSEC_MASK);
 		r->exe_mtime_ns = (__u64)BPF_CORE_READ(ei, i_mtime_sec) * 1000000000ull + BPF_CORE_READ(ei, i_mtime_nsec);
 		/* schema order: exe_path, then argv. read_exe_path takes and drops the mmap lock before
 		 * read_argv, whose bpf_copy_from_user_task takes it again: never nested. */
