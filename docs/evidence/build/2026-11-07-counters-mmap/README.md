@@ -1,8 +1,10 @@
 # The counters read without map syscalls (ADR-0026, 2026-11-07)
 
-**Where:** the dev container (kernel 6.18, not the target). The VM run is pending.
+**Where:** the dev container (kernel 6.18, not the target), CI (7.0.0-1017-azure), and the VM `p15-dev-2604` (7.0.0-38-generic) at `d5cd6cd`.
 
-**File:** [`container.txt`](container.txt): main's p15d and this branch's under `strace -e trace=bpf`, the C tests (plain, ASan/UBSan, clang), the gates, the spine self-test, the whole end-to-end test with the new case 7, and the planted-bug sweeps (p15d, the spine's EXEC program, records.c, Python).
+**Files:**
+- [`vm-it-p15d.txt`](vm-it-p15d.txt) and [`vm-mutate-p15d.txt`](vm-mutate-p15d.txt): the VM's end-to-end test (network on, pid-1 check on) and p15d sweep, as `tee` wrote them, attached in chat. Not yet checked against a sha256 printed on the VM.
+- [`container.txt`](container.txt): main's p15d and this branch's under `strace -e trace=bpf`, the C tests (plain, ASan/UBSan, clang), the gates, the spine self-test, the whole end-to-end test with the new case 7, and the planted-bug sweeps (p15d, the spine's EXEC program, records.c, Python).
 
 ## Results
 
@@ -19,5 +21,9 @@
 ## CI (7.0.0-1017-azure, network capture on)
 - The first CI run of this PR failed case 7 with "got: 1": with network capture on, the loader loaded the net object, and libbpf wrote its rodata, after the spine was attached. The dev container runs with `--no-net`, so it could not see this. Fixed in `loader.c` (every object loaded before any attach); the next CI run passes case 7 with 0 map syscalls after attach and 2,864 info calls, and the whole end-to-end test (PR #57's checks).
 
-## Not yet
-- The VM run: `it_p15d.sh` (case 7 under strace) and `mutate_p15d.py`.
+## VM
+| Claim | Grade | Where |
+|---|---|---|
+| End-to-end, every case passes (0 failed checks), network on; case 7: 0 map syscalls after the first attach, 1,414 info calls | MEAS | `vm-it-p15d.txt` lines 138-144 |
+| p15d sweep 30/30 killed in one run | MEAS | `vm-mutate-p15d.txt` |
+| A first sweep run was cut off by a guest kernel oops at mutant 8, after killing 0-7; the rerun killed mutant 8 with no crash | MEAS | [`../../vm/2026-11-08-guest-oops/`](../../vm/2026-11-08-guest-oops/README.md) |

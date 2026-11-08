@@ -16,3 +16,6 @@
 - The fault is in the CPU's interrupt entry path with a garbage per-CPU value, on a process (`sleep`) that was not running any p15 code, on an untainted kernel. That is the signature of broken virtual-CPU state from the hypervisor, not of a BPF program or of p15d.
 - With mutant 8 planted, every p15d of the end-to-end test fails `p15_counters_verify` after load and before attach (that is how the mutant is killed), so very likely no p15 program was attached at the time. Not proven: the dmesg does not list attached programs.
 - One crash cannot separate "the host's virtualisation failed while our test happened to run" from "something the test does (ptrace via strace, fork/exec bursts) makes the host failure likelier". Open until a control run (the unmutated test in a loop for as long) or a recurrence tells them apart.
+
+## Since
+- 2026-11-08, about 20 minutes later: the whole sweep rerun on the same VM, mutant 8 included, finished 30/30 with no crash ([`../../build/2026-11-07-counters-mmap/vm-mutate-p15d.txt`](../../build/2026-11-07-counters-mmap/vm-mutate-p15d.txt)). One clean pass: the crash did not recur at the same point. Still OPEN.

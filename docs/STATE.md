@@ -117,7 +117,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ ADR-0022 (PR #52; CI and the VM join both clients exactly, E-0104): NET v2 with the client ISN, and the exact join in p15-trace (CI case 5 and the VM confirm it);
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
       - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
-      - 🔧 **ADR-0026** (proposed): the counters are an mmapable array, and p15d makes no map syscall once a program is attached; built and passing in the container (E-0119, E-0120). PR `fix/counters-mmap`. Next: CI, the VM run, acceptance;
+      - 🔧 **ADR-0026** (proposed): the counters are an mmapable array, and p15d makes no map syscall once a program is attached; built and passing in the container, CI and on the VM (E-0119 to E-0121, E-0123); a guest kernel oops cut off the first VM sweep, INF host-side, open (E-0122). PR #57. Next: the maintainer's acceptance and the merge;
       - then slice B (STATE decisions taken 15.5);
       - then the demo.
 
