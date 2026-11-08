@@ -41,7 +41,7 @@ struct p15_run {
 	_Atomic int drain_done;     /* the drain detached, emptied the rings and published its last batch */
 
 	/* drain side */
-	_Atomic uint64_t bpf[P15_CTR_MAX];       /* the last read of the BPF per-CPU counters, summed */
+	_Atomic uint64_t bpf[P15_CTR_MAX];       /* the last read of the BPF counters, summed over their rows (ADR-0026) */
 	uint64_t bpf_base[P15_CTR_MAX];          /* their values when the drain started, after the self-test:
 						  * every count STATS reports is relative to it */
 	uint64_t spine_selftest_consumed;        /* records the self-tests took from the rings before the drain */

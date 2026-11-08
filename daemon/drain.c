@@ -8,6 +8,7 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 
+#include "counters.h"
 #include "drain.h"
 #include "p15_records.h"
 #include "records.h"
@@ -95,7 +96,7 @@ static int on_bulk(void *ctx, void *data, size_t size)
 	return 0;
 }
 
-static int read_map(struct p15_drain *d, int fd, uint64_t sum[P15_CTR_MAX]);
+static int read_map(const struct p15_counters *c, uint64_t sum[P15_CTR_MAX]);
 
 /* The kernel's skip count of one program (bpf_prog_info.recursion_misses, ADR-0020 rule 3). */
 static int prog_misses(int fd, uint64_t *out)
@@ -136,25 +137,29 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 {
 	memset(d, 0, sizeof(*d));
 	d->run = run;
-	d->ctr_fd = ctr_fd;
-	d->ncpu = libbpf_num_possible_cpus();
+	if ((bulk_rb_fd >= 0) != (bulk_ctr_fd >= 0))
+		return -EINVAL;                      /* the bulk ring and its counters come together */
+	d->ncpu = libbpf_num_possible_cpus();   /* the loader sized the counter maps with the same call */
 	if (d->ncpu <= 0)
 		return d->ncpu ? d->ncpu : -EINVAL;
-	d->ctr_vals = calloc((size_t)P15_CTR_MAX * (size_t)d->ncpu, sizeof(uint64_t));
-	d->ctr_keys = calloc(P15_CTR_MAX, sizeof(uint32_t));
-	if (!d->ctr_vals || !d->ctr_keys)
-		return -ENOMEM;
+	{
+		int rc = p15_counters_map(&d->ctr, ctr_fd, d->ncpu);   /* ADR-0026: no map syscall from here on */
+
+		if (rc)
+			return rc;
+		if (bulk_ctr_fd >= 0 && (rc = p15_counters_map(&d->bulk_ctr, bulk_ctr_fd, d->ncpu)))
+			return rc;
+	}
 	d->rb = ring_buffer__new(spine_rb_fd, on_spine, d, NULL);
 	if (!d->rb)
 		return -errno;
 	d->spine = ring_buffer__ring(d->rb, 0);
-	d->bulk_ctr_fd = bulk_ctr_fd;
 	if (bulk_rb_fd >= 0) {
 		if (ring_buffer__add(d->rb, bulk_rb_fd, on_bulk, d))
 			return -errno;
 		d->bulk = ring_buffer__ring(d->rb, 1);
 		{
-			int rc = read_map(d, bulk_ctr_fd, d->prev_bulk);
+			int rc = read_map(&d->bulk_ctr, d->prev_bulk);
 
 			if (rc)
 				return rc;
@@ -191,35 +196,22 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 void p15_drain_free(struct p15_drain *d)
 {
 	ring_buffer__free(d->rb);
-	free(d->ctr_vals);
-	free(d->ctr_keys);
+	p15_counters_unmap(&d->ctr);
+	p15_counters_unmap(&d->bulk_ctr);
 	d->rb = NULL;
-	d->ctr_vals = NULL;
-	d->ctr_keys = NULL;
 }
 
-/* Read and sum a per-CPU counter map in one batch lookup. */
-static int read_map(struct p15_drain *d, int fd, uint64_t sum[P15_CTR_MAX])
+/* Sum a counter map's rows, read through its mapping (ADR-0026). Kept fallible for the callers'
+ * error paths, though a mapped read cannot fail. */
+static int read_map(const struct p15_counters *c, uint64_t sum[P15_CTR_MAX])
 {
-	__u32 count = P15_CTR_MAX, out_batch;
-	int rc;
-
-	rc = bpf_map_lookup_batch(fd, NULL, &out_batch, d->ctr_keys, d->ctr_vals, &count, NULL);
-	if (rc && errno != ENOENT)
-		return -errno;
-	if (count != P15_CTR_MAX)
-		return -EIO;
-	for (uint32_t k = 0; k < P15_CTR_MAX; k++) {
-		sum[k] = 0;
-		for (int c = 0; c < d->ncpu; c++)
-			sum[k] += d->ctr_vals[(size_t)k * (size_t)d->ncpu + (size_t)c];
-	}
+	p15_counters_sum(c, sum);
 	return 0;
 }
 
 static int read_counters(struct p15_drain *d, uint64_t sum[P15_CTR_MAX])
 {
-	return read_map(d, d->ctr_fd, sum);
+	return read_map(&d->ctr, sum);
 }
 
 static void emit_gap(struct p15_drain *d, uint64_t from, uint64_t to, const uint64_t *now_ctr, const uint64_t *now_missed)
@@ -321,7 +313,7 @@ static int after_poll(struct p15_drain *d)
 
 		while (f > bm && !atomic_compare_exchange_weak(&d->run->bulk_fill_max, &bm, f))
 			;
-		rc = read_map(d, d->bulk_ctr_fd, b);
+		rc = read_map(&d->bulk_ctr, b);
 		if (rc)
 			return rc;
 		for (int i = 0; i < P15_CTR_MAX; i++)

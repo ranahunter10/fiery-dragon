@@ -1,0 +1,32 @@
+python3 daemon/tests/mutate_p15d.py
+killed   0 counters.c for (int r = 0; r <= ncpu; r++)
+killed   1 counters.c *ncpu_rodata = (uint32_t)ncpu;
+killed   2 counters.c if (ncpu <= 0 || ncpu > P15_CTR_NCPU_MAX)
+killed   3 counters.c bpf_map__type(map) != BPF_MAP_TYPE_ARRAY ||
+killed   4 counters.c !(bpf_map__map_flags(map) & BPF_F_MMAPABLE) ||
+killed   5 counters.c bpf_map__value_size(map) != sizeof(uint64_t) ||
+killed   6 counters.c bpf_map__max_entries(map) != P15_CTR_ENTRIES((uint32_t)ncpu))
+killed   7 drain.c p15_counters_sum(c, sum);
+killed   8 loader.c if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counte
+killed   9 p15d.c code = p15_snapshot_init(&snap, &run, err, sizeof(err));
+killed   10 queue.c if (h - t >= q->n) {
+killed   11 queue.c atomic_store_explicit(&q->head, h, memory_order_release);
+killed   12 queue.c s->count = 0;
+killed   13 queue.c return t == h ? NULL : &q->slots[t % q->n];
+killed   14 queue.c while (d > m && !atomic_compare_exchange_weak_explicit
+killed   15 config.c snprintf(err, errlen, "unknown argument '%s'", f);
+killed   16 config.c if (v < OPTS[i].lo || v > OPTS[i].hi ||
+killed   17 config.c (OPTS[i].pow2 && (v & (v - 1)))
+killed   18 config.c if (!c->wal_root) {
+killed   19 drain.c if (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_m
+killed   20 drain.c now_missed[t] != prev_missed[t];
+killed   21 drain.c for (int t = 1; t < P15_SPINE_TYPES; t++)
+killed   22 drain.c atomic_fetch_add(&d->run->drained[h->type], 1);
+killed   23 writer.c drained -= r->spine_selftest_consumed;
+killed   24 writer.c uint64_t emitted = 0, drained = r->spine_selftest_consumed;
+killed   25 writer.c if (inv == P15_INV_BROKEN)
+killed   26 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_
+killed   27 writer.c if (emitted != drained + atomic_load(&r->spine_invalid)) {
+killed   28 writer.c buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);
+killed   29 run.c case P15_RUN_DEGRADED:
+mutation sweep: 30/30 killed

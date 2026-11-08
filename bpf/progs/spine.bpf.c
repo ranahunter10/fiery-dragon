@@ -30,12 +30,16 @@ struct {
 	__uint(max_entries, 4 << 20);
 } spine_rb SEC(".maps");
 
+/* The counters (ADR-0026, bpf/include/p15_counters.h): an mmapable array, one row per CPU plus a
+ * last row; the loader sets spine_counters_ncpu and the size together. */
 struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, P15_CTR_MAX);
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(map_flags, BPF_F_MMAPABLE);
+	__uint(max_entries, P15_CTR_ENTRIES(0));
 	__type(key, __u32);
 	__type(value, __u64);
 } spine_counters SEC(".maps");
+const volatile __u32 spine_counters_ncpu = 0;
 
 /* The ring's high-water mark (ADR-0020 rule 2): the loader sets a quarter of the ring's size.
  * Below it a record doesn't wake the reader, which polls every 10 ms; above it, it does. */
@@ -49,8 +53,13 @@ static __always_inline __u64 wake(void)
 
 static __always_inline void count(__u32 type, __u32 kind)
 {
-	__u32 k = P15_CTR_INDEX(type, kind);
-	__u64 *v = bpf_map_lookup_elem(&spine_counters, &k);
+	__u32 row = bpf_get_smp_processor_id(), k;
+	__u64 *v;
+
+	if (row > spine_counters_ncpu)
+		row = spine_counters_ncpu;     /* a CPU at or above ncpu: the last row */
+	k = P15_CTR_SLOT(row, P15_CTR_INDEX(type, kind));
+	v = bpf_map_lookup_elem(&spine_counters, &k);
 
 	/* Atomic, though the slot is per-CPU: on 7.0 a tp_btf or fentry/fexit program runs with
 	 * preemption on (rcu_read_lock_dont_migrate, kernel/bpf/trampoline.c), and the kernel's
@@ -58,6 +67,8 @@ static __always_inline void count(__u32 type, __u32 kind)
 	 * CPU. A plain `*v += 1` is a load, an add and a store: the preempted one would overwrite
 	 * the other's count, and the books would no longer close (E-0097). Today each spine slot has
 	 * one writer, but nothing enforces that; the atomic add makes it not matter. */
+	/* v is NULL only if the map is smaller than P15_CTR_ENTRIES(ncpu): p15_counters_configure sets
+	 * both before load and checks them after it, so that cannot happen to a running daemon */
 	if (v)
 		__sync_fetch_and_add(v, 1);
 }

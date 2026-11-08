@@ -54,8 +54,8 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot
-DAEMON_COMMON := daemon/records.c daemon/selftest.c
+         $(OUT)/test_snapshot $(OUT)/test_counters
+DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
             daemon/selftest_net.c daemon/snapshot.c daemon/snapshot_frame.c \
@@ -118,7 +118,7 @@ layout-check: $(OUT)/p15_layout_probe.bpf.o $(BPFTOOL)
 	python3 schema/gen/layout_check.py $(OUT)/layout_btf.json
 
 $(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_records.h \
-                bpf/include/p15_counters.h $(LIBBPF_A) | $(OUT)
+                bpf/include/*.h $(LIBBPF_A) | $(OUT)
 	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
 $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
@@ -135,9 +135,12 @@ $(OUT)/test_queue: daemon/tests/test_queue.c daemon/queue.c daemon/queue.h | $(O
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_queue.c daemon/queue.c -lpthread -o $@
 
 $(OUT)/test_run: daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c daemon/config.c \
-                 daemon/records.c $(WAL_SRC) daemon/*.h $(LIBBPF_A) | $(OUT)
+                 daemon/records.c daemon/counters.c $(WAL_SRC) daemon/*.h $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
-	  daemon/config.c daemon/records.c $(WAL_SRC) $(LDLIBS) -lpthread -o $@
+	  daemon/config.c daemon/records.c daemon/counters.c $(WAL_SRC) $(LDLIBS) -lpthread -o $@
+
+$(OUT)/test_counters: daemon/tests/test_counters.c daemon/counters.c daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A) | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_counters.c daemon/counters.c $(LDLIBS) -o $@
 
 $(OUT)/test_config: daemon/tests/test_config.c daemon/config.c daemon/config.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_config.c daemon/config.c -o $@
@@ -169,7 +172,7 @@ it-pyreader: $(OUT)/wal_fixture
 	P15_WAL_FIXTURE=$(OUT)/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
 
 test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records $(OUT)/test_queue \
-        $(OUT)/test_config $(OUT)/test_run $(OUT)/test_snapshot must-check-test
+        $(OUT)/test_config $(OUT)/test_run $(OUT)/test_snapshot $(OUT)/test_counters must-check-test
 	$(OUT)/test_selftest
 	$(OUT)/test_wal
 	$(OUT)/test_exitcodes
@@ -178,6 +181,7 @@ test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_r
 	$(OUT)/test_config
 	$(OUT)/test_run
 	$(OUT)/test_snapshot
+	$(OUT)/test_counters
 
 # The queue's producer and consumer threads under ThreadSanitizer (ADR-0017 layer 2, ADR-0019 G3.4).
 test-c-tsan: | $(OUT)
@@ -194,7 +198,7 @@ it-p15d: $(OUT)/p15d $(OUT)/p15w-inspect
 # out-of-bounds access or undefined behaviour fails the run. FORTIFY is off here: its checked
 # string functions would bypass ASan's interceptors.
 ASAN := -U_FORTIFY_SOURCE -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
-test-c-asan: $(LIBBPF_A) | $(OUT)
+test-c-asan: $(LIBBPF_A) $(OUT)/spine.skel.h | $(OUT)
 	mkdir -p $(OUT)/asan
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $(OUT)/asan/test_wal
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_selftest.c $(DAEMON_COMMON) $(LDLIBS) -o $(OUT)/asan/test_selftest
@@ -204,6 +208,7 @@ test-c-asan: $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_config.c daemon/config.c -o $(OUT)/asan/test_config
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c \
 	  -o $(OUT)/asan/test_snapshot
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_counters.c daemon/counters.c $(LDLIBS) -o $(OUT)/asan/test_counters
 	$(OUT)/asan/test_queue
 	$(OUT)/asan/test_config
 	$(OUT)/asan/test_wal
@@ -211,6 +216,7 @@ test-c-asan: $(LIBBPF_A) | $(OUT)
 	$(OUT)/asan/test_exitcodes
 	$(OUT)/asan/test_records
 	$(OUT)/asan/test_snapshot
+	$(OUT)/asan/test_counters
 
 # ADR-0019 G2.2: no exit(), _exit() or abort() in daemon/ outside the sites marked "exit-ok".
 exit-check:

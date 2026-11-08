@@ -1,0 +1,120 @@
+[  250.903908] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903910] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903910] [      C1] RSP: 0000:fffffe5141c3a1f0 EFLAGS: 00010046
+[  250.903911] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a2b8 RCX: ffffffffa0201268
+[  250.903912] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3a2b8
+[  250.903912] [      C1] RBP: fffffe5141c3a1f0 R08: 0000000000000000 R09: 0000000000000000
+[  250.903913] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903913] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903914] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903916] [      C1]  exc_general_protection+0x27/0x410
+[  250.903918] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903920] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903921] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903922] [      C1] RSP: 0000:fffffe5141c3a360 EFLAGS: 00010046
+[  250.903923] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a428 RCX: ffffffffa0201268
+[  250.903923] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3a428
+[  250.903924] [      C1] RBP: fffffe5141c3a360 R08: 0000000000000000 R09: 0000000000000000
+[  250.903924] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903925] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903925] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903927] [      C1]  exc_general_protection+0x27/0x410
+[  250.903929] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903929] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903931] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903932] [      C1] RSP: 0000:fffffe5141c3a4d0 EFLAGS: 00010046
+[  250.903932] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a598 RCX: ffffffffa0201268
+[  250.903933] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3a598
+[  250.903933] [      C1] RBP: fffffe5141c3a4d0 R08: 0000000000000000 R09: 0000000000000000
+[  250.903934] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903934] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903935] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903936] [      C1]  exc_general_protection+0x27/0x410
+[  250.903938] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903939] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903940] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903941] [      C1] RSP: 0000:fffffe5141c3a640 EFLAGS: 00010046
+[  250.903942] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a708 RCX: ffffffffa0201268
+[  250.903942] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3a708
+[  250.903943] [      C1] RBP: fffffe5141c3a640 R08: 0000000000000000 R09: 0000000000000000
+[  250.903943] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903943] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903944] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903946] [      C1]  exc_general_protection+0x27/0x410
+[  250.903947] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903948] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903950] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903950] [      C1] RSP: 0000:fffffe5141c3a7b0 EFLAGS: 00010046
+[  250.903951] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a878 RCX: ffffffffa0201268
+[  250.903952] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3a878
+[  250.903952] [      C1] RBP: fffffe5141c3a7b0 R08: 0000000000000000 R09: 0000000000000000
+[  250.903953] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903953] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903954] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903955] [      C1]  exc_general_protection+0x27/0x410
+[  250.903957] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903958] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903959] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903960] [      C1] RSP: 0000:fffffe5141c3a920 EFLAGS: 00010046
+[  250.903961] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a9e8 RCX: ffffffffa0201268
+[  250.903961] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3a9e8
+[  250.903961] [      C1] RBP: fffffe5141c3a920 R08: 0000000000000000 R09: 0000000000000000
+[  250.903962] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903962] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903963] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903964] [      C1]  exc_general_protection+0x27/0x410
+[  250.903966] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903967] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903969] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903969] [      C1] RSP: 0000:fffffe5141c3aa90 EFLAGS: 00010046
+[  250.903970] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3ab58 RCX: ffffffffa0201268
+[  250.903970] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3ab58
+[  250.903971] [      C1] RBP: fffffe5141c3aa90 R08: 0000000000000000 R09: 0000000000000000
+[  250.903971] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903972] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903973] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903974] [      C1]  exc_general_protection+0x27/0x410
+[  250.903976] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903976] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903978] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903979] [      C1] RSP: 0000:fffffe5141c3ac00 EFLAGS: 00010046
+[  250.903979] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3acc8 RCX: ffffffffa0201268
+[  250.903980] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3acc8
+[  250.903980] [      C1] RBP: fffffe5141c3ac00 R08: 0000000000000000 R09: 0000000000000000
+[  250.903981] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903981] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903982] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903983] [      C1]  exc_general_protection+0x27/0x410
+[  250.903985] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903986] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903988] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903988] [      C1] RSP: 0000:fffffe5141c3ad70 EFLAGS: 00010046
+[  250.903989] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3ae38 RCX: ffffffffa0201268
+[  250.903989] [      C1] RDX: 0000000000000000 RSI: 0000000000000000 RDI: fffffe5141c3ae38
+[  250.903990] [      C1] RBP: fffffe5141c3ad70 R08: 0000000000000000 R09: 0000000000000000
+[  250.903990] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903991] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903991] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903993] [      C1]  exc_general_protection+0x27/0x410
+[  250.903994] [      C1]  asm_exc_general_protection+0x27/0x30
+[  250.903995] [      C1] RIP: 0010:irqentry_enter+0x15/0x90
+[  250.903997] [      C1] Code: eb 87 0f 1f 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 55 48 89 e5 f6 87 88 00 00 00 03 75 23 65 48 8b 05 13 38 cf 01 <f6> 40 2c 02 75 61 66 90 31 c0 5d 31 ff e9 89 44 01 00 e8 04 cf e1
+[  250.903997] [      C1] RSP: 0000:fffffe5141c3aee0 EFLAGS: 00010046
+[  250.903998] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3af28 RCX: ffffffffa0201268
+[  250.903998] [      C1] RDX: 0000000000000000 RSI: 0000000000000014 RDI: fffffe5141c3af28
+[  250.903999] [      C1] RBP: fffffe5141c3aee0 R08: 0000000000000000 R09: 0000000000000000
+[  250.903999] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 000063188317cd79
+[  250.904000] [      C1] R13: 0000000000000014 R14: 0000000000000000 R15: 0000000000000000
+[  250.904001] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.904002] [      C1]  exc_page_fault+0x2e/0x1e0
+[  250.904004] [      C1]  asm_exc_page_fault+0x27/0x30
+[  250.904005] [      C1] RIP: 0010:asm_sysvec_apic_timer_interrupt+0x0/0x20
+[  250.904006] [      C1] Code: e8 95 7c 72 01 e9 40 08 00 00 0f 1f 00 fc 6a ff e8 c5 06 00 00 48 89 c4 48 8d 6c 24 01 48 89 e7 e8 95 7b 72 01 e9 20 08 00 00 <0f> 1f 00 fc 6a ff e8 a5 06 00 00 48 89 c4 48 8d 6c 24 01 48 89 e7
+[  250.904007] [      C1] RSP: 0000:fffffe5141c3afd8 EFLAGS: 00000002
+[  250.904008] [      C1] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
+[  250.904008] [      C1] RDX: 0000631883a44de0 RSI: 0000000000000000 RDI: 00007ffd19330220
+[  250.904009] [      C1] RBP: 00007ffd19330560 R08: 0000000000000000 R09: 0000000000000000
+[  250.904009] [      C1] R10: 00007ffd19330040 R11: 0000000000000202 R12: 000063188390f198
+[  250.904010] [      C1] R13: 0000000000000005 R14: 0000631883a44de0 R15: 00007ffd19330220
+[  250.904011] [      C1]  </ENTRY_TRAMPOLINE>
+[  250.904012] [      C1] Modules linked in: qrtr nfnetlink cfg80211 intel_rapl_msr intel_rapl_common intel_uncore_frequency_common intel_pmc_core pmt_telemetry binfmt_misc pmt_discovery pmt_class intel_pmc_ssram_telemetry intel_vsec nls_iso8859_1 rapl joydev vmwgfx i2c_piix4 drm_ttm_helper i2c_smbus ttm vboxguest input_leds mac_hid sch_fq_codel efi_pstore dm_multipath vsock_loopback vmw_vsock_virtio_transport_common vmw_vsock_vmci_transport vsock vmw_vmci video ahci ghash_clmulni_intel wmi psmouse libahci e1000 serio_raw msr dmi_sysfs autofs4 aesni_intel

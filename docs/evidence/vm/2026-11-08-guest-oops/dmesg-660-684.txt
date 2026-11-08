@@ -1,0 +1,25 @@
+[   54.215826] [     T41] audit: type=1400 audit(1794117311.013:194): apparmor="DENIED" operation="open" class="file" profile="who" name="/etc/passwd" pid=1291 comm="who" requested_mask="r" denied_mask="r" fsuid=0 ouid=0
+[   54.215980] [     T41] audit: type=1400 audit(1794117311.013:195): apparmor="DENIED" operation="open" class="file" profile="who" name="/etc/nsswitch.conf" pid=1291 comm="who" requested_mask="r" denied_mask="r" fsuid=0 ouid=0
+[   54.215984] [     T41] audit: type=1400 audit(1794117311.013:196): apparmor="DENIED" operation="open" class="file" profile="who" name="/etc/passwd" pid=1291 comm="who" requested_mask="r" denied_mask="r" fsuid=0 ouid=0
+[   92.123973] [   T1603] NOTICE: Automounting of tracing to debugfs is deprecated and will be removed in 2030
+[  250.903812] [      C1] BUG: ENTRY_TRAMPOLINE stack guard page was hit at fffffe5141c39ff8 (stack is fffffe5141c3a000..fffffe5141c3b000)
+[  250.903820] [      C1] Oops: stack guard page: 0000 [#1] SMP NOPTI
+[  250.903825] [      C1] CPU: 1 UID: 0 PID: 4211 Comm: sleep Kdump: loaded Not tainted 7.0.0-38-generic #38-Ubuntu PREEMPT(lazy)
+[  250.903827] [      C1] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  250.903852] [      C1] RIP: 0010:error_entry+0x17/0x170
+[  250.903883] [      C1] Code: ff 0f 01 f8 e9 ab fc ff ff 66 2e 0f 1f 84 00 00 00 00 00 56 48 8b 74 24 08 48 89 7c 24 08 52 51 50 41 50 41 51 41 52 41 53 53 <55> 41 54 41 55 41 56 41 57 56 31 f6 31 d2 31 c9 45 31 c0 45 31 c9
+[  250.903884] [      C1] RSP: 0000:fffffe5141c3a000 EFLAGS: 00010046
+[  250.903886] [      C1] RAX: cccccccccccccccc RBX: fffffe5141c3a148 RCX: ffffffffa0201268
+[  250.903887] [      C1] RDX: 0000000000000000 RSI: ffffffffa0200ad9 RDI: fffffe5141c3a148
+[  250.903888] [      C1] RBP: fffffe5141c3a080 R08: 0000000000000000 R09: 0000000000000000
+[  250.903888] [      C1] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
+[  250.903889] [      C1] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+[  250.903890] [      C1] FS:  000072dc94c2f080(0000) GS:ffff8bd4b467b000(0000) knlGS:ffff8bd4b467b000
+[  250.903891] [      C1] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  250.903891] [      C1] CR2: fffffe5141c39ff8 CR3: 00000001075fb004 CR4: 00000000000706f0
+[  250.903893] [      C1] Call Trace:
+[  250.903894] [      C1]  <ENTRY_TRAMPOLINE>
+[  250.903898] [      C1]  ? early_xen_iret_patch+0xc/0xc
+[  250.903900] [      C1]  ? irqentry_enter+0x15/0x90
+[  250.903905] [      C1]  exc_general_protection+0x27/0x410
+[  250.903907] [      C1]  asm_exc_general_protection+0x27/0x30

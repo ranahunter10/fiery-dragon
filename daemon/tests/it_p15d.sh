@@ -5,7 +5,7 @@
 #   daemon/tests/it_p15d.sh BUILD_DIR          (make it-p15d)
 # Cases: a timed run with a workload; a stop by SIGTERM; a forced spine overflow (ADR-0017
 # confirmation: INVALID and a GAP record); network intent; code provenance (ADR-0025, with
-# daemon/tests/it_provenance.py); a bad flag (exit 64). Exit 0 only if all pass.
+# daemon/tests/it_provenance.py); no map syscall after attach (ADR-0026, strace); a bad flag (exit 64). Exit 0 only if all pass.
 # Every run's process snapshots are checked too (ADR-0007 rule 3, ADR-0023 confirmations 2-3).
 set -u
 B=${1:-build}
@@ -181,6 +181,24 @@ d6=$(ls -d "$T"/c6/*/ | head -1)
 while IFS= read -r line; do
     case "$line" in ok\ *) ok "${line#ok }";; FAIL\ *) bad "${line#FAIL }";; *) bad "unexpected checker output: $line";; esac
 done < <(PYTHONPATH=python "$PY" daemon/tests/it_provenance.py check "$d6" "$T" 2>&1)
+
+echo "case 7: no map syscall once a program is attached (ADR-0026), traced with strace"
+if command -v strace >/dev/null; then
+    strace -f -v -e trace=bpf -o "$T/c7.strace" "$B/p15d" $NET --wal-dir "$T/c7" --duration 3 --stats-ms 200 2>"$T/c7.err"; rc=$?
+    c7=$("$PY" -c "
+import re, sys
+lines = open(sys.argv[1]).read().splitlines()
+first = next((i for i, l in enumerate(lines) if 'BPF_LINK_CREATE' in l and 'BPF_TRACE_ITER' not in l), None)
+if first is None:
+    print('no-attach'); sys.exit()
+mapc = re.compile(r'BPF_MAP_(LOOKUP|UPDATE|DELETE|GET_NEXT)')
+print(sum(bool(mapc.search(l)) for l in lines[first:]), sum('BPF_OBJ_GET_INFO_BY_FD' in l for l in lines[first:]))" "$T/c7.strace")
+    check "[ $rc -eq 0 ]" "exit 0 under strace"
+    check "[ \"\${c7%% *}\" = 0 ]" "after the first event attach: 0 map lookups, updates or deletes (got: ${c7%% *})"
+    check "[ \"\${c7##* }\" -gt 0 ] 2>/dev/null" "  ... while p15d did read the kernel's skip counters by info call (${c7##* } calls): the trace saw the run"
+else
+    bad "strace is not installed: case 7 cannot run (install strace)"
+fi
 
 echo "case 4: a bad flag"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
