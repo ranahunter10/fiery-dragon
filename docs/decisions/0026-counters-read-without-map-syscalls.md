@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-06
+accepted: 2026-11-08
 owner: Ashish Rana
 consulted: [kernel v7.0 include/linux/bpf.h, kernel/bpf/syscall.c, kernel/bpf/arraymap.c, kernel/trace/bpf_trace.c, kernel/bpf/trampoline.c; research note 2026-11-06-dataflow-slice-b (kernel-v7.0.md §1.3); ADR-0006 rule 6; ADR-0020; E-0089, E-0090, E-0097]
 supersedes: the sentence of ADR-0006 rule 6 "Counters live in a per-CPU array map" (where they live and how p15d reads them). The rest of rule 6, the accounting invariant and its stats records, is unchanged.
@@ -53,7 +54,7 @@ Option 2.
 2. `it_p15d.sh` case 7: p15d runs under `strace -e trace=bpf`; after the first non-iterator attach there are 0 map lookups, updates or deletes, while the info calls that read the skip counters are present (the trace saw the run). With the snapshot loaded after the attach (the old order), the case fails with "got: 1".
 3. The other end-to-end cases close their books through the mapped read, and case 3 still finds its forced loss.
 4. `daemon/tests/mutate_p15d.py` kills the new planted bugs: in the row sum, configure, verify, the drain's read, the loader, and the startup order.
-5. The same on the VM and in CI.
+5. The same on the VM and in CI. **Held (E-0123, E-0124):** CI on 7.0.0-1017-azure with network on, and the VM at `d5cd6cd`: end-to-end every case, case 7 with 0 map syscalls after attach; the sweep 30/30.
 
 ### Falsifier
 
