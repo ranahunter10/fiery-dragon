@@ -3,7 +3,7 @@
 **Where:** the dev container (kernel 6.18, not the target), CI (7.0.0-1017-azure), and the VM `p15-dev-2604` (7.0.0-38-generic) at `d5cd6cd`.
 
 **Files:**
-- [`vm-it-p15d.txt`](vm-it-p15d.txt) and [`vm-mutate-p15d.txt`](vm-mutate-p15d.txt): the VM's end-to-end test (network on, pid-1 check on) and p15d sweep, as `tee` wrote them, attached in chat. Not yet checked against a sha256 printed on the VM.
+- [`vm-it-p15d.txt`](vm-it-p15d.txt) and [`vm-mutate-p15d.txt`](vm-mutate-p15d.txt): the VM's end-to-end test (network on, pid-1 check on) and p15d sweep, as `tee` wrote them, attached in chat. Both match the sha256 the maintainer printed on the VM (`4ce3aa40…f9720`, `1e795cd4…5f5b`).
 - [`container.txt`](container.txt): main's p15d and this branch's under `strace -e trace=bpf`, the C tests (plain, ASan/UBSan, clang), the gates, the spine self-test, the whole end-to-end test with the new case 7, and the planted-bug sweeps (p15d, the spine's EXEC program, records.c, Python).
 
 ## Results
