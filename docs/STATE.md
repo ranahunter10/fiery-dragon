@@ -205,4 +205,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 ## Decisions waiting
 
 1. **Accept ADR-0015 and ADR-0005 and merge PR #59** (step 1, item 4 of the plan). Every decision they raised is taken (E-0139); both are still `proposed` until the maintainer accepts them.
-2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138), and confirm the two sha256 values printed on the VM (`63db39cc…ff37` raw, `d60bc87b…4ca2` summary).
+2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138; the VM's sha256 values match the committed files, 2026-11-10).
