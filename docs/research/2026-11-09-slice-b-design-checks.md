@@ -1,30 +1,38 @@
 # Slice B design checks (2026-11-09)
 
-The checks made in this session before ADR-0015 and ADR-0005 were written. It closes the gaps the [2026-11-06 research](2026-11-06-dataflow-slice-b/README.md) left open where a design rule depends on them. Nothing was run; the kernel source was read, the paper was read through a fetch tool.
+The checks made in this session before ADR-0015 and ADR-0005 were written. It closes the gaps the [2026-11-06 research](2026-11-06-dataflow-slice-b/README.md) left open where a design rule depends on them. Nothing was run; the kernel source was read, and the paper was read in the PDF.
 
 Grades as in `CONTRIBUTING.md` §5.
 
-## 1. Xu et al., CCS'16 (CPR), from the paper's full text
+## 1. Xu et al., CCS'16 (CPR), read in the PDF
 
-Source: the authors' PDF, `https://www.eecis.udel.edu/~hnw/paper/ccs16b.pdf` (DOI 10.1145/2976749.2978378). The session cannot download files from that host (the proxy refuses it), so the paper was read through the session's fetch tool, which answers questions from the PDF's full text. Each answer below names the section it came from. **Grade: PDF, read through a tool, not yet by a person.** The research register row R-039 stays `verified = no` until the maintainer reads §3.1.3 and Algorithms 2 and 3 himself; ADR-0005 says so.
+Source: the authors' PDF (DOI 10.1145/2976749.2978378; `https://www.eecis.udel.edu/~hnw/paper/ccs16b.pdf`). The maintainer supplied the file on 2026-11-09 (13 pages, sha256 `5e0459f233ead9e372d35d5684549813a891d50c54888f2c677b9f663bd8a9da`; not committed, it is the authors' copyright). The session read its text (extracted with pypdf) for §3.1-3.4, Algorithms 1-3, §4.2-4.4 and Tables 2-3. **Grade: PDF.**
 
-| # | Question | Answer from the paper | Where |
+An earlier pass the same day went through the session's fetch tool, because the proxy refuses that host. Reading the PDF itself confirmed X1-X8, corrected X9 and added X10-X12. Page numbers are the PDF's.
+
+| # | Question | What the paper says | Where |
 |---|---|---|---|
-| X1 | When are two events aggregable? | Same event type, same source and destination entities, and the same attributes. For file reads and writes the attributes include the file open descriptor (the only mention of descriptors in the paper; open/close sessions and several handles on one file are not discussed). | Def. 4, §3.1.3 |
-| X2 | What does the backward check test? | It fails if any *incoming* event of the source node u has a time window overlapping the interval between the **end** times of the stored event and the new one, [te(e1), te(e2)]. The prose agrees. | Alg. 2, §3.2.1 |
-| X3 | What does the forward check test? | It fails if any *outgoing* event of the destination node v has a time window overlapping the interval between the **start** times, [ts(e1), ts(e2)]. The §3.2 overview words it as "an end time between the start times", which is narrower than the algorithm; §3.2.2 and Alg. 3 use the overlap. | Alg. 3, §3.2.2 |
-| X4 | The merged event's window | [ts(e1), te(e2)]: the earlier event absorbs the later one. | §3.2.3 |
-| X5 | How attributes combine | Not specified: the merge copies the attributes and "tunes" them; byte counts are never discussed. | §3.2.3, Alg. 1 |
-| X6 | Which event types | Not listed. File read and write are the worked example; Def. 4 names file access and IP channel access; exec appears in Fig. 1. Process creation is not excluded explicitly. | §3.1.3, Fig. 1 |
-| X7 | Bounds and flushing | One stack of events per (source, destination, type); no size limit or flush policy; events that cannot be aggregated are output. | §3.2, §4.4 |
-| X8 | Causal dependency | e1=(u1,v1) and e2=(u2,v2) are dependent if v1 = u2 and ts(e1) < te(e2). | Def. 1, §3.1.1 |
-| X9 | Results | CPR removes 56 % of events on average over one month of 31 hosts (18 Linux, 13 Windows), with 0 false positives on random points of interest; a naive 10-second window gave 17 % false connectivity. The paper's capacity figures are not consistent (3.4x in the introduction, 2.27x and 2.18x in §4). | §4.2, Table 3 |
+| X1 | When are two events aggregable? | Same event type, same source and destination entities, and, for some types such as file reads and writes, the same attributes, the file open descriptor being the example. Def. 4 names the attribute set A (process executable, file path, event type, type-specific operation such as read, write or execute). Open/close sessions and several handles on one file are not discussed. | §3.1.3, Def. 4, p. 5 |
+| X2 | The backward check | It fails if the time window of any *incoming* event of the source u overlaps [te(e_p), te(e_l)], the end times of the stack top and the new event. Def. 2 states the same as te(e) > te(e1) and ts(e) < te(e2); §3.2.1 walks through the three cases. | Alg. 2, p. 5; Def. 2, p. 4; §3.2.1, p. 6 |
+| X3 | The forward check | It fails if the time window of any *outgoing* event of the destination v overlaps [ts(e_p), ts(e_l)], the start times. Def. 2 states it as te(e) > ts(e1) and ts(e) < ts(e2), and §3.2.2 the same. Only the one-paragraph overview in §3.2 says "an end time between the start times", which is narrower. | Alg. 3, p. 5; Def. 2, p. 5; §3.2, §3.2.2, p. 5-6 |
+| X4 | The merged event | The later event is absorbed: te(e_p) is set to te(e_l) and the later event is deleted, so the window becomes [ts(e1), te(e2)]; as a point of interest it backtracks from te(e2) and forward-tracks from ts(e1). | Alg. 1 MERGE, p. 5; §3.2.3, p. 6 |
+| X5 | How attributes combine | "Tune attributes of e_p" and nothing more; sizes and counts are never discussed. | Alg. 1, p. 5; §3.2.3 |
+| X6 | Which event types | Not listed as a rule. Def. 4's examples are file access and IP channel access; Fig. 1-2 show exec, read and write edges. Process creation is not excluded. | §3.1.3; Fig. 1-2, p. 3-4 |
+| X7 | Bounds and flushing | One stack per (source, destination, type); no bound and no flush policy. The prototype runs in user space at about 4,000 events per second with hash tables, under 2 GB for CPR, PCAR and the domain rules together. | Alg. 1, p. 5; §4.4, p. 11 |
+| X8 | Causal dependency | e1 = (u1, v1) and e2 = (u2, v2) are dependent if v1 = u2 and ts(e1) < te(e2). | Def. 1, p. 4 |
+| X9 | Results (corrected) | CPR's average reduction is 56 % over one month of 31 hosts (18 Linux, 13 Windows), raising capacity 2.27x (2.63x Linux, 1.61x Windows); the "up to 3.4x" of the introduction is CPR+PCAR's maximum, not a conflicting figure. Over 20,000 random backtracking points, CPR gave 0 false positives; a naive 10-second window gave 2,778 (13.9 %), and those false-positive cases had 17 % extra connectivity and 8.8 % extra entities. On ten attack and workload cases, CPR kept every connectivity (Table 2). | §4.2, Fig. 7, p. 8; Tables 2-3 and §4.3, p. 10; abstract, p. 1 |
+| X10 | Reverse-direction events (new) | Def. 2 leaves out the events between the same two entities in the other direction: the backward condition counts incoming events of u from any entity *except v*, the forward one outgoing events of v to any entity *except u*. Algorithms 2 and 3 do not make that exception: they test every incoming event of u and every outgoing event of v. | Def. 2, p. 4-5; Alg. 2-3, p. 5 |
+| X11 | Input order (new) | Algorithm 1 requires the event stream sorted by start time. | Alg. 1, p. 5 |
+| X12 | Domain rules (new) | §3.4.1 drops events on "special files" with no explicit information flow (the example is `/proc`; `/shm` is kept). §3.4.2 drops every event of a temporary file, defined as a file touched by only one process in its lifetime. Both run after CPR. | §3.4.1-3.4.2, p. 7-8 |
 
 What the design takes from it:
 - the aggregation key includes the open file, not only the (process, file) pair (X1);
 - one window covering both checks, [ts(e1), te(e2)], is at least as strict as the two checks together (X2, X3): it contains [te(e1), te(e2)] and [ts(e1), ts(e2)], so an event that overlaps either overlaps it (INF, a set inclusion, argued in ADR-0005);
+- the kernel follows Algorithms 2-3, not the narrower Def. 2: an event from the same pair in the other direction also blocks a fold (X10). That gives up some reduction (a process that reads and writes one file alternately) and never exactness;
+- Algorithm 1's sorted input (X11) holds per key because an aggregate has one owner thread (ADR-0005 rules 4 and 10): one thread's events on one open file start and end in order. The kernel sees events at their end, not sorted by start; the in-progress marks of ADR-0005 rule 5 are what make the check online;
 - the record carries first and last time, count and bytes, because the paper leaves attributes open (X5);
-- the bounds and the flush rules are ours to state (X7).
+- the bounds and the flush rules are ours to state (X7);
+- the domain rules (X12) are downstream at most, never in capture: §3.4.2 would delete the trace of a memfd payload written and run by one process (research note 2026-11-06 §1a). §3.4.1's "special files" point the same way as the shared-device false flows of Improv (Kimm et al., PRISM 2026): a matter for the reader and the graph, not for capture.
 
 ## 2. Kernel v7.0 (`028ef9c96e96`), read in a sparse clone
 

@@ -2,7 +2,7 @@
 status: proposed
 date: 2026-11-09
 owner: Ashish Rana
-consulted: [Xu et al. CCS'16 (read through the session's fetch tool, design-checks §1), research note 2026-11-06-dataflow-slice-b (provenance-and-pids.md §1, §4-5; tools.md §2, §4, §7; kernel-v7.0.md §1-2, §6-7), research note 2026-11-09-slice-b-design-checks.md, ADR-0006 rules 2 and 6, ADR-0007, ADR-0015, ADR-0017, ADR-0020, ADR-0026, maintainer's slice B plan (STATE decisions 15.5 and 17)]
+consulted: [Xu et al. CCS'16 (read in the PDF, design-checks §1), research note 2026-11-06-dataflow-slice-b (provenance-and-pids.md §1, §4-5; tools.md §2, §4, §7; kernel-v7.0.md §1-2, §6-7), research note 2026-11-09-slice-b-design-checks.md, ADR-0006 rules 2 and 6, ADR-0007, ADR-0015, ADR-0017, ADR-0020, ADR-0026, maintainer's slice B plan (STATE decisions 15.5 and 17)]
 supersedes: none (fills the reserved number 0005; the planned list's working title "who/what-kind only, no in-kernel dedup in v1" is replaced by the maintainer's slice B plan, which puts Xu's reduction in the kernel)
 ---
 
@@ -12,7 +12,7 @@ supersedes: none (fills the reserved number 0005; the planned list's working tit
 
 The read, write, send and receive hooks of slice B fire on every transfer: far more often than the spine's fork, exec and exit. One record per transfer would fill the bulk ring and the WAL under ordinary workloads (v3.7 lost records at about 9,400 per second, ADR-0006 evidence 5), and most of those records add nothing to a trace: a process reading a file in 4 KiB chunks produces hundreds of edges that say the same thing.
 
-The usual remedies break causality. A first-touch flag (Kunai) hides every read after the first, including the one that saw an attacker's write. A time window or a rate limit (Tetragon, Falco) drops events or merges across a dependency: Xu et al.'s naive 10-second window gave 17 % false connectivity, against none for their causality-preserving reduction (design-checks X9). The capture records facts; it may only reduce in ways that leave every backward and forward trace unchanged, and it must count each reduction.
+The usual remedies break causality. A first-touch flag (Kunai) hides every read after the first, including the one that saw an attacker's write. A time window or a rate limit (Tetragon, Falco) drops events or merges across a dependency: In Xu et al.'s evaluation a naive 10-second window gave false connectivity in 2,778 of 20,000 random backtrackings (13.9 %), against none for their causality-preserving reduction (design-checks X9). The capture records facts; it may only reduce in ways that leave every backward and forward trace unchanged, and it must count each reduction.
 
 **Question:** which data-flow events does the kernel filter out, which does it fold into aggregates, under what rule, when is an aggregate written, and how is all of it counted?
 
@@ -55,6 +55,8 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
    - **Output of P** (WRITE, SEND: P → O) folds only if, in the window, P had **no incoming flow** and O had **no outgoing flow** (nobody read, received, mapped or executed O).
    - **The window** is [start of e1, end of e2]. It contains both of Xu's windows ([te(e1), te(e2)] and [ts(e1), ts(e2)]), so an event that blocks either check blocks this one: the rule never folds where Xu's would not.
    - What counts as an incoming or outgoing flow of a process or an object is the table of rule 6, for every record type, whichever program writes it.
+   - Every incoming flow of O and every outgoing flow of P counts, including a flow between P and O themselves in the other direction (a write of P into O blocks P's read aggregate on O). That is what Xu's Algorithms 2 and 3 test; the paper's Def. 2 leaves those reverse-direction events out (X10). Following the algorithms gives up the reduction of a process alternating reads and writes on one file, never exactness.
+   - Algorithm 1 takes its input sorted by start time (X11). Per key that holds here: an aggregate has one owner thread (rule 4), and one thread's events on one open file begin and end in order. The kernel sees events when they end, not sorted; the in-progress marks below are what let the check run online.
    - The order of events across CPUs comes from one atomic counter, not from timestamps, so a mark set on another CPU is never seen as earlier than it was.
    - **In-progress events block too:** a hook with entry and return runs marks its objects at the entry and again at the return, and an event still in progress blocks a fold (Xu tests window overlap, X2-X3). Hooks with one run only (the socket tracepoints, io_uring completion) are taken as instants at the moment they fire; an interleaving socket or io_uring event that began before the window but fires after it is therefore not seen as overlapping. That is the one place this rule is looser than Xu's, stated here, limited to those two hook kinds, and seen at the next fold of the same key.
    - A mark that is missing (its map is full, or the entry was recreated) counts as changed: the aggregate closes, counted `mark_lost`.
@@ -132,7 +134,7 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
 - Bad: pipelines and request-response sockets alternate direction and fold little; CPR cannot do better there (a pipe write followed by its read is a real dependency). The reduction is whatever the workloads allow, measured in step 6, not promised here.
 - Bad: several map lookups and atomic updates per transfer, and one sweep a second; their cost is measured in slice B's tests.
 - Bad: rule 12 gives up folding around mappings, and rule 5's instants for socket and io_uring events are slightly looser than Xu's overlap test.
-- Bad: ADR-0005 rests on a paper read through a tool; it cannot be accepted until a person has checked the checks (decision 1).
+- Bad: the reduction the paper measured (56 % on average, 2.63x capacity on its Linux hosts) came from enterprise hosts with long-lived file handles; the census's file workloads open a file, read or write it about once and close it (`docs/evidence/census/2026-10-24T224617Z-v2/`, file-churn and super-producer), where folding per open file gives little (INF from those counts).
 
 ### Confirmation
 
@@ -151,7 +153,7 @@ Reopen if:
 
 ## Decisions raised
 
-1. **Accept only after a person has read the checks.** The paper was read through the session's fetch tool (design-checks §1); the register row R-039 stays unverified. Recommendation: the maintainer reads Def. 4 (§3.1.3) and Algorithms 2 and 3 (§3.2) in the PDF and confirms X1-X3, then accepts.
+1. **The paper's checks as the rule.** The session read the PDF the maintainer supplied (design-checks §1, R-039 verified): X1-X8 hold, X9 is corrected, and X10-X11 add the two points rule 5 now states (reverse-direction events block; per-key order comes from the single owner). Recommendation: the maintainer confirms rule 5 against p. 4-6 of the PDF (Def. 2, Algorithms 1-3, §3.2.1-3.2.3), then accepts.
 2. **Sweep interval one second, closing aggregates** (rule 9). Alternative: a longer interval (more reduction, a longer crash window than ADR-0007's), or a sweep that writes progress without closing (no gain in exactness, more state). Recommendation: one second, closing.
 3. **Mappings** (rule 12), including the system-wide mark. Recommendation: accept; measure how often it fires in step 6.
 4. **Run state** (rule 8): data-flow loss makes the run DEGRADED; reduced folding does not. Recommendation: accept.
@@ -162,10 +164,10 @@ Reopen if:
 
 | # | Claim | Grade | Source |
 |---|---|---|---|
-| 1 | Aggregability: same type, source, destination, attributes, and open descriptor for file I/O | PDF (via tool) | Xu et al. Def. 4, §3.1.3; design-checks X1 |
-| 2 | Backward check over [te(e1), te(e2)] on the source's incoming events; forward check over [ts(e1), ts(e2)] on the destination's outgoing events; both by window overlap | PDF (via tool) | Alg. 2, Alg. 3, §3.2; design-checks X2, X3 |
-| 3 | Merged window [ts(e1), te(e2)]; attributes unspecified; no bounds | PDF (via tool) | §3.2.3, §4.4; design-checks X4, X5, X7 |
-| 4 | CPR 56 % reduction with no false positives; naive 10 s window 17 % false connectivity | PDF (via tool) | §4.2, Table 3; design-checks X9 |
+| 1 | Aggregability: same type, source, destination, attributes, and open descriptor for file I/O | PDF | Xu et al. §3.1.3, Def. 4, p. 5; design-checks X1 |
+| 2 | Backward check over [te(e1), te(e2)] on the source's incoming events; forward check over [ts(e1), ts(e2)] on the destination's outgoing events; both by window overlap; the algorithms do not exempt reverse-direction events, Def. 2 does; input sorted by start time | PDF | Alg. 1-3, p. 5; Def. 2, p. 4-5; §3.2.1-3.2.2, p. 6; design-checks X2, X3, X10, X11 |
+| 3 | Merged window [ts(e1), te(e2)]; attributes unspecified; no bounds (user-space prototype at about 4,000 events/s, under 2 GB) | PDF | Alg. 1, p. 5; §3.2.3, p. 6; §4.4, p. 11; design-checks X4, X5, X7 |
+| 4 | CPR: 56 % average reduction, 0 false positives over 20,000 random backtrackings; naive 10 s window: 2,778 false positives (13.9 %) | PDF | §4.2, p. 8; Table 3, p. 10; design-checks X9 |
 | 5 | Stronger reductions need global or offline state; LogGC and temporary-file rules remove memfd-like payload traces; the SoK measures detection loss growing with reduction | PDF (summaries) | provenance-and-pids.md §1, §5 |
 | 6 | PIDSMaker keeps the first edge of each same-type run per pair and window, and never reads sizes | SRC | provenance-and-pids.md §4 |
 | 7 | Kunai suppresses repeats with an uncounted re-arm; Tetragon's rate limit suppresses uncounted; Falco samples with in-band markers | SRC | tools.md §2, §4 |
@@ -192,7 +194,7 @@ Reopen if:
 
 ### 3. Rate limits, time windows
 - Good: bounded rate.
-- Bad: drops or merges across dependencies (17 % false connectivity for a 10 s window).
+- Bad: drops or merges across dependencies (a 10 s window gave false connectivity in 13.9 % of Xu et al.'s random backtrackings).
 
 ### 4. CPR per (process, open file, type), conservative window (chosen)
 - Good: exact traces; bounded per-object and per-process state; every fold counted.

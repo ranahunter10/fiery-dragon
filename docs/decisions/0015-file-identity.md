@@ -127,7 +127,7 @@ Reopen if:
 
 | # | Claim | Grade | Source |
 |---|---|---|---|
-| 1 | Aggregability needs the same open descriptor for file reads and writes | PDF (via tool) | Xu et al. CCS'16 Def. 4, §3.1.3; design-checks X1 |
+| 1 | Aggregability needs the same open descriptor for file reads and writes | PDF | Xu et al. CCS'16 §3.1.3, Def. 4, p. 5; design-checks X1 |
 | 2 | Generations: random on ext4, tmpfs, xfs v3; transid on btrfs; 0 elsewhere; ext4 reuses freed numbers | SRC | kernel-v7.0.md §3 |
 | 3 | Pseudo inode numbers come from a wrapping 32-bit counter | SRC | design-checks K8 |
 | 4 | btrfs reports `anon_dev` and the root id, not `s_dev` | SRC | design-checks K9 |
