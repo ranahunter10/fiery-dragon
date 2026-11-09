@@ -131,7 +131,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
     1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, E-0138);
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
-       1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); a load-only verifier probe on the VM first; kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
+       1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); a dry run on the VM first (`bpf/test/sliceb_probe`, PR stacked on #59, E-0144); kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
        2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
        3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
        4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
@@ -215,3 +215,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
 2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138; the VM's sha256 values match the committed files, 2026-11-10).
+3. **Run the step 2a dry run on the VM** (E-0144) and send its output with the sha256; then merge its PR (stacked on #59).
