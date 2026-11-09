@@ -26,6 +26,8 @@ Members = list[tuple[str, int]]       # (name, byte offset), in declaration orde
 
 def from_generator(s: gen.Schema) -> dict[str, tuple[int, Members]]:
     out = {"p15_hdr": (gen.HEADER_SIZE, [(f.name, f.offset) for f in s.header])}
+    for pt in s.parts:
+        out[pt.c_struct] = (pt.size, [(f.name, f.offset) for f in pt.fields])
     for r in s.records:
         out[r.c_struct] = (r.fixed_size, [("h", 0)] + [(f.name, f.offset) for f in r.fields])
     return out
@@ -48,6 +50,8 @@ def from_numpy(mod, s: gen.Schema) -> dict[str, tuple[int, Members]]:
     def members(dt) -> Members:
         return [(n, dt.fields[n][1]) for n in dt.names]
     out = {"p15_hdr": (mod.HEADER_DTYPE.itemsize, members(mod.HEADER_DTYPE))}
+    for pt in s.parts:
+        out[pt.c_struct] = (mod.PARTS[pt.name].itemsize, members(mod.PARTS[pt.name]))
     for r in s.records:
         lay = mod.RECORDS[(r.type, r.version)]
         out[r.c_struct] = (lay.dtype.itemsize, members(lay.dtype))

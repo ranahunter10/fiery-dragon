@@ -25,6 +25,34 @@ Common header of every record, 32 bytes (ADR-0008).
 - bit 1 `READ_FAILED`: a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted
 - bit 2 `ISN`: NET v2: tcp_isn holds the connection's client initial sequence number (ADR-0022 rule 2); unset when it isn't known (rule 3)
 
+**Record-field flags** (`fflags`, u32, in the records that have the field):
+
+- bit 0 `OBJ_NEW`: the record carries the object's facts (its `facts` part): the first record capture wrote for this object id, or a repeat (ADR-0015 rule 2; decision 19.7)
+- bit 1 `USER_OBJ_NEW`: BACKING: the record carries the overlay object's facts (its `user_facts` part)
+- bit 2 `PATH_MISSING`: OPEN written by the kprobe.session return because the path fentry did not run for this open (skipped for another task, ADR-0015 rule 6): no path, nothing guessed
+- bit 3 `PATH_ERROR`: bpf_d_path failed for a reason other than length: the path is empty and path_err holds the errno
+- bit 4 `FULL_SIZE`: OPEN: no path scratch slot was free, so the record was reserved at its maximum size; the bytes after the path are zero (ADR-0015 rule 6)
+- bit 5 `NEVER_OPENED`: CLOSE: the struct file was freed without FMODE_OPENED: its open failed after security_file_open, in ->open (ADR-0015 rule 5)
+- bit 6 `KTHREAD`: the record was written in a kernel thread (PF_KTHREAD): its header names that thread, not the file's user (ADR-0015 rule 8)
+
+## Part OBJFACTS (40 bytes)
+
+An object's facts (ADR-0015 rule 2): what the kernel says about one in-memory inode when capture first names it. The reader decides the graph node from them (rule 3, ADR-0027).
+
+A variable field that names this part is absent (length 0) or this struct, whole.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `ino` | u64 | i_ino |
+| 8 | `subvol` | u64 | btrfs: the subvolume's root id (what statx reports as stx_subvol); 0 elsewhere, and 0 with SUBVOL_UNKNOWN |
+| 16 | `dev` | u32 | i_sb->s_dev, kernel encoding (major << 20 | minor) |
+| 20 | `gen` | u32 | i_generation (random on ext4, xfs v3 and tmpfs; a transaction id on btrfs; 0 on pipes, sockets, overlay and others) |
+| 24 | `mode` | u32 | i_mode: file type and permission bits |
+| 28 | `fs_magic` | u32 | low 32 bits of i_sb->s_magic: ext4 0xEF53, tmpfs 0x01021994, btrfs 0x9123683E, overlayfs 0x794C7630, pipefs 0x50495045, sockfs 0x534F434B, anonymous inodes 0x09041934 (include/uapi/linux/magic.h) |
+| 32 | `nlink` | u32 | i_nlink when the facts were read; 0 = unlinked (a deleted file, a memfd, an O_TMPFILE) |
+| 36 | `seen` | u16 | how capture first saw the object: 1 open, 2 snapshot FD pass, 3 first I/O, 4 mmap, 5 network (2a writes 1 and 2) |
+| 38 | `oflags` | u16 | bit 0 SUBVOL_UNKNOWN: a btrfs object (fs_magic 0x9123683E) while btrfs's BTF was absent at load, so subvol was not read and the reader gives it a node per lifetime (ADR-0015 rule 2); other bits zero |
+
 ## FORK (type 1, version 1, class SPINE)
 
 A task created a new task (tp_btf/sched_process_fork). The header names the parent; the fields name the child.
@@ -564,3 +592,110 @@ Fixed part 168 bytes; at most 168 bytes with its variable fields.
 | 156 | `error` | i32 | 0, or the negative errno that ended reading the iterator early (then the snapshot is incomplete and the run INVALID) |
 | 160 | `kind` | u16 | as in PROC |
 | 162 | `_pad` | char[6] | zero; pads the fixed part to 8 *(generated)* |
+
+## OPEN (type 6, version 1, class OPEN)
+
+One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with the path, or, with PATH_MISSING, by the kprobe.session return when the fentry did not run. An FMODE_BACKING open writes BACKING instead. The header names the task that opened.
+
+Fixed part 80 bytes; at most 4216 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id (ADR-0015 rule 1): one struct file for its lifetime; shared by fork, dup and SCM_RIGHTS |
+| 40 | `obj` | u64 | the object id of the file's inode (ADR-0015 rule 1) |
+| 48 | `fflags` | u32 | P15_FF_* (OBJ_NEW, PATH_MISSING, PATH_ERROR, FULL_SIZE, KTHREAD) |
+| 52 | `f_flags` | u32 | file->f_flags: the open flags (O_ACCMODE, O_APPEND, O_CREAT, ...) as the kernel holds them |
+| 56 | `f_mode` | u32 | file->f_mode at security_file_open (FMODE_READ, FMODE_WRITE, ...; FMODE_OPENED is not set yet) |
+| 60 | `verdict` | i32 | with PATH_MISSING: security_file_open's return; otherwise 0, and a denial follows as OPEN_VERDICT |
+| 64 | `path_err` | i32 | with PATH_ERROR: bpf_d_path's negative errno; else 0 |
+| 68 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 72 | `path_full` | u32 | full length of path in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 76 | `facts_len` | u16 | bytes of facts present in this record *(generated)* |
+| 78 | `path_len` | u16 | bytes of path present in this record *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `facts` (0 or 40 bytes, part OBJFACTS): the object's facts, present exactly when fflags has OBJ_NEW
+- `path` (at most 4096 bytes): bpf_d_path(&file->f_path) without its NUL: the kernel's own path (mounts crossed, ' (deleted)' kept, the task's root). A path longer than PATH_MAX is the dentry name with header flag TRUNCATED; empty with PATH_MISSING or PATH_ERROR
+
+## OPEN_VERDICT (type 7, version 1, class OPEN)
+
+The LSM denied an open whose OPEN the fentry already wrote (ADR-0015 rule 6): written by the kprobe.session return.
+
+Fixed part 48 bytes; at most 48 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id of that OPEN |
+| 40 | `verdict` | i32 | security_file_open's negative return |
+| 44 | `fflags` | u32 | P15_FF_KTHREAD or 0 |
+
+## BACKING (type 8, version 1, class OPEN)
+
+An overlayfs backing file was opened (FMODE_BACKING at security_file_open, ADR-0015 rule 4): the real upper or lower file standing for an overlay file. Bytes are counted once, on the overlay file; this record joins the two objects.
+
+Fixed part 80 bytes; at most 160 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the backing file's own open-file id |
+| 40 | `obj` | u64 | the backing (real) file's object id |
+| 48 | `user_obj` | u64 | the overlay inode's object id (backing_file_user_path(file)->dentry->d_inode); 0 if it could not be read (READ_FAILED) |
+| 56 | `fflags` | u32 | P15_FF_* (OBJ_NEW, USER_OBJ_NEW, KTHREAD) |
+| 60 | `f_flags` | u32 | the backing file's f_flags |
+| 64 | `f_mode` | u32 | the backing file's f_mode (FMODE_BACKING set) |
+| 68 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 72 | `user_facts_full` | u32 | full length of user_facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 76 | `facts_len` | u16 | bytes of facts present in this record *(generated)* |
+| 78 | `user_facts_len` | u16 | bytes of user_facts present in this record *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `facts` (0 or 40 bytes, part OBJFACTS): the backing object's facts, present exactly with OBJ_NEW
+- `user_facts` (0 or 40 bytes, part OBJFACTS): the overlay object's facts, present exactly with USER_OBJ_NEW
+
+## CLOSE (type 9, version 1, class OPEN)
+
+A struct file capture had registered was freed (security_file_free, ADR-0015 rule 8): the end of its open-file id. Belongs to the open file, not to a process: the header names whichever task freed it (the closer, task work, or the delayed_fput worker, flagged KTHREAD).
+
+Fixed part 56 bytes; at most 56 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id that ends |
+| 40 | `obj` | u64 | its object id |
+| 48 | `fflags` | u32 | P15_FF_* (NEVER_OPENED, KTHREAD) |
+| 52 | `f_mode` | u32 | file->f_mode at the free |
+
+## FD (type 39, version 1, class MARKER)
+
+One open descriptor of a thread-group leader in a process snapshot (ADR-0015 rule 7): the files already open when capture began, standard streams included, and again in every segment's opening snapshot. The header names the descriptor's process (ADR-0009). It carries the object's facts always (decision 19.2), so a segment can be read alone.
+
+Fixed part 96 bytes; at most 4232 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id (the existing one if the file was already registered: the first registration wins) |
+| 40 | `obj` | u64 | the object id |
+| 48 | `pos` | u64 | file->f_pos when the iterator saw it |
+| 56 | `fd` | u32 | the descriptor number |
+| 60 | `fflags` | u32 | P15_FF_PATH_ERROR or 0 |
+| 64 | `f_flags` | u32 | file->f_flags |
+| 68 | `f_mode` | u32 | file->f_mode |
+| 72 | `path_err` | i32 | with PATH_ERROR: bpf_d_path's negative errno; else 0 |
+| 76 | `snap_id` | u32 | as in PROC |
+| 80 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 84 | `path_full` | u32 | full length of path in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 88 | `facts_len` | u16 | bytes of facts present in this record *(generated)* |
+| 90 | `path_len` | u16 | bytes of path present in this record *(generated)* |
+| 92 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `facts` (0 or 40 bytes, part OBJFACTS): the object's facts: always present (40 bytes)
+- `path` (at most 4096 bytes): bpf_d_path of the file, as in OPEN (anon_inode:[eventpoll], pipe:[N] and socket:[N] are the kernel's own names)

@@ -22,7 +22,7 @@ To write a new one:
 | [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte common header on the boot clock | accepted | 2026-10-25 |
 | [0009](0009-process-identity-tgid-leader-start-time.md) | Identify a process by (boot id, tgid, the thread-group leader's start_boottime) | accepted | 2026-10-25 |
 | [0012](0012-quantification-protocol.md) | Quantification protocol: host-independent metrics first; relative timing only, by paired rounds with an A/A control | accepted; timing rules superseded by 0018 | 2026-10-25 |
-| [0015](0015-file-identity.md) | File identity: capture ids for objects and open files with the kernel's facts, overlay BACKING, one OPEN record per open from a fentry, with a non-preemptible kprobe.session covering its skips, files open at start in the snapshot | accepted | 2026-11-10 |
+| [0015](0015-file-identity.md) | File identity: capture ids for objects and open files with the kernel's facts, overlay BACKING, one OPEN record per open from a fentry, with a non-preemptible kprobe.session covering its skips, files open at start in the snapshot | accepted; rule 3 superseded in part by 0027 | 2026-11-10 |
 | [0017](0017-spine-flood-resilience.md) | Spine flood resilience: exact-size records, a drain that never waits on disk, a raised drain priority, located loss, a measured headroom (supersedes ADR-0006 rules 1 and 4) | accepted | 2026-10-25 |
 | [0018](0018-measurement-protocol-v2.md) | Measurement protocol v2: dimensionless headlines, rates against a same-host ceiling, paired timing reported with its raw costs, one shared workload set (supersedes ADR-0012's timing rules) | accepted | 2026-10-25 |
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
@@ -33,6 +33,7 @@ To write a new one:
 | [0024](0024-snapshot-taking-and-closing-window.md) | How the process snapshot is taken (the path from the pinned mapping, books that close, the closing snapshot on the writer thread, END v2) and the closing snapshot's window (supersedes ADR-0023 rule 2 in part) | accepted | 2026-11-06 |
 | [0025](0025-code-provenance-exec-v2.md) | Code provenance on EXEC and PROC: the executable's own facts, credentials, `self_exec_id` and fds 0-2 (EXEC v2, PROC v2) | accepted | 2026-11-06 |
 | [0026](0026-counters-read-without-map-syscalls.md) | The BPF counters are an mmapable array, and p15d makes no map syscall once a program is attached (supersedes ADR-0006 rule 6 in part) | accepted | 2026-11-08 |
+| [0027](0027-anonymous-inodes-named-by-open-file.md) | On the anonymous-inode filesystem the graph node is the open file, not the object (supersedes ADR-0015 rule 3 in part) | accepted | 2026-11-10 |
 
 ## Planned (from capture blueprint v1, §8.3)
 

@@ -12,11 +12,18 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "f72ad91f524f63e1b1ac9b5521cd17bb1078c1dab15097b88c89820037b66f24"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "f21ebef378764bbf01a6ca381dec2a9b9b6ef9c2fe8a64d695e2b47d841d7f59"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
 F_ISN = 1 << 2
+FF_OBJ_NEW = 1 << 0
+FF_USER_OBJ_NEW = 1 << 1
+FF_PATH_MISSING = 1 << 2
+FF_PATH_ERROR = 1 << 3
+FF_FULL_SIZE = 1 << 4
+FF_NEVER_OPENED = 1 << 5
+FF_KTHREAD = 1 << 6
 
 HEADER_DTYPE = np.dtype({'names': ['type', 'version', 'len', 'flags', 'ts_ns', 'tgid', 'tid', 'start_ns'], 'formats': ['<u2', '<u2', '<u2', '<u2', '<u8', '<u4', '<u4', '<u8'], 'offsets': [0, 2, 4, 6, 8, 16, 20, 24], 'itemsize': 32})
 
@@ -30,7 +37,12 @@ class Layout(NamedTuple):
     fixed_size: int
     max_size: int
     var: tuple[tuple[str, int], ...]   # (name, max bytes), in tail order
+    parts: tuple[tuple[str, str], ...] = ()   # (var name, part name): 0 bytes or PARTS[part], whole
 
+
+PARTS = {
+    'OBJFACTS': np.dtype({'names': ['ino', 'subvol', 'dev', 'gen', 'mode', 'fs_magic', 'nlink', 'seen', 'oflags'], 'formats': ['<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', '<u2'], 'offsets': [0, 8, 16, 20, 24, 28, 32, 36, 38], 'itemsize': 40}),
+}
 
 TYPES = {
     'FORK': 1,
@@ -38,6 +50,10 @@ TYPES = {
     'EXIT': 3,
     'RENAME': 4,
     'NET': 5,
+    'OPEN': 6,
+    'OPEN_VERDICT': 7,
+    'BACKING': 8,
+    'CLOSE': 9,
     'CLOCK_SYNC': 32,
     'STATS': 33,
     'GAP': 34,
@@ -45,6 +61,7 @@ TYPES = {
     'NET_STATS': 36,
     'PROC': 37,
     'SNAP_DONE': 38,
+    'FD': 39,
 }
 
 RECORDS = {
@@ -105,4 +122,19 @@ RECORDS = {
     (38, 1): Layout('SNAP_DONE', 38, 1, 'MARKER',
         np.dtype({'names': ['h', 'duration_ns', 'tasks', 'threads', 'emitted', 'write_failed', 'entries', 'invalid', 'unwritten', 'kthreads', 'exiting', 'argv_failed', 'path_unlocked', 'path_not_found', 'path_failed', 'truncated', 'snap_id', 'error', 'kind', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<i4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 156, 160, 162], 'itemsize': 168}),
         168, 168, ()),
+    (6, 1): Layout('OPEN', 6, 1, 'OPEN',
+        np.dtype({'names': ['h', 'fid', 'obj', 'fflags', 'f_flags', 'f_mode', 'verdict', 'path_err', 'facts_full', 'path_full', 'facts_len', 'path_len'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<i4', '<i4', '<u4', '<u4', '<u2', '<u2'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 72, 76, 78], 'itemsize': 80}),
+        80, 4216, (('facts', 40), ('path', 4096)), (('facts', 'OBJFACTS'),)),
+    (7, 1): Layout('OPEN_VERDICT', 7, 1, 'OPEN',
+        np.dtype({'names': ['h', 'fid', 'verdict', 'fflags'], 'formats': [HEADER_DTYPE, '<u8', '<i4', '<u4'], 'offsets': [0, 32, 40, 44], 'itemsize': 48}),
+        48, 48, ()),
+    (8, 1): Layout('BACKING', 8, 1, 'OPEN',
+        np.dtype({'names': ['h', 'fid', 'obj', 'user_obj', 'fflags', 'f_flags', 'f_mode', 'facts_full', 'user_facts_full', 'facts_len', 'user_facts_len'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', '<u2'], 'offsets': [0, 32, 40, 48, 56, 60, 64, 68, 72, 76, 78], 'itemsize': 80}),
+        80, 160, (('facts', 40), ('user_facts', 40)), (('facts', 'OBJFACTS'), ('user_facts', 'OBJFACTS'))),
+    (9, 1): Layout('CLOSE', 9, 1, 'OPEN',
+        np.dtype({'names': ['h', 'fid', 'obj', 'fflags', 'f_mode'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 52], 'itemsize': 56}),
+        56, 56, ()),
+    (39, 1): Layout('FD', 39, 1, 'MARKER',
+        np.dtype({'names': ['h', 'fid', 'obj', 'pos', 'fd', 'fflags', 'f_flags', 'f_mode', 'path_err', 'snap_id', 'facts_full', 'path_full', 'facts_len', 'path_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<i4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 56, 60, 64, 68, 72, 76, 80, 84, 88, 90, 92], 'itemsize': 96}),
+        96, 4232, (('facts', 40), ('path', 4096)), (('facts', 'OBJFACTS'),)),
 }

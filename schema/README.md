@@ -21,6 +21,7 @@ make layout-check                        # CI: generator == BTF of the compiled 
 - **Adding or changing a field changes the layout.** Bump that record's `version`: add a new `[[record]]` block with the same name and type and the next version, and keep the old block, since old WAL segments still need it.
 - Then run `--update-lock`. The lock never rewrites an existing entry: changing a locked layout without a bump fails both `--check` and `--update-lock`.
 - **No implicit padding:** a misaligned field is an error, so reorder the fields. The generator pads only the end of the fixed part, and says so (`_pad`, marked *generated*).
+- **Parts and record-field flags:** a `[[part]]` is a fixed struct without a header that a variable field carries whole or not at all (`part = "OBJFACTS"`: an object's facts, only on the first record naming it, ADR-0015 rule 2); parts precede byte fields and are locked like records. `[[fflag]]` names the bits of a record's own u32 `fflags` field (`P15_FF_*`), so slice B's flags do not use up the header's 16 shared bits (STATE decision 19.3).
 
 ## Tests
 
