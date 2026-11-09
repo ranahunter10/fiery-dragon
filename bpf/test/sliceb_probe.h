@@ -22,6 +22,7 @@
 /* include/uapi/linux/magic.h */
 #define SBP_BTRFS_MAGIC 0x9123683Eu
 #define SBP_OVERLAY_MAGIC 0x794c7630u
+#define ANON_INODE_MAGIC 0x09041934u   /* ANON_INODE_FS_MAGIC */
 
 enum sbp_type { SBP_OPEN = 1, SBP_VERDICT = 2, SBP_BACKING = 3, SBP_CLOSE = 4, SBP_FD = 5 };
 

@@ -35,6 +35,11 @@
 
 #define DEPTH 22          /* directories of NAMELEN characters: a path longer than PATH_MAX */
 #define NAMELEN 200
+/* Read the iterator in pieces of this size, as p15d reads the process snapshot (bpf/include/p15_snap.h):
+ * the kernel's iterator buffer is 32 KiB, and a row it cannot take is refused (counted) and shown
+ * again after the next copy to the reader. 16 KiB + the largest row (sizeof(struct sbp_rec)) fits,
+ * so no row is refused. A first CI run read 64 KiB at a time and saw one refusal. */
+#define READ_CHUNK (16u << 10)
 
 static struct sliceb_probe_bpf *skel;
 static struct ring_buffer *rb;
@@ -320,7 +325,8 @@ static void case_fd_pass(void)
 	struct bpf_link *link;
 	char *buf = NULL;
 	size_t len = 0, cap = 0;
-	int ifd, rows = 0, row1 = 0, std_ok = 1;
+	int ifd, rows = 0, row1 = 0, std_ok = 1, anon = 0, anon_other = 0;
+	uint64_t anon_obj = 0;
 
 	printf("case fd_pass: iter/task_file over this process\n");
 	linfo.task.pid = (uint32_t)getpid();
@@ -338,15 +344,15 @@ static void case_fd_pass(void)
 	for (;;) {
 		ssize_t n;
 
-		if (cap - len < 65536) {
-			char *nb = realloc(buf, cap + 65536);
+		if (cap - len < READ_CHUNK) {
+			char *nb = realloc(buf, cap + 4 * READ_CHUNK);
 
 			if (!nb)
 				break;
 			buf = nb;
-			cap += 65536;
+			cap += 4 * READ_CHUNK;
 		}
-		n = read(ifd, buf + len, cap - len);
+		n = read(ifd, buf + len, READ_CHUNK);
 		if (n <= 0) {
 			check(n == 0, "read the iterator to its end (%s)", n < 0 ? strerror(errno) : "ok");
 			break;
@@ -374,6 +380,13 @@ static void case_fd_pass(void)
 			show(&r);
 			if (r.fd < 3)
 				seen[r.fd] = 1;
+			if (r.facts.fs_magic == ANON_INODE_MAGIC) {
+				anon++;
+				if (!anon_obj)
+					anon_obj = r.obj;
+				else if (r.obj != anon_obj)
+					anon_other++;
+			}
 			if ((int)r.fd == fd1) {
 				row1 = 1;
 				check(path_is(&r, f1), "fd %d row has f1's path", fd1);
@@ -388,6 +401,8 @@ static void case_fd_pass(void)
 				std_ok = 0;
 	}
 	free(buf);
+	printf("  info anonymous-inode descriptors %d: %d share object %llu, %d have another (the kernel's shared "
+	       "anon inode names no single file)\n", anon, anon - anon_other, (unsigned long long)anon_obj, anon_other);
 	check(row1, "a row for fd %d", fd1);
 	check(std_ok, "a row for every open standard stream");
 	check((uint64_t)rows == delta(h0, h1, H_FD_ROWS) && delta(h0, h1, H_FD_WRITE_FAILED) == 0,
@@ -433,8 +448,11 @@ static void case_overlay(void)
 			   !write_file(lx, "lower\n") && !stat(lx, &stl),
 		   "overlay directories and lower/x"))
 		return;
-	if (!check(!mount("overlay", merged, "overlay", 0, opts), "mount the overlay (%s)", strerror(errno)))
+	if (mount("overlay", merged, "overlay", 0, opts)) {
+		check(0, "mount the overlay (%s)", strerror(errno));
 		goto rm;
+	}
+	check(1, "mount the overlay");
 	mark = nrec;
 	fd = open(mx, O_RDONLY | O_CLOEXEC);
 	if (check(fd >= 0, "open merged/x") && read(fd, &c, 1) != 1)
