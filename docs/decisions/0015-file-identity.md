@@ -58,6 +58,7 @@ For the path at open:
 2. **The OBJ record** is written once per object id, at its first sighting, with the facts:
    - `dev` (`i_sb->s_dev`, kernel encoding), `ino`, `gen` (`i_generation`), `mode` (full `i_mode`), `fs_magic` (low 32 bits of `s_magic`), `nlink` at that moment;
    - `subvol`: on btrfs, the subvolume's root id (`BTRFS_I(inode)->root->root_key.objectid`, what `statx` reports as `stx_subvol`, K9), read by CO-RE against the btrfs module's BTF and guarded so the programs load where btrfs is absent; 0 elsewhere;
+   - btrfs is a module on the VM, and it may load after p15d (V6). Then the CO-RE guard has already compiled the read out, and two subvolumes could share one (dev, ino). So an object whose `fs_magic` is btrfs's (`0x9123683E`, a constant, no BTF needed) while the subvolume read is compiled out carries flag `SUBVOL_UNKNOWN`, and the reader gives it a node per lifetime (rule 3), never the tuple. The WAL header records whether the read was available at load;
    - how it was first seen (open, snapshot, first I/O, mmap, network).
 3. **The reader decides what a graph node is** (driver 2), from rule 2's facts. The kernel gives every in-memory inode its own id rather than only the pipes, sockets and reused numbers, because it cannot tell at the moment of sighting which numbers will be reused:
    - on filesystems where (dev, subvol, ino, gen) cannot name two files during one boot (ext4, xfs, tmpfs by their random generations; btrfs by its never-reused numbers within a mount, kernel-v7.0.md §3), the node is that tuple, so a file evicted from the inode cache and read back is still one node;
@@ -145,7 +146,9 @@ Reopen if:
 | 16 | The task-file iterator skips threads sharing the leader's table | SRC | design-checks K14 |
 | 17 | The accept fexit can read the new socket's inode | SRC | design-checks K16 |
 | 18 | The hooks named here exist in BTF and ftrace on 7.0.0-38: `security_file_open`, `vfs_read`, `vfs_write`, `vfs_readv`, `vfs_writev` | MEAS | `docs/evidence/phase0/02-p1-attach-points.txt` |
-| 19 | `security_file_free`, `security_inode_free`, kprobe.session on 7.0.0-38 | OPEN | design-checks O1, O2; VM commands in the PR |
+| 19 | `security_file_free` and `security_inode_free` in BTF and ftrace on 7.0.0-38; the kprobe.session config (`CONFIG_FPROBE=y`) | MEAS | design-checks V1, V4; [`vm-sliceb-attach.txt`](../evidence/research/2026-11-09-slice-b-design/vm-sliceb-attach.txt) |
+| 20 | kprobe.session attaching on 7.0.0-38, alone and beside a fentry on the same function | OPEN | step 2's load test |
+| 21 | btrfs and overlay are modules on the VM; their BTF exists only once loaded | MEAS | design-checks V6 |
 
 ## Pros and cons of the options
 

@@ -1,0 +1,60 @@
+== slice B attach check 2026-11-09T13:27:10Z kernel 7.0.0-38-generic
+FUNCTION                     BTF  FTRACE
+security_file_open           yes  yes   
+security_file_release        yes  yes   
+security_file_free           yes  yes   
+security_inode_free          yes  yes   
+security_mmap_file           yes  yes   
+security_file_mprotect       yes  yes   
+vfs_read                     yes  yes   
+vfs_write                    yes  yes   
+vfs_readv                    yes  yes   
+vfs_writev                   yes  yes   
+do_splice                    yes  yes   
+do_sendfile                  yes  yes   
+vfs_copy_file_range          yes  yes   
+vmsplice_to_pipe             yes  yes   
+vmsplice_to_user             NO   NO    
+do_tee                       yes  yes   
+security_inode_rename        yes  yes   
+security_inode_unlink        yes  yes   
+security_inode_link          yes  yes   
+security_path_truncate       yes  yes   
+vfs_rename                   yes  yes   
+vfs_unlink                   yes  yes   
+vfs_link                     yes  yes   
+do_truncate                  yes  yes   
+__fput                       yes  yes   
+do_file_open                 yes  yes   
+filename_unlinkat            yes  yes   
+filename_renameat2           yes  yes   
+== tracepoints
+yes  sock/sock_send_length
+yes  sock/sock_recv_length
+yes  io_uring/io_uring_complete
+yes  io_uring/io_uring_submit_req
+yes  io_uring/io_uring_cqe_overflow
+== config (/boot/config-7.0.0-38-generic)
+CONFIG_FPROBE=y
+CONFIG_FUNCTION_GRAPH_TRACER=y
+CONFIG_DYNAMIC_FTRACE_WITH_ARGS=y
+CONFIG_KPROBES=y
+CONFIG_PREEMPT_RCU=y
+CONFIG_PREEMPT_DYNAMIC=y
+CONFIG_SECURITY=y
+CONFIG_SECURITY_PATH=y
+CONFIG_BTRFS_FS=m
+CONFIG_OVERLAY_FS=m
+CONFIG_IO_URING=y
+CONFIG_IA32_EMULATION=y
+== module BTF present
+(neither btrfs nor overlay loaded)
+== struct backing_file in vmlinux BTF
+struct backing_file {
+	struct file file;
+	union {
+		struct path user_path;
+		freeptr_t bf_freeptr;
+	};
+	void *security;
+};

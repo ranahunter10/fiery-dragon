@@ -57,9 +57,23 @@ What the design takes from it:
 | K17 | `vmsplice` (L1578) moves user memory into a pipe through `vmsplice_to_pipe` (L1534) and `tee` (L1977) copies pipe to pipe; neither passes `rw_verify_area` or the VFS read/write functions. | SRC | fs/splice.c |
 | K18 | An overflowing CQE fires `io_uring_cqe_overflow` (io_uring.c L668), with no request or file. | SRC | io_uring/io_uring.c, include/trace/events/io_uring.h L565 |
 
-Still OPEN, to be checked on the VM before or with step 2 (commands in the PR):
-- O1: `security_file_release`, `security_file_free`, `security_inode_free`, `vmsplice_to_pipe`, `do_tee` (or the tee path) and the rename/unlink hooks in BTF and in `available_filter_functions` on 7.0.0-38 (P1 checked the others, `docs/evidence/phase0/02-p1-attach-points.txt`);
-- O2: kprobe.multi and kprobe.session attach on 7.0.0-38 (`CONFIG_FPROBE`), and a fentry and a kprobe.session on the same function at once;
-- O3: whether btrfs and overlay are modules on the VM (where their BTF lives);
-- O5: the dev container's 6.18 BTF ([`container-btf.txt`](../evidence/research/2026-11-09-slice-b-design/container-btf.txt)) has no `vmsplice_to_pipe` / `vmsplice_to_user` (probably inlined) nor the 7.0 `do_file_open` / `filename_*` names; VMSPLICE may need the syscall's own entry instead. The VM answers for 7.0.0-38;
-- O4: whether deleting the current element from inside a hash map iterator program is allowed and safe (the sweep of ADR-0005 rule 9 needs it).
+## 3. The VM: 7.0.0-38 (MEAS)
+
+[`vm-sliceb-attach.txt`](../evidence/research/2026-11-09-slice-b-design/vm-sliceb-attach.txt), run by the maintainer on 2026-11-09:
+
+| # | Fact | Settles |
+|---|---|---|
+| V1 | Every planned hook function is in BTF and attachable by ftrace: `security_file_open`, `security_file_release`, `security_file_free`, `security_inode_free`, `security_mmap_file`, `security_file_mprotect`, `vfs_read`, `vfs_write`, `vfs_readv`, `vfs_writev`, `do_splice`, `do_sendfile`, `vfs_copy_file_range`, `vmsplice_to_pipe`, `do_tee`, the inode and path rename/unlink/link/truncate hooks, `vfs_rename`, `vfs_unlink`, `vfs_link`, `do_truncate`, `__fput`, `do_file_open`, `filename_unlinkat`, `filename_renameat2`. | O1 |
+| V2 | `vmsplice_to_user` is in neither (inlined into the system call, v7.0 fs/splice.c L1501, L1610). The pipe-to-user direction of vmsplice needs another hook point: the system call function itself, with the direction taken from the file's mode as the kernel does (L1592-1610). Step 2d decides. | O5 |
+| V3 | The five tracepoints exist: `sock_send_length`, `sock_recv_length`, `io_uring_complete`, `io_uring_submit_req`, `io_uring_cqe_overflow`. | — |
+| V4 | `CONFIG_FPROBE=y`, `CONFIG_FUNCTION_GRAPH_TRACER=y`, `CONFIG_DYNAMIC_FTRACE_WITH_ARGS=y`: kprobe.multi and kprobe.session can be built on this kernel. That they attach, alone and beside a fentry on the same function, is still for step 2's load test. | O2 (config only) |
+| V5 | `CONFIG_SECURITY_PATH=y`, `CONFIG_PREEMPT_RCU=y`, `CONFIG_IA32_EMULATION=y` (32-bit system calls exist, so a system-call hook point has an `__ia32_` twin). | — |
+| V6 | `CONFIG_BTRFS_FS=m` and `CONFIG_OVERLAY_FS=m`, neither loaded at the time: their BTF is absent until the module loads. `struct backing_file` is in vmlinux, so the BACKING record does not need overlay's BTF; btrfs's subvolume id does need btrfs's (ADR-0015 rule 2). | O3 |
+| V7 | `struct backing_file` on the running kernel has `void *security` after the union, as the VM's `vmlinux.h` says (K6). | K6 |
+
+Open items as of the first pass (struck through where §3 settles them):
+- ~~O1~~ (V1): `security_file_release`, `security_file_free`, `security_inode_free`, `vmsplice_to_pipe`, `do_tee` (or the tee path) and the rename/unlink hooks in BTF and in `available_filter_functions` on 7.0.0-38 (P1 checked the others, `docs/evidence/phase0/02-p1-attach-points.txt`);
+- O2 (config settled by V4; attaching still for step 2): kprobe.multi and kprobe.session attach on 7.0.0-38 (`CONFIG_FPROBE`), and a fentry and a kprobe.session on the same function at once;
+- ~~O3~~ (V6): whether btrfs and overlay are modules on the VM (where their BTF lives);
+- ~~O5~~ (V2): the dev container's 6.18 BTF ([`container-btf.txt`](../evidence/research/2026-11-09-slice-b-design/container-btf.txt)) has no `vmsplice_to_pipe` / `vmsplice_to_user` (probably inlined) nor the 7.0 `do_file_open` / `filename_*` names; VMSPLICE may need the syscall's own entry instead. The VM answers for 7.0.0-38;
+- O4 (not needed by the sweep if it empties the slot instead of deleting the entry, ADR-0005 rule 9 under discussion): whether deleting the current element from inside a hash map iterator program is allowed and safe (the sweep of ADR-0005 rule 9 needs it).
