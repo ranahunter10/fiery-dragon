@@ -1,0 +1,31 @@
+# dev container, 6.18.44-fc-v310, 2026-11-09T10:05:43Z; not the target kernel
+# cmd: bpftool btf dump file /sys/kernel/btf/vmlinux format raw | FUNC names; format c | struct backing_file
+== FUNC in vmlinux BTF
+yes security_file_open
+yes security_file_release
+yes security_file_free
+yes security_inode_free
+yes security_mmap_file
+yes vfs_read
+yes vfs_write
+yes vfs_readv
+yes vfs_writev
+yes do_splice
+yes do_sendfile
+yes vfs_copy_file_range
+NO  vmsplice_to_pipe
+NO  vmsplice_to_user
+yes do_tee
+yes __fput
+NO  do_file_open
+NO  filename_unlinkat
+NO  filename_renameat2
+== struct backing_file
+struct backing_file {
+	struct file file;
+	union {
+		struct path user_path;
+		freeptr_t bf_freeptr;
+	};
+	void *security;
+};
