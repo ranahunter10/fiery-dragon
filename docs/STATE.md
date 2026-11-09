@@ -129,7 +129,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - ✅ **ADR-0023 accepted 2026-11-05** — 🔧 built with step 4c (E-0106): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired. p15-trace's Trust block shows the verdict.
 
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
-    1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, E-0138);
+    1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, merged 2026-11-10, E-0138);
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
        1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); a dry run on the VM first (`bpf/test/sliceb_probe`, PR stacked on #59, E-0144); kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
        2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
@@ -211,9 +211,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     6. Maps preallocated: objects 131,072, open files 65,536, configurable and in the WAL header; FILE_STATS reports live entries and high-water (E-0142).
     7. An object's facts are marked written only after the record carrying them is submitted; a race may write them twice, counted `facts_dup`, never zero times (E-0141).
 
+20. **The 2026-11-10 review** (maintainer: "recommendation and decision passed"; E-0147): merge #60, then #59, then #61, with merge commits; **ADR-0027:** on the anonymous-inode filesystem (magic `0x09041934`) the graph node is the open file (`fid`), not the object, superseding ADR-0015 rule 3 for that filesystem only; written in 2a's PR.
+
 ## Decisions waiting
 
 1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
-2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138; the VM's sha256 values match the committed files, 2026-11-10).
-3. **Merge PR #61** (the step 2a dry run, stacked on #59). On the VM it passed 83 of 83 checks and 77 of 77 with btrfs (E-0146, [output](evidence/probes/2026-11-10-sliceb-probe-vm/README.md)); the VM's sha256 lines for the two files are still to be compared with `SHA256SUMS`.
-4. **Anonymous inodes are one object** (E-0145, [CI output](evidence/probes/2026-11-10-sliceb-probe-ci/README.md)). Every file made by `anon_inode_getfile`/`anon_inode_getfd` (eventfd, signalfd, timerfd, eventpoll, bpf objects, ...) shares the kernel's one anonymous inode (`fs/anon_inodes.c` lines 195-199, SRC); on CI's kernel 21 such descriptors had one object id. ADR-0015 rule 3 makes the object id the node "everywhere else", so data through two unrelated eventfds would meet in one node: a false merge, which driver 1 forbids. Options: (a) a new ADR superseding rule 3 for the anonymous-inode filesystem (magic `0x09041934`): the node is the open file (`fid`), since a file with its own anonymous inode has one file anyway; the kernel side is unchanged (records already carry `fs_magic` and `fid`); (b) the same in the reader without an ADR (not allowed: rule 3 is accepted text). Recommended: (a), ADR-0027, in 2a's PR.
+2. **Merge PR #61** (the step 2a dry run, stacked on #59): 83 of 83 checks on the VM, 77 of 77 with btrfs (E-0146, [output](evidence/probes/2026-11-10-sliceb-probe-vm/README.md)); the VM's sha256 values match `SHA256SUMS` (2026-11-10).
