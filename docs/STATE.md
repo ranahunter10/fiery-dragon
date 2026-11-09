@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "snapshot: the process snapshot at every segment open, the closing snapshot and the reconciliation (step 4c, ADR-0023)"
+**Last updated:** 2026-11-10 (UTC), PR "adr: 0015 file identity and 0005 data-flow filtering and aggregation (slice B design)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -118,7 +118,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
       - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
       - 🔧 **ADR-0026** (proposed): the counters are an mmapable array, and p15d makes no map syscall once a program is attached; built and passing in the container, CI and on the VM (E-0119 to E-0121, E-0123); a guest kernel oops cut off the first VM sweep, INF host-side, open and watched (E-0122). Accepted 2026-11-08, #57;
-      - then slice B (STATE decisions taken 15.5);
+      - ✅ **slice B, step 1 (design):** ADR-0015 (file identity) and ADR-0005 (filtering and aggregation) accepted 2026-11-10, with the design checks they rest on ([note](research/2026-11-09-slice-b-design-checks.md), E-0126 to E-0140); 🔧 next, step 2a (item 22);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -127,6 +127,21 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - ✅ **The hook-cost harness** (PR #49, E-0099): `make bench-hook-cost`, the same trivial body on a classic tracepoint and on `tp_btf`, plus the shipped spine EXEC. Container (not the target): classic costs +13.9 ns per rename event against `tp_btf` (0.15 null syscalls); at exec level nothing resolves. **VM (E-0101): +49.4 ns per rename event (9.8–72.4 ns, p = 0.017); per exec, not resolved. `vm_verify.sh` passes all 18 steps on #47–#49.**
     - ✅ **ADR-0022 accepted 2026-11-05** — ✅ built in PR #52 (E-0103, VM E-0104): an exact client join by the TCP initial sequence number (NET v2), instead of the 5 s time window.
     - ✅ **ADR-0023 accepted 2026-11-05** — 🔧 built with step 4c (E-0106): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired. p15-trace's Trust block shows the verdict.
+
+22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
+    1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, merged 2026-11-10, E-0138);
+    2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
+       1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); a load-only verifier probe on the VM first; kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
+       2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
+       3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
+       4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
+       5. 2e io_uring completions (with the overflow and skip counts) and NET v3 with the socket's object id;
+       the kernel's internal I/O and per-access mapped I/O are declared out of scope;
+    3. slice C: memory made executable (ADR, records, tests);
+    4. slice D: writes into another process's memory;
+    5. slice E: new kernel code and carriers (module and BPF program loads, setxattr);
+    6. the overhead of the full capture on ordinary workloads, on the VM (ADR-0018);
+    7. the graph: a DuckDB star schema and builder (with the reader's trust table of ADR-0015 and the table of devices that carry no data flow, terminals split per session, N4), FD on a copy as REO + RNO with the cycle collapse and SD as options (N6; the WAL is never reduced), an offline one-page HTML view of a run, then the PIDSMaker export (where PIDSMaker runs is the maintainer's decision).
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -184,6 +199,18 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     2. **#58 merged:** the slice B research note.
     3. **The guest kernel oops of E-0122 stays open and is watched** (kdump stays on); no control run and no host change for now. *(E-0125)*
 
+17. **The 2026-11-09 session brief** (maintainer): slice B hooks the read/write paths with kprobe.multi + kretprobe.multi (preemption off, not skipped for another task through nesting; fexit can be, E-0089/E-0090); their skips (`recursion_misses`, the link's `kprobe_multi.missed`) and cost are measured in slice B's own tests, which replaces 15.5's separate VM probe; Xu's rule is read in the paper before ADR-0005 states it. Deferred: the stdio socket → NET join, stdio in PROC v2, and how PIDSMaker sees code-provenance edges. The branch `probe/rw-hooks` is unused. *(E-0126)*
+18. **Slice B design decisions (maintainer, 2026-11-09, "accept all recommendations").** kprobe.session for every entry/return pair; keep decision 17 although a session costs 118 ns per call more than fexit on the VM (E-0138), and measure skips under contention in 2b; NET v3 in 2e; the reader's trust table; `SUBVOL_UNKNOWN`; one record per open (N1); the closing sweep on the fdatasync tick with the slot emptied and the stop order stated; conservative folding near mappings; the run-state rule; no offsets in FLOW; failed and empty transfers counted; step 2 in five PRs (N2); the ceiling gate at 2b (N3); the device table in the graph step (N4); FD downstream on a copy (N6); the folding default set after 2b (N7). Recorded in ADR-0015 and ADR-0005's decision sections. *(E-0139)*
+
+19. **Step 2a implementation decisions (maintainer, 2026-11-10, "all recommendation accepted"; E-0143).**
+    1. Record numbers: OPEN 6, OPEN_VERDICT 7, BACKING 8, CLOSE 9, FILE 10; FD 39 (MARKER), FILE_STATS 40 (STATS).
+    2. Object facts: an optional fixed-size tail (a generator-checked schema `part`) on OPEN and BACKING, present only with `OBJ_NEW`; fixed fields on FD.
+    3. Slice B flags in a record field (`fflags`); opens are not filtered; a kernel thread's OPEN carries KTHREAD.
+    4. One bulk ring for NET and slice B, owned by `bpf/progs/file.bpf.c` and reused by NET; `--no-files`; a test-only switch leaving the path fentry unattached; the identity counters in a map of their own (ADR-0026 rows, named slots).
+    5. FILE moves to 2b; in 2a an unregistered free is counted `free_unregistered`.
+    6. Maps preallocated: objects 131,072, open files 65,536, configurable and in the WAL header; FILE_STATS reports live entries and high-water (E-0142).
+    7. An object's facts are marked written only after the record carrying them is submitted; a race may write them twice, counted `facts_dup`, never zero times (E-0141).
+
 ## Decisions waiting
 
-None.
+1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
