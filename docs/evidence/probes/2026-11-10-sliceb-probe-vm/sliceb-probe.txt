@@ -1,0 +1,194 @@
+sliceb_probe v1 kernel 7.0.0-38-generic overlay 1 btrfs -
+  ok   load (verifier accepted every program)
+  ok   ring buffer
+  ok   attach fentry, kprobe.session and the two kprobe.multi frees (Success)
+  ok   work directory under /var/tmp
+case open: create f1, close it, open it read-only and keep it open
+  ok   create f1
+  ok   open f1 read-only
+  ok   two OPEN records with f1's path
+  ok   both written by the fentry from a claimed slot, full path
+  ok   OPEN has its exact size (178 = 152 + 26)
+  ok   one object for both opens (obj 1)
+  ok   two open-file ids (2, 3)
+  ok   OBJ_NEW on the first record only
+  ok   f1: facts match stat (ino 3933235/3933235, dev 8:2/8:2, mode 0100640/0100640, nlink 1/1)
+  ok   fs_magic 0xef53 = statfs f_type 0xef53
+  ok   gen 3055197622 = FS_IOC_GETVERSION 3055197622
+  ok   f_flags access modes (0100301, 0100000)
+  ok   f_mode at security_file_open has no FMODE_OPENED yet (0x4008001)
+  ok   CLOSE for the first open, opened
+  ok   fentry, session entry and return each ran twice (2, 2, 2)
+  ok   the session return wrote nothing (common case twice)
+case claim_fail: no scratch slot, so the full-size record
+  ok   open f1
+  ok   OPEN written full size with its path (len 4248)
+  ok   claim_failed counted once
+  ok   its CLOSE
+case deep: a file 22 directories of 200 characters deep (path > PATH_MAX)
+  ok   build the directory chain
+  ok   create the deep file
+  ok   OPEN flagged TRUNCATED with the dentry name
+case fifo: open O_WRONLY|O_NONBLOCK with no reader fails in ->open (ENXIO)
+  ok   mkfifo
+  ok   the open fails with ENXIO
+  ok   OPEN written (security_file_open passed)
+  ok   CLOSE flagged NEVER_OPENED
+  ok   no OPEN_VERDICT (the LSM allowed it)
+case fd_pass: iter/task_file over this process
+  ok   attach the iterator
+  ok   create the iterator
+  ok   read the iterator to its end (ok)
+    rec FD      len=162  fflags=0x001 tgid=10605 fid=56 obj=55 obj2=0 fd=0 verdict=0 err=0 f_flags=02 f_mode=0x40e0003 dev=0:27 ino=4 gen=0 mode=020600 magic=0x1cd1 nlink=1 subvol=0 path=/dev/pts/1
+    rec FD      len=179  fflags=0x001 tgid=10605 fid=58 obj=57 obj2=0 fd=1 verdict=0 err=0 f_flags=0100001 f_mode=0xc5d801e dev=8:2 ino=3291338 gen=3867329839 mode=0100664 magic=0xef53 nlink=1 subvol=0 path=/home/ashu/sliceb-probe.txt
+    rec FD      len=179  fflags=0x000 tgid=10605 fid=58 obj=57 obj2=0 fd=2 verdict=0 err=0 f_flags=0100001 f_mode=0xc5d801e dev=8:2 ino=3291338 gen=3867329839 mode=0100664 magic=0xef53 nlink=1 subvol=0 path=/home/ashu/sliceb-probe.txt
+    rec FD      len=170  fflags=0x001 tgid=10605 fid=60 obj=59 obj2=0 fd=3 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=61 obj=59 obj2=0 fd=4 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=62 obj=59 obj2=0 fd=5 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=63 obj=59 obj2=0 fd=6 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=64 obj=59 obj2=0 fd=7 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=65 obj=59 obj2=0 fd=8 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=66 obj=59 obj2=0 fd=9 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=170  fflags=0x000 tgid=10605 fid=67 obj=59 obj2=0 fd=10 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-map
+    rec FD      len=174  fflags=0x000 tgid=10605 fid=68 obj=59 obj2=0 fd=11 verdict=0 err=0 f_flags=02 f_mode=0x2080007 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:[eventpoll]
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=69 obj=59 obj2=0 fd=12 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf_link
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=70 obj=59 obj2=0 fd=13 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf_link
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=71 obj=59 obj2=0 fd=14 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf_link
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=72 obj=59 obj2=0 fd=15 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf_link
+    rec FD      len=178  fflags=0x000 tgid=10605 fid=3 obj=1 obj2=0 fd=16 verdict=0 err=0 f_flags=0100000 f_mode=0xc4a801d dev=8:2 ino=3933235 gen=3055197622 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/f1
+  ok   fd 16 row has f1's path
+  ok   fd 16 row keeps the OPEN's ids (fid 3, obj 1)
+  ok   fd row: facts match stat (ino 3933235/3933235, dev 8:2/8:2, mode 0100640/0100640, nlink 1/1)
+    rec FD      len=175  fflags=0x000 tgid=10605 fid=6 obj=5 obj2=0 fd=17 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3932879 gen=1092959273 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP
+    rec FD      len=376  fflags=0x000 tgid=10605 fid=8 obj=7 obj2=0 fd=18 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933242 gen=2990013206 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=577  fflags=0x000 tgid=10605 fid=10 obj=9 obj2=0 fd=19 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933243 gen=2315222263 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=778  fflags=0x000 tgid=10605 fid=12 obj=11 obj2=0 fd=20 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933244 gen=3529285958 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=979  fflags=0x000 tgid=10605 fid=14 obj=13 obj2=0 fd=21 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933245 gen=1902275154 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=1180 fflags=0x000 tgid=10605 fid=16 obj=15 obj2=0 fd=22 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933246 gen=1362661434 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=1381 fflags=0x000 tgid=10605 fid=18 obj=17 obj2=0 fd=23 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933247 gen=2694878865 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=1582 fflags=0x000 tgid=10605 fid=20 obj=19 obj2=0 fd=24 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933248 gen=730693891 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=1783 fflags=0x000 tgid=10605 fid=22 obj=21 obj2=0 fd=25 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933249 gen=3672151674 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=1984 fflags=0x000 tgid=10605 fid=24 obj=23 obj2=0 fd=26 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933250 gen=3094276124 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=2185 fflags=0x000 tgid=10605 fid=26 obj=25 obj2=0 fd=27 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933251 gen=1247705771 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=2386 fflags=0x000 tgid=10605 fid=28 obj=27 obj2=0 fd=28 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933252 gen=386167361 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=2587 fflags=0x000 tgid=10605 fid=30 obj=29 obj2=0 fd=29 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933253 gen=2580918662 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=2788 fflags=0x000 tgid=10605 fid=32 obj=31 obj2=0 fd=30 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933254 gen=2884458582 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=2989 fflags=0x000 tgid=10605 fid=34 obj=33 obj2=0 fd=31 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933255 gen=1252827915 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=3190 fflags=0x000 tgid=10605 fid=36 obj=35 obj2=0 fd=32 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933256 gen=2808605367 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=3391 fflags=0x000 tgid=10605 fid=38 obj=37 obj2=0 fd=33 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933257 gen=2902923543 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=3592 fflags=0x000 tgid=10605 fid=40 obj=39 obj2=0 fd=34 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933258 gen=1567300901 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=3793 fflags=0x000 tgid=10605 fid=42 obj=41 obj2=0 fd=35 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933259 gen=3027231155 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=3994 fflags=0x000 tgid=10605 fid=44 obj=43 obj2=0 fd=36 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933260 gen=3062756579 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=4195 fflags=0x000 tgid=10605 fid=46 obj=45 obj2=0 fd=37 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933261 gen=3111836567 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=352  fflags=0x040 tgid=10605 fid=48 obj=47 obj2=0 fd=38 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933262 gen=3854640082 mode=040700 magic=0xef53 nlink=3 subvol=0 path=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=352  fflags=0x040 tgid=10605 fid=50 obj=49 obj2=0 fd=39 verdict=0 err=0 f_flags=0300000 f_mode=0x40a801d dev=8:2 ino=3933263 gen=3477055069 mode=040700 magic=0xef53 nlink=2 subvol=0 path=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=73 obj=59 obj2=0 fd=40 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf_link
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=74 obj=59 obj2=0 fd=41 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf_iter
+    rec FD      len=166  fflags=0x000 tgid=10605 fid=75 obj=59 obj2=0 fd=55 verdict=0 err=0 f_flags=00 f_mode=0x2080001 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:btf
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=76 obj=59 obj2=0 fd=56 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-prog
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=77 obj=59 obj2=0 fd=57 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-prog
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=78 obj=59 obj2=0 fd=58 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-prog
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=79 obj=59 obj2=0 fd=59 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-prog
+    rec FD      len=171  fflags=0x000 tgid=10605 fid=80 obj=59 obj2=0 fd=60 verdict=0 err=0 f_flags=02 f_mode=0x20e0003 dev=0:17 ino=2093 gen=0 mode=0600 magic=0x9041934 nlink=1 subvol=0 path=anon_inode:bpf-prog
+  info anonymous-inode descriptors 21: 21 share object 59, 0 have another (the kernel's shared anon inode names no single file)
+  ok   a row for fd 16
+  ok   a row for every open standard stream
+  ok   rows read 48 = rows written 48, none refused
+  ok   the already registered file counted as a duplicate (25)
+case inode_free: create, close and unlink f2
+  ok   create f2
+  ok   unlink f2
+  ok   security_inode_free deleted its object entry (1)
+case overlay: open a lower file through an overlay mount
+  ok   overlay directories and lower/x
+  ok   mount the overlay
+  ok   open merged/x
+  ok   OPEN of merged/x on overlayfs
+  ok   a BACKING record
+  ok   BACKING names the overlay file's object (89)
+  ok   its overlay facts are overlayfs's
+  ok   BACKING's real object vs lower/x: facts match stat (ino 3933269/3933269, dev 8:2/8:2, mode 0100640/0100640, nlink 1/1)
+  ok   the backing file has its own open-file id
+  ok   CLOSE for the overlay file and the backing file
+case path_missing: the fentry detached, the session return writes the OPEN
+  ok   open f1
+  ok   an OPEN record
+  ok   flagged PATH_MISSING, no path, fixed size
+  ok   the known object, without its facts again
+  ok   a new open-file id, verdict 0
+  ok   missing counted once, no fentry run
+  ok   its CLOSE
+records
+    rec OPEN    len=178  fflags=0x001 tgid=10605 fid=2 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=0100301 f_mode=0x4118002 dev=8:2 ino=3933235 gen=3055197622 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/f1
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=2 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0xc5d801e dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=178  fflags=0x000 tgid=10605 fid=3 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=0100000 f_mode=0x4008001 dev=8:2 ino=3933235 gen=3055197622 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/f1
+    rec OPEN    len=4248 fflags=0x080 tgid=10605 fid=4 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=0100000 f_mode=0x4008001 dev=8:2 ino=3933235 gen=3055197622 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/f1
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=4 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0xc4a801d dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=175  fflags=0x001 tgid=10605 fid=6 obj=5 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3932879 gen=1092959273 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP
+    rec OPEN    len=376  fflags=0x001 tgid=10605 fid=8 obj=7 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933242 gen=2990013206 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=577  fflags=0x001 tgid=10605 fid=10 obj=9 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933243 gen=2315222263 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=778  fflags=0x001 tgid=10605 fid=12 obj=11 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933244 gen=3529285958 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=979  fflags=0x001 tgid=10605 fid=14 obj=13 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933245 gen=1902275154 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=1180 fflags=0x001 tgid=10605 fid=16 obj=15 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933246 gen=1362661434 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=1381 fflags=0x001 tgid=10605 fid=18 obj=17 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933247 gen=2694878865 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=1582 fflags=0x001 tgid=10605 fid=20 obj=19 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933248 gen=730693891 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=1783 fflags=0x001 tgid=10605 fid=22 obj=21 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933249 gen=3672151674 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=1984 fflags=0x001 tgid=10605 fid=24 obj=23 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933250 gen=3094276124 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=2185 fflags=0x001 tgid=10605 fid=26 obj=25 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933251 gen=1247705771 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=2386 fflags=0x001 tgid=10605 fid=28 obj=27 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933252 gen=386167361 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=2587 fflags=0x001 tgid=10605 fid=30 obj=29 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933253 gen=2580918662 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=2788 fflags=0x001 tgid=10605 fid=32 obj=31 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933254 gen=2884458582 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=2989 fflags=0x001 tgid=10605 fid=34 obj=33 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933255 gen=1252827915 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=3190 fflags=0x001 tgid=10605 fid=36 obj=35 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933256 gen=2808605367 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=3391 fflags=0x001 tgid=10605 fid=38 obj=37 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933257 gen=2902923543 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=3592 fflags=0x001 tgid=10605 fid=40 obj=39 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933258 gen=1567300901 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=3793 fflags=0x001 tgid=10605 fid=42 obj=41 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933259 gen=3027231155 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=3994 fflags=0x001 tgid=10605 fid=44 obj=43 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933260 gen=3062756579 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=4195 fflags=0x001 tgid=10605 fid=46 obj=45 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933261 gen=3111836567 mode=040700 magic=0xef53 nlink=2 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=352  fflags=0x041 tgid=10605 fid=48 obj=47 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933262 gen=3854640082 mode=040700 magic=0xef53 nlink=2 subvol=0 path=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=352  fflags=0x041 tgid=10605 fid=50 obj=49 obj2=0 fd=0 verdict=0 err=0 f_flags=0300000 f_mode=0x4008001 dev=8:2 ino=3933263 gen=3477055069 mode=040700 magic=0xef53 nlink=2 subvol=0 path=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd...
+    rec OPEN    len=161  fflags=0x041 tgid=10605 fid=52 obj=51 obj2=0 fd=0 verdict=0 err=0 f_flags=0100101 f_mode=0x4118002 dev=8:2 ino=3933264 gen=3804925596 mode=0100600 magic=0xef53 nlink=1 subvol=0 path=deep-file
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=52 obj=51 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0xc5d801e dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=180  fflags=0x001 tgid=10605 fid=54 obj=53 obj2=0 fd=0 verdict=0 err=0 f_flags=0104001 f_mode=0x4000002 dev=8:2 ino=3933265 gen=50383901 mode=010600 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/fifo
+    rec CLOSE   len=152  fflags=0x008 tgid=10605 fid=54 obj=53 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x4200002 dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=74 obj=59 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=73 obj=59 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=178  fflags=0x001 tgid=10605 fid=82 obj=81 obj2=0 fd=0 verdict=0 err=0 f_flags=0100301 f_mode=0x4118002 dev=8:2 ino=3933265 gen=2710828913 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/f2
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=82 obj=81 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0xc5d801e dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=183  fflags=0x001 tgid=10605 fid=84 obj=83 obj2=0 fd=0 verdict=0 err=0 f_flags=0100301 f_mode=0x4118002 dev=8:2 ino=3933269 gen=3242008511 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/lower/x
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=84 obj=83 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0xc5d801e dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=180  fflags=0x001 tgid=10605 fid=86 obj=85 obj2=0 fd=0 verdict=0 err=0 f_flags=01100000 f_mode=0x4008001 dev=8:2 ino=3933267 gen=1374966471 mode=040700 magic=0xef53 nlink=3 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/work
+    rec OPEN    len=163  fflags=0x001 tgid=10605 fid=88 obj=87 obj2=0 fd=0 verdict=0 err=0 f_flags=0100001 f_mode=0x24018002 dev=8:2 ino=3933271 gen=1707283776 mode=0100000 magic=0xef53 nlink=0 subvol=0 path=/ (deleted)
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=88 obj=87 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x2c4d801e dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=86 obj=85 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x40a801d dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=184  fflags=0x001 tgid=10605 fid=90 obj=89 obj2=0 fd=0 verdict=0 err=0 f_flags=0100000 f_mode=0x4008001 dev=0:56 ino=3933269 gen=0 mode=0100640 magic=0x794c7630 nlink=1 subvol=0 path=/var/tmp/p15-sbp-BV4ucP/merged/x
+    rec BACKING len=152  fflags=0x000 tgid=10605 fid=91 obj=83 obj2=89 fd=0 verdict=0 err=0 f_flags=01100000 f_mode=0x25008001 dev=8:2 ino=3933269 gen=3242008511 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=90 obj=89 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x44a801d dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=91 obj=83 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x2d4a801d dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=69 obj=59 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0x20a0001 dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+    rec OPEN    len=152  fflags=0x002 tgid=10605 fid=92 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=0100000 f_mode=0x4008001 dev=8:2 ino=3933235 gen=3055197622 mode=0100640 magic=0xef53 nlink=1 subvol=0 path=
+    rec CLOSE   len=152  fflags=0x000 tgid=10605 fid=92 obj=1 obj2=0 fd=0 verdict=0 err=0 f_flags=00 f_mode=0xc4a801d dev=0:0 ino=0 gen=0 mode=00 magic=0x0 nlink=0 subvol=0 path=
+books
+  ok   nocookie = 0
+  ok   ret_no_entry = 0
+  ok   reserve_failed = 0
+  ok   output_failed = 0
+  ok   path_error = 0
+  ok   file_map_full = 0
+  ok   obj_map_full = 0
+  ok   file_stale = 0
+  ok   obj_stale = 0
+  ok   facts_dup = 0
+  ok   close_lost = 0
+  ok   fd_write_failed = 0
+  ok   session entries 35 = returns 35
+  ok   OPEN records 34 = emitted 33 + missing 1
+  ok   BACKING records 1 = emitted 1
+  ok   CLOSE records 14 = written 14
+  info session entry first 33, fentry first 0, file races 0, obj races 0, unregistered frees (system-wide) 2370, inode frees hit 6
+  ok   sbp_open_fentry: recursion_misses 0
+  ok   sbp_open_session: recursion_misses 0
+  ok   sbp_file_free: recursion_misses 0
+  ok   sbp_inode_free: recursion_misses 0
+  ok   sbp_fd_iter: recursion_misses 0
+sliceb_probe: 83 checks, 0 failed
