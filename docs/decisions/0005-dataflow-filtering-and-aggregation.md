@@ -46,7 +46,7 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
    - Nothing is filtered by kind or by path: regular files, directories, pipes, sockets, terminals, devices and anonymous files are all recorded. Kunai and Elastic drop non-regular files (tools.md §3); fileless chains run through pipes and sockets (research note 2026-11-06 §1a).
    - A transfer that moved no data is counted, not recorded: `failed` (a negative return) and `empty` (0 bytes), per type. It creates no causal edge.
 2. **Which events fold.** Only the transfers: READ and WRITE (`vfs_read`, `vfs_write`, `vfs_readv`, `vfs_writev`, and io_uring read and write completions), RECV and SEND (`sock:sock_recv_length`, `sock:sock_send_length`). A RECV with `MSG_PEEK` is a RECV with flag `PEEK`; flags are part of the key, so peeks and reads never fold together.
-3. **Never folded, each its own record:** OPEN (FILE), PATH, CLOSE, OBJ, FD, BACKING (ADR-0015); MMAP at map time, every protection; MPROTECT (slice C); EXEC, FORK, EXIT, RENAME of the spine; file RENAME, LINK, UNLINK and TRUNCATE; SPLICE, TEE, VMSPLICE, SENDFILE and COPY_FILE_RANGE; the NET records. Each of these is a distinct causal step, or carries arguments the aggregate cannot.
+3. **Never folded, each its own record:** OPEN, OPEN_VERDICT, FILE, FD, BACKING and CLOSE (ADR-0015; a CLOSE may carry the open file's last aggregate, rule 8); MMAP at map time, every protection; MPROTECT (slice C); EXEC, FORK, EXIT, RENAME of the spine; file RENAME, LINK, UNLINK and TRUNCATE; SPLICE, TEE, VMSPLICE, SENDFILE and COPY_FILE_RANGE; the NET records. Each of these is a distinct causal step, or carries arguments the aggregate cannot.
 4. **The key.** An aggregate belongs to one (process, open file, type, flags): the process by ADR-0009's key, the open file by its `fid` (ADR-0015 rule 1), as Xu's definition requires the same source, destination, type and open descriptor (X1).
    - An open file holds **at most one pending aggregate**. An event on that open file with another key (another process or thread, another type or flags) closes it first. Xu would let some of those stay open side by side; giving that up costs reduction, never exactness.
    - The aggregate is owned by the thread of its first event (rule 10).
@@ -71,7 +71,7 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
    | VMSPLICE, a pipe into user memory | yes | | | the pipe |
    | MMAP readable | yes | | | yes |
    | MMAP shared and writable | yes | yes | yes | yes |
-   | OPEN (FILE) | yes | with `O_CREAT` or `O_TRUNC` | with `O_CREAT` or `O_TRUNC` | yes |
+   | OPEN | yes | with `O_CREAT` or `O_TRUNC` | with `O_CREAT` or `O_TRUNC` | yes |
    | EXEC of O | yes | yes | | yes |
    | FORK (in the parent) | | yes | | |
    | EXIT, RENAME of comm | yes | yes | | |
@@ -91,19 +91,22 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
    The record says which reason closed it.
 8. **The FLOW record and the books.**
    - FLOW carries: type and flags, `fid`, `obj`, the thread of the first event, `count`, `bytes`, `first_ts` (start of the first event), `last_ts` (end of the last), and the closing reason. Its header time is when it was written, so records stay in ring order and the reader sorts by `first_ts`.
+   - **CLOSE carries the last aggregate (N1).** An aggregate still pending when its open file is freed is written inside that file's CLOSE record (ADR-0015 rule 8), not as a FLOW of its own, so an open, a read and a close cost two records. Its fields and closing reason (`close`) are the same.
    - An event that cannot be folded (no open-file entry because its map is full, a lost race) is written as a FLOW of count 1 with the identity facts inline (ADR-0015 rule 9), counted by reason. No event is dropped because of a bound.
    - **Books, per type**, at quiescence (after the final sweep):
      - events seen = excluded + failed + empty + folded + started + written alone;
-     - FLOW records emitted + FLOW records lost = started + written alone, where "lost" is a failed ring reservation, counted with the `count` it carried (`events_lost`);
-     - the sum of `count` over the FLOW records emitted + `events_lost` = started + folded + written alone.
+     - aggregates emitted (as FLOW, or inside CLOSE) + aggregates lost = started + written alone, where "lost" is a failed ring reservation, counted with the `count` it carried (`events_lost`);
+     - the sum of `count` over the aggregates emitted + `events_lost` = started + folded + written alone.
 
      The WAL side is ADR-0006 rule 6 as for every record. p15d writes these counters in a FLOW_STATS record like NET_STATS (ADR-0020 rule 3), from a counter map of its own built by ADR-0026's rules, and the reader checks the third equation against the records.
    - **Run state:** any loss of data-flow records (a bulk-ring reserve failure, a kernel skip of a slice B program, an io_uring CQ overflow or skipped completion) makes the run DEGRADED, as for NET. Effects that only reduce folding (`race`, `map_full`, `mark_lost`) do not change the run state; they are reported.
-9. **The sweep writes every aggregate within one second.**
-   - p15d runs a BPF iterator over the open-file map every second (ADR-0007's durability window), at every segment rotation, and once at stop. It closes and writes every pending aggregate (reasons `sweep`, `segment`, `end`). The next event on that open file starts a new one.
-   - So an aggregate reaches the ring within one second of its last event, and a crash loses no more than ADR-0007 already allows. p15d rotates a segment only after the drain has taken the rotation sweep's records, so a segment's FLOW records end before its rotation, and the next segment's FD pass (ADR-0015 rule 7) describes the files still open.
-   - A non-sleepable iterator takes no `bpf_prog_active` and walks the hash map under RCU only (K13), so the sweep cannot make the kernel skip a kprobe for another task, and it is not a map syscall in ADR-0026's sense. Deleting the current element from inside the iterator is OPEN (design-checks O4); the sweep needs it only if the closed slot must be removed rather than reset, which step 2 decides.
-   - Its cost grows with the number of open files; it is measured in slice B's tests, and the interval is a parameter recorded in the WAL header.
+9. **The sweep, on the durability tick (decided 2026-11-09, option B with four amendments).**
+   - **On the fdatasync tick.** Once a second, at ADR-0007's fdatasync, p15d runs a BPF iterator over the open-file map that closes and writes every pending aggregate (reason `sweep`), waits until the drain has taken the records the sweep produced, has the writer write them, then calls fdatasync. The next event on that open file starts a new aggregate.
+   - **What a crash can lose.** A folded event waits at most one sweep interval for its aggregate to be written, and is then synced at once: about one second plus the drain's latency, the same bound as an unfolded record under ADR-0007 (whose worst case is the time to the next fdatasync). Without the tie the worst case would be two intervals.
+   - **The slot is emptied, not deleted.** The aggregate lives in its open file's map entry (rule 10), which is deleted only at the file's free; the sweep resets the aggregate's fields and state in place. The iterator therefore never deletes the element it visits, and design check O4 is not needed.
+   - **At rotation and at stop.** p15d also sweeps before a segment rotation (reason `segment`) and rotates only after the drain has taken those records, so a segment's aggregates end before its rotation and the next segment's FD pass (ADR-0015 rule 7) describes the files still open. At an orderly stop the order is: the closing snapshot, with the hooks still attached (ADR-0024); then the slice B hooks detached; then a final sweep (reason `end`). The books then require zero pending aggregates.
+   - A non-sleepable iterator takes no `bpf_prog_active` and walks the hash map under RCU only (K13), so the sweep cannot make the kernel skip a kprobe for another task, and it is not a map syscall in ADR-0026's sense.
+   - Its cost grows with the number of open files, not with activity. It is measured in slice B's tests; the interval is a parameter recorded in the WAL header.
 10. **Concurrency without locks.** kprobe programs cannot take `bpf_spin_lock` on 7.0 (K12). An aggregate lives in its open file's map entry with an atomic state word:
     - only the owner thread folds into it, from a non-preemptible program, after moving the state from idle to busy with a compare-and-exchange;
     - any other actor (another thread, the sweep, the free) takes the whole aggregate by moving the state from idle to taken and writes it; another thread then starts its own aggregate in the slot, and the sweep leaves it empty;
@@ -127,6 +130,9 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
     - a process with a shared, writable file mapping has an outgoing flow until it execs or exits: its READ and RECV never fold;
     - an object with any readable mapping passes each new incoming flow on to every process that maps it, and the kernel side cannot name them; so an incoming flow into such an object closes every pending output aggregate system-wide, through one global mark, counted. It is rare (writing a file that someone else has mapped).
 
+13. **Folding is behind a load-time switch, its default set by measurement (N3, N7).** The switch is recorded in the WAL header; off, every transfer is a FLOW of count 1 (and the books' `folded` is 0). Step 2b measures the pipeline's zero-loss ceiling with folding off, on the VM; the default is decided with that number, before step 2c ships folding.
+14. **The large reduction is downstream (N6).** The graph step (step 7) runs Hossain et al.'s FD on a copy, as REO plus RNO, the combination their Theorem 8 covers through REO*; the two-entity cycle collapse and SD are optional extras, marked unproven or optional. The WAL itself is never reduced. Every kernel fold is also an FD REO drop (design-checks §4), so FD on folded records should equal FD on unfolded ones; confirmation 5 checks it.
+
 ### Consequences
 
 - Good: volume falls where it can without changing any trace; every event is accounted for; the consumers get first and last times, counts and bytes.
@@ -142,7 +148,9 @@ Built in step 2:
 1. **A reference implementation** of Xu's Algorithms 1-3, written from the paper (`python/p15/cpr.py`), with a property test on generated event streams: every backward and forward trace from every event is the same before and after reduction.
 2. **Exact expectations on fixed workloads** (an `it_p15d.sh` case, harmless calls only): N reads of `/dev/zero` give one READ of count N; the same with one write to `/dev/null` in the middle gives two READs split at it (`proc_flow`) and one WRITE; a pipe written and read alternately k times gives k WRITEs and k READs; two threads reading one descriptor close each other's aggregates (`other_key`); the books of rule 8 close in every case.
 3. **Kernel against reference:** a load-time switch turns folding off (recorded in the WAL header); for each single-threaded workload of (2), the folded capture equals `cpr.py` applied to the unfolded capture, as multisets of (type, process, open file, count, bytes).
-4. A mutation sweep: remove each check, each row of rule 6, the in-progress marks, the race path, the global mark of rule 12, and the sweep.
+4. A mutation sweep: remove each check, each row of rule 6, the in-progress marks, the race path, the global mark of rule 12, the sweep, the sweep's tie to fdatasync, and CLOSE's aggregate.
+5. **FD composes with folding:** on generated streams, FD (REO + RNO, written from Hossain et al. §4) applied to the folded stream gives the same backward and forward reachability as FD applied to the unfolded one (INF until this test passes).
+6. **Skips under contention (STATE decision 17):** in step 2b's tests, the read/write hooks run with several tasks and an RT reader contending for one CPU, as in E-0090; every slice B program's `recursion_misses` and every kprobe.multi link's `missed` are reported, and any nonzero count is located to the run.
 
 ### Falsifier
 
@@ -151,14 +159,18 @@ Reopen if:
 - the kernel folds an event that `cpr.py` would not, or the books of rule 8 do not close;
 - slice B's measurement shows the sweep or the per-transfer state costing more than the maintainer accepts, or the measured reduction on the step 6 workloads being too small to keep the bulk ring from losing records.
 
-## Decisions raised
+## Decisions (taken 2026-11-09, maintainer, E-0132 and E-0139)
 
-1. **Decided 2026-11-09 (maintainer): rule 5 confirmed against the PDF (E-0132).** *The paper's checks as the rule.* The session read the PDF the maintainer supplied (design-checks §1, R-039 verified): X1-X8 hold, X9 is corrected, and X10-X11 add the two points rule 5 now states (reverse-direction events block; per-key order comes from the single owner). Recommendation: the maintainer confirms rule 5 against p. 4-6 of the PDF (Def. 2, Algorithms 1-3, §3.2.1-3.2.3), then accepts.
-2. **Sweep interval one second, closing aggregates** (rule 9). *Reopened for discussion 2026-11-09 (E-0133).* Alternative: a longer interval (more reduction, a longer crash window than ADR-0007's), or a sweep that writes progress without closing (no gain in exactness, more state). Recommendation: one second, closing.
-3. **Mappings** (rule 12), including the system-wide mark. Recommendation: accept; measure how often it fires in step 6.
-4. **Run state** (rule 8): data-flow loss makes the run DEGRADED; reduced folding does not. Recommendation: accept.
-5. **No file offsets in FLOW.** CDM has `location`, but nothing we consume reads it (provenance-and-pids.md §3-4), and it costs 16 bytes per record. Recommendation: leave them out; add them in a FLOW version if a consumer appears.
-6. **Failed and empty transfers counted, not recorded** (rule 1). Recommendation: accept.
+1. **Rule 5 is Xu's checks** as the PDF states them, with the two points of X10-X11 (E-0132).
+2. **The sweep:** one second, closing, on the fdatasync tick, the slot emptied not deleted, the stop order stated, the interval a header parameter (rule 9; option B with its four amendments).
+3. **Mappings** (rule 12), including the system-wide mark; step 6 measures how often it fires.
+4. **Run state** (rule 8): data-flow loss makes the run DEGRADED; reduced folding does not.
+5. **No file offsets in FLOW**; a FLOW version adds them if a consumer appears.
+6. **Failed and empty transfers counted, not recorded** (rule 1).
+7. **CLOSE carries the last aggregate** (rule 8, N1).
+8. **The folding default is set after step 2b's ceiling measurement** (rule 13, N3, N7).
+9. **FD downstream, on a copy** (rule 14, N6), and the reader's table of devices that carry no data flow, with terminals split per session (N4), both in the graph step.
+10. **Step 2 in five PRs** (N2): 2a identity, 2b transfers unfolded and the ceiling, 2c folding and `cpr.py`, 2d splice/mmap/rename, 2e io_uring and NET v3.
 
 ## Evidence
 
@@ -182,6 +194,7 @@ Reopen if:
 | 15 | No per-access hook for mapped I/O | INF | kernel-v7.0.md §6 |
 | 16 | The VFS and `security_file_open` hooks exist in BTF and ftrace on 7.0.0-38 | MEAS | `docs/evidence/phase0/02-p1-attach-points.txt` |
 | 17 | Reduction achieved on our workloads | OPEN | step 6 |
+| 18 | Added per `vfs_read` call on the VM, trivial body: kprobe.session 141 ns, two kprobe.multi links with a stash 315 ns, fexit 22 ns | MEAS | [`2026-11-09-rw-hook-cost-vm`](../evidence/probes/2026-11-09-rw-hook-cost-vm/README.md) (PR #60), E-0138 |
 
 ## Pros and cons of the options
 

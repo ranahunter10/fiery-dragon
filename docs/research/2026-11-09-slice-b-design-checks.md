@@ -96,4 +96,4 @@ Open items as of the first pass (struck through where §3 settles them):
 - O2 (config settled by V4; attaching still for step 2): kprobe.multi and kprobe.session attach on 7.0.0-38 (`CONFIG_FPROBE`), and a fentry and a kprobe.session on the same function at once;
 - ~~O3~~ (V6): whether btrfs and overlay are modules on the VM (where their BTF lives);
 - ~~O5~~ (V2): the dev container's 6.18 BTF ([`container-btf.txt`](../evidence/research/2026-11-09-slice-b-design/container-btf.txt)) has no `vmsplice_to_pipe` / `vmsplice_to_user` (probably inlined) nor the 7.0 `do_file_open` / `filename_*` names; VMSPLICE may need the syscall's own entry instead. The VM answers for 7.0.0-38;
-- O4 (not needed by the sweep if it empties the slot instead of deleting the entry, ADR-0005 rule 9 under discussion): whether deleting the current element from inside a hash map iterator program is allowed and safe (the sweep of ADR-0005 rule 9 needs it).
+- ~~O4~~ (not needed: the sweep empties the slot instead of deleting the entry, ADR-0005 rule 9): whether deleting the current element from inside a hash map iterator program is allowed and safe (the sweep of ADR-0005 rule 9 needs it).

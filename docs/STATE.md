@@ -129,13 +129,19 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - ✅ **ADR-0023 accepted 2026-11-05** — 🔧 built with step 4c (E-0106): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired. p15-trace's Trust block shows the verdict.
 
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
-    1. 🔧 slice B design: ADR-0015 and ADR-0005 (this PR);
-    2. slice B code: schema records, BPF programs, loader, daemon checks and formatters, the Python decoder and report, the load-time self-test, an `it_p15d.sh` case, mutation sweep entries; read/write/readv/writev, the socket tracepoints, io_uring completions, splice/sendfile/copy_file_range (each its own record), open and close, rename/unlink, mmap at map time; the kernel's internal I/O and per-access mapped I/O declared out of scope;
+    1. 🔧 slice B design: ADR-0015 and ADR-0005, every decision taken (this PR, #59; E-0139); the read-path hook costs measured (PR #60, E-0138);
+    2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
+       1. 2a identity: OPEN, OPEN_VERDICT, FILE, FD (the snapshot's pass), BACKING, CLOSE; kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
+       2. 2b transfers, unfolded: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
+       3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
+       4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
+       5. 2e io_uring completions (with the overflow and skip counts) and NET v3 with the socket's object id;
+       the kernel's internal I/O and per-access mapped I/O are declared out of scope;
     3. slice C: memory made executable (ADR, records, tests);
     4. slice D: writes into another process's memory;
     5. slice E: new kernel code and carriers (module and BPF program loads, setxattr);
     6. the overhead of the full capture on ordinary workloads, on the VM (ADR-0018);
-    7. the graph: a DuckDB star schema and builder, an offline one-page HTML view of a run, then the PIDSMaker export (where PIDSMaker runs is the maintainer's decision).
+    7. the graph: a DuckDB star schema and builder (with the reader's trust table of ADR-0015 and the table of devices that carry no data flow, terminals split per session, N4), FD on a copy as REO + RNO with the cycle collapse and SD as options (N6; the WAL is never reduced), an offline one-page HTML view of a run, then the PIDSMaker export (where PIDSMaker runs is the maintainer's decision).
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -194,12 +200,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     3. **The guest kernel oops of E-0122 stays open and is watched** (kdump stays on); no control run and no host change for now. *(E-0125)*
 
 17. **The 2026-11-09 session brief** (maintainer): slice B hooks the read/write paths with kprobe.multi + kretprobe.multi (preemption off, not skipped for another task through nesting; fexit can be, E-0089/E-0090); their skips (`recursion_misses`, the link's `kprobe_multi.missed`) and cost are measured in slice B's own tests, which replaces 15.5's separate VM probe; Xu's rule is read in the paper before ADR-0005 states it. Deferred: the stdio socket → NET join, stdio in PROC v2, and how PIDSMaker sees code-provenance edges. The branch `probe/rw-hooks` is unused. *(E-0126)*
+18. **Slice B design decisions (maintainer, 2026-11-09, "accept all recommendations").** kprobe.session for every entry/return pair; keep decision 17 although a session costs 118 ns per call more than fexit on the VM (E-0138), and measure skips under contention in 2b; NET v3 in 2e; the reader's trust table; `SUBVOL_UNKNOWN`; one record per open (N1); the closing sweep on the fdatasync tick with the slot emptied and the stop order stated; conservative folding near mappings; the run-state rule; no offsets in FLOW; failed and empty transfers counted; step 2 in five PRs (N2); the ceiling gate at 2b (N3); the device table in the graph step (N4); FD downstream on a copy (N6); the folding default set after 2b (N7). Recorded in ADR-0015 and ADR-0005's decision sections. *(E-0139)*
 
 ## Decisions waiting
 
-From ADR-0015 and ADR-0005 (PR for step 1), each with its recommendation in the ADR:
-1. **Accept ADR-0015** (file identity), and its raised decisions: (a) kprobe.session instead of separate kprobe.multi and kretprobe.multi links (entry and return skipped together, a per-call cookie instead of a per-thread map; recommended); (b) NET v3 carrying the socket's object id, in step 2 (recommended); (c) the reader's trust table: ext4, xfs, tmpfs, btrfs (recommended).
-2. **ADR-0005** (filtering and aggregation): ~~(a) rule 5 against the PDF~~ confirmed by the maintainer (2026-11-09, E-0132); still to discuss: (b) the one-second closing sweep (reopened, E-0133); (c) conservative folding next to mappings, with a system-wide mark (recommended); (d) data-flow loss makes the run DEGRADED, reduced folding does not (recommended); (e) no file offsets in FLOW (recommended); (f) failed and empty transfers counted, not recorded (recommended).
-3. ~~**VM attach check**~~ done 2026-11-09 (E-0134): every planned hook exists on 7.0.0-38 except `vmsplice_to_user` (inlined; the vmsplice system call is the hook point, step 2d); FPROBE is built in; btrfs and overlay are modules, which adds ADR-0015's `SUBVOL_UNKNOWN` flag (to review).
-4. **Hook cost on the read path** (decision 1a, N5): PR #60 adds `bench/rw_hook_cost`; its CI smoke step passed on the runner's 7.0 kernel (every arm attached, a kprobe.session and a fentry on `security_file_open` at once, books closed; E-0137). The VM run gives the numbers: `sudo make bench-rw-hook-cost ROUNDS=20`.
-5. **From the 2026-11-09 research** (raised in chat, to discuss): N1 fewer records per open (one OPEN from the fentry, the session return writing only on a skip or a denial, CLOSE carrying the last aggregate); N2 step 2 as five PRs (2a identity, 2b transfers unfolded, 2c folding and `cpr.py`, 2d splice/mmap/rename, 2e io_uring and NET v3); N3 the pipeline's zero-loss ceiling as a gate at 2b; N4 a reader table of devices that carry no data flow (`/dev/null` and the like) and terminals split per session, in the graph step; N5 kprobe.session and return-probe cost in the hook-cost harness on the VM.
+1. **Accept ADR-0015 and ADR-0005 and merge PR #59** (step 1, item 4 of the plan). Every decision they raised is taken (E-0139); both are still `proposed` until the maintainer accepts them.
+2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138), and confirm the two sha256 values printed on the VM (`63db39cc…ff37` raw, `d60bc87b…4ca2` summary).
