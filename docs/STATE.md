@@ -129,7 +129,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - ✅ **ADR-0023 accepted 2026-11-05** — 🔧 built with step 4c (E-0106): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired. p15-trace's Trust block shows the verdict.
 
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
-    1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, E-0138);
+    1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, merged 2026-11-10, E-0138);
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
        1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); a load-only verifier probe on the VM first; kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
        2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
@@ -214,4 +214,3 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 ## Decisions waiting
 
 1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
-2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138; the VM's sha256 values match the committed files, 2026-11-10).
