@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-09
+accepted: 2026-11-10
 owner: Ashish Rana
 consulted: [Xu et al. CCS'16 (read in the PDF, design-checks §1), research note 2026-11-06-dataflow-slice-b (provenance-and-pids.md §1, §4-5; tools.md §2, §4, §7; kernel-v7.0.md §1-2, §6-7), research note 2026-11-09-slice-b-design-checks.md, ADR-0006 rules 2 and 6, ADR-0007, ADR-0015, ADR-0017, ADR-0020, ADR-0026, maintainer's slice B plan (STATE decisions 15.5 and 17)]
 supersedes: none (fills the reserved number 0005; the planned list's working title "who/what-kind only, no in-kernel dedup in v1" is replaced by the maintainer's slice B plan, which puts Xu's reduction in the kernel)

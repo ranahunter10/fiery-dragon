@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-09
+accepted: 2026-11-10
 owner: Ashish Rana
 consulted: [research note 2026-11-06-dataflow-slice-b (kernel-v7.0.md §3-5, tools.md §3, provenance-and-pids.md §2-4), research note 2026-11-09-slice-b-design-checks.md (K1-K18), ADR-0006, ADR-0009, ADR-0017 layer 1, ADR-0020, ADR-0024, ADR-0025, ADR-0026, maintainer's slice B plan (STATE decisions 15.5 and 17)]
 supersedes: none (fills the reserved number 0015 of the planned list, "file identity, split from 0009")

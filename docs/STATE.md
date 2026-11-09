@@ -118,7 +118,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
       - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
       - 🔧 **ADR-0026** (proposed): the counters are an mmapable array, and p15d makes no map syscall once a program is attached; built and passing in the container, CI and on the VM (E-0119 to E-0121, E-0123); a guest kernel oops cut off the first VM sweep, INF host-side, open and watched (E-0122). Accepted 2026-11-08, #57;
-      - 🔧 **slice B, step 1 (design):** ADR-0015 (file identity) and ADR-0005 (filtering and aggregation) proposed, with the design checks they rest on ([note](research/2026-11-09-slice-b-design-checks.md), E-0126 to E-0131). Waiting: the decisions below and the VM attach check (`tools/vm/sliceb_attach_check.sh`);
+      - ✅ **slice B, step 1 (design):** ADR-0015 (file identity) and ADR-0005 (filtering and aggregation) accepted 2026-11-10, with the design checks they rest on ([note](research/2026-11-09-slice-b-design-checks.md), E-0126 to E-0140); 🔧 next, step 2a (item 22);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -129,9 +129,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - ✅ **ADR-0023 accepted 2026-11-05** — 🔧 built with step 4c (E-0106): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired. p15-trace's Trust block shows the verdict.
 
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
-    1. 🔧 slice B design: ADR-0015 and ADR-0005, every decision taken (this PR, #59; E-0139); the read-path hook costs measured (PR #60, E-0138);
+    1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, E-0138);
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
-       1. 2a identity: OPEN, OPEN_VERDICT, FILE, FD (the snapshot's pass), BACKING, CLOSE; kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
+       1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FILE, FD (the snapshot's pass), BACKING, CLOSE; kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
        2. 2b transfers, unfolded: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
        3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
        4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
@@ -204,5 +204,5 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **Accept ADR-0015 and ADR-0005 and merge PR #59** (step 1, item 4 of the plan). Every decision they raised is taken (E-0139); both are still `proposed` until the maintainer accepts them.
+1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
 2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138; the VM's sha256 values match the committed files, 2026-11-10).
