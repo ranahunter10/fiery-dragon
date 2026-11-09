@@ -36,7 +36,7 @@ The usual remedies break causality. A first-touch flag (Kunai) hides every read 
 
 ## Decision outcome
 
-**Option 4,** because it is the only one that reduces volume while keeping every trace exact (driver 1), and its checks need only per-object and per-process state that the kernel can hold in bounded maps (driver 4). The stronger reductions (option 5) need global or offline state, and LogGC and the temporary-file rules delete exactly the trace a memfd payload leaves (provenance-and-pids.md §5): they may run downstream, on copies, never in capture.
+**Option 4,** because it is the only one that reduces volume while keeping every trace exact (driver 1), and its checks need only per-object and per-process state that the kernel can hold in bounded maps (driver 4). The stronger reductions (option 5) need state over the whole graph (FD and SD keep a version of every entity; they run online, but in user space, design-checks H4), and LogGC and the temporary-file rules delete exactly the trace a memfd payload leaves (provenance-and-pids.md §5): they may run downstream, on copies, never in capture.
 
 ### Rules
 
@@ -168,7 +168,8 @@ Reopen if:
 | 2 | Backward check over [te(e1), te(e2)] on the source's incoming events; forward check over [ts(e1), ts(e2)] on the destination's outgoing events; both by window overlap; the algorithms do not exempt reverse-direction events, Def. 2 does; input sorted by start time | PDF | Alg. 1-3, p. 5; Def. 2, p. 4-5; §3.2.1-3.2.2, p. 6; design-checks X2, X3, X10, X11 |
 | 3 | Merged window [ts(e1), te(e2)]; attributes unspecified; no bounds (user-space prototype at about 4,000 events/s, under 2 GB) | PDF | Alg. 1, p. 5; §3.2.3, p. 6; §4.4, p. 11; design-checks X4, X5, X7 |
 | 4 | CPR: 56 % average reduction, 0 false positives over 20,000 random backtrackings; naive 10 s window: 2,778 false positives (13.9 %) | PDF | §4.2, p. 8; Table 3, p. 10; design-checks X9 |
-| 5 | Stronger reductions need global or offline state; LogGC and temporary-file rules remove memfd-like payload traces; the SoK measures detection loss growing with reduction | PDF (summaries) | provenance-and-pids.md §1, §5 |
+| 5 | FD and SD keep per-entity versions over the whole graph and are proven to preserve backward and forward reachability (FD) or source dependence (SD); on five data sets Xu's rule (LCD) reduced 1.6-2.7x, FD 4.6-15.4x, SD 5.4-19.1x | PDF | Hossain et al. USENIX Security 2018, Thm. 8-9 p. 11, §6.3 p. 13-14; design-checks H1-H6 |
+| 5a | LogGC and temporary-file rules remove memfd-like payload traces; the SoK measures detection loss growing with reduction | PDF (summaries) | provenance-and-pids.md §1, §5 |
 | 6 | PIDSMaker keeps the first edge of each same-type run per pair and window, and never reads sizes | SRC | provenance-and-pids.md §4 |
 | 7 | Kunai suppresses repeats with an uncounted re-arm; Tetragon's rate limit suppresses uncounted; Falco samples with in-band markers | SRC | tools.md §2, §4 |
 | 8 | kprobe.multi and classic tracepoints run with preemption off and are not skipped through program nesting | SRC | kernel-v7.0.md §1.2 |
@@ -201,7 +202,7 @@ Reopen if:
 - Bad: little reduction on alternating flows; per-transfer map work; rules 5 and 12 are conservative where the kernel cannot see.
 
 ### 5. FD, SD, NodeMerge, LogGC, temporary files
-- Good: much larger reductions (7-19x for FD/SD).
+- Good: much larger reductions: on Hossain et al.'s five data sets, FD 4.6-15.4x and SD 5.4-19.1x against 1.6-2.7x for Xu's rule, with proofs (Thm. 8-9); FD also folds across separate opens of one file and through interleaved reads and writes, which a per-open-file rule cannot (design-checks H3).
 - Bad: global or offline state; some delete fileless evidence. Downstream only.
 
 ### 6. Discarders

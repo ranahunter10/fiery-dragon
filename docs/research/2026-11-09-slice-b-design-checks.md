@@ -57,6 +57,26 @@ What the design takes from it:
 | K17 | `vmsplice` (L1578) moves user memory into a pipe through `vmsplice_to_pipe` (L1534) and `tee` (L1977) copies pipe to pipe; neither passes `rw_verify_area` or the VFS read/write functions. | SRC | fs/splice.c |
 | K18 | An overflowing CQE fires `io_uring_cqe_overflow` (io_uring.c L668), with no request or file. | SRC | io_uring/io_uring.c, include/trace/events/io_uring.h L565 |
 
+## 4. Hossain et al., USENIX Security 2018 (FD and SD), read in the PDF
+
+Source: "Dependence-Preserving Data Compaction for Scalable Forensic Analysis", Hossain, Wang, Sekar, Stoller, USENIX Security 2018, pp. 1723-1740. The maintainer supplied the PDF on 2026-11-09 (19 pages, sha256 `b3570d756d35a376391d5a524d1b99e0087ddd50b5eda82a53e56c402166a639`; not committed). The session read its text for §3-4, §6.1-6.7. **Grade: PDF.** Pages are the PDF's.
+
+| # | What the paper says | Where |
+|---|---|---|
+| H1 | Reductions apply only to reads, writes and loads; fork, execve, remove, rename and chmod are kept. Reads, writes and loads are typically over 95 % of events. | §3, p. 5 |
+| H2 | Reachability (Def. 1-2) uses timestamped paths: a path e1..en is causal if start(ei) ≤ end(ei+1). FD (Def. 4) preserves backward reachability at every time and forward reachability at every time a node gains a new ancestor; SD (Def. 5) is FD restricted to source nodes (pre-existing files, network endpoints, processes started before auditing). CD (Def. 3) preserves both at all times and is "close to" Xu's full trackability, which they call LCD; footnote 2 notes Xu's Algorithms 2-3 are stricter still. | §3.1-3.4, p. 5-7 |
+| H3 | Why FD reduces more: a process doing read(A); write(B); read(A); ... has an outgoing edge between every two reads, so Xu's rule merges nothing, while FD merges all of them because A did not change. On the laboratory servers a process opened the same object about twice and did 3-5 reads or writes per open; FD combines reads across separate opens. | §3.2, p. 6; §6.3, p. 14 |
+| H4 | Proofs: Thm. 7 (the naive versioned graph preserves forward and backward reachability, proof stated for instantaneous events with unique timestamps), Thm. 8 (versioning with REO* and RNO preserves FD, and that combination is optimal), Thm. 9 (with REO, RNO and the source-set check, SD is preserved, by induction). The implementation uses REO, bounded to a window of k edges, plus a two-entity cycle collapse (CCO), which none of the theorems covers; the paper says REO, RNO and CCO keep every cycle-free path. BuildVer is online: one edge at a time, decided at once. | §4.1-4.3, p. 8-11; §6.6.1, p. 15 |
+| H5 | Results, Xu's Algorithms 1-3 reimplemented as LCD: average reduction 1.8x (LCD), 7x (FD), 9.2x (SD); ranges 1.6-2.7x, 4.6-15.4x, 5.4-19.1x over five data sets (DARPA TC engagement 2 Linux and Windows desktops; SSH/file, web and mail servers on Ubuntu, one week each). FD with window k = 1 (drop an edge only if the previous edge into the target came from the same source) averages 1.96x, about LCD's best. | §6.3, p. 13-14, Fig. 9; §6.6.1, p. 15, Fig. 15 |
+| H6 | Cost: one core of an i7-7500U, 72M events in 84 s with FD (about 860K events/s), 144 s with SD at a source-set limit of 500; 111 MB of memory for the 72M-event set. Open and close were left out of the red-team data's analysis. A network source is (remote IP, port, about 10 minutes). REO does not traverse past execve. | §6.1, p. 13; §6.2.1, p. 13; §6.5-6.6, p. 14-16 |
+
+What the design takes from it:
+- Xu's rule in the kernel is the small, local reduction (1.6-2.7x on these sets); the large, proven one needs state over the whole graph and belongs downstream, on a copy (ADR-0005 option 5);
+- everything the kernel folds, FD's REO would drop as well: a fold requires that the source had no incoming flow since the aggregate began, so the source's latest version already has an edge to the destination, which is REO's condition. So FD run on folded records should give what FD gives on unfolded ones (INF; the step 2c tests check it on generated streams);
+- FD at window 1 is a purely local rule with about the same reduction as Xu's (1.96x against 1.8x) and a weaker guarantee (forward reachability only at new-ancestor times). It is no reason to change ADR-0005 rule 5;
+- the theorems assume instantaneous, uniquely ordered events; the graph step has to map FLOW's [first_ts, last_ts] onto that model and say how (open for step 7);
+- SD's source nodes include processes started before auditing and pre-existing files: what the snapshot (ADR-0024) and its FD pass (ADR-0015 rule 7) record.
+
 ## 3. The VM: 7.0.0-38 (MEAS)
 
 [`vm-sliceb-attach.txt`](../evidence/research/2026-11-09-slice-b-design/vm-sliceb-attach.txt), run by the maintainer on 2026-11-09:
