@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-09 (UTC), PR "adr: 0015 file identity and 0005 data-flow filtering and aggregation (slice B design)"
+**Last updated:** 2026-11-10 (UTC), PR "adr: 0015 file identity and 0005 data-flow filtering and aggregation (slice B design)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -206,3 +206,9 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
 2. **Merge PR #60** (`bench/rw_hook_cost` and its VM evidence, E-0138; the VM's sha256 values match the committed files, 2026-11-10).
+3. **Step 2a record numbers** (E-0141). Recommended: OPEN 6, OPEN_VERDICT 7, BACKING 8, CLOSE 9, FILE 10 (event types stay below 32); FD 39 (MARKER, the snapshot's pass) and FILE_STATS 40 (STATS) after SNAP_DONE 38.
+4. **Where an object's facts sit in OPEN, BACKING and FD** (ADR-0015 rule 2). (a) Fixed fields in every record: about 40 bytes more per OPEN (INF from the field list), simplest decoder. (b) An optional fixed-size tail, a schema `part` that the generator lays out and checks, present only with `OBJ_NEW` (0 or 40 bytes). Recommended: (b) for OPEN and BACKING (most opens name an object already seen), (a) for FD (every segment's snapshot repeats the facts, rule 7).
+5. **Slice B flags in a field of the record** (`fflags`, u32: OBJ_NEW, PATH_MISSING, PATH_ERROR, NEVER_OPENED, KTHREAD, SUBVOL_UNKNOWN), not in the 16-bit header flags that every type shares; the header keeps TRUNCATED and READ_FAILED. Opens are not filtered (ADR-0005 rule 1 filters transfers); a kernel thread's OPEN carries KTHREAD as CLOSE does. Recommended as stated.
+6. **One bulk ring for NET and slice B**, owned by the new object (`bpf/progs/file.bpf.c`) and reused by NET before load, so `--no-net` still captures files; `--no-files` mirrors `--no-net`; a test-only switch leaves the path fentry unattached (ADR-0015 confirmation 1). The identity counters get a map of their own with ADR-0026's rows and named slots, so the spine and NET type table (types 0-7) is untouched. Recommended as stated.
+7. **FILE moves to 2b**, with its first emitter (the transfer hooks are where pseudo files are first seen). In 2a a free of a file that was never registered writes nothing and is counted `free_unregistered`; pipes, sockets and memfds created after start appear from 2b. Recommended.
+8. **Map sizes** (ADR-0015 rule 9). The object map holds every in-memory inode that capture has seen until the inode cache drops it, not only open ones, so it can be far larger than the open-file map. Preallocated hash (memory up front) or `BPF_F_NO_PREALLOC` (memory on demand; an allocation failure is counted as `map_full`). The recommendation waits for the VM's `file-nr` and `inode-nr` (sizing check, E-0141).
