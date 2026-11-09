@@ -52,7 +52,7 @@ CFLAGS     += -std=gnu11 $(WARN) $(HARDEN) -I$(LIBBPF_DIR) -I$(OUT) -Ischema/gen
 LDFLAGS    += -pie -Wl,-z,relro,-z,now
 LDLIBS     := $(LIBBPF_A) -lelf -lz
 
-SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
+SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe $(OUT)/sliceb_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
          $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost
@@ -65,7 +65,7 @@ P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/dra
 GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
-.PHONY: probe-recursion it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
+.PHONY: probe-recursion probe-sliceb it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
         exit-check hardening-check must-check-test mutate-py bench-hook-cost bench-rw-hook-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
@@ -297,6 +297,17 @@ $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 
 $(OUT)/net_probe: bpf/test/net_probe.c $(OUT)/net_probe.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
+
+# Step 2a dry run (ADR-0015, STATE decision 19): the identity mechanisms on the running kernel
+# (root; fentry and kprobe.session, so the VM and CI, not the dev container). -mcpu=v3: the id
+# counter and the slot claim use atomics whose result is read (fetch-add, compare-and-swap).
+$(OUT)/sliceb_probe.bpf.o: BPF_CFLAGS += -mcpu=v3
+$(OUT)/sliceb_probe.bpf.o: bpf/test/sliceb_probe.h
+$(OUT)/sliceb_probe: bpf/test/sliceb_probe.c bpf/test/sliceb_probe.h $(OUT)/sliceb_probe.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) -Ibpf/test $(LDFLAGS) $< $(LDLIBS) -o $@
+
+probe-sliceb: $(OUT)/sliceb_probe
+	$(OUT)/sliceb_probe $(PROBE_ARGS)
 
 # E-0089: which hook / wake-up design avoids the kernel's recursion misses (root; the VM and CI)
 $(OUT)/recur_probe: bpf/test/recur_probe.c $(OUT)/recur_probe.skel.h $(LIBBPF_A)

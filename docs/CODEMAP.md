@@ -115,6 +115,9 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`rb_size.c`](../bpf/test/rb_size.c) | load the three record-sizing programs, exec /bin/true with an argv of known length, and print the size each mode's record occupies in its ring. |  |
 | [`recur_probe.bpf.c`](../bpf/test/recur_probe.bpf.c) | which hook and wake-up design keeps the kernel from skipping our programs (E-0089). | `tp_btf/sched_process_exec → btf_exec`, `tp_btf/sched_process_exit → btf_exit`, `tp_btf/sched_process_exec → btfp_exec`, `tp_btf/sched_process_exit → btfp_exit`, `tracepoint/sched/sched_process_exec`, `tracepoint/sched/sched_process_exit` |
 | [`recur_probe.c`](../bpf/test/recur_probe.c) | measure how many of our own children's exec and exit events the kernel skips (bpf_prog_info.recursion_misses, E-0089) for each hook type and wake-up design, under the same fork/... |  |
+| [`sliceb_probe.bpf.c`](../bpf/test/sliceb_probe.bpf.c) | the step 2a dry run (ADR-0015 rules 1-9, STATE decision 19). | `fentry/security_file_open → sbp_open_fentry`, `kprobe.session/security_file_open`, `kprobe.multi/security_file_free`, `kprobe.multi/security_inode_free`, `iter/task_file` |
+| [`sliceb_probe.c`](../bpf/test/sliceb_probe.c) | the step 2a dry run (ADR-0015, STATE decision 19). |  |
+| [`sliceb_probe.h`](../bpf/test/sliceb_probe.h) | what sliceb_probe.bpf.c and sliceb_probe.c share. |  |
 
 ## daemon
 
