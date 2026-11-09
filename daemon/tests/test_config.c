@@ -28,8 +28,8 @@ int main(void)
 {
 	struct p15_config c;
 	char err[200];
-	struct p15w_kv kv[16];
-	char vals[16][24];
+	struct p15w_kv kv[24];
+	char vals[24][24];
 	size_t n;
 
 	EXPECT(parse(&c, err, 0) != 0 && strstr(err, "--wal-dir"), "--wal-dir is required");
@@ -51,12 +51,21 @@ int main(void)
 	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--textfile") != 0, "--textfile needs a value");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
-	n = p15_config_meta(&c, kv, vals, 16);
-	EXPECT(n == 12, "every setting echoed");
+	n = p15_config_meta(&c, kv, vals, 24);
+	EXPECT(n == 16, "every setting echoed");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
-	EXPECT(!strcmp(kv[n - 2].key, "config.realtime") && !strcmp(kv[n - 2].value, "yes"), "realtime echoed");
-	EXPECT(!strcmp(kv[n - 1].key, "config.net") && !strcmp(kv[n - 1].value, "yes"), "net echoed");
+	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "65536") &&
+	       !strcmp(kv[11].key, "config.obj_map_entries") && !strcmp(kv[11].value, "131072"),
+	       "map sizes echoed with their defaults (decision 19.6)");
+	EXPECT(!strcmp(kv[n - 4].key, "config.realtime") && !strcmp(kv[n - 4].value, "yes"), "realtime echoed");
+	EXPECT(!strcmp(kv[n - 3].key, "config.net") && !strcmp(kv[n - 3].value, "yes"), "net echoed");
+	EXPECT(!strcmp(kv[n - 2].key, "config.files") && !strcmp(kv[n - 2].value, "yes"), "files echoed");
+	EXPECT(!strcmp(kv[n - 1].key, "config.test_no_path_fentry") && !strcmp(kv[n - 1].value, "no"), "test switch echoed");
 	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--no-net") == 0 && c.net == 0, "--no-net");
+	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--no-files") == 0 && c.files == 0 && c.net == 1, "--no-files");
+	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--test-no-path-fentry") == 0 && c.test_no_path_fentry == 1,
+	       "--test-no-path-fentry");
+	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--obj-map-entries", "512") != 0, "object map below 1024 refused");
 	EXPECT(p15_config_meta(&c, kv, vals, 3) == 3, "bounded by the caller's array");
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;

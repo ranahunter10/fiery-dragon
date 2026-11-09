@@ -26,17 +26,20 @@ struct p15_drain {
 	struct ring_buffer *rb;
 	struct ring *spine, *bulk;
 	struct p15_counters ctr, bulk_ctr; /* mapped counter rows (ADR-0026); bulk_ctr unmapped without network */
+	struct p15_counters file_ctr;     /* the file-identity counters; unmapped without them */
 	int ncpu;
 	struct p15q_slot *open;          /* the batch being filled, or NULL */
 	uint64_t prev_ctr[P15_CTR_MAX], prev_bulk[P15_CTR_MAX];
 	uint64_t prev_missed[P15_SPINE_TYPES], prev_net_missed;
+	uint64_t prev_file[P15_CTR_MAX], prev_file_kprobe_missed;
 	uint64_t prev_read_ns, last_poll_ns;
 	int queue_full_now;              /* the last poll left records in a ring for want of a batch */
 };
 
-/* bulk_rb_fd and bulk_ctr_fd are -1 without network capture. */
+/* bulk_rb_fd is -1 without network capture and file identity; bulk_ctr_fd (NET) and file_ctr_fd are -1
+ * without theirs. */
 P15_MUST_CHECK int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
-				int bulk_ctr_fd);
+				int bulk_ctr_fd, int file_ctr_fd);
 void p15_drain_free(struct p15_drain *d);
 /* One poll of up to timeout_ms, then publish, then the counter read and GAP check. 0 or -errno. */
 P15_MUST_CHECK int p15_drain_poll(struct p15_drain *d, int timeout_ms);

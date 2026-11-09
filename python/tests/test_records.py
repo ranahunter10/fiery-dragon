@@ -120,8 +120,8 @@ class FileIdentity(unittest.TestCase):
         self.why(rec("OPEN", fflags=R.gen.FF_OBJ_NEW, var={"facts": facts()}, facts_len=40, facts_full=0),
                  "OPEN: facts is neither absent nor a whole OBJFACTS")      # _full says how much there is
         self.why(rec("FD", var={"path": b"x"}), "FD: facts present without its flag, or its flag without it")
-        self.why(rec("FD", var={"facts": facts(oflags=2)}), "FD: facts: unknown oflags bits or an unknown 'seen'")
-        self.why(rec("FD", var={"facts": facts(seen=0)}), "FD: facts: unknown oflags bits or an unknown 'seen'")
+        self.why(rec("FD", var={"facts": facts(oflags=2)}), "OBJFACTS: unknown oflags bits or an unknown 'seen'")
+        self.why(rec("FD", var={"facts": facts(seen=0)}), "OBJFACTS: unknown oflags bits or an unknown 'seen'")
         b = dec(rec("BACKING", fflags=R.gen.FF_USER_OBJ_NEW, var={"user_facts": facts(fs_magic=0x794C7630)}))
         self.assertEqual((b.var["facts"], b.var["user_facts"]["fs_magic"]), (None, 0x794C7630))
         self.why(rec("BACKING", fflags=R.gen.FF_OBJ_NEW, var={"user_facts": facts()}),

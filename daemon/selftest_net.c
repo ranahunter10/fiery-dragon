@@ -20,7 +20,8 @@ struct coll {
 	struct p15_net r[MAXR];
 	int n, other, invalid;
 	unsigned me;
-	unsigned long long total;   /* every record taken from the ring */
+	unsigned long long total;   /* every NET-or-unknown record taken from the ring */
+	unsigned long long file;    /* file-identity records taken (the bulk ring is shared, decision 19.4) */
 };
 
 static int on_rec(void *ctx, void *data, size_t size)
@@ -29,6 +30,10 @@ static int on_rec(void *ctx, void *data, size_t size)
 	const struct p15_hdr *h = data;
 	const char *why;
 
+	if (p15_is_file_type(h->type)) {
+		c->file++;                  /* file.bpf.c's records: counted on the file books, not checked here */
+		return 0;
+	}
 	c->total++;
 	if (p15_rec_check(data, size, &why) || h->type != P15_T_NET) {
 		c->invalid++;
@@ -66,7 +71,7 @@ static int check(FILE *log, int ok, const char *what)
 	return !ok;
 }
 
-int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed)
+int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed, unsigned long long *file_consumed)
 {
 	struct coll c;
 	struct ring_buffer *rb;
@@ -150,5 +155,6 @@ out:
 		close(us);
 	ring_buffer__free(rb);
 	*consumed = c.total;
+	*file_consumed = c.file;
 	return rc ? rc : failed;
 }

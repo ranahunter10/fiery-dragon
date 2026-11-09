@@ -59,7 +59,7 @@ SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitc
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
-            daemon/selftest_net.c daemon/snapshot.c daemon/snapshot_frame.c \
+            daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c \
             $(DAEMON_COMMON) $(WAL_SRC)
 # provenance for the WAL header (ADR-0007): the daemon's commit and the vendored bpftool's tag
 GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || echo unknown)
@@ -122,10 +122,14 @@ $(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_rec
                 bpf/include/*.h $(LIBBPF_A) | $(OUT)
 	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
 
+# file identity (ADR-0015): the id counter and the slot claim read the result of an atomic
+# (fetch-add, compare-and-swap), which needs BPF ISA v3 (clang 18 refuses it otherwise; E-0144)
+$(OUT)/file.bpf.o: BPF_CFLAGS += -mcpu=v3
+
 $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
 
-$(OUT)/p15d: $(P15D_SRC) daemon/*.h $(OUT)/spine.skel.h $(OUT)/net.skel.h $(OUT)/snap.skel.h $(LIBBPF_A)
+$(OUT)/p15d: $(P15D_SRC) daemon/*.h $(OUT)/spine.skel.h $(OUT)/net.skel.h $(OUT)/file.skel.h $(OUT)/snap.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) -DP15_GIT_COMMIT='"$(GIT_COMMIT)"' -DP15_BPFTOOL_VERSION='"$(BPFTOOL_TAG)"' $(LDFLAGS) \
 	  $(P15D_SRC) $(LDLIBS) -lpthread -o $@
 

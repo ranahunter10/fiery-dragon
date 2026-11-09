@@ -33,11 +33,12 @@ inspect() {
 
 # Network capture (ADR-0004) needs fentry/fexit, which some hosts refuse (the cloud dev
 # container: E-0078). P15_IT_NET=1 (CI, the VM) makes that a failure instead of a skip.
-if "$B/net_probe" >/dev/null 2>&1; then NET=""; NET_OK=1; else NET="--no-net"; NET_OK=0; fi
+# File identity (ADR-0015) needs fentry and kprobe.session as well, so it follows the same switch.
+if "$B/net_probe" >/dev/null 2>&1; then NET=""; NET_OK=1; else NET="--no-net --no-files"; NET_OK=0; fi
 if [ "$NET_OK" = 0 ] && [ "${P15_IT_NET:-auto}" = 1 ]; then
     echo "  FAIL network programs can't be loaded here, and P15_IT_NET=1 requires them"; exit 1
 fi
-echo "network capture: $([ $NET_OK = 1 ] && echo on || echo 'off (--no-net: fentry/fexit not loadable here)')"
+echo "network capture and file identity: $([ $NET_OK = 1 ] && echo on || echo 'off (--no-net --no-files: fentry/fexit not loadable here)')"
 storm() { local ps=(); for _ in $(seq "$1"); do /bin/true & ps+=($!); done; wait "${ps[@]}"; }   # not a bare wait: p15d is a job too
 # p15d prints code=start once its hooks are attached and both self-tests passed: wait for that,
 # not for a fixed time, so a slow start never hides events from the test (E-0089 follow-up)
@@ -198,6 +199,36 @@ print(sum(bool(mapc.search(l)) for l in lines[first:]), sum('BPF_OBJ_GET_INFO_BY
     check "[ \"\${c7##* }\" -gt 0 ] 2>/dev/null" "  ... while p15d did read the kernel's skip counters by info call (${c7##* } calls): the trace saw the run"
 else
     bad "strace is not installed: case 7 cannot run (install strace)"
+fi
+
+echo "case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open"
+if [ "$NET_OK" = 1 ]; then
+"$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 2>"$T/c8.err" &
+pid=$!
+if started "$T/c8.err"; then
+    D8=$(mktemp -d /tmp/p15d-it8-XXXXXX); D8=$(realpath "$D8")
+    printf 'it_p15d\n' > "$D8/f1"; cat "$D8/f1" >/dev/null; mkfifo "$D8/fifo"
+    "$PY" -c "
+import errno, os, sys
+try: os.open(sys.argv[1], os.O_WRONLY | os.O_NONBLOCK)
+except OSError as e: sys.exit(0 if e.errno == errno.ENXIO else 1)
+sys.exit(1)" "$D8/fifo"; frc=$?
+fi
+wait $pid; rc=$?
+RUN=$T/c8; inspect -v >"$T/c8.txt"; irc=$?
+grep -E "OPEN .*path=\"$D8" "$T/c8.txt" | sed 's/^ *//' | head -4
+f1fid=$(grep -E "OPEN .*path=\"$D8/f1\"" "$T/c8.txt" | sed -n 's/.* fid=\([0-9]*\) .*/\1/p' | head -1)
+fifofid=$(grep -E "OPEN .*path=\"$D8/fifo\"" "$T/c8.txt" | sed -n 's/.* fid=\([0-9]*\) .*/\1/p' | head -1)
+check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && [ \"${frc:-1}\" -eq 0 ]" "exit 0, WAL valid, the FIFO open failed with ENXIO"
+check "[ \$(grep -cE \"OPEN .*path=\\\"$D8/f1\\\"\" $T/c8.txt) -ge 2 ]" "an OPEN with its path for the create and the read of f1"
+check "grep -qE \"OPEN .*path=\\\"$D8/f1\\\".* dev=[0-9]+:[0-9]+ ino=[0-9]+\" $T/c8.txt" "  ... the first one carries the object's facts"
+check "[ -n \"$f1fid\" ] && grep -qE \"CLOSE .* fid=$f1fid obj=[0-9]+ fflags=0x0 \" $T/c8.txt" "a CLOSE for f1's first open file (fid $f1fid), opened"
+check "[ -n \"$fifofid\" ] && grep -qE \"CLOSE .* fid=$fifofid obj=[0-9]+ fflags=0x[26]0 \" $T/c8.txt" "the FIFO open ends with CLOSE NEVER_OPENED (fid $fifofid)"
+check "grep -q 'FILE_STATS' $T/c8.txt && ! grep -qE 'FILE_STATS .* open_lost=[1-9]' $T/c8.txt" "FILE_STATS records written, no OPEN lost"
+check "grep -q 'END: exit 0, state 0, invariant 1' $T/c8.txt" "END: exit 0, RUNNING, the books close with file identity in them"
+rm -rf "$D8"
+else
+echo "case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)"
 fi
 
 echo "case 4: a bad flag"

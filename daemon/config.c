@@ -26,12 +26,14 @@ static const struct opt OPTS[] = {
 	{ "--queue-batches",       U32(queue_batches),  4,   1024,       64,   0 },
 	{ "--batch-kb",            U32(batch_kb),       16,  4096,       256,  0 },
 	{ "--test-drain-pause-ms", U32(drain_pause_ms), 0,   10000,      0,    0 },
+	{ "--file-map-entries",    U32(file_map_entries), 1024, 4194304, 65536,  0 },
+	{ "--obj-map-entries",     U32(obj_map_entries),  1024, 4194304, 131072, 0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
 void p15_config_usage(FILE *f)
 {
-	fprintf(f, "usage: p15d --wal-dir DIR [--textfile PATH] [--no-rt] [--no-net]");
+	fprintf(f, "usage: p15d --wal-dir DIR [--textfile PATH] [--no-rt] [--no-net] [--no-files] [--test-no-path-fentry]");
 	for (size_t i = 0; i < NOPTS; i++)
 		fprintf(f, " [%s N]", OPTS[i].flag);
 	fprintf(f, "\n");
@@ -57,6 +59,7 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 	memset(c, 0, sizeof(*c));
 	c->realtime = 1;
 	c->net = 1;
+	c->files = 1;
 	for (size_t i = 0; i < NOPTS; i++)
 		*(uint32_t *)((char *)c + OPTS[i].off) = OPTS[i].def;
 	for (int a = 1; a < argc; a++) {
@@ -69,6 +72,14 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 		}
 		if (!strcmp(f, "--no-net")) {
 			c->net = 0;
+			continue;
+		}
+		if (!strcmp(f, "--no-files")) {
+			c->files = 0;
+			continue;
+		}
+		if (!strcmp(f, "--test-no-path-fentry")) {
+			c->test_no_path_fentry = 1;
 			continue;
 		}
 		if (!strcmp(f, "--wal-dir") || !strcmp(f, "--textfile")) {
@@ -120,7 +131,7 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 	static const char *const keys[NOPTS] = {
 		"config.duration_s", "config.stats_ms", "config.sync_ms", "config.rotate_mb", "config.rotate_s",
 		"config.spine_ring_kb", "config.bulk_ring_kb", "config.queue_batches", "config.batch_kb",
-		"config.test_drain_pause_ms",
+		"config.test_drain_pause_ms", "config.file_map_entries", "config.obj_map_entries",
 	};
 	size_t n = 0;
 
@@ -138,6 +149,18 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 	if (n < max) {
 		snprintf(vals[n], 24, "%s", c->net ? "yes" : "no");
 		kv[n].key = "config.net";
+		kv[n].value = vals[n];
+		n++;
+	}
+	if (n < max) {
+		snprintf(vals[n], 24, "%s", c->files ? "yes" : "no");
+		kv[n].key = "config.files";
+		kv[n].value = vals[n];
+		n++;
+	}
+	if (n < max) {
+		snprintf(vals[n], 24, "%s", c->test_no_path_fentry ? "yes" : "no");
+		kv[n].key = "config.test_no_path_fentry";
 		kv[n].value = vals[n];
 		n++;
 	}

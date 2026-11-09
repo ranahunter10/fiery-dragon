@@ -13,7 +13,9 @@
 #include "compiler.h"
 
 /* Returns the number of failed checks, or -errno if the test could not be run. *consumed: every
- * record the test took from the ring, its own and anyone else's (the run's books count them). */
-P15_MUST_CHECK int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed);
+ * record the test took from the ring, its own and anyone else's, except the file-identity records
+ * of the shared bulk ring, which go to *file_consumed (the run's books count both). */
+P15_MUST_CHECK int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed,
+				    unsigned long long *file_consumed);
 
 #endif

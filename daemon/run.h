@@ -30,6 +30,7 @@ struct p15_run {
 	uint64_t start_ns;          /* the daemon's ADR-0009 identity start time (from the self-test) */
 	uint32_t spine_ring_bytes, bulk_ring_bytes;
 	int net;                    /* the network-intent programs are loaded (ADR-0004) */
+	int files;                  /* the file-identity programs are loaded (ADR-0015) */
 	struct p15q q;
 
 	_Atomic int state;          /* enum p15_run_state; only moves towards INVALID */
@@ -57,6 +58,18 @@ struct p15_run {
 	_Atomic uint64_t net_drained, net_invalid;
 	_Atomic uint64_t bulk_fill_max;          /* interval field */
 
+	/* file identity (ADR-0015, bpf/include/p15_file.h): counters by named slot, as bulk[] for NET */
+	_Atomic uint64_t filec[P15_CTR_MAX];
+	uint64_t filec_base[P15_CTR_MAX];
+	uint64_t file_selftest_consumed;         /* file records the self-tests took from the bulk ring */
+	_Atomic uint64_t file_drained, file_invalid;
+	_Atomic uint64_t files_live_max, objs_live_max;   /* the most entries seen at a poll */
+	int file_fentry_fd;                      /* the path fentry: skips located (PATH_MISSING), not lost */
+	int file_kprobe_fd[3];                   /* the session and the frees: skips are losses */
+	int n_file_kprobe;
+	_Atomic uint64_t fentry_missed, file_kprobe_missed;
+	uint64_t fentry_missed_base, file_kprobe_missed_base;
+
 	/* events the kernel skipped before our programs ran (ADR-0020 rule 3): bpf_prog_info.recursion_misses
 	 * of each attached program, read by the drain; *_base is the read after the self-tests */
 	int miss_fd[P15_SPINE_TYPES];            /* by record type 1..4; 0 = none */
@@ -68,7 +81,8 @@ struct p15_run {
 	uint64_t net_missed_base;
 
 	/* writer side */
-	_Atomic uint64_t spine_written, spine_drain_lost, net_written, net_drain_lost;
+	_Atomic uint64_t spine_written, spine_drain_lost;
+	_Atomic uint64_t net_written, net_drain_lost;   /* every bulk-ring record (NET and file identity) */
 	_Atomic int invariant;                   /* enum p15_invariant, set at the end */
 
 	/* the closing snapshot (ADR-0023 rule 1): main asks while the hooks are attached, the writer

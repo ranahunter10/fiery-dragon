@@ -99,7 +99,7 @@ static const char *raise_priority(int want_rt)
 int main(int argc, char **argv)
 {
 	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
-	static char cfg_vals[16][24];
+	static char cfg_vals[24][24];
 	struct p15w_kv meta[40];
 	struct p15_loader ld;
 	struct p15_drain d;
@@ -125,6 +125,7 @@ int main(int argc, char **argv)
 
 	run.bulk_ring_bytes = run.cfg.bulk_ring_kb * 1024u;
 	run.net = run.cfg.net;
+	run.files = run.cfg.files;
 	/* The snapshot object first: loading it writes its .bss with a map update, which holds
 	 * bpf_prog_active while preemptible, so it must happen before any program is attached. From
 	 * the spine's attach on, p15d makes no map syscall (ADR-0026). */
@@ -134,7 +135,15 @@ int main(int argc, char **argv)
 		p15_snapshot_free(&snap);
 		return code;
 	}
-	code = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));
+	{
+		struct p15_loader_opts lo = {
+			.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,
+			.files = run.files, .test_no_path_fentry = run.cfg.test_no_path_fentry,
+			.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,
+		};
+
+		code = p15_loader_start(&ld, &lo, err, sizeof(err));
+	}
 	if (code) {
 		logline("error", "load", err);
 		p15_loader_free(&ld);
@@ -149,6 +158,11 @@ int main(int argc, char **argv)
 	run.n_net_miss = ld.n_net_miss;
 	run.spine_selftest_consumed = ld.spine_consumed;
 	run.net_selftest_consumed = ld.net_consumed;
+	run.file_selftest_consumed = ld.file_consumed;
+	run.file_fentry_fd = ld.file_fentry_fd;
+	for (int i = 0; i < ld.n_file_kprobe; i++)
+		run.file_kprobe_fd[i] = ld.file_kprobe_fd[i];
+	run.n_file_kprobe = ld.n_file_kprobe;
 	sched = raise_priority(run.cfg.realtime);
 
 	/* the run directory: <wal-dir>/<UTC time>-<boot id prefix> (ADR-0007 rule 1) */
@@ -191,9 +205,10 @@ int main(int argc, char **argv)
 	KV("libbpf.version", libbpf_version_string());
 	KV("bpftool.version", P15_BPFTOOL_VERSION);
 	KV("hooks.manifest", ld.manifest);
-	KV("selftest.result", run.net ? "pass (spine, net)" : "pass (spine)");
+	KV("selftest.result", run.net && run.files ? "pass (spine, files, net)" : run.net ? "pass (spine, net)"
+			      : run.files ? "pass (spine, files)" : "pass (spine)");
 	KV("ring.spine.bytes", ring_b);
-	KV("ring.bulk.bytes", run.net ? bulk_b : "0 (--no-net: no network capture)");
+	KV("ring.bulk.bytes", run.net || run.files ? bulk_b : "0 (--no-net --no-files: no bulk capture)");
 	KV("tz", tz);
 	KV("drain.sched", sched);
 	KV("recovered.bytes_cut", cut);
@@ -221,7 +236,7 @@ int main(int argc, char **argv)
 	}
 	if (p15q_init(&run.q, run.cfg.queue_batches, run.cfg.batch_kb * 1024u) ||
 	    p15_drain_init(&d, &run, p15_loader_spine_rb_fd(&ld), p15_loader_counters_fd(&ld), p15_loader_bulk_rb_fd(&ld),
-			   p15_loader_bulk_counters_fd(&ld))) {
+			   p15_loader_bulk_counters_fd(&ld), p15_loader_file_counters_fd(&ld))) {
 		logline("error", "oserr", "cannot allocate the queue or the drain");
 		return P15_EXIT_OSERR;
 	}
@@ -235,8 +250,9 @@ int main(int argc, char **argv)
 		logline("error", "oserr", "cannot start the writer thread");
 		return P15_EXIT_OSERR;
 	}
-	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s\n", run_dir, sched,
-		run.spine_ring_bytes, run.net ? "on" : "off (--no-net)");
+	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s files=%s\n", run_dir, sched,
+		run.spine_ring_bytes, run.net ? "on" : "off (--no-net)",
+		run.files ? (run.cfg.test_no_path_fentry ? "on (TEST: no path fentry)" : "on") : "off (--no-files)");
 	if (run.cfg.duration_s)
 		end_ns = p15_mono_ns() + (uint64_t)run.cfg.duration_s * 1000000000ull;
 

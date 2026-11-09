@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "f21ebef378764bbf01a6ca381dec2a9b9b6ef9c2fe8a64d695e2b47d841d7f59"
+#define P15_SCHEMA_HASH "24c4869743f410306569951f2dd5ac75532d9221baef54641362551b7cae8b9d"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -47,6 +47,7 @@ enum p15_type {
 	P15_T_PROC = 37,
 	P15_T_SNAP_DONE = 38,
 	P15_T_FD = 39,
+	P15_T_FILE_STATS = 40,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -1054,6 +1055,105 @@ P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, _pad) == 92, "p15_fd_v1._pad offset");
 #define P15_FD_V1_FACTS_MAX 40
 #define P15_FD_V1_PATH_MAX 4096
 
+/* FILE_STATS v1 (STATS): The file-identity programs' health, written with every STATS record (ADR-0015, STATE decision 19): the counters of bpf/include/p15_file.h since the run's start, their books' drain side, the maps' fill and the kernel's skips. The books close as p15_file.h states; a lost OPEN, BACKING, CLOSE or session record, or a skipped session or free, makes the run DEGRADED. */
+struct p15_file_stats_v1 {
+	struct p15_hdr h;
+	__u64 fentry_run;
+	__u64 fentry_no_inode;
+	__u64 open_emitted;
+	__u64 open_lost;
+	__u64 open_full_size;
+	__u64 open_truncated;
+	__u64 open_path_error;
+	__u64 backing_emitted;
+	__u64 backing_lost;
+	__u64 backing_user_unread;
+	__u64 session_entry;
+	__u64 session_no_inode;
+	__u64 session_return;
+	__u64 session_common;
+	__u64 missing_emitted;
+	__u64 missing_lost;
+	__u64 verdict_emitted;
+	__u64 verdict_lost;
+	__u64 session_no_cookie;
+	__u64 session_no_entry;
+	__u64 free_run;
+	__u64 close_emitted;
+	__u64 close_lost;
+	__u64 free_unregistered;
+	__u64 inode_free_run;
+	__u64 inode_free_hit;
+	__u64 file_map_full;
+	__u64 obj_map_full;
+	__u64 file_stale;
+	__u64 obj_stale;
+	__u64 file_race;
+	__u64 obj_race;
+	__u64 facts_dup;
+	__u64 subvol_unknown;
+	__u64 kthread_open;
+	__u64 files_live;
+	__u64 objs_live;
+	__u64 files_live_max;
+	__u64 objs_live_max;
+	__u64 file_drained;
+	__u64 file_invalid;
+	__u64 fentry_missed;
+	__u64 kprobe_missed;
+	__u32 file_map_entries;
+	__u32 obj_map_entries;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_file_stats_v1) == 384, "p15_file_stats_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, h) == 0, "p15_file_stats_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, fentry_run) == 32, "p15_file_stats_v1.fentry_run offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, fentry_no_inode) == 40, "p15_file_stats_v1.fentry_no_inode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, open_emitted) == 48, "p15_file_stats_v1.open_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, open_lost) == 56, "p15_file_stats_v1.open_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, open_full_size) == 64, "p15_file_stats_v1.open_full_size offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, open_truncated) == 72, "p15_file_stats_v1.open_truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, open_path_error) == 80, "p15_file_stats_v1.open_path_error offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, backing_emitted) == 88, "p15_file_stats_v1.backing_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, backing_lost) == 96, "p15_file_stats_v1.backing_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, backing_user_unread) == 104, "p15_file_stats_v1.backing_user_unread offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, session_entry) == 112, "p15_file_stats_v1.session_entry offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, session_no_inode) == 120, "p15_file_stats_v1.session_no_inode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, session_return) == 128, "p15_file_stats_v1.session_return offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, session_common) == 136, "p15_file_stats_v1.session_common offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, missing_emitted) == 144, "p15_file_stats_v1.missing_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, missing_lost) == 152, "p15_file_stats_v1.missing_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, verdict_emitted) == 160, "p15_file_stats_v1.verdict_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, verdict_lost) == 168, "p15_file_stats_v1.verdict_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, session_no_cookie) == 176, "p15_file_stats_v1.session_no_cookie offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, session_no_entry) == 184, "p15_file_stats_v1.session_no_entry offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, free_run) == 192, "p15_file_stats_v1.free_run offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, close_emitted) == 200, "p15_file_stats_v1.close_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, close_lost) == 208, "p15_file_stats_v1.close_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, free_unregistered) == 216, "p15_file_stats_v1.free_unregistered offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, inode_free_run) == 224, "p15_file_stats_v1.inode_free_run offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, inode_free_hit) == 232, "p15_file_stats_v1.inode_free_hit offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, file_map_full) == 240, "p15_file_stats_v1.file_map_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, obj_map_full) == 248, "p15_file_stats_v1.obj_map_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, file_stale) == 256, "p15_file_stats_v1.file_stale offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, obj_stale) == 264, "p15_file_stats_v1.obj_stale offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, file_race) == 272, "p15_file_stats_v1.file_race offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, obj_race) == 280, "p15_file_stats_v1.obj_race offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, facts_dup) == 288, "p15_file_stats_v1.facts_dup offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, subvol_unknown) == 296, "p15_file_stats_v1.subvol_unknown offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, kthread_open) == 304, "p15_file_stats_v1.kthread_open offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, files_live) == 312, "p15_file_stats_v1.files_live offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, objs_live) == 320, "p15_file_stats_v1.objs_live offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, files_live_max) == 328, "p15_file_stats_v1.files_live_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, objs_live_max) == 336, "p15_file_stats_v1.objs_live_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, file_drained) == 344, "p15_file_stats_v1.file_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, file_invalid) == 352, "p15_file_stats_v1.file_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, fentry_missed) == 360, "p15_file_stats_v1.fentry_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, kprobe_missed) == 368, "p15_file_stats_v1.kprobe_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, file_map_entries) == 376, "p15_file_stats_v1.file_map_entries offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, obj_map_entries) == 380, "p15_file_stats_v1.obj_map_entries offset");
+
+#define P15_FILE_STATS_V1_MAX_SIZE 384
+
 /* The current version of each record type: what the BPF programs emit. */
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
@@ -1118,5 +1218,8 @@ P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, _pad) == 92, "p15_fd_v1._pad offset");
 #define P15_FD_MAX_SIZE P15_FD_V1_MAX_SIZE
 #define P15_FD_FACTS_MAX P15_FD_V1_FACTS_MAX
 #define P15_FD_PATH_MAX P15_FD_V1_PATH_MAX
+#define P15_FILE_STATS_VERSION 1
+#define p15_file_stats p15_file_stats_v1
+#define P15_FILE_STATS_MAX_SIZE P15_FILE_STATS_V1_MAX_SIZE
 
 #endif /* P15_RECORDS_H */

@@ -9,6 +9,7 @@
 
 #include "drain.h"
 #include "exitcodes.h"
+#include "p15_file.h"
 #include "p15_records.h"
 #include "writer.h"
 
@@ -26,6 +27,45 @@ static uint64_t bpfc(struct p15_run *r, int type, int kind)
 	int k = P15_CTR_INDEX(type, kind);
 
 	return atomic_load(&r->bpf[k]) - r->bpf_base[k];
+}
+
+/* A file-identity counter since the run's start (the self-tests' events excluded). */
+static uint64_t filec(struct p15_run *r, int slot)
+{
+	return atomic_load(&r->filec[slot]) - r->filec_base[slot];
+}
+
+/* bpf/include/p15_file.h's books, on absolute counters (ADR-0006 rule 6). Returns 0 if closed. */
+static int file_books(struct p15_run *r, char *why, size_t n)
+{
+#define A(slot) atomic_load(&r->filec[P15_FC_##slot])
+	uint64_t emitted = A(OPEN_EMITTED) + A(MISSING_EMITTED) + A(VERDICT_EMITTED) + A(BACKING_EMITTED) + A(CLOSE_EMITTED);
+	uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_consumed + atomic_load(&r->file_invalid);
+
+	if (A(FENTRY_RUN) != A(OPEN_EMITTED) + A(OPEN_LOST) + A(BACKING_EMITTED) + A(BACKING_LOST) + A(FENTRY_NO_INODE)) {
+		snprintf(why, n, "FILE: fentry runs %llu != OPEN and BACKING written or lost, or without an inode",
+			 (unsigned long long)A(FENTRY_RUN));
+		return -1;
+	}
+	if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||
+	    A(SESSION_RETURN) != A(SESSION_COMMON) + A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED) +
+					 A(VERDICT_LOST) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {
+		snprintf(why, n, "FILE: session entries %llu, returns %llu: not every run is accounted for",
+			 (unsigned long long)A(SESSION_ENTRY), (unsigned long long)A(SESSION_RETURN));
+		return -1;
+	}
+	if (A(FREE_RUN) != A(CLOSE_EMITTED) + A(CLOSE_LOST) + A(FREE_UNREGISTERED)) {
+		snprintf(why, n, "FILE: frees %llu != CLOSE written or lost + unregistered", (unsigned long long)A(FREE_RUN));
+		return -1;
+	}
+	if (emitted != taken) {
+		snprintf(why, n, "FILE: emitted %llu != drained %llu + %llu by the self-tests + invalid %llu",
+			 (unsigned long long)emitted, (unsigned long long)atomic_load(&r->file_drained),
+			 (unsigned long long)r->file_selftest_consumed, (unsigned long long)atomic_load(&r->file_invalid));
+		return -1;
+	}
+#undef A
+	return 0;
 }
 
 static int invariant(struct p15_run *r, char *why, size_t n);
@@ -90,10 +130,21 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 			return P15_INV_BROKEN;
 		}
 		if (em != nd + r->net_selftest_consumed + atomic_load(&r->net_invalid) ||
-		    nd != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
+		    nd + atomic_load(&r->file_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
 			snprintf(why, n, "NET: emitted %llu, drained %llu + %llu by the self-test, invalid %llu, written %llu, drain_lost %llu",
 				 (unsigned long long)em, (unsigned long long)nd, (unsigned long long)r->net_selftest_consumed,
 				 (unsigned long long)atomic_load(&r->net_invalid),
+				 (unsigned long long)atomic_load(&r->net_written),
+				 (unsigned long long)atomic_load(&r->net_drain_lost));
+			return P15_INV_BROKEN;
+		}
+	}
+	if (r->files) {
+		if (file_books(r, why, n))
+			return P15_INV_BROKEN;
+		if (!r->net && atomic_load(&r->file_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
+			snprintf(why, n, "bulk ring: drained %llu != written %llu + drain_lost %llu",
+				 (unsigned long long)atomic_load(&r->file_drained),
 				 (unsigned long long)atomic_load(&r->net_written),
 				 (unsigned long long)atomic_load(&r->net_drain_lost));
 			return P15_INV_BROKEN;
@@ -257,6 +308,63 @@ static void net_stats(struct p15_writer *w)
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 }
 
+static void file_stats(struct p15_writer *w)
+{
+	struct p15_run *r = w->run;
+	struct p15_file_stats s;
+
+	memset(&s, 0, sizeof(s));
+	p15_daemon_hdr(r, &s, P15_T_FILE_STATS, P15_FILE_STATS_VERSION, sizeof(s));
+#define F(field, slot) s.field = filec(r, slot);
+	F(fentry_run, P15_FC_FENTRY_RUN)
+	F(fentry_no_inode, P15_FC_FENTRY_NO_INODE)
+	F(open_emitted, P15_FC_OPEN_EMITTED)
+	F(open_lost, P15_FC_OPEN_LOST)
+	F(open_full_size, P15_FC_OPEN_FULL_SIZE)
+	F(open_truncated, P15_FC_OPEN_TRUNCATED)
+	F(open_path_error, P15_FC_OPEN_PATH_ERROR)
+	F(backing_emitted, P15_FC_BACKING_EMITTED)
+	F(backing_lost, P15_FC_BACKING_LOST)
+	F(backing_user_unread, P15_FC_BACKING_USER_UNREAD)
+	F(session_entry, P15_FC_SESSION_ENTRY)
+	F(session_no_inode, P15_FC_SESSION_NO_INODE)
+	F(session_return, P15_FC_SESSION_RETURN)
+	F(session_common, P15_FC_SESSION_COMMON)
+	F(missing_emitted, P15_FC_MISSING_EMITTED)
+	F(missing_lost, P15_FC_MISSING_LOST)
+	F(verdict_emitted, P15_FC_VERDICT_EMITTED)
+	F(verdict_lost, P15_FC_VERDICT_LOST)
+	F(session_no_cookie, P15_FC_SESSION_NO_COOKIE)
+	F(session_no_entry, P15_FC_SESSION_NO_ENTRY)
+	F(free_run, P15_FC_FREE_RUN)
+	F(close_emitted, P15_FC_CLOSE_EMITTED)
+	F(close_lost, P15_FC_CLOSE_LOST)
+	F(free_unregistered, P15_FC_FREE_UNREGISTERED)
+	F(inode_free_run, P15_FC_INODE_FREE_RUN)
+	F(inode_free_hit, P15_FC_INODE_FREE_HIT)
+	F(file_map_full, P15_FC_FILE_MAP_FULL)
+	F(obj_map_full, P15_FC_OBJ_MAP_FULL)
+	F(file_stale, P15_FC_FILE_STALE)
+	F(obj_stale, P15_FC_OBJ_STALE)
+	F(file_race, P15_FC_FILE_RACE)
+	F(obj_race, P15_FC_OBJ_RACE)
+	F(facts_dup, P15_FC_FACTS_DUP)
+	F(subvol_unknown, P15_FC_SUBVOL_UNKNOWN)
+	F(kthread_open, P15_FC_KTHREAD_OPEN)
+#undef F
+	s.files_live = atomic_load(&r->filec[P15_FC_FILES_LIVE]);   /* gauges: absolute, not since the start */
+	s.objs_live = atomic_load(&r->filec[P15_FC_OBJS_LIVE]);
+	s.files_live_max = atomic_load(&r->files_live_max);
+	s.objs_live_max = atomic_load(&r->objs_live_max);
+	s.file_drained = atomic_load(&r->file_drained);
+	s.file_invalid = atomic_load(&r->file_invalid);
+	s.fentry_missed = atomic_load(&r->fentry_missed) - r->fentry_missed_base;
+	s.kprobe_missed = atomic_load(&r->file_kprobe_missed) - r->file_kprobe_missed_base;
+	s.file_map_entries = r->cfg.file_map_entries;
+	s.obj_map_entries = r->cfg.obj_map_entries;
+	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
+}
+
 static void stats(struct p15_writer *w, uint64_t now)
 {
 	struct p15_stats s;
@@ -265,6 +373,8 @@ static void stats(struct p15_writer *w, uint64_t now)
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 	if (w->run->net)
 		net_stats(w);
+	if (w->run->files)
+		file_stats(w);
 	textfile(w, &s);
 	w->prev_stats_ns = now;
 	if (++w->stats_written % 10 == 0)

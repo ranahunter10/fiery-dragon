@@ -14,7 +14,7 @@ static int failures;
 
 #define EXPECT(cond, msg) do { if (!(cond)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, msg); failures++; } } while (0)
 
-static unsigned char buf[2048];
+static unsigned char buf[8192];
 
 static struct p15_hdr *mk(unsigned type, unsigned len)
 {
@@ -84,10 +84,10 @@ static void test_fixed_sizes(void)
 		EXPECT(!strcmp(p15_type_name(t[i].type), t[i].name), what);
 	}
 	EXPECT(!strcmp(p15_type_name(P15_T_EXEC), "EXEC") && !strcmp(p15_type_name(P15_T_END), "END"), "var types named");
-	EXPECT(!strcmp(p15_type_name(6), "?") && !strcmp(p15_type_name(39), "?"), "unknown types");
+	EXPECT(!strcmp(p15_type_name(41), "?") && !strcmp(p15_type_name(99), "?"), "unknown types");
 	EXPECT(!strcmp(p15_type_name(P15_T_PROC), "PROC") && !strcmp(p15_type_name(P15_T_SNAP_DONE), "SNAP_DONE"),
 	       "snapshot types named");
-	mk(39, 32);
+	mk(99, 32);
 	EXPECT(!ok(), "unknown type refused");
 	sd = (void *)mk(P15_T_SNAP_DONE, sizeof(struct p15_snap_done_v1));
 	sd->kind = 1;
@@ -381,8 +381,129 @@ static void test_net_v2(void)
 	EXPECT(!ok(), "NET v2 longer than its fixed size refused");
 }
 
+static const char *why_of(void)
+{
+	const char *why = NULL;
+
+	return p15_rec_check(buf, sizeof(buf), &why) ? why : "accepted";
+}
+
+#define WHY(msg, want) do { const char *w_ = why_of(); if (strcmp(w_, want)) { \
+	printf("FAIL %s:%d %s: got \"%s\"\n", __FILE__, __LINE__, msg, w_); failures++; } } while (0)
+
+/* An OPEN with optional facts and a path, laid out as file.bpf.c builds it. */
+static struct p15_open_v1 *mk_open(__u32 fflags, int facts, const char *path)
+{
+	size_t plen = strlen(path), fl = facts ? sizeof(struct p15_part_objfacts) : 0;
+	struct p15_open_v1 *r = (void *)mk(P15_T_OPEN, (unsigned)((sizeof(*r) + fl + plen + 7) & ~7ul));
+	struct p15_part_objfacts *f = (void *)(r + 1);
+
+	r->fid = 2;
+	r->obj = 1;
+	r->fflags = fflags;
+	r->facts_len = r->facts_full = (__u16)fl;
+	if (facts) {
+		f->ino = 42;
+		f->seen = 1;
+	}
+	r->path_len = r->path_full = (__u16)plen;
+	memcpy((__u8 *)(r + 1) + fl, path, plen);
+	return r;
+}
+
+/* OPEN, OPEN_VERDICT, BACKING, CLOSE, FD: the rules and wording of python/p15/records.py. */
+static void test_file_records(void)
+{
+	struct p15_open_v1 *o;
+	struct p15_part_objfacts *f;
+	struct p15_backing_v1 *b;
+	struct p15_fd_v1 *d;
+	char line[2048];
+
+	o = mk_open(P15_FF_OBJ_NEW, 1, "/var/tmp/f1");
+	WHY("OPEN with facts and a path", "accepted");
+	p15_rec_format(buf, line, sizeof(line));
+	EXPECT(strstr(line, "OPEN ") && strstr(line, "path=\"/var/tmp/f1\"(11)") && strstr(line, "ino=42"), "OPEN formatted");
+	mk_open(0, 0, "/var/tmp/f1");
+	WHY("OPEN without facts", "accepted");
+	mk_open(0, 1, "/x");
+	WHY("facts without OBJ_NEW", "OPEN: facts present without its flag, or its flag without it");
+	mk_open(P15_FF_OBJ_NEW, 0, "/x");
+	WHY("OBJ_NEW without facts", "OPEN: facts present without its flag, or its flag without it");
+	o = mk_open(P15_FF_OBJ_NEW, 1, "/x");
+	o->facts_full = 0;
+	WHY("facts _full differs", "OPEN: facts is neither absent nor a whole OBJFACTS");
+	o = mk_open(P15_FF_OBJ_NEW, 1, "/x");
+	f = (void *)(o + 1);
+	f->oflags = 2;
+	WHY("unknown oflags", "OBJFACTS: unknown oflags bits or an unknown 'seen'");
+	f->oflags = 0;
+	f->seen = 0;
+	WHY("seen 0", "OBJFACTS: unknown oflags bits or an unknown 'seen'");
+	mk_open(1u << 7, 0, "/x");
+	WHY("unknown fflags", "OPEN: fflags bits this record never carries");
+	o = mk_open(0, 0, "/x");
+	o->verdict = -13;
+	WHY("verdict on a fentry OPEN", "OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)");
+	o = mk_open(P15_FF_PATH_MISSING, 0, "");
+	o->verdict = -13;
+	WHY("PATH_MISSING with its verdict", "accepted");
+	o = mk_open(0, 0, "/x");
+	o->path_err = -22;
+	WHY("path_err without the flag", "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err");
+	o = mk_open(P15_FF_PATH_ERROR, 0, "");
+	o->path_err = -22;
+	WHY("PATH_ERROR with path_err", "accepted");
+	o = mk_open(P15_FF_FULL_SIZE, 0, "/a");
+	o->h.len = P15_OPEN_V1_MAX_SIZE;
+	WHY("full-size OPEN, zero slack", "accepted");
+	EXPECT(ok_exact(P15_OPEN_V1_MAX_SIZE), "full-size OPEN read within its bytes");
+	buf[P15_OPEN_V1_MAX_SIZE - 1] = 1;
+	WHY("full-size OPEN, dirty slack", "non-zero bytes after the variable fields");
+	o = mk_open(0, 0, "/a");
+	o->h.len = P15_OPEN_V1_MAX_SIZE;
+	WHY("slack without FULL_SIZE", "len larger than its fields need");
+	o = mk_open(0, 0, "/abc");
+	o->path_len = 300;
+	WHY("path beyond len", "variable field beyond len");
+
+	mk(P15_T_OPEN_VERDICT, sizeof(struct p15_open_verdict_v1));
+	WHY("OPEN_VERDICT 0", "OPEN_VERDICT: the verdict is not a denial");
+	((struct p15_open_verdict_v1 *)buf)->verdict = -13;
+	WHY("OPEN_VERDICT -13", "accepted");
+
+	b = (void *)mk(P15_T_BACKING, sizeof(*b) + sizeof(*f));
+	b->fflags = P15_FF_USER_OBJ_NEW;
+	b->user_facts_len = b->user_facts_full = sizeof(*f);
+	((struct p15_part_objfacts *)(b + 1))->seen = 1;
+	WHY("BACKING with the overlay facts only", "accepted");
+	b->fflags = P15_FF_OBJ_NEW;
+	WHY("BACKING facts flag mismatch", "BACKING: facts present without its flag, or its flag without it");
+
+	mk(P15_T_CLOSE, sizeof(struct p15_close_v1));
+	((struct p15_close_v1 *)buf)->fflags = P15_FF_NEVER_OPENED | P15_FF_KTHREAD;
+	WHY("CLOSE NEVER_OPENED KTHREAD", "accepted");
+	((struct p15_close_v1 *)buf)->fflags = P15_FF_OBJ_NEW;
+	WHY("CLOSE OBJ_NEW", "CLOSE: fflags bits this record never carries");
+
+	d = (void *)mk(P15_T_FD, sizeof(*d) + sizeof(*f) + 8);
+	d->facts_len = d->facts_full = sizeof(*f);
+	((struct p15_part_objfacts *)(d + 1))->seen = 2;
+	d->path_len = d->path_full = 8;
+	memcpy((__u8 *)(d + 1) + sizeof(*f), "/dev/pts", 8);
+	WHY("FD with facts and path", "accepted");
+	d->facts_len = d->facts_full = 0;
+	d->h.len = sizeof(*d) + 8;
+	memmove((__u8 *)(d + 1), "/dev/pts", 8);
+	WHY("FD without facts", "FD: facts present without its flag, or its flag without it");
+
+	EXPECT(p15_is_file_type(P15_T_OPEN) && p15_is_file_type(P15_T_CLOSE) && !p15_is_file_type(P15_T_FD) &&
+	       !p15_is_file_type(P15_T_NET), "the bulk ring's file types");
+}
+
 int main(void)
 {
+	test_file_records();
 	test_fixed_sizes();
 	test_end();
 	test_exec_slack_rules();

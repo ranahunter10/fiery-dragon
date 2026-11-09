@@ -10,6 +10,7 @@
 
 #include "counters.h"
 #include "drain.h"
+#include "p15_file.h"
 #include "p15_records.h"
 #include "records.h"
 #include "wal.h"
@@ -82,8 +83,13 @@ static int on_bulk(void *ctx, void *data, size_t size)
 	const char *why;
 	int rc;
 
-	if (p15_rec_check(data, size, &why) || h->type != P15_T_NET) {
-		atomic_fetch_add(&d->run->net_invalid, 1);
+	int is_net = size >= sizeof(*h) && h->type == P15_T_NET;
+	int is_file = size >= sizeof(*h) && p15_is_file_type(h->type);
+
+	if (p15_rec_check(data, size, &why) || (!is_net && !is_file)) {
+		/* a refused NET record on the NET books; anything else (file identity, or not even a known
+		 * bulk type) on the file books, which own the ring when loaded */
+		atomic_fetch_add(is_net || !d->run->files ? &d->run->net_invalid : &d->run->file_invalid, 1);
 		p15_run_set_state(d->run, P15_RUN_DEGRADED, "a bulk record failed its checks");
 		return 0;
 	}
@@ -92,7 +98,7 @@ static int on_bulk(void *ctx, void *data, size_t size)
 		d->queue_full_now = 1;
 		return rc;
 	}
-	atomic_fetch_add(&d->run->net_drained, 1);
+	atomic_fetch_add(is_net ? &d->run->net_drained : &d->run->file_drained, 1);
 	return 0;
 }
 
@@ -108,6 +114,24 @@ static int prog_misses(int fd, uint64_t *out)
 	if (bpf_prog_get_info_by_fd(fd, &info, &len))
 		return -errno;
 	*out = info.recursion_misses;
+	return 0;
+}
+
+/* The file programs' skips, absolute: the path fentry's (located: PATH_MISSING) and the kprobes' (lost). */
+static int read_file_misses(const struct p15_run *r, uint64_t *fentry, uint64_t *kprobes)
+{
+	int rc;
+
+	*fentry = *kprobes = 0;
+	if (r->file_fentry_fd > 0 && (rc = prog_misses(r->file_fentry_fd, fentry)))
+		return rc;
+	for (int i = 0; i < r->n_file_kprobe; i++) {
+		uint64_t v;
+
+		if ((rc = prog_misses(r->file_kprobe_fd[i], &v)))
+			return rc;
+		*kprobes += v;
+	}
 	return 0;
 }
 
@@ -133,12 +157,12 @@ static int read_misses(const struct p15_run *r, uint64_t spine[P15_SPINE_TYPES],
 }
 
 int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
-		   int bulk_ctr_fd)
+		   int bulk_ctr_fd, int file_ctr_fd)
 {
 	memset(d, 0, sizeof(*d));
 	d->run = run;
-	if ((bulk_rb_fd >= 0) != (bulk_ctr_fd >= 0))
-		return -EINVAL;                      /* the bulk ring and its counters come together */
+	if ((bulk_rb_fd >= 0) != (bulk_ctr_fd >= 0 || file_ctr_fd >= 0))
+		return -EINVAL;                      /* the bulk ring and a counter map of its writers come together */
 	d->ncpu = libbpf_num_possible_cpus();   /* the loader sized the counter maps with the same call */
 	if (d->ncpu <= 0)
 		return d->ncpu ? d->ncpu : -EINVAL;
@@ -149,6 +173,8 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 			return rc;
 		if (bulk_ctr_fd >= 0 && (rc = p15_counters_map(&d->bulk_ctr, bulk_ctr_fd, d->ncpu)))
 			return rc;
+		if (file_ctr_fd >= 0 && (rc = p15_counters_map(&d->file_ctr, file_ctr_fd, d->ncpu)))
+			return rc;
 	}
 	d->rb = ring_buffer__new(spine_rb_fd, on_spine, d, NULL);
 	if (!d->rb)
@@ -158,7 +184,7 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 		if (ring_buffer__add(d->rb, bulk_rb_fd, on_bulk, d))
 			return -errno;
 		d->bulk = ring_buffer__ring(d->rb, 1);
-		{
+		if (bulk_ctr_fd >= 0) {
 			int rc = read_map(&d->bulk_ctr, d->prev_bulk);
 
 			if (rc)
@@ -167,6 +193,23 @@ int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, in
 				run->bulk_base[k] = d->prev_bulk[k];
 				atomic_store(&run->bulk[k], d->prev_bulk[k]);
 			}
+		}
+		if (file_ctr_fd >= 0) {
+			uint64_t fm;
+			int rc = read_map(&d->file_ctr, d->prev_file);
+
+			if (!rc)
+				rc = read_file_misses(run, &fm, &d->prev_file_kprobe_missed);
+			if (rc)
+				return rc;
+			for (int k = 0; k < P15_CTR_MAX; k++) {
+				run->filec_base[k] = d->prev_file[k];
+				atomic_store(&run->filec[k], d->prev_file[k]);
+			}
+			run->fentry_missed_base = fm;
+			atomic_store(&run->fentry_missed, fm);
+			run->file_kprobe_missed_base = d->prev_file_kprobe_missed;
+			atomic_store(&run->file_kprobe_missed, d->prev_file_kprobe_missed);
 		}
 	}
 	d->prev_read_ns = d->last_poll_ns = p15_boot_ns();
@@ -198,6 +241,7 @@ void p15_drain_free(struct p15_drain *d)
 	ring_buffer__free(d->rb);
 	p15_counters_unmap(&d->ctr);
 	p15_counters_unmap(&d->bulk_ctr);
+	p15_counters_unmap(&d->file_ctr);
 	d->rb = NULL;
 }
 
@@ -282,6 +326,42 @@ int p15_spine_loss_changed(const uint64_t *prev_ctr, const uint64_t *now_ctr, co
 	return any;
 }
 
+/* The file-identity counters after a poll (ADR-0015): a lost record or a skipped kprobe makes the
+ * run DEGRADED; a skipped fentry does not (its open is written as PATH_MISSING). The live gauges'
+ * high-water marks are kept here. */
+static int after_poll_file(struct p15_drain *d)
+{
+	static const int lost[] = { P15_FC_OPEN_LOST, P15_FC_BACKING_LOST, P15_FC_MISSING_LOST, P15_FC_VERDICT_LOST,
+				    P15_FC_CLOSE_LOST };
+	uint64_t f[P15_CTR_MAX], fm, km, m;
+	int rc = read_map(&d->file_ctr, f);
+
+	if (!rc)
+		rc = read_file_misses(d->run, &fm, &km);
+	if (rc)
+		return rc;
+	for (int i = 0; i < P15_CTR_MAX; i++)
+		atomic_store(&d->run->filec[i], f[i]);
+	atomic_store(&d->run->fentry_missed, fm);
+	atomic_store(&d->run->file_kprobe_missed, km);
+	for (size_t i = 0; i < sizeof(lost) / sizeof(lost[0]); i++)
+		if (f[lost[i]] != d->prev_file[lost[i]])
+			p15_run_set_state(d->run, P15_RUN_DEGRADED, "file-identity records lost to a full bulk ring");
+	if (km != d->prev_file_kprobe_missed)
+		p15_run_set_state(d->run, P15_RUN_DEGRADED, "file-identity events skipped by the kernel (recursion misses)");
+	/* a gauge's rows are read one by one, so a delete seen before its insert can wrap it for one
+	 * read: such a value is not a high-water mark */
+	m = atomic_load(&d->run->files_live_max);
+	if (f[P15_FC_FILES_LIVE] > m && f[P15_FC_FILES_LIVE] < (1ull << 63))
+		atomic_store(&d->run->files_live_max, f[P15_FC_FILES_LIVE]);
+	m = atomic_load(&d->run->objs_live_max);
+	if (f[P15_FC_OBJS_LIVE] > m && f[P15_FC_OBJS_LIVE] < (1ull << 63))
+		atomic_store(&d->run->objs_live_max, f[P15_FC_OBJS_LIVE]);
+	memcpy(d->prev_file, f, sizeof(f));
+	d->prev_file_kprobe_missed = km;
+	return 0;
+}
+
 static int after_poll(struct p15_drain *d)
 {
 	uint64_t now_ctr[P15_CTR_MAX], now_missed[P15_SPINE_TYPES], now_net_missed, from = d->prev_read_ns, to, fill, m;
@@ -307,12 +387,18 @@ static int after_poll(struct p15_drain *d)
 	d->prev_net_missed = now_net_missed;
 	for (int k = 0; k < P15_CTR_MAX; k++)
 		atomic_store(&d->run->bpf[k], now_ctr[k]);
+	if (d->bulk && d->file_ctr.rows && (rc = after_poll_file(d)))
+		return rc;
 	if (d->bulk) {
-		uint64_t b[P15_CTR_MAX], f = ring__avail_data_size(d->bulk), bm = atomic_load(&d->run->bulk_fill_max);
-		int k = P15_CTR_INDEX(P15_T_NET, P15_CK_RESERVE_FAILED);
+		uint64_t f = ring__avail_data_size(d->bulk), bm = atomic_load(&d->run->bulk_fill_max);
 
 		while (f > bm && !atomic_compare_exchange_weak(&d->run->bulk_fill_max, &bm, f))
 			;
+	}
+	if (d->bulk && d->bulk_ctr.rows) {
+		uint64_t b[P15_CTR_MAX];
+		int k = P15_CTR_INDEX(P15_T_NET, P15_CK_RESERVE_FAILED);
+
 		rc = read_map(&d->bulk_ctr, b);
 		if (rc)
 			return rc;
