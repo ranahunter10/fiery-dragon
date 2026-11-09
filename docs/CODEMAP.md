@@ -75,6 +75,15 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`paired.py`](../bench/quant/paired.py) | the paired-timing statistics, as code with tests (never by hand). | `median`, `mean`, `harmonic_mean`, `Interval`, `median_ci`, `signed_rank_counts`, `Wilcoxon`, `wilcoxon_exact`, `walsh_averages`, `HodgesLehmann`, `hodges_lehmann`, `Arm` (+2) |
 | [`test_paired.py`](../bench/quant/test_paired.py) | Tests for paired.py. | `brute_counts`, `brute_p`, `SignedRankTest`, `HodgesLehmannTest`, `MedianTest`, `ReportTest` |
 
+## bench/rw_hook_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`rw_hook_cost.bpf.c`](../bench/rw_hook_cost/rw_hook_cost.bpf.c) | the same trivial body behind each hook type slice B could use on the read path, so a difference in cost is the hook path's alone (ADR-0005/ADR-0015 decision 1a, N5; ADR-0018 rul... | `fentry/vfs_read → rd_fentry`, `fexit/vfs_read → rd_fexit`, `kprobe.multi/vfs_read`, `kretprobe.multi/vfs_read`, `kprobe.session/vfs_read`, `kprobe.session/security_file_open`, `fentry/security_file_open → open_fentry` |
+| [`rw_hook_cost.c`](../bench/rw_hook_cost/rw_hook_cost.c) | what each candidate hook type costs on the read path, per call, paired by round (ADR-0015/ADR-0005 decision 1a and N5; ADR-0018 rule 2), and whether a kprobe.session and a fentr... |  |
+| [`summarize.py`](../bench/rw_hook_cost/summarize.py) | Summarize rw_hook_cost output (bench/rw_hook_cost/rw_hook_cost.c) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `series`, `comparison`, `report` |
+| [`test_summarize.py`](../bench/rw_hook_cost/test_summarize.py) | Tests for summarize.py on synthetic rw_hook_cost output with a known answer. | `synth`, `overhead`, `SummarizeTest` |
+
 ## bpf/include
 
 | File | Job | Public names |

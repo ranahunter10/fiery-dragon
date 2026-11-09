@@ -16,6 +16,7 @@
 #   make hardening-check  the daemon binaries carry the ADR-0019 G3.3 hardening
 #   make mutate-py        mutation sweep of the Python gates and harnesses (checkers, summarizers)
 #   make bench-hook-cost  classic tracepoint vs tp_btf hook path, paired (root; ADR-0020 conf. 5)
+#   make bench-rw-hook-cost  fentry/fexit/kprobe.multi/pair/kprobe.session on vfs_read, paired (root; N5)
 #   make mutate-spine     mutation sweep of the spine's EXEC program through the self-test (root)
 #   make CC=clang OUT=build-clang test-c   the same build and tests with clang (-Werror clean)
 #   make clean
@@ -54,7 +55,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot $(OUT)/test_counters
+         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
@@ -65,7 +66,7 @@ GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || e
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
 .PHONY: probe-recursion it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
-        exit-check hardening-check must-check-test mutate-py bench-hook-cost mutate-spine mutate-records
+        exit-check hardening-check must-check-test mutate-py bench-hook-cost bench-rw-hook-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -274,6 +275,22 @@ bench-hook-cost: $(OUT)/hook_cost
 	$(OUT)/hook_cost $(OUT)/spine.bpf.o $(or $(ROUNDS),10) $(or $(RENAMES),200000) $(or $(EXECS),300) \
 		| tee $(OUT)/hook_cost.txt
 	python3 bench/hook_cost/summarize.py $(OUT)/hook_cost.txt
+
+# Decision 1a and N5 (ADR-0015, ADR-0005): the hook types slice B could use on vfs_read, paired
+# (bench/rw_hook_cost/), and a kprobe.session beside a fentry on one function (design check O2).
+$(OUT)/rw_hook_cost.bpf.o: bench/rw_hook_cost/rw_hook_cost.bpf.c bpf/vmlinux/vmlinux.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
+
+$(OUT)/rw_hook_cost: bench/rw_hook_cost/rw_hook_cost.c $(OUT)/rw_hook_cost.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/rw_hook_cost/rw_hook_cost.c $(LDLIBS) -o $@
+
+# root. NOTRAMP=1 leaves out the fentry/fexit arms (the dev container cannot load trampolines);
+# NOSESSION=1 the kprobe.session arm (the dev container's 6.18 session kfuncs take no ctx).
+# Raw lines: $(OUT)/rw_hook_cost.txt.
+bench-rw-hook-cost: $(OUT)/rw_hook_cost
+	$(OUT)/rw_hook_cost $(or $(ROUNDS),20) $(or $(READS),200000) $(or $(OPENS),2000) $(if $(NOTRAMP),--no-trampoline) $(if $(NOSESSION),--no-session) \
+		| tee $(OUT)/rw_hook_cost.txt
+	python3 bench/rw_hook_cost/summarize.py $(OUT)/rw_hook_cost.txt
 
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@

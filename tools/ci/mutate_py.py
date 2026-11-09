@@ -25,6 +25,7 @@ EXITS, HARD = "tools/ci/check_exits.py", "tools/ci/check_hardening.py"
 WAL, REC = "python/p15/wal.py", "python/p15/records.py"
 TREE, NET, TRACE, HTML = "python/p15/proctree.py", "python/p15/net.py", "python/p15/trace.py", "python/p15/report_html.py"
 QUANT, HOOKS = "bench/quant/paired.py", "bench/hook_cost/summarize.py"
+RWH = "bench/rw_hook_cost/summarize.py"
 SNAP, RECON = "python/p15/snapshot.py", "python/p15/reconcile.py"
 PROV = "python/p15/provenance.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
@@ -158,6 +159,17 @@ M = [
  (HOOKS, 'out[a].append(got[a][metric] / got[a]["n"])', 'out[a].append(got[a][metric])'),
  (HOOKS, "if hits != want:", "if False:"),
  (HOOKS, 'return "\\n".join(out), 1 if bad else 0', 'return "\\n".join(out), 0'),
+ # decision 1a and N5: the read-path hook-cost report
+ (RWH, "want = 0 if arm in UNTRACED else n", "want = n"),
+ (RWH, "if hits != want:", "if False:"),
+ (RWH, "if orphan:", "if False:"),
+ (RWH, "if int(cpu) <= 0 or int(wall) <= 0:", "if False:"),
+ (RWH, "elif rnd >= 0:", "elif True:"),
+ (RWH, 'out[a].append(rows[r][a][metric] / rows[r][a]["n"])', "out[a].append(rows[r][a][metric])"),
+ (RWH, 'if m[5] != "ok":', "if False:"),
+ (RWH, "skips[arm][0] += int(rmiss)", "skips[arm][0] = int(rmiss)"),
+ (RWH, "[x * v / w for x, v, w in zip(s[b], aa, u)]", "aa"),
+ (RWH, 'return "\\n".join(out), 1 if bad else 0', 'return "\\n".join(out), 0'),
  # ADR-0007 rule 3 and ADR-0023: the snapshots, the tree's opening balance, the reconciliation
  (REC, 'if lay.name == "PROC" and (f["reserved"] or f["kind"] not in (1, 2) or f["pflags"] & ~3):',
   'if lay.name == "PROC" and f["reserved"]:'),
