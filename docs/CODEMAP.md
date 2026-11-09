@@ -230,3 +230,9 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`run_demo.sh`](../tools/demo/run_demo.sh) | The capture demo (STATE 19.5; docs/demo/README.md). | `log` |
 | [`webapp.py`](../tools/demo/webapp.py) | A deliberately vulnerable little web app for the capture demo (docs/demo/README.md). | `App` |
+
+## tools/vm
+
+| File | Job | Public names |
+|---|---|---|
+| [`sliceb_attach_check.sh`](../tools/vm/sliceb_attach_check.sh) | Slice B attach-point check (ADR-0005, ADR-0015; design checks O1-O3, O5 in docs/research/2026-11-09-slice-b-design-checks.md). |  |

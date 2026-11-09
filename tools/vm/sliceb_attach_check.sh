@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Slice B attach-point check (ADR-0005, ADR-0015; design checks O1-O3 in
+# Slice B attach-point check (ADR-0005, ADR-0015; design checks O1-O3, O5 in
 # docs/research/2026-11-09-slice-b-design-checks.md). Read-only: it reads the
 # kernel config, BTF and tracefs, and loads nothing.
 #   sudo tools/vm/sliceb_attach_check.sh OUT_FILE
