@@ -153,8 +153,8 @@ Reopen if:
 
 ## Decisions raised
 
-1. **The paper's checks as the rule.** The session read the PDF the maintainer supplied (design-checks §1, R-039 verified): X1-X8 hold, X9 is corrected, and X10-X11 add the two points rule 5 now states (reverse-direction events block; per-key order comes from the single owner). Recommendation: the maintainer confirms rule 5 against p. 4-6 of the PDF (Def. 2, Algorithms 1-3, §3.2.1-3.2.3), then accepts.
-2. **Sweep interval one second, closing aggregates** (rule 9). Alternative: a longer interval (more reduction, a longer crash window than ADR-0007's), or a sweep that writes progress without closing (no gain in exactness, more state). Recommendation: one second, closing.
+1. **Decided 2026-11-09 (maintainer): rule 5 confirmed against the PDF (E-0132).** *The paper's checks as the rule.* The session read the PDF the maintainer supplied (design-checks §1, R-039 verified): X1-X8 hold, X9 is corrected, and X10-X11 add the two points rule 5 now states (reverse-direction events block; per-key order comes from the single owner). Recommendation: the maintainer confirms rule 5 against p. 4-6 of the PDF (Def. 2, Algorithms 1-3, §3.2.1-3.2.3), then accepts.
+2. **Decided 2026-11-09 (maintainer): one second, closing (E-0132).** *Sweep interval one second, closing aggregates* (rule 9). Alternative: a longer interval (more reduction, a longer crash window than ADR-0007's), or a sweep that writes progress without closing (no gain in exactness, more state). Recommendation: one second, closing.
 3. **Mappings** (rule 12), including the system-wide mark. Recommendation: accept; measure how often it fires in step 6.
 4. **Run state** (rule 8): data-flow loss makes the run DEGRADED; reduced folding does not. Recommendation: accept.
 5. **No file offsets in FLOW.** CDM has `location`, but nothing we consume reads it (provenance-and-pids.md §3-4), and it costs 16 bytes per record. Recommendation: leave them out; add them in a FLOW version if a consumer appears.
