@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-05 (UTC), PR "snapshot: the process snapshot at every segment open, the closing snapshot and the reconciliation (step 4c, ADR-0023)"
+**Last updated:** 2026-11-09 (UTC), PR "adr: 0015 file identity and 0005 data-flow filtering and aggregation (slice B design)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -118,7 +118,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
       - ✅ step 4c, the opening snapshot (ADR-0007), with ADR-0023's closing snapshot and reconciliation: built (E-0106) and verified on the VM (E-0107);
       - 🔧 EXEC v2 and PROC v2, carrying `self_exec_id` (ADR-0020 rule 5) and the code-provenance facts of ADR-0025 (proposed): the load-time self-test checks every new fact against `stat`/`statfs`/`fstat` and found the ctime flag bit (E-0111); VM self-test and 14/14 planted bugs (E-0112, E-0115); the removed build ways' VM cost (E-0114); end-to-end case 6 in the container (E-0116), CI and the VM (E-0117). PR #56 (ADR-0025 accepted 2026-11-06);
       - 🔧 **ADR-0026** (proposed): the counters are an mmapable array, and p15d makes no map syscall once a program is attached; built and passing in the container, CI and on the VM (E-0119 to E-0121, E-0123); a guest kernel oops cut off the first VM sweep, INF host-side, open and watched (E-0122). Accepted 2026-11-08, #57;
-      - then slice B (STATE decisions taken 15.5);
+      - 🔧 **slice B, step 1 (design):** ADR-0015 (file identity) and ADR-0005 (filtering and aggregation) proposed, with the design checks they rest on ([note](research/2026-11-09-slice-b-design-checks.md), E-0126 to E-0130). Waiting: the decisions below, the maintainer's own reading of Xu et al.'s checks (ADR-0005 decision 1), and the VM attach check (`tools/vm/sliceb_attach_check.sh`);
       - then the demo.
 
 21. **Hardening from the 2026-11-05 research** (state-of-the-art tools, the kernel source, other fields; [research note](research/2026-11-05-sota-and-cross-domain.md)):
@@ -127,6 +127,15 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - ✅ **The hook-cost harness** (PR #49, E-0099): `make bench-hook-cost`, the same trivial body on a classic tracepoint and on `tp_btf`, plus the shipped spine EXEC. Container (not the target): classic costs +13.9 ns per rename event against `tp_btf` (0.15 null syscalls); at exec level nothing resolves. **VM (E-0101): +49.4 ns per rename event (9.8–72.4 ns, p = 0.017); per exec, not resolved. `vm_verify.sh` passes all 18 steps on #47–#49.**
     - ✅ **ADR-0022 accepted 2026-11-05** — ✅ built in PR #52 (E-0103, VM E-0104): an exact client join by the TCP initial sequence number (NET v2), instead of the 5 s time window.
     - ✅ **ADR-0023 accepted 2026-11-05** — 🔧 built with step 4c (E-0106): reconcile the process tree against a closing snapshot, so each lost FORK or EXIT is located to its process, and a lost FORK repaired. p15-trace's Trust block shows the verdict.
+
+22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
+    1. 🔧 slice B design: ADR-0015 and ADR-0005 (this PR);
+    2. slice B code: schema records, BPF programs, loader, daemon checks and formatters, the Python decoder and report, the load-time self-test, an `it_p15d.sh` case, mutation sweep entries; read/write/readv/writev, the socket tracepoints, io_uring completions, splice/sendfile/copy_file_range (each its own record), open and close, rename/unlink, mmap at map time; the kernel's internal I/O and per-access mapped I/O declared out of scope;
+    3. slice C: memory made executable (ADR, records, tests);
+    4. slice D: writes into another process's memory;
+    5. slice E: new kernel code and carriers (module and BPF program loads, setxattr);
+    6. the overhead of the full capture on ordinary workloads, on the VM (ADR-0018);
+    7. the graph: a DuckDB star schema and builder, an offline one-page HTML view of a run, then the PIDSMaker export (where PIDSMaker runs is the maintainer's decision).
 
 ## Decisions taken (now recorded in ADRs where noted)
 
@@ -184,6 +193,11 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     2. **#58 merged:** the slice B research note.
     3. **The guest kernel oops of E-0122 stays open and is watched** (kdump stays on); no control run and no host change for now. *(E-0125)*
 
+17. **The 2026-11-09 session brief** (maintainer): slice B hooks the read/write paths with kprobe.multi + kretprobe.multi (preemption off, not skipped for another task through nesting; fexit can be, E-0089/E-0090); their skips (`recursion_misses`, the link's `kprobe_multi.missed`) and cost are measured in slice B's own tests, which replaces 15.5's separate VM probe; Xu's rule is read in the paper before ADR-0005 states it. Deferred: the stdio socket → NET join, stdio in PROC v2, and how PIDSMaker sees code-provenance edges. The branch `probe/rw-hooks` is unused. *(E-0126)*
+
 ## Decisions waiting
 
-None.
+From ADR-0015 and ADR-0005 (PR for step 1), each with its recommendation in the ADR:
+1. **Accept ADR-0015** (file identity), and its raised decisions: (a) kprobe.session instead of separate kprobe.multi and kretprobe.multi links (entry and return skipped together, a per-call cookie instead of a per-thread map; recommended); (b) NET v3 carrying the socket's object id, in step 2 (recommended); (c) the reader's trust table: ext4, xfs, tmpfs, btrfs (recommended).
+2. **ADR-0005** (filtering and aggregation): (a) accepted only after the maintainer reads Xu et al. §3.1.3 and Algorithms 2-3 in the PDF (R-039 unverified); (b) a one-second sweep that closes aggregates (recommended); (c) conservative folding next to mappings, with a system-wide mark (recommended); (d) data-flow loss makes the run DEGRADED, reduced folding does not (recommended); (e) no file offsets in FLOW (recommended); (f) failed and empty transfers counted, not recorded (recommended).
+3. **VM attach check** before step 2's code: run `tools/vm/sliceb_attach_check.sh` on the VM (design checks O1-O3, O5).
