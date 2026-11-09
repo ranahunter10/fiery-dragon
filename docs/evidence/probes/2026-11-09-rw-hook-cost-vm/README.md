@@ -34,4 +34,4 @@
 - Round 5's untraced arms ran about 60 % slower than the others (host interference); the paired design absorbs it, and the A/A arm moved with them.
 - Skips under contention (several tasks, an RT drain thread, as in E-0089/E-0090) are not exercised here; slice B's own tests do that (STATE decision 17).
 
-`SHA256SUMS` covers the files here. The sha256 values printed on the VM are to be confirmed by the maintainer.
+`SHA256SUMS` covers the files here. The maintainer's `sha256sum` on the VM (2026-11-10) printed the same values for `~/rw_hook_cost.txt` (`63db39cc…ff37`) and `~/rw-hook-cost-summary.md` (`d60bc87b…4ca2`): the committed files are byte for byte what was run.
