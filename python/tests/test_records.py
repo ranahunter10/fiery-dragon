@@ -9,6 +9,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from p15w_build import R, rec  # noqa: E402
@@ -16,6 +18,15 @@ from p15w_build import R, rec  # noqa: E402
 
 def dec(b: bytes, off=0):
     return R.decode(memoryview(b), off, 0, 0)
+
+
+def facts(**kw) -> bytes:
+    """An OBJFACTS part (schema/records.toml): seen 1 (open) unless given."""
+    a = np.zeros(1, R.gen.PARTS["OBJFACTS"])
+    a["seen"] = 1
+    for k, v in kw.items():
+        a[k] = v
+    return a.tobytes()
 
 
 class Refusals(unittest.TestCase):
@@ -82,6 +93,68 @@ class Refusals(unittest.TestCase):
         self.assertIn("payload offset 40", str(cm.exception))
 
 
+class FileIdentity(unittest.TestCase):
+    """OPEN, OPEN_VERDICT, BACKING, CLOSE and FD (ADR-0015, STATE decision 19): the parts, the fflags
+    and the rules every byte of them follows."""
+
+    def why(self, b: bytes, words: str):
+        with self.assertRaises(R.RecordError) as cm:
+            dec(b)
+        self.assertEqual(cm.exception.why, words)
+
+    def test_open_with_facts_and_path(self):
+        r = dec(rec("OPEN", fid=2, obj=1, fflags=R.gen.FF_OBJ_NEW, f_flags=0o100000,
+                    var={"facts": facts(ino=3933235, dev=(8 << 20) | 2, gen=7, mode=0o100640, fs_magic=0xEF53, nlink=1),
+                         "path": b"/var/tmp/f1"}))
+        self.assertEqual((r.f["fid"], r.f["obj"], r.var["path"]), (2, 1, b"/var/tmp/f1"))
+        self.assertEqual((r.var["facts"]["ino"], R.kdev(r.var["facts"]["dev"]), r.var["facts"]["seen"]),
+                         (3933235, (8, 2), 1))
+        known = dec(rec("OPEN", fid=3, obj=1, var={"path": b"/var/tmp/f1"}))
+        self.assertIsNone(known.var["facts"])                    # an object already described
+
+    def test_part_presence_follows_its_flag(self):
+        self.why(rec("OPEN", var={"facts": facts()}), "OPEN: facts present without its flag, or its flag without it")
+        self.why(rec("OPEN", fflags=R.gen.FF_OBJ_NEW), "OPEN: facts present without its flag, or its flag without it")
+        self.why(rec("OPEN", fflags=R.gen.FF_OBJ_NEW, var={"facts": facts()[:24]}),
+                 "OPEN: facts is neither absent nor a whole OBJFACTS")
+        self.why(rec("OPEN", fflags=R.gen.FF_OBJ_NEW, var={"facts": facts()}, facts_len=40, facts_full=0),
+                 "OPEN: facts is neither absent nor a whole OBJFACTS")      # _full says how much there is
+        self.why(rec("FD", var={"path": b"x"}), "FD: facts present without its flag, or its flag without it")
+        self.why(rec("FD", var={"facts": facts(oflags=2)}), "FD: facts: unknown oflags bits or an unknown 'seen'")
+        self.why(rec("FD", var={"facts": facts(seen=0)}), "FD: facts: unknown oflags bits or an unknown 'seen'")
+        b = dec(rec("BACKING", fflags=R.gen.FF_USER_OBJ_NEW, var={"user_facts": facts(fs_magic=0x794C7630)}))
+        self.assertEqual((b.var["facts"], b.var["user_facts"]["fs_magic"]), (None, 0x794C7630))
+        self.why(rec("BACKING", fflags=R.gen.FF_OBJ_NEW, var={"user_facts": facts()}),
+                 "BACKING: facts present without its flag, or its flag without it")
+
+    def test_fflags_each_record_may_carry(self):
+        self.why(rec("CLOSE", fflags=R.gen.FF_OBJ_NEW), "CLOSE: fflags bits this record never carries")
+        self.why(rec("OPEN", fflags=1 << 7), "OPEN: fflags bits this record never carries")
+        self.why(rec("FD", fflags=R.gen.FF_KTHREAD, var={"facts": facts()}), "FD: fflags bits this record never carries")
+        c = dec(rec("CLOSE", fid=4, fflags=R.gen.FF_NEVER_OPENED | R.gen.FF_KTHREAD))
+        self.assertEqual(c.f["fflags"], R.gen.FF_NEVER_OPENED | R.gen.FF_KTHREAD)
+
+    def test_verdicts_and_path_errors(self):
+        self.why(rec("OPEN", verdict=-13), "OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)")
+        m = dec(rec("OPEN", fflags=R.gen.FF_PATH_MISSING, verdict=-13))
+        self.assertEqual((m.f["verdict"], m.var["path"]), (-13, b""))
+        self.why(rec("OPEN_VERDICT", verdict=0), "OPEN_VERDICT: the verdict is not a denial")
+        self.why(rec("OPEN", path_err=-22), "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err")
+        self.why(rec("OPEN", fflags=R.gen.FF_PATH_ERROR), "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err")
+        self.assertEqual(dec(rec("OPEN", fflags=R.gen.FF_PATH_ERROR, path_err=-22)).f["path_err"], -22)
+
+    def test_full_size_open(self):
+        lay = R.gen.RECORDS[(R.TYPES["OPEN"], 1)]
+        full = rec("OPEN", fflags=R.gen.FF_FULL_SIZE, var={"path": b"/a"}, length=lay.max_size)
+        self.assertEqual(dec(full).var["path"], b"/a")
+        dirty = bytearray(full)
+        dirty[-1] = 1
+        self.why(bytes(dirty), "non-zero bytes after the variable fields")
+        self.why(rec("OPEN", fflags=R.gen.FF_FULL_SIZE, var={"path": b"/a"}, length=lay.max_size - 8),
+                 "len larger than its fields need")
+        self.why(rec("OPEN", var={"path": b"/a"}, length=lay.max_size), "len larger than its fields need")
+
+
 class Decoding(unittest.TestCase):
     def test_no_defaults(self):
         r = dec(rec("EXIT", h_tgid=7, h_start_ns=9, exit_code=-1, group_dead=1))
@@ -94,6 +167,10 @@ class Decoding(unittest.TestCase):
         for name, t in R.TYPES.items():
             with self.subTest(name=name):
                 extra = {"kind": 1} if name in ("PROC", "SNAP_DONE") else {}   # kind 0 is not a kind
+                if name == "OPEN_VERDICT":
+                    extra = {"verdict": -13}                                      # only a denial is a verdict
+                if name == "FD":
+                    extra = {"var": {"facts": facts()}}                           # FD always carries its facts
                 r = dec(rec(name, h_ts_ns=123, **extra))
                 self.assertEqual((r.name, r.h["type"], r.h["ts_ns"]), (name, t, 123))
                 self.assertIsInstance(r.h["ts_ns"], int)

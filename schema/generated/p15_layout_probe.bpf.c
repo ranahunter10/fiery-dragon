@@ -6,6 +6,7 @@
 #include "p15_records.h"
 
 struct p15_hdr p15_probe_hdr __attribute__((used));
+struct p15_part_objfacts p15_probe_p15_part_objfacts __attribute__((used));
 struct p15_fork_v1 p15_probe_p15_fork_v1 __attribute__((used));
 struct p15_exec_v1 p15_probe_p15_exec_v1 __attribute__((used));
 struct p15_exit_v1 p15_probe_p15_exit_v1 __attribute__((used));
@@ -25,5 +26,10 @@ struct p15_exec_v2 p15_probe_p15_exec_v2 __attribute__((used));
 struct p15_proc_v1 p15_probe_p15_proc_v1 __attribute__((used));
 struct p15_proc_v2 p15_probe_p15_proc_v2 __attribute__((used));
 struct p15_snap_done_v1 p15_probe_p15_snap_done_v1 __attribute__((used));
+struct p15_open_v1 p15_probe_p15_open_v1 __attribute__((used));
+struct p15_open_verdict_v1 p15_probe_p15_open_verdict_v1 __attribute__((used));
+struct p15_backing_v1 p15_probe_p15_backing_v1 __attribute__((used));
+struct p15_close_v1 p15_probe_p15_close_v1 __attribute__((used));
+struct p15_fd_v1 p15_probe_p15_fd_v1 __attribute__((used));
 
 char LICENSE[] __attribute__((section("license"), used)) = "Dual BSD/GPL";

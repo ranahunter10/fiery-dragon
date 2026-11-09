@@ -138,6 +138,53 @@ class ErrorTest(unittest.TestCase):
         self.err(schema(rec(var='{ name = "v", max = 0 }')), "bad var field")
 
 
+PART = '\n[[part]]\nname = "PT"\nfields = [{ name = "a", c = "u64" }, { name = "b", c = "u32" }, { name = "c", c = "u32" }]\n'
+
+
+class PartAndFflagTest(unittest.TestCase):
+    """[[part]]: a header-less struct a var field carries whole or not at all; [[fflag]]: u32
+    record-field flags (ADR-0015 rule 2, STATE decision 19)."""
+
+    def err(self, path, needle):
+        with self.assertRaises(gen.SchemaError) as cm:
+            gen.load(path)
+        self.assertIn(needle, str(cm.exception))
+
+    def test_part_laid_out_and_emitted(self):
+        s = gen.load(schema(PART + rec(var='{ name = "pt", part = "PT" }, { name = "s", max = 9 }')))
+        r = s.records[0]
+        self.assertEqual((s.parts[0].size, r.var[0].max, r.var[0].part, r.max_size), (16, 16, "PT", 88))   # 56 fixed + 16 + 9, padded to 8
+        c, py, md = gen.emit_c(s), gen.emit_py(s), gen.emit_md(s)
+        self.assertIn("struct p15_part_pt {", c)
+        self.assertIn('sizeof(struct p15_part_pt) == 16', c)
+        self.assertIn("#define P15_PART_PT_SIZE 16", c)
+        self.assertIn("(('pt', 'PT'),)", py)
+        self.assertIn("## Part PT (16 bytes)", md)
+        self.assertIn("PART/PT", gen.lock_entries(s))
+
+    def test_part_rules(self):
+        self.err(schema('\n[[part]]\nname = "PT"\nfields = [{ name = "a", c = "u32" }]\n' + rec()), "not a multiple of 8")
+        self.err(schema(PART + PART + rec()), "bad or duplicate name")
+        self.err(schema(rec(var='{ name = "pt", part = "NOPE" }')), "unknown part")
+        self.err(schema(PART + rec(var='{ name = "pt", part = "PT", max = 8 }')), "max must be part PT's size 16")
+        self.err(schema(PART + rec(var='{ name = "s", max = 9 }, { name = "pt", part = "PT" }')), "parts come first")
+
+    def test_a_part_changes_the_layout_hash_but_old_layouts_keep_theirs(self):
+        plain = gen.load(schema(rec(var='{ name = "s", max = 16 }')))
+        with_part = gen.load(schema(PART + rec(var='{ name = "s", part = "PT" }')))
+        self.assertNotEqual(gen.lock_entries(plain)["A/1/v1"], gen.lock_entries(with_part)["A/1/v1"])
+        self.assertEqual(gen.layout_hash(plain.records[0].fields, plain.records[0].var, plain.records[0].fixed_size),
+                         gen.lock_entries(plain)["A/1/v1"])
+
+    def test_fflags(self):
+        s = gen.load(schema('\n[[fflag]]\nname = "X"\nbit = 31\n' + rec()))
+        self.assertIn("#define P15_FF_X (1u << 31)", gen.emit_c(s))
+        self.assertIn("FF_X = 1 << 31", gen.emit_py(s))
+        self.err(schema('\n[[fflag]]\nname = "X"\nbit = 32\n' + rec()), "bit in 0..31")
+        self.err(schema('\n[[fflag]]\nname = "X"\nbit = 1\n\n[[fflag]]\nname = "Y"\nbit = 1\n' + rec()),
+                 "share a bit or a name")
+
+
 class LockTest(unittest.TestCase):
     def run_main(self, *args):
         out, err = io.StringIO(), io.StringIO()

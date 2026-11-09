@@ -43,6 +43,21 @@ RUN_STATES = {0: "RUNNING", 1: "DEGRADED", 2: "INVALID"}
 INVARIANT = {0: "not checked", 1: "closed", 2: "broken"}
 SNAP_KINDS = {1: "opening", 2: "closing"}
 PROC_KTHREAD, PROC_EXITING = 1, 2      # PROC pflags (bpf/include/p15_snap.h)
+FF_KNOWN = 0
+for _n in dir(gen):
+    if _n.startswith("FF_"):
+        FF_KNOWN |= getattr(gen, _n)
+OBJ_SUBVOL_UNKNOWN = 1                 # OBJFACTS oflags bit 0 (schema/records.toml)
+# fflags each record may carry (schema/records.toml docs), and which part each OBJ_NEW-like flag announces
+_FFLAGS_OK = {
+    "OPEN": gen.FF_OBJ_NEW | gen.FF_PATH_MISSING | gen.FF_PATH_ERROR | gen.FF_FULL_SIZE | gen.FF_KTHREAD,
+    "OPEN_VERDICT": gen.FF_KTHREAD,
+    "BACKING": gen.FF_OBJ_NEW | gen.FF_USER_OBJ_NEW | gen.FF_KTHREAD,
+    "CLOSE": gen.FF_NEVER_OPENED | gen.FF_KTHREAD,
+    "FD": gen.FF_PATH_ERROR,
+}
+_PART_FLAG = {("OPEN", "facts"): gen.FF_OBJ_NEW, ("BACKING", "facts"): gen.FF_OBJ_NEW,
+              ("BACKING", "user_facts"): gen.FF_USER_OBJ_NEW}
 
 
 class RecordError(ValueError):
@@ -112,6 +127,17 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
         raise RecordError("PROC: non-zero reserved, unknown kind or unknown pflags", off)
     if lay.name == "SNAP_DONE" and f["kind"] not in (1, 2):
         raise RecordError("SNAP_DONE: unknown kind", off)
+    if lay.name in _FFLAGS_OK:
+        if f["fflags"] & ~_FFLAGS_OK[lay.name]:
+            raise RecordError(f"{lay.name}: fflags bits this record never carries", off)
+        if f.get("reserved", 0):
+            raise RecordError(f"{lay.name}: non-zero reserved", off)
+        if lay.name in ("OPEN", "FD") and bool(f["fflags"] & gen.FF_PATH_ERROR) != bool(f["path_err"]):
+            raise RecordError(f"{lay.name}: path_err without PATH_ERROR, or PATH_ERROR without path_err", off)
+        if lay.name == "OPEN" and not f["fflags"] & gen.FF_PATH_MISSING and f["verdict"]:
+            raise RecordError("OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)", off)
+        if lay.name == "OPEN_VERDICT" and f["verdict"] >= 0:
+            raise RecordError("OPEN_VERDICT: the verdict is not a denial", off)
     var = {}
     if lay.var:
         used = 0
@@ -122,20 +148,45 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
             used += vl
         if lay.fixed_size + used > n:
             raise RecordError("variable field beyond len", off)
-        # slack after the fields only on a BPF-built record whose read failed (records.c check_tail)
-        slack_ok = lay.cls == "SPINE" and bool(h["flags"] & F_READ_FAILED)
+        # slack after the fields only on a BPF-built record whose read failed (records.c check_tail),
+        # and on an OPEN reserved at full size because no path scratch slot was free (zero slack)
+        slack_ok = (lay.cls == "SPINE" and bool(h["flags"] & F_READ_FAILED)) or \
+            (lay.name == "OPEN" and bool(f["fflags"] & gen.FF_FULL_SIZE) and n == lay.max_size)
         if n != (lay.fixed_size + used + 7) & ~7 and not slack_ok:
             raise RecordError("len larger than its fields need", off)
+        parts = dict(lay.parts)
         p = off + lay.fixed_size
         for vname, _ in lay.var:
             vl = f[f"{vname}_len"]
-            var[vname] = bytes(buf[p:p + vl])
+            if vname in parts:
+                var[vname] = _part(buf, p, vl, parts[vname], lay.name, vname, f, off)
+            else:
+                var[vname] = bytes(buf[p:p + vl])
             p += vl
         if any(bytes(buf[p:off + n])):
             raise RecordError("non-zero bytes after the variable fields", off)
     elif n != lay.fixed_size:
         raise RecordError("len differs from the fixed size", off)
     return Record(ring, seq, lay.name, h, f, var)
+
+
+def _part(buf, p: int, vl: int, pname: str, rname: str, vname: str, f: dict, off: int) -> dict | None:
+    """A part field (schema [[part]]): absent, or the whole struct. Its presence must match the flag
+    that announces it (OBJ_NEW for an OPEN's facts, ...); FD always carries its facts."""
+    dt = gen.PARTS[pname]
+    if vl not in (0, dt.itemsize) or f[f"{vname}_full"] != vl:
+        raise RecordError(f"{rname}: {vname} is neither absent nor a whole {pname}", off)
+    flag = _PART_FLAG.get((rname, vname))
+    want = bool(f["fflags"] & flag) if flag is not None else True
+    if bool(vl) != want:
+        raise RecordError(f"{rname}: {vname} present without its flag, or its flag without it", off)
+    if not vl:
+        return None
+    row = np.frombuffer(buf, dt, count=1, offset=p)[0]
+    out = {k: int(row[k]) for k in dt.names}
+    if pname == "OBJFACTS" and (out["oflags"] & ~OBJ_SUBVOL_UNKNOWN or out["seen"] not in (1, 2, 3, 4, 5)):
+        raise RecordError(f"{rname}: {vname}: unknown oflags bits or an unknown 'seen'", off)
+    return out
 
 
 # ---- helpers for fields whose encoding is the kernel's ----

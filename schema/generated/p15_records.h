@@ -14,11 +14,20 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "f72ad91f524f63e1b1ac9b5521cd17bb1078c1dab15097b88c89820037b66f24"
+#define P15_SCHEMA_HASH "f21ebef378764bbf01a6ca381dec2a9b9b6ef9c2fe8a64d695e2b47d841d7f59"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
 #define P15_F_ISN (1u << 2)   /* NET v2: tcp_isn holds the connection's client initial sequence number (ADR-0022 rule 2); unset when it isn't known (rule 3) */
+
+/* Record-field flags (the u32 fflags field of the records that have one) */
+#define P15_FF_OBJ_NEW (1u << 0)   /* the record carries the object's facts (its `facts` part): the first record capture wrote for this object id, or a repeat (ADR-0015 rule 2; decision 19.7) */
+#define P15_FF_USER_OBJ_NEW (1u << 1)   /* BACKING: the record carries the overlay object's facts (its `user_facts` part) */
+#define P15_FF_PATH_MISSING (1u << 2)   /* OPEN written by the kprobe.session return because the path fentry did not run for this open (skipped for another task, ADR-0015 rule 6): no path, nothing guessed */
+#define P15_FF_PATH_ERROR (1u << 3)   /* bpf_d_path failed for a reason other than length: the path is empty and path_err holds the errno */
+#define P15_FF_FULL_SIZE (1u << 4)   /* OPEN: no path scratch slot was free, so the record was reserved at its maximum size; the bytes after the path are zero (ADR-0015 rule 6) */
+#define P15_FF_NEVER_OPENED (1u << 5)   /* CLOSE: the struct file was freed without FMODE_OPENED: its open failed after security_file_open, in ->open (ADR-0015 rule 5) */
+#define P15_FF_KTHREAD (1u << 6)   /* the record was written in a kernel thread (PF_KTHREAD): its header names that thread, not the file's user (ADR-0015 rule 8) */
 
 enum p15_type {
 	P15_T_FORK = 1,
@@ -26,6 +35,10 @@ enum p15_type {
 	P15_T_EXIT = 3,
 	P15_T_RENAME = 4,
 	P15_T_NET = 5,
+	P15_T_OPEN = 6,
+	P15_T_OPEN_VERDICT = 7,
+	P15_T_BACKING = 8,
+	P15_T_CLOSE = 9,
 	P15_T_CLOCK_SYNC = 32,
 	P15_T_STATS = 33,
 	P15_T_GAP = 34,
@@ -33,6 +46,7 @@ enum p15_type {
 	P15_T_NET_STATS = 36,
 	P15_T_PROC = 37,
 	P15_T_SNAP_DONE = 38,
+	P15_T_FD = 39,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -55,6 +69,31 @@ P15_ASSERT(P15_OFFSETOF(struct p15_hdr, ts_ns) == 8, "p15_hdr.ts_ns offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_hdr, tgid) == 16, "p15_hdr.tgid offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_hdr, tid) == 20, "p15_hdr.tid offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_hdr, start_ns) == 24, "p15_hdr.start_ns offset");
+
+/* part OBJFACTS: An object's facts (ADR-0015 rule 2): what the kernel says about one in-memory inode when capture first names it. The reader decides the graph node from them (rule 3, ADR-0027). */
+struct p15_part_objfacts {
+	__u64 ino;
+	__u64 subvol;
+	__u32 dev;
+	__u32 gen;
+	__u32 mode;
+	__u32 fs_magic;
+	__u32 nlink;
+	__u16 seen;
+	__u16 oflags;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_part_objfacts) == 40, "p15_part_objfacts size");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, ino) == 0, "p15_part_objfacts.ino offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, subvol) == 8, "p15_part_objfacts.subvol offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, dev) == 16, "p15_part_objfacts.dev offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, gen) == 20, "p15_part_objfacts.gen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, mode) == 24, "p15_part_objfacts.mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, fs_magic) == 28, "p15_part_objfacts.fs_magic offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, nlink) == 32, "p15_part_objfacts.nlink offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, seen) == 36, "p15_part_objfacts.seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_part_objfacts, oflags) == 38, "p15_part_objfacts.oflags offset");
+
+#define P15_PART_OBJFACTS_SIZE 40
 
 /* FORK v1 (SPINE): A task created a new task (tp_btf/sched_process_fork). The header names the parent; the fields name the child. */
 struct p15_fork_v1 {
@@ -880,6 +919,141 @@ P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, _pad) == 162, "p15_snap_done_v1
 
 #define P15_SNAP_DONE_V1_MAX_SIZE 168
 
+/* OPEN v1 (OPEN): One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with the path, or, with PATH_MISSING, by the kprobe.session return when the fentry did not run. An FMODE_BACKING open writes BACKING instead. The header names the task that opened. */
+struct p15_open_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u32 fflags;
+	__u32 f_flags;
+	__u32 f_mode;
+	__s32 verdict;
+	__s32 path_err;
+	__u32 facts_full;   /* generated */
+	__u32 path_full;   /* generated */
+	__u16 facts_len;   /* generated */
+	__u16 path_len;   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_open_v1) == 80, "p15_open_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, h) == 0, "p15_open_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, fid) == 32, "p15_open_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, obj) == 40, "p15_open_v1.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, fflags) == 48, "p15_open_v1.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, f_flags) == 52, "p15_open_v1.f_flags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, f_mode) == 56, "p15_open_v1.f_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, verdict) == 60, "p15_open_v1.verdict offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, path_err) == 64, "p15_open_v1.path_err offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, facts_full) == 68, "p15_open_v1.facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, path_full) == 72, "p15_open_v1.path_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, facts_len) == 76, "p15_open_v1.facts_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_v1, path_len) == 78, "p15_open_v1.path_len offset");
+
+#define P15_OPEN_V1_MAX_SIZE 4216
+#define P15_OPEN_V1_FACTS_MAX 40
+#define P15_OPEN_V1_PATH_MAX 4096
+
+/* OPEN_VERDICT v1 (OPEN): The LSM denied an open whose OPEN the fentry already wrote (ADR-0015 rule 6): written by the kprobe.session return. */
+struct p15_open_verdict_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__s32 verdict;
+	__u32 fflags;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_open_verdict_v1) == 48, "p15_open_verdict_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_verdict_v1, h) == 0, "p15_open_verdict_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_verdict_v1, fid) == 32, "p15_open_verdict_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_verdict_v1, verdict) == 40, "p15_open_verdict_v1.verdict offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_open_verdict_v1, fflags) == 44, "p15_open_verdict_v1.fflags offset");
+
+#define P15_OPEN_VERDICT_V1_MAX_SIZE 48
+
+/* BACKING v1 (OPEN): An overlayfs backing file was opened (FMODE_BACKING at security_file_open, ADR-0015 rule 4): the real upper or lower file standing for an overlay file. Bytes are counted once, on the overlay file; this record joins the two objects. */
+struct p15_backing_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u64 user_obj;
+	__u32 fflags;
+	__u32 f_flags;
+	__u32 f_mode;
+	__u32 facts_full;   /* generated */
+	__u32 user_facts_full;   /* generated */
+	__u16 facts_len;   /* generated */
+	__u16 user_facts_len;   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_backing_v1) == 80, "p15_backing_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, h) == 0, "p15_backing_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, fid) == 32, "p15_backing_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, obj) == 40, "p15_backing_v1.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, user_obj) == 48, "p15_backing_v1.user_obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, fflags) == 56, "p15_backing_v1.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, f_flags) == 60, "p15_backing_v1.f_flags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, f_mode) == 64, "p15_backing_v1.f_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, facts_full) == 68, "p15_backing_v1.facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, user_facts_full) == 72, "p15_backing_v1.user_facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, facts_len) == 76, "p15_backing_v1.facts_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_backing_v1, user_facts_len) == 78, "p15_backing_v1.user_facts_len offset");
+
+#define P15_BACKING_V1_MAX_SIZE 160
+#define P15_BACKING_V1_FACTS_MAX 40
+#define P15_BACKING_V1_USER_FACTS_MAX 40
+
+/* CLOSE v1 (OPEN): A struct file capture had registered was freed (security_file_free, ADR-0015 rule 8): the end of its open-file id. Belongs to the open file, not to a process: the header names whichever task freed it (the closer, task work, or the delayed_fput worker, flagged KTHREAD). */
+struct p15_close_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u32 fflags;
+	__u32 f_mode;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_close_v1) == 56, "p15_close_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, h) == 0, "p15_close_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, fid) == 32, "p15_close_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, obj) == 40, "p15_close_v1.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, fflags) == 48, "p15_close_v1.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, f_mode) == 52, "p15_close_v1.f_mode offset");
+
+#define P15_CLOSE_V1_MAX_SIZE 56
+
+/* FD v1 (MARKER): One open descriptor of a thread-group leader in a process snapshot (ADR-0015 rule 7): the files already open when capture began, standard streams included, and again in every segment's opening snapshot. The header names the descriptor's process (ADR-0009). It carries the object's facts always (decision 19.2), so a segment can be read alone. */
+struct p15_fd_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u64 pos;
+	__u32 fd;
+	__u32 fflags;
+	__u32 f_flags;
+	__u32 f_mode;
+	__s32 path_err;
+	__u32 snap_id;
+	__u32 facts_full;   /* generated */
+	__u32 path_full;   /* generated */
+	__u16 facts_len;   /* generated */
+	__u16 path_len;   /* generated */
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_fd_v1) == 96, "p15_fd_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, h) == 0, "p15_fd_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, fid) == 32, "p15_fd_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, obj) == 40, "p15_fd_v1.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, pos) == 48, "p15_fd_v1.pos offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, fd) == 56, "p15_fd_v1.fd offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, fflags) == 60, "p15_fd_v1.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, f_flags) == 64, "p15_fd_v1.f_flags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, f_mode) == 68, "p15_fd_v1.f_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, path_err) == 72, "p15_fd_v1.path_err offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, snap_id) == 76, "p15_fd_v1.snap_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, facts_full) == 80, "p15_fd_v1.facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, path_full) == 84, "p15_fd_v1.path_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, facts_len) == 88, "p15_fd_v1.facts_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, path_len) == 90, "p15_fd_v1.path_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_fd_v1, _pad) == 92, "p15_fd_v1._pad offset");
+
+#define P15_FD_V1_MAX_SIZE 4232
+#define P15_FD_V1_FACTS_MAX 40
+#define P15_FD_V1_PATH_MAX 4096
+
 /* The current version of each record type: what the BPF programs emit. */
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
@@ -923,5 +1097,26 @@ P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, _pad) == 162, "p15_snap_done_v1
 #define P15_SNAP_DONE_VERSION 1
 #define p15_snap_done p15_snap_done_v1
 #define P15_SNAP_DONE_MAX_SIZE P15_SNAP_DONE_V1_MAX_SIZE
+#define P15_OPEN_VERSION 1
+#define p15_open p15_open_v1
+#define P15_OPEN_MAX_SIZE P15_OPEN_V1_MAX_SIZE
+#define P15_OPEN_FACTS_MAX P15_OPEN_V1_FACTS_MAX
+#define P15_OPEN_PATH_MAX P15_OPEN_V1_PATH_MAX
+#define P15_OPEN_VERDICT_VERSION 1
+#define p15_open_verdict p15_open_verdict_v1
+#define P15_OPEN_VERDICT_MAX_SIZE P15_OPEN_VERDICT_V1_MAX_SIZE
+#define P15_BACKING_VERSION 1
+#define p15_backing p15_backing_v1
+#define P15_BACKING_MAX_SIZE P15_BACKING_V1_MAX_SIZE
+#define P15_BACKING_FACTS_MAX P15_BACKING_V1_FACTS_MAX
+#define P15_BACKING_USER_FACTS_MAX P15_BACKING_V1_USER_FACTS_MAX
+#define P15_CLOSE_VERSION 1
+#define p15_close p15_close_v1
+#define P15_CLOSE_MAX_SIZE P15_CLOSE_V1_MAX_SIZE
+#define P15_FD_VERSION 1
+#define p15_fd p15_fd_v1
+#define P15_FD_MAX_SIZE P15_FD_V1_MAX_SIZE
+#define P15_FD_FACTS_MAX P15_FD_V1_FACTS_MAX
+#define P15_FD_PATH_MAX P15_FD_V1_PATH_MAX
 
 #endif /* P15_RECORDS_H */

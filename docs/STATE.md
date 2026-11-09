@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-10 (UTC), PR "adr: 0015 file identity and 0005 data-flow filtering and aggregation (slice B design)"
+**Last updated:** 2026-11-10 (UTC), PR "schema: the slice B identity records and ADR-0027 (step 2a, part 1)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -131,7 +131,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
     1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, merged 2026-11-10, E-0138);
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
-       1. 🔧 next: 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); a dry run on the VM first (`bpf/test/sliceb_probe`, PR stacked on #59, E-0144); kprobe.session + fentry on `security_file_open`, kprobe on `security_file_free` and `security_inode_free`;
+       1. 🔧 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); kprobe.session + fentry on `security_file_open`, kprobe.multi on `security_file_free` and `security_inode_free`. ✅ dry run on the VM (`bpf/test/sliceb_probe`, PR #61, E-0146); 🔧 part 1: the records, the generator's parts and record-field flags, the Python decoder, ADR-0027 (E-0148); next part 2: `bpf/progs/file.bpf.c`, the loader, `p15_rec_check`, the self-test checks and FILE_STATS; part 3: the snapshot's FD pass, SNAP_DONE v2 and the `it_p15d.sh` case;
        2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
        3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
        4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
@@ -215,5 +215,5 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **Merge PR #59** (step 1). ADR-0015 and ADR-0005 are accepted (2026-11-10, E-0140).
-2. **Merge PR #61** (the step 2a dry run, stacked on #59): 83 of 83 checks on the VM, 77 of 77 with btrfs (E-0146, [output](evidence/probes/2026-11-10-sliceb-probe-vm/README.md)); the VM's sha256 values match `SHA256SUMS` (2026-11-10).
+1. **Review and merge the step 2a part 1 PR** (records OPEN, OPEN_VERDICT, BACKING, CLOSE, FD and the OBJFACTS part; the generator's `[[part]]` and `[[fflag]]`; the Python decoder's checks; ADR-0027). Nothing emits these records yet.
+2. **Step 2a in three PRs** (E-0148). Recommended: part 1 (this one, no kernel code), part 2 (the BPF programs, loader, daemon checks, self-test, FILE_STATS; proven on the VM), part 3 (the FD pass with SNAP_DONE v2 and the `it_p15d.sh` case). One PR would be about 3,000 changed lines; the three are each reviewable alone and each leaves `main` working.

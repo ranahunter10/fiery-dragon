@@ -66,6 +66,21 @@ class VarField:
     name: str
     max: int
     doc: str
+    part: str | None = None   # a [[part]]: the field is absent (0 bytes) or that struct, whole
+
+
+@dataclass
+class Part:
+    """A fixed struct without a header that a variable field may carry (schema [[part]]), e.g. an
+    object's facts written only with the first record that names the object (ADR-0015 rule 2)."""
+    name: str
+    doc: str
+    fields: list[Field]
+    size: int
+
+    @property
+    def c_struct(self) -> str:
+        return f"p15_part_{self.name.lower()}"
 
 
 @dataclass
@@ -94,6 +109,8 @@ class Schema:
     header_doc: str
     flags: list[tuple[str, int, str]]
     records: list[Record]
+    parts: list[Part] = field(default_factory=list)
+    fflags: list[tuple[str, int, str]] = field(default_factory=list)   # record-field flags (u32), [[fflag]]
 
 
 def _pad8(n: int) -> int:
@@ -140,6 +157,22 @@ def load(path: Path = SCHEMA) -> Schema:
         flags.append((fl["name"], fl["bit"], fl.get("doc", "")))
     if len({b for _, b, _ in flags}) != len(flags):
         raise SchemaError("flags: two flags share a bit")
+    fflags = []
+    for fl in data.get("fflag", []):
+        if not RECORD_NAME_RE.match(fl.get("name", "")) or not isinstance(fl.get("bit"), int) or not 0 <= fl["bit"] < 32:
+            raise SchemaError(f"fflag {fl.get('name')!r}: needs an upper-case name and a bit in 0..31")
+        fflags.append((fl["name"], fl["bit"], fl.get("doc", "")))
+    if len({b for _, b, _ in fflags}) != len(fflags) or len({n for n, _, _ in fflags}) != len(fflags):
+        raise SchemaError("fflags: two record-field flags share a bit or a name")
+    parts: dict[str, Part] = {}
+    for pt in data.get("part", []):
+        pname = pt.get("name")
+        if not isinstance(pname, str) or not RECORD_NAME_RE.match(pname) or pname in parts:
+            raise SchemaError(f"part {pname!r}: bad or duplicate name")
+        pfields, psize = _lay_out(pt.get("fields", []), 0, f"part {pname}")
+        if not pfields or psize % 8:
+            raise SchemaError(f"part {pname}: size {psize} is not a multiple of 8; add an explicit pad field")
+        parts[pname] = Part(pname, pt.get("doc", ""), pfields, psize)
 
     records, keys, types_by_name = [], set(), {}
     for r in data.get("record", []):
@@ -161,9 +194,20 @@ def load(path: Path = SCHEMA) -> Schema:
         fields, off = _lay_out(r.get("fields", []), HEADER_SIZE, where)
         var = []
         for v in r.get("var", []):
+            pn = v.get("part")
+            if pn is not None:
+                if pn not in parts:
+                    raise SchemaError(f"{where}: var field {v.get('name')!r} names unknown part {pn!r}")
+                if v.get("max", parts[pn].size) != parts[pn].size:
+                    raise SchemaError(f"{where}: var field {v.get('name')!r}: max must be part {pn}'s size "
+                                      f"{parts[pn].size}")
+                if var and var[-1].part is None:
+                    raise SchemaError(f"{where}: part field {v.get('name')!r} after a byte field: parts come first, "
+                                      f"so each starts 8-aligned")
+                v = {**v, "max": parts[pn].size}
             if not NAME_RE.match(v.get("name", "")) or not isinstance(v.get("max"), int) or v["max"] <= 0:
                 raise SchemaError(f"{where}: bad var field {v!r}")
-            var.append(VarField(v["name"], v["max"], v.get("doc", "")))
+            var.append(VarField(v["name"], v["max"], v.get("doc", ""), pn))
         # generated metadata for the variable fields: all _full (u32), then all _len (u16)
         meta = [{"name": f"{v.name}_full", "c": "u32", "doc": f"full length of {v.name} in bytes; "
                  f"P15_LEN_UNKNOWN if cut and not known"} for v in var]
@@ -181,7 +225,7 @@ def load(path: Path = SCHEMA) -> Schema:
         if rec.max_size > MAX_RECORD:
             raise SchemaError(f"{where}: maximum size {rec.max_size} exceeds the u16 len field")
         records.append(rec)
-    return Schema(header, data["header"].get("doc", ""), flags, records)
+    return Schema(header, data["header"].get("doc", ""), flags, records, list(parts.values()), fflags)
 
 
 # ---------------------------------------------------------------- layout identity (the lock)
@@ -192,12 +236,14 @@ def layout_key(r: Record) -> str:
 
 def layout_hash(fields: list[Field], var: list[VarField], size: int) -> str:
     canon = {"size": size, "fields": [[f.name, f.ctype, f.offset] for f in fields],
-             "var": [[v.name, v.max] for v in var]}
+             "var": [[v.name, v.max] + ([v.part] if v.part else []) for v in var]}
     return hashlib.sha256(json.dumps(canon, sort_keys=True).encode()).hexdigest()
 
 
 def lock_entries(s: Schema) -> dict[str, str]:
     out = {"HEADER": layout_hash(s.header, [], HEADER_SIZE)}
+    for pt in s.parts:
+        out[f"PART/{pt.name}"] = layout_hash(pt.fields, [], pt.size)
     for r in s.records:
         out[layout_key(r)] = layout_hash(r.fields, r.var, r.fixed_size)
     return out
@@ -237,6 +283,11 @@ def emit_c(s: Schema) -> str:
     for name, bit, doc in s.flags:
         L.append(f"#define P15_F_{name} (1u << {bit})   /* {doc} */")
     L.append("")
+    if s.fflags:
+        L.append("/* Record-field flags (the u32 fflags field of the records that have one) */")
+        for name, bit, doc in s.fflags:
+            L.append(f"#define P15_FF_{name} (1u << {bit})   /* {doc} */")
+        L.append("")
     L.append("enum p15_type {")
     for r in sorted({(r.type, r.name) for r in s.records}):
         L.append(f"\tP15_T_{r[1]} = {r[0]},")
@@ -258,6 +309,10 @@ def emit_c(s: Schema) -> str:
         L.append("")
 
     struct("p15_hdr", s.header, HEADER_SIZE, s.header_doc, False)
+    for pt in s.parts:
+        struct(pt.c_struct, pt.fields, pt.size, f"part {pt.name}: {pt.doc}", False)
+        L.append(f"#define P15_PART_{pt.name}_SIZE {pt.size}")
+        L.append("")
     latest: dict[str, Record] = {}
     for r in s.records:
         struct(r.c_struct, r.fields, r.fixed_size, f"{r.name} v{r.version} ({r.cls}): {r.doc}", True)
@@ -296,19 +351,27 @@ def emit_py(s: Schema) -> str:
          f'SCHEMA_HASH = "{schema_hash(s)}"   # the WAL header\'s schema.hash (ADR-0007)', ""]
     for name, bit, _ in s.flags:
         L.append(f"F_{name} = 1 << {bit}")
+    for name, bit, _ in s.fflags:
+        L.append(f"FF_{name} = 1 << {bit}")
     L += ["", f"HEADER_DTYPE = {_np_dtype_expr(s.header, HEADER_SIZE, False)}", "", "",
           "class Layout(NamedTuple):", "    name: str", "    type: int", "    version: int", "    cls: str",
           "    dtype: np.dtype", "    fixed_size: int", "    max_size: int",
-          "    var: tuple[tuple[str, int], ...]   # (name, max bytes), in tail order", "", ""]
+          "    var: tuple[tuple[str, int], ...]   # (name, max bytes), in tail order",
+          "    parts: tuple[tuple[str, str], ...] = ()   # (var name, part name): 0 bytes or PARTS[part], whole", "", ""]
+    L.append("PARTS = {")
+    for pt in s.parts:
+        L.append(f"    {pt.name!r}: {_np_dtype_expr(pt.fields, pt.size, False)},")
+    L += ["}", ""]
     L.append("TYPES = {")
     for t, n in sorted({(r.type, r.name) for r in s.records}):
         L.append(f"    {n!r}: {t},")
     L += ["}", "", "RECORDS = {"]
     for r in s.records:
         var = tuple((v.name, v.max) for v in r.var)
+        parts = tuple((v.name, v.part) for v in r.var if v.part)
         L.append(f"    ({r.type}, {r.version}): Layout({r.name!r}, {r.type}, {r.version}, {r.cls!r},")
         L.append(f"        {_np_dtype_expr(r.fields, r.fixed_size, True)},")
-        L.append(f"        {r.fixed_size}, {r.max_size}, {var!r}),")
+        L.append(f"        {r.fixed_size}, {r.max_size}, {var!r}{', ' + repr(parts) if parts else ''}),")
     L += ["}", ""]
     return "\n".join(L)
 
@@ -320,6 +383,14 @@ def emit_md(s: Schema) -> str:
     L += [f"| {f.offset} | `{f.name}` | {f.ctype} | {f.doc} |" for f in s.header]
     if s.flags:
         L += ["", "**Flags** (`flags`):", ""] + [f"- bit {b} `{n}`: {d}" for n, b, d in s.flags]
+    if s.fflags:
+        L += ["", "**Record-field flags** (`fflags`, u32, in the records that have the field):", ""]
+        L += [f"- bit {b} `{n}`: {d}" for n, b, d in s.fflags]
+    for pt in s.parts:
+        L += ["", f"## Part {pt.name} ({pt.size} bytes)", "", pt.doc, "",
+              "A variable field that names this part is absent (length 0) or this struct, whole.", "",
+              "| Offset | Field | Type | Meaning |", "|---:|---|---|---|"]
+        L += [f"| {f.offset} | `{f.name}` | {f.ctype} | {f.doc} |" for f in pt.fields]
     for r in s.records:
         L += ["", f"## {r.name} (type {r.type}, version {r.version}, class {r.cls})", "", r.doc, "",
               f"Fixed part {r.fixed_size} bytes; at most {r.max_size} bytes with its variable fields.", "",
@@ -328,7 +399,8 @@ def emit_md(s: Schema) -> str:
               for f in r.fields]
         if r.var:
             L += ["", "Variable-length fields, after the fixed part in this order:", ""]
-            L += [f"- `{v.name}` (at most {v.max} bytes): {v.doc}" for v in r.var]
+            L += [f"- `{v.name}` ({'0 or ' + str(v.max) + ' bytes, part ' + v.part if v.part else 'at most ' + str(v.max) + ' bytes'}): {v.doc}"
+                  for v in r.var]
     return "\n".join(L) + "\n"
 
 
@@ -337,6 +409,7 @@ def emit_probe(s: Schema) -> str:
          "// Puts every record struct into the object's BTF for the three-way layout check (ADR-0008).",
          "// No programs; never loaded.", '#include "vmlinux.h"', '#include "p15_records.h"', "",
          "struct p15_hdr p15_probe_hdr __attribute__((used));"]
+    L += [f"struct {pt.c_struct} p15_probe_{pt.c_struct} __attribute__((used));" for pt in s.parts]
     L += [f"struct {r.c_struct} p15_probe_{r.c_struct} __attribute__((used));" for r in s.records]
     L += ['', 'char LICENSE[] __attribute__((section("license"), used)) = "Dual BSD/GPL";', ""]
     return "\n".join(L)
@@ -387,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
         (args.out / name).write_text(text)
     for p in probs:
         print(f"warning: {p}", file=sys.stderr)
-    print(f"generated {len(files)} files for {len(s.records)} records")
+    print(f"generated {len(files)} files for {len(s.records)} records, {len(s.parts)} parts")
     return 0
 
 
