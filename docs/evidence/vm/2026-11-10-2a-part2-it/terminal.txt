@@ -1,0 +1,61 @@
+PS C:\Users\Ashish> ssh p15
+Welcome to Ubuntu 26.04.1 LTS (GNU/Linux 7.0.0-38-generic x86_64)
+
+ * Documentation:  https://docs.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Tue Nov 10 11:17:44 AM UTC 2026
+
+  System load:             0.43
+  Usage of /:              15.1% of 61.66GB
+  Memory usage:            3%
+  Swap usage:              0%
+  Processes:               135
+  Users logged in:         0
+  IPv4 address for enp0s3: 10.0.2.15
+  IPv6 address for enp0s3: fd17:625c:f037:2:a00:27ff:fe61:25d8
+
+ * Canonical Workshop gives developers fast, composable, reproducible, and
+   secure developer environments that are perfect for agentic workflows.
+
+   https://ubuntu.com/workshop
+
+Expanded Security Maintenance for Applications is not enabled.
+
+28 updates can be applied immediately.
+2 of these updates are standard security updates.
+To see these additional updates run: apt list --upgradable
+
+1 additional security update can be applied with ESM Apps.
+Learn more about enabling ESM Apps service at https://ubuntu.com/esm
+
+
+3 updates could not be installed automatically. For more details,
+see /var/log/unattended-upgrades/unattended-upgrades.log
+
+Last login: Mon Nov  9 14:03:12 2026 from 10.0.2.2
+ashu@p15-dev:~$ cd ~/fiery-dragon && git fetch -q origin && git checkout -q bpf/sliceb-identity && git pull -q && make -j3 all
+sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 make it-p15d > ~/it-p15d-2a.txt 2>&1; echo "exit $?"
+sudo rm -rf /var/tmp/p15-2a && sudo build/p15d --wal-dir /var/tmp/p15-2a --duration 30 2>~/p15d-2a.err; echo "exit $?"
+sudo build/p15w-inspect -v /var/tmp/p15-2a/*/ | grep -E 'FILE_STATS|^END|^records' | tail -4 > ~/p15d-2a-stats.txt
+sha256sum ~/it-p15d-2a.txt ~/p15d-2a-stats.txt
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"4d6168e901a9-dirty"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+/usr/bin/x86_64-linux-gnu-ld.bfd: cannot open output file build/test_run: Permission denied
+collect2: error: ld returned 1 exit status
+make: *** [Makefile:144: build/test_run] Error 1
+make: *** Waiting for unfinished jobs....
+[sudo: authenticate] Password:
+exit 0
+exit 0
+6a4a58544fd920a56674e5ad4cdefc0a6aa08e8e03d8d77efe7af6319c2987cb  /home/ashu/it-p15d-2a.txt
+bd7cbe8e4343f5519cc57730c27f2011fa63b22a9876d4b40013b6b1c467731e  /home/ashu/p15d-2a-stats.txt
+ashu@p15-dev:~/fiery-dragon$ sudo P15_PYTHON=$HOME/p15venv/bin/python make mutate-p15d > ~/mutate-p15d-2a.txt 2>&1; echo "exit $?"; sha256sum ~/mutate-p15d-2a.txt
+exit 2
+9a5aa4cb44bcf00483b6035945b04fd468a0c1c157da016277934561296acb5a  /home/ashu/mutate-p15d-2a.txt
+ashu@p15-dev:~/fiery-dragon$

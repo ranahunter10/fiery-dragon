@@ -62,7 +62,18 @@ M = [
     # file identity (ADR-0015, step 2a part 2): the shared bulk ring's books, FILE_STATS, the run state
     ("drain.c", "atomic_fetch_add(is_net ? &d->run->net_drained : &d->run->file_drained, 1);",
      "atomic_fetch_add(&d->run->net_drained, 1);", IT),
-    ("writer.c", "\tif (r->files) {\n\t\tif (file_books(r, why, n))", "\tif (0) {\n\t\tif (file_books(r, why, n))", IT),
+    ("writer.c", "\tif (r->files) {\n\t\tif (file_books(r, why, n))", "\tif (0) {\n\t\tif (file_books(r, why, n))", UNIT),
+    ("writer.c", "A(BACKING_LOST) + A(FENTRY_NO_INODE)) {", "A(BACKING_LOST)) {", UNIT),
+    ("writer.c", "if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||", "if (", UNIT),
+    ("writer.c", "A(VERDICT_LOST) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {", "A(VERDICT_LOST) + A(SESSION_NO_ENTRY)) {", UNIT),
+    ("writer.c", "A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED)", "A(MISSING_EMITTED) + A(VERDICT_EMITTED)", UNIT),
+    ("writer.c", "if (A(FREE_RUN) != A(CLOSE_EMITTED) + A(CLOSE_LOST) + A(FREE_UNREGISTERED)) {", "if (0) {", UNIT),
+    ("writer.c", "uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_consumed + atomic_load(&r->file_invalid);",
+     "uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_consumed;", UNIT),
+    ("writer.c", "if (!r->net && atomic_load(&r->file_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {",
+     "if (0) {", UNIT),
+    # the facts epoch (E-0151): without it an object first opened during the self-tests has no facts in the WAL
+    ("loader.c", "\tif (l->file)\n\t\tl->file->data->facts_epoch++;", "", IT),
     ("writer.c", "\tif (w->run->files)\n\t\tfile_stats(w);", "", IT),
     ("loader.c", "\tif (o->files && (code = load_file(l, o, err, errlen)))\n\t\treturn code;", "", IT),
 ]

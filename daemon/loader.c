@@ -234,6 +234,11 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 			return P15_EXIT_SELFTEST;
 		}
 	}
+	/* The self-tests threw away every record they took, facts included: a new facts epoch makes the
+	 * programs write each object's facts again, into the WAL this time (file.bpf.c, E-0151). The
+	 * .data map is mapped: this is a store, not a system call (ADR-0026). */
+	if (l->file)
+		l->file->data->facts_epoch++;
 	return 0;
 }
 

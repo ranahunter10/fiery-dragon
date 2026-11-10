@@ -49,6 +49,12 @@ const volatile __u32 file_counters_ncpu = 0;
 
 __u64 next_id;   /* the run's id counter (rule 1): 1, 2, 3, ...; shared by objects and open files */
 
+/* The facts epoch. An object's facts are written once per epoch. p15d adds one (through the mapped
+ * .data, no system call: ADR-0026) after its load-time self-tests, whose reader throws away every
+ * record it takes: without it, an object first opened by any process during the self-tests would
+ * have its facts marked written and never appear in the WAL (E-0151). */
+volatile __u32 facts_epoch = 1;
+
 #define ST_SESSION_ENTRY (1u << 0)
 #define ST_FENTRY_RAN (1u << 1)
 
@@ -65,7 +71,8 @@ struct obj_ent {
 	__u64 ino;
 	__u32 dev;
 	__u32 gen;
-	__u32 facts_written;   /* set after a record carrying the facts was submitted (decision 19.7) */
+	__u32 facts_epoch;     /* the epoch in which a record carrying the facts was submitted; 0: never
+				* (decision 19.7) */
 	__u32 pad;
 };
 
@@ -224,14 +231,20 @@ static __always_inline __u64 obj_of(struct inode *inode, const struct p15_part_o
 		}
 	}
 	*ep = e;
-	*carry = !e->facts_written;
+	*carry = e->facts_epoch != facts_epoch;
 	return e->obj;
 }
 
 /* After the record carrying the facts was submitted (decision 19.7). */
 static __always_inline void facts_done(struct obj_ent *e, int carried)
 {
-	if (e && carried && __sync_val_compare_and_swap(&e->facts_written, 0, 1) != 0)
+	__u32 cur = facts_epoch, old;
+
+	if (!e || !carried)
+		return;
+	old = e->facts_epoch;
+	/* compare-and-swap, the atomic the dry run proved on the target (E-0146) */
+	if (old == cur || __sync_val_compare_and_swap(&e->facts_epoch, old, cur) != old)
 		count(P15_FC_FACTS_DUP);
 }
 

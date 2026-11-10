@@ -203,9 +203,16 @@ fi
 
 echo "case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open"
 if [ "$NET_OK" = 1 ]; then
+# A file opened over and over while p15d starts: some open falls inside the load-time self-tests,
+# whose reader throws its record away. The object's facts must still reach the WAL (the facts
+# epoch, E-0151).
+E8=$(mktemp /tmp/p15d-it8-early-XXXXXX); E8=$(realpath "$E8")
+( while [ -e "$E8" ]; do cat "$E8" >/dev/null 2>&1; done ) &
+loop=$!
 "$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 2>"$T/c8.err" &
 pid=$!
 if started "$T/c8.err"; then
+    sleep 0.3; rm -f "$E8"; wait $loop 2>/dev/null
     D8=$(mktemp -d /tmp/p15d-it8-XXXXXX); D8=$(realpath "$D8")
     printf 'it_p15d\n' > "$D8/f1"; cat "$D8/f1" >/dev/null; mkfifo "$D8/fifo"
     "$PY" -c "
@@ -222,11 +229,13 @@ fifofid=$(grep -E "OPEN .*path=\"$D8/fifo\"" "$T/c8.txt" | sed -n 's/.* fid=\([0
 check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && [ \"${frc:-1}\" -eq 0 ]" "exit 0, WAL valid, the FIFO open failed with ENXIO"
 check "[ \$(grep -cE \"OPEN .*path=\\\"$D8/f1\\\"\" $T/c8.txt) -ge 2 ]" "an OPEN with its path for the create and the read of f1"
 check "grep -qE \"OPEN .*path=\\\"$D8/f1\\\".* dev=[0-9]+:[0-9]+ ino=[0-9]+\" $T/c8.txt" "  ... the first one carries the object's facts"
+check "grep -qE \"OPEN .*path=\\\"$E8\\\".* dev=[0-9]+:[0-9]+ ino=[0-9]+\" $T/c8.txt" "a file first opened while p15d was starting has its facts in the WAL (facts epoch)"
+check "[ \$(grep -E \"OPEN .*path=\\\"$E8\\\"\" $T/c8.txt | sed 's/.* obj=\\([0-9]*\\) .*/\\1/' | sort -u | wc -l) -eq 1 ]" "  ... and every open of it names one object"
 check "[ -n \"$f1fid\" ] && grep -qE \"CLOSE .* fid=$f1fid obj=[0-9]+ fflags=0x0 \" $T/c8.txt" "a CLOSE for f1's first open file (fid $f1fid), opened"
 check "[ -n \"$fifofid\" ] && grep -qE \"CLOSE .* fid=$fifofid obj=[0-9]+ fflags=0x[26]0 \" $T/c8.txt" "the FIFO open ends with CLOSE NEVER_OPENED (fid $fifofid)"
 check "grep -q 'FILE_STATS' $T/c8.txt && ! grep -qE 'FILE_STATS .* open_lost=[1-9]' $T/c8.txt" "FILE_STATS records written, no OPEN lost"
 check "grep -q 'END: exit 0, state 0, invariant 1' $T/c8.txt" "END: exit 0, RUNNING, the books close with file identity in them"
-rm -rf "$D8"
+rm -rf "$D8"; rm -f "$E8"; kill $loop 2>/dev/null
 else
 echo "case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)"
 fi

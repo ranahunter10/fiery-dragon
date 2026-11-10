@@ -215,7 +215,13 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 21. **The 2026-11-10 review, second motion** (maintainer: "motion passed"; E-0149): PR #62 merged; step 2a in three PRs (part 1 records, part 2 programs, part 3 the FD pass).
 
+22a. **Standing acceptance (maintainer, 2026-11-10, E-0153):** "recommended decisions are accepted in advance ... I will review them once everything is stitched". Each decision is still recorded here with its evidence when it is taken, for that review. Not covered, and still asked first: anything that cannot be undone, GPL-2.0-only code, and where PIDSMaker runs. Taken under it:
+    1. Kernel threads' opens are kept, flagged KTHREAD; their share is measured in step 6 (E-0150).
+    2. **Facts epoch** (E-0151): an object's facts are written once per epoch; p15d starts a new epoch after its load-time self-tests, whose reader discards what it takes.
+    3. **Graph v0 before 2b** (E-0153): after 2a part 3, the DuckDB schema, builder and PIDSMaker export are built on the records that exist (FORK, EXEC, EXIT, OPEN with its access mode, CLOSE, FD, NET), so the path from capture to a detection number runs end to end early; 2b-2e then replace open-level file edges with measured transfers. The step 7 options (FD on a copy, the HTML view) stay in step 7.
+    4. **The cost of an open under capture is measured next to part 3** (a paired open/close microbenchmark with p15d on and off, ADR-0012's protocol), the first whole-pipeline number.
+
 ## Decisions waiting
 
-1. **Run step 2a part 2 on the VM** (`it_p15d.sh` with case 8, and the mutation sweep of p15d), send the output with its sha256; then review and merge the part 2 PR.
-2. **Kernel-thread opens** (E-0150). The fentry and session record every open, kernel threads' included (decision 19.3), with KTHREAD. ADR-0005 rule 1 excludes kernel threads from transfers, so their opens will never be joined to data flow. Options: (a) keep them (complete, and a kernel thread's open of a file can matter, e.g. a module or firmware load); (b) count and drop them in the kernel like the transfers. Recommended: (a), and measure their share in step 6.
+1. **Send the VM's `~/mutate-p15d-2a.txt`** (the sweep exited 2; sha256 `9a5aa4cb...acb5a`) and `git status --short` from `~/fiery-dragon` (the build reported a dirty tree).
+2. **Re-run on the VM** at the branch's new head: `it_p15d.sh` (case 8 now checks the facts epoch), the 30 s idle run with the corrected inspect command, and the mutation sweep.
