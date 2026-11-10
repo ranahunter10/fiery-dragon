@@ -206,9 +206,11 @@ if [ "$NET_OK" = 1 ]; then
 # A file opened over and over while p15d starts: some open falls inside the load-time self-tests,
 # whose reader throws its record away. The object's facts must still reach the WAL (the facts
 # epoch, E-0151).
-E8=$(mktemp /tmp/p15d-it8-early-XXXXXX); E8=$(realpath "$E8")
-( while [ -e "$E8" ]; do cat "$E8" >/dev/null 2>&1; done ) &
+E8=$(mktemp /tmp/p15d-it8-early-XXXXXX); E8=$(realpath "$E8"); D8=/nonexistent
+# the loop ends when the file goes, or after 20 s on its own, whatever happens to this script
+( end=$(( $(date +%s) + 20 )); while [ -e "$E8" ] && [ "$(date +%s)" -lt "$end" ]; do cat "$E8" >/dev/null 2>&1; done ) &
 loop=$!
+trap 'rm -f "$E8"' EXIT
 "$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 2>"$T/c8.err" &
 pid=$!
 if started "$T/c8.err"; then

@@ -206,11 +206,18 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 	if (l->file) {
 		unsigned long long fc = 0, nc = 0;
 
-		null = fopen("/dev/null", "w");
+		char *text = NULL;
+		size_t text_len = 0;
+		FILE *mem = open_memstream(&text, &text_len);
+
 		l->file_selftest_failed = p15_selftest_file(bpf_map__fd(l->file->maps.bulk_rb), o->test_no_path_fentry,
-							    null ? null : stderr, &fc, &nc);
-		if (null)
-			fclose(null);
+							    mem ? mem : stderr, &fc, &nc);
+		if (mem)
+			fclose(mem);
+		/* a failed self-test says which check failed: without that the failure cannot be diagnosed */
+		if (l->file_selftest_failed != 0 && text)
+			fputs(text, stderr);
+		free(text);
 		l->file_consumed += fc;
 		l->net_consumed += nc;
 		if (l->file_selftest_failed != 0) {

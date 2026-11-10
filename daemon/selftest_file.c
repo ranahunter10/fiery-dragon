@@ -18,6 +18,7 @@
 #include "selftest_file.h"
 
 #define MAXR 32
+#define SELFTEST_TRIES 5
 
 struct coll {
 	unsigned char r[MAXR][P15_OPEN_MAX_SIZE];   /* this process's file records, as received */
@@ -130,7 +131,7 @@ int p15_selftest_file(int bulk_rb_fd, int no_path_fentry, FILE *log, unsigned lo
 	struct ring_buffer *rb;
 	struct stat st;
 	struct statfs sf;
-	int fd = -1, failed = 0, rc = 0, made = 0, fifo_made = 0;
+	int fd = -1, failed = 0, rc = 0, made = 0, fifo_made = 0, try = 0, skipped;
 
 	memset(&c, 0, sizeof(c));
 	c.me = (unsigned)getpid();
@@ -144,8 +145,9 @@ int p15_selftest_file(int bulk_rb_fd, int no_path_fentry, FILE *log, unsigned lo
 		goto out;
 	}
 	made = 1;
-	snprintf(f1, sizeof(f1), "%s/f1", rdir);
-	snprintf(fifo, sizeof(fifo), "%s/fifo", rdir);
+again:
+	snprintf(f1, sizeof(f1), "%s/f1-%d", rdir, try);
+	snprintf(fifo, sizeof(fifo), "%s/fifo-%d", rdir, try);
 	fd = open(f1, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0600);
 	if (fd < 0 || write(fd, "p15d\n", 5) != 5) {
 		rc = -errno;
@@ -191,6 +193,37 @@ int p15_selftest_file(int bulk_rb_fd, int no_path_fentry, FILE *log, unsigned lo
 				"the create is an OPEN with PATH_MISSING, no path, verdict 0, and the facts of fstat");
 		failed += check(log, b && (b->fflags & P15_FF_PATH_MISSING) && !(b->fflags & P15_FF_OBJ_NEW) && b->fid != a->fid,
 				"the reopen too: the same object without its facts again, its own open-file id");
+		goto out;
+	}
+	/* The fentry is preemptible: when another task is preempted inside it on this CPU, the kernel
+	 * skips it for us (ADR-0020) and the session return writes our open with PATH_MISSING. That is
+	 * the design working, not a failure: try again, up to SELFTEST_TRIES times. If every try was
+	 * skipped (a machine opening files flat out while p15d starts), the fallback record itself is
+	 * checked instead, so a busy host does not stop the daemon from starting. */
+	skipped = 0;
+	for (int i = 0; i < c.n; i++)
+		if (open_rec(i) && (open_rec(i)->fflags & P15_FF_PATH_MISSING))
+			skipped++;
+	if (skipped && try + 1 < SELFTEST_TRIES) {
+		fprintf(log, "selftest file: try %d: the kernel skipped the path fentry for %d of our opens; again\n", try, skipped);
+		ring_buffer__poll(rb, 20);
+		ring_buffer__consume(rb);
+		unlink(f1);
+		unlink(fifo);
+		fifo_made = 0;
+		c.n = c.other = 0;
+		try++;
+		goto again;
+	}
+	if (skipped) {
+		a = NULL;
+		for (int i = 0; i < c.n; i++)
+			if ((q = open_rec(i)) && (q->fflags & P15_FF_PATH_MISSING) && q->path_len == 0 && q->verdict == 0)
+				a = q;
+		fprintf(log, "selftest file: the path fentry was skipped on all %d tries; checking the fallback record\n",
+			SELFTEST_TRIES);
+		failed += check(log, c.invalid == 0 && c.overflow == 0, "every record passes the checks");
+		failed += check(log, a != NULL, "a skipped open is written by the session return with PATH_MISSING, verdict 0");
 		goto out;
 	}
 	a = find_open(f1, 0, 0);
