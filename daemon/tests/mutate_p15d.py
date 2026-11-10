@@ -75,8 +75,9 @@ M = [
      "if (0) {", UNIT),
     # the facts epoch (E-0151): without it an object first opened during the self-tests has no facts in the WAL
     ("loader.c", "\tif (l->file)\n\t\tl->file->data->facts_epoch++;", "", IT),
-    ("writer.c", "\tif (w->run->files)\n\t\tfile_stats(w);", "", IT),
-    ("loader.c", "\tif (o->files && (code = load_file(l, o, err, errlen)))\n\t\treturn code;", "", IT),
+    ("writer.c", "\tif (w->run->files)\n\t\tfile_stats(w);", "\tif (0)\n\t\tfile_stats(w);", IT),
+    ("loader.c", "\tif (o->files && (code = load_file(l, o, err, errlen)))\n\t\treturn code;",
+     "\tif (0 && (code = load_file(l, o, err, errlen)))\n\t\treturn code;", IT),
 ]
 
 
@@ -92,6 +93,8 @@ def main() -> int:
         return 2
     orig = {f: (ROOT / "daemon" / f).read_text() for f in files}
     killed = 0
+    # `mutate_p15d.py 40 41` runs only those mutants (after a sweep in which they did not build)
+    only = {int(a) for a in sys.argv[1:]}
     # SIGTERM and SIGHUP (pkill, a closed terminal) unwind like Ctrl-C, so `finally` restores the sources
     for sig in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, lambda *_: sys.exit(130))
@@ -105,6 +108,8 @@ def main() -> int:
                 return 2
             print(f"baseline: the {name} pass", flush=True)
         for i, (f, old, new, test) in enumerate(M):
+            if only and i not in only:
+                continue
             if orig[f].count(old) != 1:
                 print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep", flush=True)
                 return 2
@@ -120,8 +125,9 @@ def main() -> int:
         for f, text in orig.items():
             (ROOT / "daemon" / f).write_text(text)
         subprocess.run("make -s build/p15d build/test_queue build/test_config", shell=True, cwd=ROOT)
-    print(f"mutation sweep: {killed}/{len(M)} killed")
-    return 0 if killed == len(M) else 1
+    total = len(only) if only else len(M)
+    print(f"mutation sweep: {killed}/{total} killed" + (f" (mutants {sorted(only)} only)" if only else ""), flush=True)
+    return 0 if killed == total else 1
 
 
 if __name__ == "__main__":
