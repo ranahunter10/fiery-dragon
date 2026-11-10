@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "24c4869743f410306569951f2dd5ac75532d9221baef54641362551b7cae8b9d"
+#define P15_SCHEMA_HASH "fd750b091efcf9c3337fb7ddafce35ee102b7ee8c19da218a4b82753546a2d3e"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -920,6 +920,81 @@ P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v1, _pad) == 162, "p15_snap_done_v1
 
 #define P15_SNAP_DONE_V1_MAX_SIZE 168
 
+/* SNAP_DONE v2 (MARKER): The books of one process snapshot, written after its PROC records and, with file identity, its FD records (ADR-0015 rule 7). The PROC books are v1's; the fd_* books close: fd_files = fd_no_inode + fd_emitted + fd_write_failed (the BPF side), fd_emitted = fd_entries + fd_invalid + fd_unwritten (p15d's side) and fd_emitted = fd_known + fd_registered + fd_map_full; a lost FD row or a failed read makes the snapshot incomplete and the run INVALID, as for PROC. v1's text follows: They close: tasks = threads + emitted + write_failed (the BPF side) and emitted = entries + invalid + unwritten (p15d's side); a reader that finds them open marks the run INVALID. A closing snapshot's SNAP_DONE precedes END (ADR-0023 rule 1). */
+struct p15_snap_done_v2 {
+	struct p15_hdr h;
+	__u64 duration_ns;
+	__u64 tasks;
+	__u64 threads;
+	__u64 emitted;
+	__u64 write_failed;
+	__u64 entries;
+	__u64 invalid;
+	__u64 unwritten;
+	__u64 kthreads;
+	__u64 exiting;
+	__u64 argv_failed;
+	__u64 path_unlocked;
+	__u64 path_not_found;
+	__u64 path_failed;
+	__u64 truncated;
+	__u64 fd_duration_ns;
+	__u64 fd_files;
+	__u64 fd_no_inode;
+	__u64 fd_emitted;
+	__u64 fd_write_failed;
+	__u64 fd_entries;
+	__u64 fd_invalid;
+	__u64 fd_unwritten;
+	__u64 fd_known;
+	__u64 fd_registered;
+	__u64 fd_map_full;
+	__u64 fd_path_error;
+	__u64 fd_truncated;
+	__u32 snap_id;
+	__s32 error;
+	__s32 fd_error;
+	__u16 kind;
+	__u16 fd_pass;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_snap_done_v2) == 272, "p15_snap_done_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, h) == 0, "p15_snap_done_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, duration_ns) == 32, "p15_snap_done_v2.duration_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, tasks) == 40, "p15_snap_done_v2.tasks offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, threads) == 48, "p15_snap_done_v2.threads offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, emitted) == 56, "p15_snap_done_v2.emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, write_failed) == 64, "p15_snap_done_v2.write_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, entries) == 72, "p15_snap_done_v2.entries offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, invalid) == 80, "p15_snap_done_v2.invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, unwritten) == 88, "p15_snap_done_v2.unwritten offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, kthreads) == 96, "p15_snap_done_v2.kthreads offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, exiting) == 104, "p15_snap_done_v2.exiting offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, argv_failed) == 112, "p15_snap_done_v2.argv_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, path_unlocked) == 120, "p15_snap_done_v2.path_unlocked offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, path_not_found) == 128, "p15_snap_done_v2.path_not_found offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, path_failed) == 136, "p15_snap_done_v2.path_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, truncated) == 144, "p15_snap_done_v2.truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_duration_ns) == 152, "p15_snap_done_v2.fd_duration_ns offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_files) == 160, "p15_snap_done_v2.fd_files offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_no_inode) == 168, "p15_snap_done_v2.fd_no_inode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_emitted) == 176, "p15_snap_done_v2.fd_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_write_failed) == 184, "p15_snap_done_v2.fd_write_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_entries) == 192, "p15_snap_done_v2.fd_entries offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_invalid) == 200, "p15_snap_done_v2.fd_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_unwritten) == 208, "p15_snap_done_v2.fd_unwritten offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_known) == 216, "p15_snap_done_v2.fd_known offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_registered) == 224, "p15_snap_done_v2.fd_registered offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_map_full) == 232, "p15_snap_done_v2.fd_map_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_path_error) == 240, "p15_snap_done_v2.fd_path_error offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_truncated) == 248, "p15_snap_done_v2.fd_truncated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, snap_id) == 256, "p15_snap_done_v2.snap_id offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, error) == 260, "p15_snap_done_v2.error offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_error) == 264, "p15_snap_done_v2.fd_error offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, kind) == 268, "p15_snap_done_v2.kind offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_snap_done_v2, fd_pass) == 270, "p15_snap_done_v2.fd_pass offset");
+
+#define P15_SNAP_DONE_V2_MAX_SIZE 272
+
 /* OPEN v1 (OPEN): One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with the path, or, with PATH_MISSING, by the kprobe.session return when the fentry did not run. An FMODE_BACKING open writes BACKING instead. The header names the task that opened. */
 struct p15_open_v1 {
 	struct p15_hdr h;
@@ -1194,9 +1269,9 @@ P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, obj_map_entries) == 380, "p15_
 #define P15_PROC_MAX_SIZE P15_PROC_V2_MAX_SIZE
 #define P15_PROC_EXE_PATH_MAX P15_PROC_V2_EXE_PATH_MAX
 #define P15_PROC_ARGV_MAX P15_PROC_V2_ARGV_MAX
-#define P15_SNAP_DONE_VERSION 1
-#define p15_snap_done p15_snap_done_v1
-#define P15_SNAP_DONE_MAX_SIZE P15_SNAP_DONE_V1_MAX_SIZE
+#define P15_SNAP_DONE_VERSION 2
+#define p15_snap_done p15_snap_done_v2
+#define P15_SNAP_DONE_MAX_SIZE P15_SNAP_DONE_V2_MAX_SIZE
 #define P15_OPEN_VERSION 1
 #define p15_open p15_open_v1
 #define P15_OPEN_MAX_SIZE P15_OPEN_V1_MAX_SIZE

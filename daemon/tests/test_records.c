@@ -97,6 +97,29 @@ static void test_fixed_sizes(void)
 	sd->kind = 2;
 	sd->h.len += 8;
 	EXPECT(!ok(), "SNAP_DONE 8 bytes longer refused");
+	{   /* SNAP_DONE v2 (ADR-0015 rule 7): its own size, kind at its own offset, fd_pass 0 or 1 */
+		struct p15_snap_done_v2 *s2 = (void *)mk(P15_T_SNAP_DONE, sizeof(struct p15_snap_done_v2));
+		char line[1200];
+
+		s2->h.version = 2;
+		s2->kind = 1;
+		EXPECT(ok(), "SNAP_DONE v2 at its size accepted (kind read at v2's offset)");
+		s2->kind = 2;
+		s2->fd_pass = 1;
+		s2->fd_entries = 42;
+		EXPECT(ok(), "SNAP_DONE v2 closing with an FD pass accepted");
+		p15_rec_format(buf, line, sizeof(line));
+		EXPECT(strstr(line, "snap=0/closing") && strstr(line, "fd: error=0") && strstr(line, "entries=42"),
+		       "SNAP_DONE v2 formats its kind and the FD pass's books");
+		s2->fd_pass = 2;
+		EXPECT(!ok(), "SNAP_DONE v2 with fd_pass 2 refused");
+		s2->fd_pass = 0;
+		s2->kind = 3;
+		EXPECT(!ok(), "SNAP_DONE v2 with an unknown kind refused");
+		s2->kind = 1;
+		s2->h.len = sizeof(struct p15_snap_done_v1);
+		EXPECT(!ok(), "SNAP_DONE v2 at v1's size refused");
+	}
 	{   /* a PROC v1 record (old WALs) still validates; argv over its maximum is refused via the v1 branch */
 		struct p15_proc_v1 *pr = (void *)mk(P15_T_PROC, sizeof(struct p15_proc_v1));
 

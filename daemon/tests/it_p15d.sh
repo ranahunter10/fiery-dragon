@@ -242,6 +242,42 @@ else
 echo "case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1) [t+${SECONDS}s]"
 fi
 
+echo "case 9: files already open at start (ADR-0015 rule 7, the snapshot's FD pass) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+D9=$(mktemp -d /tmp/p15d-it9-XXXXXX); D9=$(realpath "$D9")
+printf 'held\n' > "$D9/held"; printf 'again\n' > "$D9/again"
+# opened before p15d starts, held on fd 3, stdin a pipe: only the FD pass can name them
+( exec 3<"$D9/held"; exec sleep 6 ) < <(exec sleep 6) &
+holder=$!
+sleep 0.3
+# segments of 1 s: each opening snapshot repeats the FD pass and starts a new facts epoch, so a
+# file opened in two segments has its facts in both (ADR-0007's self-describing segments, E-0160)
+"$B/p15d" --wal-dir "$T/c9" --duration 4 --stats-ms 200 --rotate-s 1 2>"$T/c9.err" &
+pid=$!
+if started "$T/c9.err"; then
+    sleep 0.3; cat "$D9/held" "$D9/again" >/dev/null; kill $holder 2>/dev/null; wait $holder 2>/dev/null
+    sleep 2.2; cat "$D9/again" >/dev/null
+fi
+wait $pid; rc=$?
+RUN=$T/c9; inspect -v >"$T/c9.txt"; irc=$?
+row=$(grep -E "FD .* tgid=$holder .* snap=0 fd=3 " "$T/c9.txt" | head -1)
+echo "$row" | sed 's/^ *//' | cut -c1-240
+hfid=$(echo "$row" | sed -n 's/.* fid=\([0-9]*\) .*/\1/p'); hobj=$(echo "$row" | sed -n 's/.* obj=\([0-9]*\) .*/\1/p')
+check "[ $rc -eq 0 ] && [ $irc -eq 0 ]" "exit 0, WAL valid"
+check "[ -n \"$row\" ] && echo \"$row\" | grep -q \"path=\\\"$D9/held\\\"\"" "an FD row for the holder's fd 3, with the file's path (fid $hfid, obj $hobj)"
+check "[ \$(grep -cE \"FD .* tgid=$holder .* snap=0 fd=[012] \" $T/c9.txt) -eq 3 ]" "  ... and for its fds 0, 1 and 2 (the streams of a process older than capture)"
+check "[ -n \"$hobj\" ] && grep -qE \"OPEN .* obj=$hobj .*path=\\\"$D9/held\\\"\" $T/c9.txt" "a later open of the same file names the FD row's object"
+check "[ -n \"$hfid\" ] && grep -qE \"CLOSE .* fid=$hfid \" $T/c9.txt" "the holder's exit ends that open file: CLOSE fid $hfid"
+check "grep -qE 'SNAP_DONE .* fd: error=0 .* write_failed=0 .* invalid=0 unwritten=0' $T/c9.txt" "SNAP_DONE carries the FD pass's books, nothing lost"
+nseg=$(ls "$T"/c9/*/seg-*.p15w 2>/dev/null | wc -l)
+check "[ $nseg -ge 2 ] && [ \$(grep -cE 'SNAP_DONE .*/opening .* fd: error=0' $T/c9.txt) -ge 2 ]" "every segment's opening snapshot has an FD pass ($nseg segments)"
+check "[ \$(grep -cE \"OPEN .*path=\\\"$D9/again\\\".* dev=[0-9]+:[0-9]+ ino=\" $T/c9.txt) -eq 2 ]" "a file opened in two segments carries its facts in both (the facts epoch)"
+check "grep -q 'END: exit 0, state 0, invariant 1' $T/c9.txt" "END: exit 0, RUNNING, the books close"
+rm -rf "$D9"
+else
+echo "case 9: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

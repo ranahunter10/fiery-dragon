@@ -52,6 +52,41 @@ class Snapshots(Base):
         self.assertIn("SNAP_DONE counts 4 entries, the WAL holds 3", " ".join(c.snapshots[1].problems()))
 
 
+class FdPass(unittest.TestCase):
+    """The FD rows of a snapshot and SNAP_DONE v2's fd books (ADR-0015 rule 7)."""
+
+    def snap(self, n_fd=3, **books):
+        import numpy as np
+        from p15 import records as R
+        from p15 import snapshot as SN
+        facts = np.zeros(1, R.gen.PARTS["OBJFACTS"])
+        facts["seen"] = 2
+        out = S.snapshot(10, 0, 1, S.OPENING[:1])
+        done = out.pop()
+        fds = [S.rec("FD", var={"facts": facts.tobytes(), "path": b"/dev/null"}, h_tgid=1, fd=i, fid=10 + i, obj=20 + i,
+                     snap_id=0) for i in range(n_fd)]
+        f = {"tasks": 1, "threads": 0, "emitted": 1, "entries": 1, "fd_pass": 1, "fd_files": 3, "fd_emitted": 3,
+             "fd_entries": 3, "fd_registered": 2, "fd_known": 1, **books}
+        done = S.rec("SNAP_DONE", h_ts_ns=2000, duration_ns=100, snap_id=0, kind=1, **f)
+        recs = [R.decode(memoryview(b), 0, 0, i) for i, b in enumerate(out + fds + [done])]
+        return SN.collect(recs)[0]
+
+    def test_complete_with_its_fd_rows(self):
+        s = self.snap()
+        self.assertEqual((len(s.fds), s.kind, s.problems()), (3, "opening", []))
+
+    def test_fd_books_that_dont_close(self):
+        self.assertIn("fd_files 4 != fd_no_inode 0 + fd_emitted 3", " ".join(self.snap(fd_files=4).problems()))
+        self.assertIn("fd_emitted 3 != fd_known 1 + fd_registered 1", " ".join(self.snap(fd_registered=1).problems()))
+        self.assertIn("SNAP_DONE counts 3 FD rows, the WAL holds 2", " ".join(self.snap(n_fd=2).problems()))
+        self.assertIn("reading the FD iterator failed (-5)", " ".join(self.snap(fd_error=-5).problems()))
+        self.assertIn("FD rows: 1 not written", " ".join(self.snap(fd_files=4, fd_write_failed=1).problems()))
+
+    def test_fd_rows_without_a_pass(self):
+        s = self.snap(fd_pass=0)
+        self.assertIn("3 FD rows without an FD pass", " ".join(s.problems()))
+
+
 class TreeFromSnapshot(Base):
     def test_parents_and_programs_of_preexisting_processes(self):
         t = self.ctx(snap=True).tree

@@ -222,6 +222,7 @@ int main(int argc, char **argv)
 	wo.sync_ns = (uint64_t)run.cfg.sync_ms * 1000000ull;
 	wo.meta = meta;
 	wo.nmeta = nm;
+	p15_snapshot_set_fd(&snap, ld.file, ld.fd_iter_link);   /* NULL, NULL with --no-files */
 	wo.on_open = p15_snapshot_on_open;
 	wo.on_open_ctx = &snap;
 	memset(&w, 0, sizeof(w));

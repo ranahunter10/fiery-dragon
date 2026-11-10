@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "24c4869743f410306569951f2dd5ac75532d9221baef54641362551b7cae8b9d"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "fd750b091efcf9c3337fb7ddafce35ee102b7ee8c19da218a4b82753546a2d3e"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -123,6 +123,9 @@ RECORDS = {
     (38, 1): Layout('SNAP_DONE', 38, 1, 'MARKER',
         np.dtype({'names': ['h', 'duration_ns', 'tasks', 'threads', 'emitted', 'write_failed', 'entries', 'invalid', 'unwritten', 'kthreads', 'exiting', 'argv_failed', 'path_unlocked', 'path_not_found', 'path_failed', 'truncated', 'snap_id', 'error', 'kind', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<i4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 156, 160, 162], 'itemsize': 168}),
         168, 168, ()),
+    (38, 2): Layout('SNAP_DONE', 38, 2, 'MARKER',
+        np.dtype({'names': ['h', 'duration_ns', 'tasks', 'threads', 'emitted', 'write_failed', 'entries', 'invalid', 'unwritten', 'kthreads', 'exiting', 'argv_failed', 'path_unlocked', 'path_not_found', 'path_failed', 'truncated', 'fd_duration_ns', 'fd_files', 'fd_no_inode', 'fd_emitted', 'fd_write_failed', 'fd_entries', 'fd_invalid', 'fd_unwritten', 'fd_known', 'fd_registered', 'fd_map_full', 'fd_path_error', 'fd_truncated', 'snap_id', 'error', 'fd_error', 'kind', 'fd_pass'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<i4', '<i4', '<u2', '<u2'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 260, 264, 268, 270], 'itemsize': 272}),
+        272, 272, ()),
     (6, 1): Layout('OPEN', 6, 1, 'OPEN',
         np.dtype({'names': ['h', 'fid', 'obj', 'fflags', 'f_flags', 'f_mode', 'verdict', 'path_err', 'facts_full', 'path_full', 'facts_len', 'path_len'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<i4', '<i4', '<u4', '<u4', '<u2', '<u2'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 72, 76, 78], 'itemsize': 80}),
         80, 4216, (('facts', 40), ('path', 4096)), (('facts', 'OBJFACTS'),)),

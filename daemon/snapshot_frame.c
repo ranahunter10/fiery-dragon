@@ -7,38 +7,71 @@
 #include "records.h"
 #include "snapshot.h"
 
-void p15_snap_frame_init(struct p15_snap_frame *f, uint32_t snap_id, uint16_t kind, struct p15_snap_done_v1 *done,
-			 p15_snap_put_fn put, void *ctx)
+static void init(struct p15_snap_frame *f, uint16_t type, uint32_t snap_id, uint16_t kind, p15_snap_put_fn put,
+		 void *ctx)
 {
+	f->type = type;
 	f->snap_id = snap_id;
 	f->kind = kind;
 	f->have = 0;
 	f->lost = 0;
-	f->done = done;
 	f->put = put;
 	f->put_ctx = ctx;
 }
 
-/* A len that could be a PROC record: framing holds while it does. */
-static int plausible_len(uint16_t len)
+void p15_snap_frame_init(struct p15_snap_frame *f, uint32_t snap_id, uint16_t kind, struct p15_snap_done_v2 *done,
+			 p15_snap_put_fn put, void *ctx)
 {
+	init(f, P15_T_PROC, snap_id, kind, put, ctx);
+	f->entries = &done->entries;
+	f->invalid = &done->invalid;
+	f->unwritten = &done->unwritten;
+	f->error = &done->error;
+}
+
+void p15_snap_frame_init_fd(struct p15_snap_frame *f, uint32_t snap_id, struct p15_snap_done_v2 *done,
+			    p15_snap_put_fn put, void *ctx)
+{
+	init(f, P15_T_FD, snap_id, 0, put, ctx);
+	f->entries = &done->fd_entries;
+	f->invalid = &done->fd_invalid;
+	f->unwritten = &done->fd_unwritten;
+	f->error = &done->fd_error;
+}
+
+/* A len that could be a record of the pass's type: framing holds while it does. */
+static int plausible_len(const struct p15_snap_frame *f, uint16_t len)
+{
+	if (f->type == P15_T_FD)
+		return len >= sizeof(struct p15_fd) && len <= P15_FD_MAX_SIZE && len % 8 == 0;
 	return len >= sizeof(struct p15_proc) && len <= P15_PROC_MAX_SIZE && len % 8 == 0;
+}
+
+/* Of the pass's type and version, and of this snapshot. */
+static int ours(const struct p15_snap_frame *f, const uint8_t *rec)
+{
+	const struct p15_hdr *h = (const void *)rec;
+
+	if (h->type != f->type)
+		return 0;
+	if (f->type == P15_T_FD)
+		return h->version == P15_FD_VERSION && ((const struct p15_fd *)rec)->snap_id == f->snap_id;
+	return h->version == P15_PROC_VERSION && ((const struct p15_proc *)rec)->snap_id == f->snap_id &&
+	       ((const struct p15_proc *)rec)->kind == f->kind;
 }
 
 static void one(struct p15_snap_frame *f, const uint8_t *rec, uint16_t len)
 {
-	const struct p15_proc *p = (const void *)rec;
 	const char *why;
 
-	if (p15_rec_check(rec, len, &why) || p->h.type != P15_T_PROC || p->h.version != P15_PROC_VERSION || p->snap_id != f->snap_id ||
-	    p->kind != f->kind) {
-		f->done->invalid++;
+	if (p15_rec_check(rec, len, &why) || !ours(f, rec)) {
+		(*f->invalid)++;
 		return;
 	}
 	if (f->put(f->put_ctx, rec, len))
-		f->done->unwritten++;
+		(*f->unwritten)++;
 	else
-		f->done->entries++;
+		(*f->entries)++;
 }
 
 void p15_snap_frame_feed(struct p15_snap_frame *f, size_t n)
@@ -54,10 +87,10 @@ void p15_snap_frame_feed(struct p15_snap_frame *f, size_t n)
 		uint16_t len;
 
 		memcpy(&len, f->buf + off + offsetof(struct p15_hdr, len), sizeof(len));
-		if (!plausible_len(len)) {
+		if (!plausible_len(f, len)) {
 			/* nothing tells where the next record starts: count one, stop reading, fail the snapshot */
-			f->done->invalid++;
-			f->done->error = -EPROTO;
+			(*f->invalid)++;
+			*f->error = -EPROTO;
 			f->lost = 1;
 			f->have = 0;
 			return;
@@ -74,14 +107,14 @@ void p15_snap_frame_feed(struct p15_snap_frame *f, size_t n)
 void p15_snap_frame_end(struct p15_snap_frame *f)
 {
 	if (f->have && !f->lost) {
-		f->done->invalid++;           /* a record cut short: the output ended inside it */
-		if (!f->done->error)
-			f->done->error = -EPROTO;
+		(*f->invalid)++;              /* a record cut short: the output ended inside it */
+		if (!*f->error)
+			*f->error = -EPROTO;
 	}
 	f->have = 0;
 }
 
-void p15_snap_books_fill(struct p15_snap_done_v1 *d, const struct p15_snap_books *b)
+void p15_snap_books_fill(struct p15_snap_done_v2 *d, const struct p15_snap_books *b)
 {
 	d->tasks = b->tasks;
 	d->threads = b->threads;
@@ -96,7 +129,57 @@ void p15_snap_books_fill(struct p15_snap_done_v1 *d, const struct p15_snap_books
 	d->truncated = b->truncated;
 }
 
-int p15_snap_books_close(const struct p15_snap_done_v1 *d, char *why, size_t n)
+void p15_snap_fd_books_fill(struct p15_snap_done_v2 *d, const struct p15_fd_books *b)
+{
+	d->fd_pass = 1;
+	d->fd_files = b->files;
+	d->fd_no_inode = b->no_inode;
+	d->fd_emitted = b->emitted;
+	d->fd_write_failed = b->write_failed;
+	d->fd_known = b->known;
+	d->fd_registered = b->registered;
+	d->fd_map_full = b->map_full;
+	d->fd_path_error = b->path_error;
+	d->fd_truncated = b->truncated;
+}
+
+/* The FD pass's books (bpf/include/p15_snap.h, SNAP_DONE v2 doc); 0 when they close. */
+static int fd_books_close(const struct p15_snap_done_v2 *d, char *why, size_t n)
+{
+	if (!d->fd_pass)
+		return 0;
+	if (d->fd_error) {
+		snprintf(why, n, "snapshot %u: reading the FD iterator failed (%d)", d->snap_id, d->fd_error);
+		return -1;
+	}
+	if (d->fd_files != d->fd_no_inode + d->fd_emitted + d->fd_write_failed) {
+		snprintf(why, n, "snapshot %u: fd_files %llu != fd_no_inode %llu + fd_emitted %llu + fd_write_failed %llu",
+			 d->snap_id, (unsigned long long)d->fd_files, (unsigned long long)d->fd_no_inode,
+			 (unsigned long long)d->fd_emitted, (unsigned long long)d->fd_write_failed);
+		return -1;
+	}
+	if (d->fd_emitted != d->fd_entries + d->fd_invalid + d->fd_unwritten) {
+		snprintf(why, n, "snapshot %u: fd_emitted %llu != fd_entries %llu + fd_invalid %llu + fd_unwritten %llu",
+			 d->snap_id, (unsigned long long)d->fd_emitted, (unsigned long long)d->fd_entries,
+			 (unsigned long long)d->fd_invalid, (unsigned long long)d->fd_unwritten);
+		return -1;
+	}
+	if (d->fd_emitted != d->fd_known + d->fd_registered + d->fd_map_full) {
+		snprintf(why, n, "snapshot %u: fd_emitted %llu != fd_known %llu + fd_registered %llu + fd_map_full %llu",
+			 d->snap_id, (unsigned long long)d->fd_emitted, (unsigned long long)d->fd_known,
+			 (unsigned long long)d->fd_registered, (unsigned long long)d->fd_map_full);
+		return -1;
+	}
+	if (d->fd_write_failed || d->fd_invalid || d->fd_unwritten) {
+		snprintf(why, n, "snapshot %u: FD rows: %llu not written by the program, %llu invalid, %llu refused by the WAL",
+			 d->snap_id, (unsigned long long)d->fd_write_failed, (unsigned long long)d->fd_invalid,
+			 (unsigned long long)d->fd_unwritten);
+		return -1;
+	}
+	return 0;
+}
+
+int p15_snap_books_close(const struct p15_snap_done_v2 *d, char *why, size_t n)
 {
 	if (d->error) {
 		snprintf(why, n, "snapshot %u: reading the iterator failed (%d)", d->snap_id, d->error);
@@ -120,5 +203,5 @@ int p15_snap_books_close(const struct p15_snap_done_v1 *d, char *why, size_t n)
 			 (unsigned long long)d->unwritten);
 		return -1;
 	}
-	return 0;
+	return fd_books_close(d, why, n);
 }

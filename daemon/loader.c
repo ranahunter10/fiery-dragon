@@ -10,6 +10,7 @@
 #include "exitcodes.h"
 #include "loader.h"
 #include "selftest.h"
+#include "p15_snap.h"   /* before file.skel.h: its .bss holds struct p15_fd_books */
 #include "file.skel.h"
 #include "net.skel.h"
 #include "p15_file.h"
@@ -54,6 +55,7 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 	}
 	if (o->test_no_path_fentry)
 		bpf_program__set_autoattach(l->file->progs.file_open_path, false);
+	bpf_program__set_autoattach(l->file->progs.file_fd_iter, false);   /* the snapshot's FD pass: below */
 	if (file_bpf__load(l->file)) {
 		snprintf(err, errlen, "file: load failed: %s (fentry or kprobe.session unavailable? --no-files runs without "
 			 "file identity)", strerror(errno));
@@ -62,6 +64,13 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 	if (p15_counters_verify(l->file->maps.file_counters, l->ncpu)) {
 		snprintf(err, errlen, "file: the loaded counter map is not the mmapable array asked for (ADR-0026)");
 		return P15_EXIT_INTERNAL;
+	}
+	/* The FD pass's iterator link (ADR-0015 rule 7): made now, used by every snapshot. A link, not
+	 * an attach to an event: nothing runs until the snapshot creates an iterator from it. */
+	l->fd_iter_link = bpf_program__attach_iter(l->file->progs.file_fd_iter, NULL);
+	if (!l->fd_iter_link) {
+		snprintf(err, errlen, "file: the FD pass's task_file iterator could not be made: %s", strerror(errno));
+		return P15_EXIT_LOAD;
 	}
 	return 0;
 }
@@ -162,8 +171,8 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 		}
 		l->file_fentry_fd = o->test_no_path_fentry ? 0 : bpf_program__fd(l->file->progs.file_open_path);
 		bpf_object__for_each_program(p, l->file->obj) {
-			if (p == l->file->progs.file_open_path)
-				continue;
+			if (p == l->file->progs.file_open_path || p == l->file->progs.file_fd_iter)
+				continue;   /* the fentry's skips are located, not lost; the iterator runs on demand */
 			if (l->n_file_kprobe >= (int)(sizeof(l->file_kprobe_fd) / sizeof(l->file_kprobe_fd[0]))) {
 				snprintf(err, errlen, "more file programs than file_kprobe_fd holds");
 				return P15_EXIT_INTERNAL;
@@ -263,6 +272,8 @@ void p15_loader_free(struct p15_loader *l)
 {
 	spine_bpf__destroy(l->spine);
 	net_bpf__destroy(l->net);
+	bpf_link__destroy(l->fd_iter_link);
+	l->fd_iter_link = NULL;
 	file_bpf__destroy(l->file);
 	l->spine = NULL;
 	l->net = NULL;

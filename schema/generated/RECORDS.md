@@ -593,6 +593,49 @@ Fixed part 168 bytes; at most 168 bytes with its variable fields.
 | 160 | `kind` | u16 | as in PROC |
 | 162 | `_pad` | char[6] | zero; pads the fixed part to 8 *(generated)* |
 
+## SNAP_DONE (type 38, version 2, class MARKER)
+
+The books of one process snapshot, written after its PROC records and, with file identity, its FD records (ADR-0015 rule 7). The PROC books are v1's; the fd_* books close: fd_files = fd_no_inode + fd_emitted + fd_write_failed (the BPF side), fd_emitted = fd_entries + fd_invalid + fd_unwritten (p15d's side) and fd_emitted = fd_known + fd_registered + fd_map_full; a lost FD row or a failed read makes the snapshot incomplete and the run INVALID, as for PROC. v1's text follows: They close: tasks = threads + emitted + write_failed (the BPF side) and emitted = entries + invalid + unwritten (p15d's side); a reader that finds them open marks the run INVALID. A closing snapshot's SNAP_DONE precedes END (ADR-0023 rule 1).
+
+Fixed part 272 bytes; at most 272 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `duration_ns` | u64 | CLOCK_BOOTTIME from creating the iterator to its end of output |
+| 40 | `tasks` | u64 | tasks the iterator showed the program (every thread of every process) |
+| 48 | `threads` | u64 | tasks that are not a thread-group leader: not recorded, by design (a PROC is one thread group) |
+| 56 | `emitted` | u64 | PROC records the program wrote to the iterator's output |
+| 64 | `write_failed` | u64 | bpf_seq_write refused a record: that process is missing from the snapshot (run INVALID) |
+| 72 | `entries` | u64 | PROC records that passed p15_rec_check and went into the WAL |
+| 80 | `invalid` | u64 | output that failed p15_rec_check or did not frame as records: counted, never written (run INVALID) |
+| 88 | `unwritten` | u64 | checked PROC records the WAL refused (an I/O failure; the run is already INVALID) |
+| 96 | `kthreads` | u64 | entries that are kernel threads (no argv, no executable) |
+| 104 | `exiting` | u64 | entries already exiting, without an mm (no argv, no executable): not read failures |
+| 112 | `argv_failed` | u64 | entries whose argv could not be read (bpf_copy_from_user_task failed): P15_F_READ_FAILED |
+| 120 | `path_unlocked` | u64 | entries whose executable path was not read because the task's mmap lock was busy or the iterator could not start: P15_F_READ_FAILED |
+| 128 | `path_not_found` | u64 | entries whose mapping at mm->start_code is not mm->exe_file, so the path is not read: P15_F_READ_FAILED |
+| 136 | `path_failed` | u64 | entries where bpf_d_path failed for another reason than length: P15_F_READ_FAILED |
+| 144 | `truncated` | u64 | fields cut: an argv longer than its maximum, or a path longer than its maximum (a record with both counts twice); each such entry has P15_F_TRUNCATED |
+| 152 | `fd_duration_ns` | u64 | CLOCK_BOOTTIME of the FD pass, from creating its iterator to its end of output; 0 without the pass |
+| 160 | `fd_files` | u64 | descriptors the task_file iterator showed the program (thread-group fd tables; threads sharing the leader's table are skipped by the kernel) |
+| 168 | `fd_no_inode` | u64 | descriptors whose file has no inode: not recorded (never expected) |
+| 176 | `fd_emitted` | u64 | FD records the program wrote to the iterator's output |
+| 184 | `fd_write_failed` | u64 | bpf_seq_write refused an FD record: that descriptor is missing (run INVALID) |
+| 192 | `fd_entries` | u64 | FD records that passed p15_rec_check and went into the WAL |
+| 200 | `fd_invalid` | u64 | FD output that failed p15_rec_check or did not frame: counted, never written (run INVALID) |
+| 208 | `fd_unwritten` | u64 | checked FD records the WAL refused |
+| 216 | `fd_known` | u64 | emitted FD rows whose open file capture had already registered (an OPEN, or an earlier snapshot): the existing ids, first registration wins (ADR-0015 rule 7) |
+| 224 | `fd_registered` | u64 | emitted FD rows that registered their open file now (opened before capture began) |
+| 232 | `fd_map_full` | u64 | emitted FD rows written with a fresh, unregistered open-file id because the open-file map was full |
+| 240 | `fd_path_error` | u64 | emitted FD rows whose bpf_d_path failed for a reason other than length (PATH_ERROR) |
+| 248 | `fd_truncated` | u64 | emitted FD rows whose path did not fit (the dentry name, TRUNCATED) |
+| 256 | `snap_id` | u32 | as in PROC |
+| 260 | `error` | i32 | 0, or the negative errno that ended reading the iterator early (then the snapshot is incomplete and the run INVALID) |
+| 264 | `fd_error` | i32 | 0, or the negative errno that ended the FD pass early (snapshot incomplete, run INVALID) |
+| 268 | `kind` | u16 | as in PROC |
+| 270 | `fd_pass` | u16 | 1 if the FD pass ran (file identity loaded), 0 if not (--no-files): then every fd_* field is 0 |
+
 ## OPEN (type 6, version 1, class OPEN)
 
 One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with the path, or, with PATH_MISSING, by the kprobe.session return when the fentry did not run. An FMODE_BACKING open writes BACKING instead. The header names the task that opened.
