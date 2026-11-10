@@ -33,8 +33,8 @@ M = [
     ("drain.c", "\tp15_counters_sum(c, sum);\n\treturn 0;", "\t(void)c;\n\tmemset(sum, 0, sizeof(uint64_t) * P15_CTR_MAX);\n\treturn 0;", IT),
     ("loader.c", "if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counters, &l->spine->rodata->spine_counters_ncpu,\n\t\t\t\t\t\t   l->ncpu)) {",
      "if (l->ncpu <= 0) {", IT),
-    ("p15d.c", '\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\tcode = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n',
-     '\tcode = p15_loader_start(&ld, run.spine_ring_bytes, run.bulk_ring_bytes, run.net, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n', IT),   # snapshot loaded after attach
+    ("p15d.c", '\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\t{\n\t\tstruct p15_loader_opts lo = {\n\t\t\t.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,\n\t\t\t.files = run.files, .test_no_path_fentry = run.cfg.test_no_path_fentry,\n\t\t\t.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,\n\t\t};\n\n\t\tcode = p15_loader_start(&ld, &lo, err, sizeof(err));\n\t}\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n',
+     '\t{\n\t\tstruct p15_loader_opts lo = {\n\t\t\t.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,\n\t\t\t.files = run.files, .test_no_path_fentry = run.cfg.test_no_path_fentry,\n\t\t\t.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,\n\t\t};\n\n\t\tcode = p15_loader_start(&ld, &lo, err, sizeof(err));\n\t}\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n', IT),   # snapshot loaded after attach
     # queue: capacity, ordering, publication
     ("queue.c", "if (h - t >= q->n) {", "if (h - t > q->n) {", UNIT),
     ("queue.c", "\tatomic_store_explicit(&q->head, h, memory_order_release);", "", UNIT),
@@ -59,6 +59,12 @@ M = [
     ("writer.c", "\tif (emitted != drained + atomic_load(&r->spine_invalid)) {", "\tif (0) {", UNIT),
     ("writer.c", "\tbuf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);", "", IT),
     ("run.c", "\tcase P15_RUN_DEGRADED:\n\t\treturn P15_EXIT_DEGRADED;\n\tdefault:\n\t\treturn P15_EXIT_INVALID;", "\tdefault:\n\t\treturn P15_EXIT_OK;", IT),
+    # file identity (ADR-0015, step 2a part 2): the shared bulk ring's books, FILE_STATS, the run state
+    ("drain.c", "atomic_fetch_add(is_net ? &d->run->net_drained : &d->run->file_drained, 1);",
+     "atomic_fetch_add(&d->run->net_drained, 1);", IT),
+    ("writer.c", "\tif (r->files) {\n\t\tif (file_books(r, why, n))", "\tif (0) {\n\t\tif (file_books(r, why, n))", IT),
+    ("writer.c", "\tif (w->run->files)\n\t\tfile_stats(w);", "", IT),
+    ("loader.c", "\tif (o->files && (code = load_file(l, o, err, errlen)))\n\t\treturn code;", "", IT),
 ]
 
 

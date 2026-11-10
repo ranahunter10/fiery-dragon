@@ -466,6 +466,15 @@ static void test_file_records(void)
 	o = mk_open(0, 0, "/abc");
 	o->path_len = 300;
 	WHY("path beyond len", "variable field beyond len");
+	o = mk_open(P15_FF_OBJ_NEW, 1, "/x");
+	o->facts_len = o->facts_full = 24;
+	WHY("facts of 24 bytes", "OPEN: facts is neither absent nor a whole OBJFACTS");
+	o = mk_open(P15_FF_FULL_SIZE, 0, "/a");
+	o->h.len = P15_OPEN_V1_MAX_SIZE - 8;
+	WHY("FULL_SIZE below the maximum size", "len larger than its fields need");
+	o = mk_open(P15_FF_OBJ_NEW, 1, "");
+	o->h.len = sizeof(*o) + 32;             /* the facts end 8 bytes past len */
+	EXPECT(!ok_exact(o->h.len), "facts past len refused before they are read (ASan: no read past the bytes)");
 
 	mk(P15_T_OPEN_VERDICT, sizeof(struct p15_open_verdict_v1));
 	WHY("OPEN_VERDICT 0", "OPEN_VERDICT: the verdict is not a denial");
