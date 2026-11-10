@@ -111,7 +111,7 @@ static void deadline(int sig)
 
 	(void)sig;
 	(void)!write(1, msg, sizeof(msg) - 1);
-	_exit(1);
+	_exit(1);   /* exit-ok: test deadline, the queue stopped moving (E-0159) */
 }
 
 int main(void)
