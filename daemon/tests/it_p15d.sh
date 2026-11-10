@@ -264,7 +264,8 @@ row=$(grep -E "FD .* tgid=$holder .* snap=0 fd=3 " "$T/c9.txt" | head -1)
 echo "$row" | sed 's/^ *//' | cut -c1-240
 hfid=$(echo "$row" | sed -n 's/.* fid=\([0-9]*\) .*/\1/p'); hobj=$(echo "$row" | sed -n 's/.* obj=\([0-9]*\) .*/\1/p')
 check "[ $rc -eq 0 ] && [ $irc -eq 0 ]" "exit 0, WAL valid"
-check "[ -n \"$row\" ] && echo \"$row\" | grep -q \"path=\\\"$D9/held\\\"\"" "an FD row for the holder's fd 3, with the file's path (fid $hfid, obj $hobj)"
+held_ok=0; case "$row" in *"path=\"$D9/held\""*) held_ok=1;; esac
+check "[ $held_ok = 1 ]" "an FD row for the holder's fd 3, with the file's path (fid $hfid, obj $hobj)"
 check "[ \$(grep -cE \"FD .* tgid=$holder .* snap=0 fd=[012] \" $T/c9.txt) -eq 3 ]" "  ... and for its fds 0, 1 and 2 (the streams of a process older than capture)"
 check "[ -n \"$hobj\" ] && grep -qE \"OPEN .* obj=$hobj .*path=\\\"$D9/held\\\"\" $T/c9.txt" "a later open of the same file names the FD row's object"
 check "[ -n \"$hfid\" ] && grep -qE \"CLOSE .* fid=$hfid \" $T/c9.txt" "the holder's exit ends that open file: CLOSE fid $hfid"
