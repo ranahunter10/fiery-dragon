@@ -10,6 +10,7 @@ drain, writer and run (root; about 25 s each). Sources are restored after every 
 Exit 0 only if every mutant is killed.
 """
 import pathlib
+import signal
 import subprocess
 import sys
 
@@ -81,12 +82,31 @@ M = [
 
 def main() -> int:
     files = sorted({f for f, *_ in M})
+    # The sweep takes the working tree as the original and restores it afterwards: a tree that already
+    # differs from git (a mutant left by a killed sweep) would be "restored" with the mutant in it and
+    # every result would be about the wrong program (E-0155). Refuse it.
+    dirty = subprocess.run(["git", "status", "--porcelain", "--", "daemon", "bpf", "schema"], cwd=ROOT,
+                           capture_output=True, text=True)
+    if dirty.returncode or dirty.stdout.strip():
+        print("the working tree differs from git; commit or restore it first:\n" + dirty.stdout, flush=True)
+        return 2
     orig = {f: (ROOT / "daemon" / f).read_text() for f in files}
     killed = 0
+    # SIGTERM and SIGHUP (pkill, a closed terminal) unwind like Ctrl-C, so `finally` restores the sources
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda *_: sys.exit(130))
     try:
+        # the unmutated tree must pass both test commands, or "killed" would mean nothing
+        for name, test in (("unit tests", UNIT), ("end-to-end test", IT)):
+            r = subprocess.run(f"timeout 300 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
+            if r.returncode:
+                print(f"baseline: the {name} fail on the unmutated tree (exit {r.returncode}); no mutant was run\n"
+                      + (r.stdout + r.stderr)[-3000:], flush=True)
+                return 2
+            print(f"baseline: the {name} pass", flush=True)
         for i, (f, old, new, test) in enumerate(M):
             if orig[f].count(old) != 1:
-                print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep")
+                print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep", flush=True)
                 return 2
             (ROOT / "daemon" / f).write_text(orig[f].replace(old, new))
             r = subprocess.run(f"timeout 180 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
@@ -95,7 +115,7 @@ def main() -> int:
             dead = r.returncode != 0 and built
             killed += dead
             tag = "killed  " if dead else ("NO BUILD" if not built else "SURVIVED")
-            print(tag, i, f, old.strip().splitlines()[0][:70])
+            print(tag, i, f, old.strip().splitlines()[0][:70], flush=True)
     finally:
         for f, text in orig.items():
             (ROOT / "daemon" / f).write_text(text)
