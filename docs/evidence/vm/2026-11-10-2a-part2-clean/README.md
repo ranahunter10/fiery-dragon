@@ -1,0 +1,19 @@
+# Step 2a part 2 on the target VM, clean tree (2026-11-10)
+
+Evidence for E-0156 and E-0157. Supersedes [`2026-11-10-2a-part2-it`](../2026-11-10-2a-part2-it/README.md), whose build had a leftover mutant in `daemon/queue.c` (E-0155). Every file's sha256 matches the line the VM printed.
+
+| File | What | Where it ran |
+|---|---|---|
+| `it-p15d-2a.txt` | `make it-p15d` at `c85b652` (the binary reports the clean commit): every case passed, case 8 with the facts-epoch checks | VM p15-dev-2604, 7.0.0-38-generic, 2026-11-10 12:02 UTC |
+| `p15d-2a-stats.txt` | a 30 s run of p15d on the idle VM: its FILE_STATS records, the record counts and END | same, about 12:05 UTC |
+| `mutate-p15d-2a.txt` | `make mutate-p15d` at `c85b652`: baseline passed, 40 of 42 mutants killed, 2 did not build | same, ended before 18:45 UTC |
+| `mutate-p15d-2a-rest.txt` | `mutate_p15d.py 40 41` at `294a49e`: the unmutated end-to-end test ran out of its 300 s in case 3, so no mutant ran | same, 18:48 UTC |
+
+What they show (MEAS, target kernel):
+- **Idle VM, 30 s:** 101 OPEN and 91 CLOSE records (FILE_STATS since the drain began: 97 opens, 88 closes; the other 4 and 3 were written between the self-tests and the drain's first counter read, and the books, kept on absolute counters, include them). At the end 11 open-file entries and 48 object entries were live; the maps' sizes are 65,536 and 131,072. No OPEN, CLOSE or session record lost, `fentry_missed` 0, `kprobe_missed` 0, no map full.
+- **200 runs of `/bin/true` in 8 s (case 1):** 1,047 OPEN and 1,054 CLOSE against 810 spine records; about 5.2 opens per exec.
+- **Mutation sweep:** the mutant that removes the facts-epoch step is killed (E-0151's bug is real on the target and the test catches it); all eight mutants of the file books are killed.
+- **The hang:** in `mutate-p15d-2a-rest.txt` the unmutated end-to-end test ran past 300 s and was stopped in case 3 (forced spine overflow), which takes about 9 s in the dev container. Whether the guest stalled or p15d hung is not known yet (E-0157).
+- **A flaw in the sweep this exposes:** a mutant's test was stopped after 180 s and a stop counted as killed. If the VM stalls during a mutant, that mutant is "killed" by the clock. The 40 kills above cannot be told apart from timeouts after the fact; the sweep is re-run with timeouts reported separately.
+
+`SHA256SUMS` covers every file here (`sha256sum -c SHA256SUMS`).

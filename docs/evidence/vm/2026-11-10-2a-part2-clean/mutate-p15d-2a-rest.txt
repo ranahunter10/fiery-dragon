@@ -1,0 +1,49 @@
+baseline: the unit tests pass
+baseline: the end-to-end test fail on the unmutated tree (exit 124); no mutant was run
+network capture and file identity: on
+case 1: an 8 s run with 200 short processes, started once p15d is ready
+p15d level=info code=start run_dir=/tmp/p15d-it-VZyuky/c1/20261110T184817Z-6e0e2398 sched="SCHED_FIFO 1" spine_ring=4194304 net=on files=on
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-VZyuky/c1/20261110T184817Z-6e0e2398//seg-00000000.p15w: segment 0, 366648 bytes, 214 batches, 3410 records, valid to the end
+  run.id = 20261110T184817Z-6e0e2398
+  kernel.release = 7.0.0-38-generic
+  schema.hash = 24c4869743f410306569951f2dd5ac75532d9221baef54641362551b7cae8b9d
+records: spine 822, bulk 2189, daemon 399; invalid 0
+  FORK       207
+  EXEC       204
+  EXIT       207
+  RENAME     204
+  NET        12
+  OPEN       1085
+  CLOSE      1092
+  CLOCK_SYNC 5
+  STATS      40
+  END        1
+  NET_STATS  40
+  PROC       271
+  SNAP_DONE  2
+  FILE_STATS 40
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 40)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:136:1 closing:135:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+  ok   pid 1 is in the opening snapshot
+case 2: stop by SIGTERM
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+

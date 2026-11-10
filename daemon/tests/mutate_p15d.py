@@ -13,6 +13,7 @@ import pathlib
 import signal
 import subprocess
 import sys
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 UNIT = ("make -s build/test_queue build/test_config build/test_run build/test_counters && build/test_queue && "
@@ -99,14 +100,21 @@ def main() -> int:
     for sig in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, lambda *_: sys.exit(130))
     try:
-        # the unmutated tree must pass both test commands, or "killed" would mean nothing
+        # The unmutated tree must pass both test commands, or "killed" would mean nothing. Their time
+        # sets each mutant's limit: a mutant is killed only by a failed check, never by the clock (a
+        # VirtualBox guest can stall for minutes, E-0088); a mutant that runs out of time is TIMEOUT and
+        # is not counted as killed (E-0157).
+        limit = {}
         for name, test in (("unit tests", UNIT), ("end-to-end test", IT)):
-            r = subprocess.run(f"timeout 300 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
+            t0 = time.monotonic()
+            r = subprocess.run(f"timeout 900 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
+            dt = time.monotonic() - t0
             if r.returncode:
-                print(f"baseline: the {name} fail on the unmutated tree (exit {r.returncode}); no mutant was run\n"
-                      + (r.stdout + r.stderr)[-3000:], flush=True)
+                print(f"baseline: the {name} fail on the unmutated tree (exit {r.returncode} after {dt:.0f} s); "
+                      "no mutant was run\n" + (r.stdout + r.stderr)[-3000:], flush=True)
                 return 2
-            print(f"baseline: the {name} pass", flush=True)
+            limit[test] = max(120, int(4 * dt))
+            print(f"baseline: the {name} pass in {dt:.0f} s; a mutant gets {limit[test]} s", flush=True)
         for i, (f, old, new, test) in enumerate(M):
             if only and i not in only:
                 continue
@@ -114,13 +122,17 @@ def main() -> int:
                 print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep", flush=True)
                 return 2
             (ROOT / "daemon" / f).write_text(orig[f].replace(old, new))
-            r = subprocess.run(f"timeout 180 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
+            t0 = time.monotonic()
+            r = subprocess.run(f"timeout {limit[test]} sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True,
+                               text=True)
+            dt = time.monotonic() - t0
             (ROOT / "daemon" / f).write_text(orig[f])
             built = "error:" not in r.stdout + r.stderr
-            dead = r.returncode != 0 and built
+            timed_out = r.returncode == 124
+            dead = r.returncode != 0 and built and not timed_out
             killed += dead
-            tag = "killed  " if dead else ("NO BUILD" if not built else "SURVIVED")
-            print(tag, i, f, old.strip().splitlines()[0][:70], flush=True)
+            tag = ("killed  " if dead else "NO BUILD" if not built else "TIMEOUT " if timed_out else "SURVIVED")
+            print(f"{tag} {i} {f} {old.strip().splitlines()[0][:70]} ({dt:.0f} s)", flush=True)
     finally:
         for f, text in orig.items():
             (ROOT / "daemon" / f).write_text(text)

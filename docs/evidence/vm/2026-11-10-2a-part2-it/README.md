@@ -4,7 +4,7 @@ Evidence for E-0151 and E-0152. PR #63 at commit `4d6168e` (the binary reports `
 
 | File | What | Where it ran |
 |---|---|---|
-| `it-p15d-2a.txt` | `sudo P15_PYTHON=... P15_IT_NET=1 make it-p15d`: every case passed, case 8 (file identity) included | VM p15-dev-2604, kernel 7.0.0-38-generic, 2026-11-10 11:18 UTC, sent by the maintainer |
+| `it-p15d-2a.txt` | `sudo P15_PYTHON=... P15_IT_NET=1 make it-p15d`: every case passed, case 8 (file identity) included. **Superseded:** built with a leftover mutant in `daemon/queue.c` (the queue's `depth_max` never updates; E-0155); see `../2026-11-10-2a-part2-clean/` | VM p15-dev-2604, kernel 7.0.0-38-generic, 2026-11-10 11:18 UTC, sent by the maintainer |
 | `p15d-2a-stats.txt` | **Not a result.** The command given in chat expanded `/var/tmp/p15-2a/*/` in the user's shell, which cannot read the root-owned run directory, so `p15w-inspect` was handed a path that does not exist and printed zero records. The 30 s run itself exited 0 | same |
 | `terminal.txt` | The terminal session: the two sha256 lines match the files here; `make -j3 all` as the user failed to link `build/test_run` (the file is root-owned from an earlier `sudo make`), then `sudo make it-p15d` built everything; `make mutate-p15d` exited 2 and its output file has not been sent (sha256 `9a5aa4cb...acb5a`) | same |
 

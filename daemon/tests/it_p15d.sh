@@ -65,7 +65,7 @@ pid1() { PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import trace
 c = trace.load(Path(sys.argv[1])); print(int(any(k[0] == 1 for k in c.snapshots[0].procs)))" "$1"; }
 
-echo "case 1: an 8 s run with 200 short processes, started once p15d is ready"
+echo "case 1: an 8 s run with 200 short processes, started once p15d is ready [t+${SECONDS}s]"
 "$B/p15d" $NET --wal-dir "$T/c1" --duration 8 --stats-ms 200 --textfile "$T/c1.prom" 2>"$T/c1.err" &
 pid=$!
 started "$T/c1.err" && storm 200
@@ -90,7 +90,7 @@ if [ "${P15_IT_PID1:-1}" = 1 ]; then
     check "[ \"$(pid1 "$d1")\" = 1 ]" "pid 1 is in the opening snapshot"
 fi
 
-echo "case 2: stop by SIGTERM"
+echo "case 2: stop by SIGTERM [t+${SECONDS}s]"
 "$B/p15d" $NET --wal-dir "$T/c2" 2>"$T/c2.err" &
 pid=$!
 started "$T/c2.err" && storm 20; kill -TERM $pid; wait $pid; rc=$?
@@ -100,7 +100,7 @@ check "[ $rc -eq 0 ] && [ $irc -eq 0 ]" "exit 0, WAL valid"
 check "grep -q 'END: exit 0, state 0, invariant 1, signal 15' $T/c2.txt" "END records signal 15"
 check "grep -q 'END: .*closing snapshot 1' $T/c2.txt" "a stop by signal is orderly: the closing snapshot was taken"
 
-echo "case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes)"
+echo "case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes) [t+${SECONDS}s]"
 "$B/p15d" $NET --wal-dir "$T/c3" --duration 5 --spine-ring-kb 4 --test-drain-pause-ms 300 --no-rt 2>"$T/c3.err" &
 pid=$!
 started "$T/c3.err" && storm 400
@@ -118,7 +118,7 @@ check "[ \"$v3\" = complete ] || [ \"$v3\" = repaired ]" "ADR-0023 confirmation 
 check "[ \"$fu3\" -le \"$fl3\" ] && [ \"$eu3\" -le \"$el3\" ]" "unexplained forks $fu3 <= counted $fl3, exits $eu3 <= counted $el3"
 
 if [ "$NET_OK" = 1 ]; then
-echo "case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect"
+echo "case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect [t+${SECONDS}s]"
 PORT=18077
 "$B/p15d" --wal-dir "$T/c5" --duration 6 --stats-ms 500 2>"$T/c5.err" &
 pid=$!
@@ -167,10 +167,10 @@ if [ -n "${P15_IT_KEEP:-}" ]; then     # CI keeps the real run and its reports a
     mkdir -p "$P15_IT_KEEP" && cp -r "$d5" "$P15_IT_KEEP/" && cp "$T"/c5-trace*.txt "$T/c5-$PORT.html" "$T/c5.txt" "$P15_IT_KEEP/"
 fi
 else
-echo "case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1)"
+echo "case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1) [t+${SECONDS}s]"
 fi
 
-echo "case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2"
+echo "case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2 [t+${SECONDS}s]"
 "$B/p15d" $NET --wal-dir "$T/c6" --duration 6 --stats-ms 500 2>"$T/c6.err" &
 pid=$!
 started "$T/c6.err" && "$PY" daemon/tests/it_provenance.py workload "$T"
@@ -183,7 +183,7 @@ while IFS= read -r line; do
     case "$line" in ok\ *) ok "${line#ok }";; FAIL\ *) bad "${line#FAIL }";; *) bad "unexpected checker output: $line";; esac
 done < <(PYTHONPATH=python "$PY" daemon/tests/it_provenance.py check "$d6" "$T" 2>&1)
 
-echo "case 7: no map syscall once a program is attached (ADR-0026), traced with strace"
+echo "case 7: no map syscall once a program is attached (ADR-0026), traced with strace [t+${SECONDS}s]"
 if command -v strace >/dev/null; then
     strace -f -v -e trace=bpf -o "$T/c7.strace" "$B/p15d" $NET --wal-dir "$T/c7" --duration 3 --stats-ms 200 2>"$T/c7.err"; rc=$?
     c7=$("$PY" -c "
@@ -201,7 +201,7 @@ else
     bad "strace is not installed: case 7 cannot run (install strace)"
 fi
 
-echo "case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open"
+echo "case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
 # A file opened over and over while p15d starts: some open falls inside the load-time self-tests,
 # whose reader throws its record away. The object's facts must still reach the WAL (the facts
@@ -239,10 +239,10 @@ check "grep -q 'FILE_STATS' $T/c8.txt && ! grep -qE 'FILE_STATS .* open_lost=[1-
 check "grep -q 'END: exit 0, state 0, invariant 1' $T/c8.txt" "END: exit 0, RUNNING, the books close with file identity in them"
 rm -rf "$D8"; rm -f "$E8"; kill $loop 2>/dev/null
 else
-echo "case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)"
+echo "case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1) [t+${SECONDS}s]"
 fi
 
-echo "case 4: a bad flag"
+echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"
 
