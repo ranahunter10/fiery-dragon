@@ -17,3 +17,14 @@ What they show (MEAS, target kernel):
 - **A flaw in the sweep this exposes:** a mutant's test was stopped after 180 s and a stop counted as killed. If the VM stalls during a mutant, that mutant is "killed" by the clock. The 40 kills above cannot be told apart from timeouts after the fact; the sweep is re-run with timeouts reported separately.
 
 `SHA256SUMS` covers every file here (`sha256sum -c SHA256SUMS`).
+
+## The hang explained (added 2026-11-10, E-0158)
+
+| File | What |
+|---|---|
+| `kern-rcu-stall-head.txt` | The first 30 kernel log lines from 18:40 to 18:54 UTC (pasted in chat by the maintainer from `journalctl -k`) |
+| `kern-1840-tail40.txt` | The last 40 lines of the same window (attached) |
+
+At 18:53:07 the kernel reported `rcu_preempt self-detected stall on CPU` 1, with `t=279737 jiffies` and the grace-period kthread `starved for 279737 jiffies` while runnable (`state:R`). CPU 1 had `1 ticks this GP` and was idle (`swapper/1`, in `pv_native_safe_halt`); CPU 0 was in `systemd-journal`. Neither trace holds a p15d, BPF, kprobe or fprobe frame.
+
+Reading (INF, strong): a CPU that spins in the kernel collects timer ticks; one tick in about 280 s (279,737 jiffies at HZ=1000, Ubuntu's generic kernel; to be confirmed from `/boot/config-*`) means the guest's timer did not run, so the whole guest stood still for about 280 s and resumed at 18:53:07. The end-to-end test began at 18:48:17 and was stopped at about 18:53:17: the freeze covers it. This is the host stall recorded in E-0088 again, not a p15d hang. The five runs that followed passed, in 55-60 s each, with a watcher that found no p15d alive past 60 s.
