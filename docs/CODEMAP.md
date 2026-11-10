@@ -89,6 +89,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`p15_counters.h`](../bpf/include/p15_counters.h) | Per-cause counters shared by the BPF programs and the daemon (ADR-0006, accounting invariant). |  |
+| [`p15_file.h`](../bpf/include/p15_file.h) | File identity (ADR-0015, STATE decision 19): what file.bpf.c and p15d share. |  |
 | [`p15_kernel.h`](../bpf/include/p15_kernel.h) | Kernel facts the BPF programs need that vmlinux.h does not carry (macros are not in BTF). |  |
 | [`p15_snap.h`](../bpf/include/p15_snap.h) | The process snapshot's books (ADR-0007 rule 3, ADR-0023), shared by snap.bpf.c, which counts, and p15d, which zeroes them before each snapshot and copies them into SNAP_DONE aft... |  |
 
@@ -96,6 +97,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`file.bpf.c`](../bpf/progs/file.bpf.c) | file identity (ADR-0015 rules 1-9, ADR-0027, STATE decision 19), proven by the step 2a dry run (bpf/test/sliceb_probe, E-0145, E-0146): fentry/security_file_open OPEN with bpf_d... | `fentry/security_file_open → file_open_path`, `kprobe.session/security_file_open`, `kprobe.multi/security_file_free`, `kprobe.multi/security_inode_free` |
 | [`net.bpf.c`](../bpf/progs/net.bpf.c) | network intent (ADR-0004). | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
 | [`snap.bpf.c`](../bpf/progs/snap.bpf.c) | the process snapshot (ADR-0007 rule 3, ADR-0023). | `iter.s/task` |
 | [`spine.bpf.c`](../bpf/progs/spine.bpf.c) | the process spine (ADR-0003, ADR-0020). | `tp_btf/sched_process_fork → spine_fork`, `tracepoint/sched/sched_process_exec`, `tracepoint/sched/sched_process_exit`, `tracepoint/task/task_rename` |
@@ -133,21 +135,23 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
 | [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record, copies it at its own len into a queue batch, and publishes batches to the writer. | `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
-| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_detach`, `p15_loader_free` |
-| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd` |
+| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd` |
+| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd`, `p15_loader_file_counters_fd` |
 | [`p15_spine.c`](../daemon/p15_spine.c) | load and attach the spine programs (ADR-0003), then p15-spine selftest run the load-time self-test once; exit 0 only if it passes p15-spine dump SECONDS run the self-test, then ... |  |
 | [`p15d.c`](../daemon/p15d.c) | the capture daemon (Phase 1 step 4b; ADR-0006, 0007, 0017, 0019). |  |
 | [`p15w_inspect.c`](../daemon/p15w_inspect.c) | check and summarise a P15W run directory or segment files (ADR-0007 "tools/wal-inspect"). |  |
 | [`queue.c`](../daemon/queue.c) | Bounded SPSC batch queue (ADR-0017 layer 2). | `p15q_init`, `p15q_free`, `p15q_acquire`, `p15q_publish`, `p15q_peek`, `p15q_release`, `p15q_wait`, `p15q_depth`, `p15q_kick` |
 | [`queue.h`](../daemon/queue.h) | Bounded single-producer/single-consumer queue of batches between the drain thread and the WAL writer thread (ADR-0017 layer 2). | `p15q_init`, `p15q_free`, `p15q_acquire`, `p15q_publish`, `p15q_peek`, `p15q_release`, `p15q_wait`, `p15q_depth`, `p15q_kick` |
-| [`records.c`](../daemon/records.c) | (no header comment) | `p15_rec_check`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name`, `p15_type_name`, `p15_rec_format` |
-| [`records.h`](../daemon/records.h) | Checking and printing records (ADR-0008 rule 5: never read past len). | `p15_rec_check`, `p15_type_name`, `p15_rec_format`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name` |
+| [`records.c`](../daemon/records.c) | (no header comment) | `p15_is_file_type`, `p15_rec_check`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name`, `p15_type_name`, `p15_rec_format` |
+| [`records.h`](../daemon/records.h) | Checking and printing records (ADR-0008 rule 5: never read past len). | `p15_rec_check`, `p15_is_file_type`, `p15_type_name`, `p15_rec_format`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name` |
 | [`run.c`](../daemon/run.c) | The run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code` |
 | [`run.h`](../daemon/run.h) | everything p15d's two threads share, the run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code`, `p15_boot_ns`, `p15_mono_ns` |
 | [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run_ex`, `p15_selftest_run` |
 | [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
+| [`selftest_file.c`](../daemon/selftest_file.c) | The file-identity self-test (ADR-0015 confirmation 1). |  |
+| [`selftest_file.h`](../daemon/selftest_file.h) | Load-time self-test of the file-identity programs (ADR-0015 confirmation 1, ADR-0003). |  |
 | [`selftest_net.c`](../daemon/selftest_net.c) | The network-intent self-test (ADR-0004 rule 6). | `p15_selftest_net` |
-| [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). | `p15_selftest_net` |
+| [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). |  |
 | [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
 | [`snapshot.h`](../daemon/snapshot.h) | The process snapshot (ADR-0007 rule 3, ADR-0023). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_books_close`, `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
 | [`snapshot_frame.c`](../daemon/snapshot_frame.c) | Framing and checking a process snapshot's output (ADR-0007 rule 3). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_books_close` |

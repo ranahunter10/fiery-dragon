@@ -21,6 +21,12 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : 0;
 	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;
 	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
+	case P15_T_OPEN:   return version == 1 ? sizeof(struct p15_open_v1) : 0;
+	case P15_T_OPEN_VERDICT: return version == 1 ? sizeof(struct p15_open_verdict_v1) : 0;
+	case P15_T_BACKING: return version == 1 ? sizeof(struct p15_backing_v1) : 0;
+	case P15_T_CLOSE:  return version == 1 ? sizeof(struct p15_close_v1) : 0;
+	case P15_T_FD:     return version == 1 ? sizeof(struct p15_fd_v1) : 0;
+	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : 0;
 	}
 	return 0;
 }
@@ -49,6 +55,140 @@ static int check_tail(const void *data, size_t fixed, size_t used, int slack_ok,
 			return -EINVAL;
 		}
 	return 0;
+}
+
+/* A part field (schema [[part]]): absent, or the whole struct, as its flag says (FD: always). */
+static int check_part(const void *data, size_t at, __u16 len, __u32 full, int want, const char *bad, const char *flag,
+		      const char **why)
+{
+	const struct p15_part_objfacts *f = (const void *)((const __u8 *)data + at);
+
+	if ((len != 0 && len != sizeof(*f)) || full != len) {
+		*why = bad;
+		return -EINVAL;
+	}
+	if (!!len != !!want) {
+		*why = flag;
+		return -EINVAL;
+	}
+	if (len && ((f->oflags & ~1u) || f->seen < 1 || f->seen > 5)) {
+		*why = "OBJFACTS: unknown oflags bits or an unknown 'seen'";
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/* OPEN, OPEN_VERDICT, BACKING, CLOSE and FD (ADR-0015, STATE decision 19): the same rules and
+ * wording as python/p15/records.py. Called after the common header checks. */
+static int check_file(const void *data, size_t fixed, const char **why)
+{
+	const struct p15_hdr *h = data;
+
+	switch (h->type) {
+	case P15_T_OPEN: {
+		const struct p15_open_v1 *r = data;
+		const __u32 ok = P15_FF_OBJ_NEW | P15_FF_PATH_MISSING | P15_FF_PATH_ERROR | P15_FF_FULL_SIZE | P15_FF_KTHREAD;
+
+		if (r->fflags & ~ok) {
+			*why = "OPEN: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		if (!!(r->fflags & P15_FF_PATH_ERROR) != !!r->path_err) {
+			*why = "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err";
+			return -EINVAL;
+		}
+		if (!(r->fflags & P15_FF_PATH_MISSING) && r->verdict) {
+			*why = "OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)";
+			return -EINVAL;
+		}
+		if (r->facts_len > P15_PART_OBJFACTS_SIZE || r->path_len > P15_OPEN_V1_PATH_MAX ||
+		    fixed + r->facts_len + r->path_len > h->len) {
+			*why = "variable field beyond len";
+			return -EINVAL;
+		}
+		if (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,
+			       "OPEN: facts is neither absent nor a whole OBJFACTS",
+			       "OPEN: facts present without its flag, or its flag without it", why))
+			return -EINVAL;
+		/* slack only on a full-size OPEN (no path scratch slot was free), and zero */
+		return check_tail(data, fixed, (size_t)r->facts_len + r->path_len,
+				  (r->fflags & P15_FF_FULL_SIZE) && h->len == P15_OPEN_V1_MAX_SIZE, why);
+	}
+	case P15_T_OPEN_VERDICT: {
+		const struct p15_open_verdict_v1 *r = data;
+
+		if (r->fflags & ~P15_FF_KTHREAD) {
+			*why = "OPEN_VERDICT: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		if (r->verdict >= 0) {
+			*why = "OPEN_VERDICT: the verdict is not a denial";
+			return -EINVAL;
+		}
+		break;
+	}
+	case P15_T_BACKING: {
+		const struct p15_backing_v1 *r = data;
+
+		if (r->fflags & ~(P15_FF_OBJ_NEW | P15_FF_USER_OBJ_NEW | P15_FF_KTHREAD)) {
+			*why = "BACKING: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		if (r->facts_len > P15_PART_OBJFACTS_SIZE || r->user_facts_len > P15_PART_OBJFACTS_SIZE ||
+		    fixed + r->facts_len + r->user_facts_len > h->len) {
+			*why = "variable field beyond len";
+			return -EINVAL;
+		}
+		if (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,
+			       "BACKING: facts is neither absent nor a whole OBJFACTS",
+			       "BACKING: facts present without its flag, or its flag without it", why) ||
+		    check_part(data, fixed + r->facts_len, r->user_facts_len, r->user_facts_full,
+			       r->fflags & P15_FF_USER_OBJ_NEW, "BACKING: user_facts is neither absent nor a whole OBJFACTS",
+			       "BACKING: user_facts present without its flag, or its flag without it", why))
+			return -EINVAL;
+		return check_tail(data, fixed, (size_t)r->facts_len + r->user_facts_len, 0, why);
+	}
+	case P15_T_CLOSE:
+		if (((const struct p15_close_v1 *)data)->fflags & ~(P15_FF_NEVER_OPENED | P15_FF_KTHREAD)) {
+			*why = "CLOSE: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		break;
+	case P15_T_FD: {
+		const struct p15_fd_v1 *r = data;
+
+		if (r->fflags & ~P15_FF_PATH_ERROR) {
+			*why = "FD: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		if (!!(r->fflags & P15_FF_PATH_ERROR) != !!r->path_err) {
+			*why = "FD: path_err without PATH_ERROR, or PATH_ERROR without path_err";
+			return -EINVAL;
+		}
+		if (r->facts_len > P15_PART_OBJFACTS_SIZE || r->path_len > P15_FD_V1_PATH_MAX ||
+		    fixed + r->facts_len + r->path_len > h->len) {
+			*why = "variable field beyond len";
+			return -EINVAL;
+		}
+		if (check_part(data, fixed, r->facts_len, r->facts_full, 1, "FD: facts is neither absent nor a whole OBJFACTS",
+			       "FD: facts present without its flag, or its flag without it", why))
+			return -EINVAL;
+		return check_tail(data, fixed, (size_t)r->facts_len + r->path_len, 0, why);
+	}
+	default:
+		*why = "not a file-identity record";
+		return -EINVAL;
+	}
+	if (h->len != fixed) {
+		*why = "len differs from the fixed size";
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int p15_is_file_type(__u16 type)
+{
+	return type == P15_T_OPEN || type == P15_T_OPEN_VERDICT || type == P15_T_BACKING || type == P15_T_CLOSE;
 }
 
 int p15_rec_check(const void *data, size_t size, const char **why)
@@ -99,7 +239,10 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 		*why = "SNAP_DONE: unknown kind";
 		return -EINVAL;
 	}
-	if (h->type == P15_T_EXEC) {
+	if (p15_is_file_type(h->type) || h->type == P15_T_FD) {
+		if (check_file(data, fixed, why))
+			return -EINVAL;
+	} else if (h->type == P15_T_EXEC) {
 		size_t tail;
 
 		if (h->version == 1) {
@@ -221,6 +364,12 @@ const char *p15_type_name(__u16 type)
 	case P15_T_NET_STATS:  return "NET_STATS";
 	case P15_T_PROC:       return "PROC";
 	case P15_T_SNAP_DONE:  return "SNAP_DONE";
+	case P15_T_OPEN:       return "OPEN";
+	case P15_T_OPEN_VERDICT: return "OPEN_VERDICT";
+	case P15_T_BACKING:    return "BACKING";
+	case P15_T_CLOSE:      return "CLOSE";
+	case P15_T_FD:         return "FD";
+	case P15_T_FILE_STATS: return "FILE_STATS";
 	}
 	return "?";
 }
@@ -415,6 +564,63 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)r->argv_failed, (unsigned long long)r->path_unlocked,
 				    (unsigned long long)r->path_not_found, (unsigned long long)r->path_failed,
 				    (unsigned long long)r->truncated);
+	}
+	case P15_T_OPEN: {
+		const struct p15_open_v1 *r = data;
+		const struct p15_part_objfacts *f = (const void *)(r + 1);
+		int m;
+
+		printable(a, sizeof(a), (const __u8 *)(r + 1) + r->facts_len, r->path_len);
+		m = k + snprintf(buf + k, n - k, " fid=%llu obj=%llu fflags=0x%x f_flags=0%o f_mode=0x%x verdict=%d "
+				 "path_err=%d path=\"%s\"(%u)", (unsigned long long)r->fid, (unsigned long long)r->obj,
+				 r->fflags, r->f_flags, r->f_mode, r->verdict, r->path_err, a, r->path_len);
+		if (r->facts_len && m >= 0 && (size_t)m < n)
+			m += snprintf(buf + m, n - (size_t)m, " dev=%u:%u ino=%llu gen=%u mode=0%o magic=0x%x nlink=%u subvol=%llu "
+				      "oflags=%u", f->dev >> 20, f->dev & 0xfffff, (unsigned long long)f->ino, f->gen, f->mode,
+				      f->fs_magic, f->nlink, (unsigned long long)f->subvol, f->oflags);
+		return m;
+	}
+	case P15_T_OPEN_VERDICT: {
+		const struct p15_open_verdict_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " fid=%llu verdict=%d fflags=0x%x", (unsigned long long)r->fid,
+				    r->verdict, r->fflags);
+	}
+	case P15_T_BACKING: {
+		const struct p15_backing_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " fid=%llu obj=%llu user_obj=%llu fflags=0x%x f_flags=0%o f_mode=0x%x",
+				    (unsigned long long)r->fid, (unsigned long long)r->obj, (unsigned long long)r->user_obj,
+				    r->fflags, r->f_flags, r->f_mode);
+	}
+	case P15_T_CLOSE: {
+		const struct p15_close_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " fid=%llu obj=%llu fflags=0x%x f_mode=0x%x", (unsigned long long)r->fid,
+				    (unsigned long long)r->obj, r->fflags, r->f_mode);
+	}
+	case P15_T_FD: {
+		const struct p15_fd_v1 *r = data;
+
+		printable(a, sizeof(a), (const __u8 *)(r + 1) + r->facts_len, r->path_len);
+		return k + snprintf(buf + k, n - k, " snap=%u fd=%u fid=%llu obj=%llu pos=%llu fflags=0x%x path=\"%s\"(%u)",
+				    r->snap_id, r->fd, (unsigned long long)r->fid, (unsigned long long)r->obj,
+				    (unsigned long long)r->pos, r->fflags, a, r->path_len);
+	}
+	case P15_T_FILE_STATS: {
+		const struct p15_file_stats_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " opens=%llu open_lost=%llu missing=%llu verdicts=%llu backing=%llu "
+				    "closes=%llu close_lost=%llu drained=%llu invalid=%llu fentry_missed=%llu kprobe_missed=%llu "
+				    "files_live=%llu objs_live=%llu map_full=%llu/%llu",
+				    (unsigned long long)r->open_emitted, (unsigned long long)r->open_lost,
+				    (unsigned long long)r->missing_emitted, (unsigned long long)r->verdict_emitted,
+				    (unsigned long long)r->backing_emitted, (unsigned long long)r->close_emitted,
+				    (unsigned long long)r->close_lost, (unsigned long long)r->file_drained,
+				    (unsigned long long)r->file_invalid, (unsigned long long)r->fentry_missed,
+				    (unsigned long long)r->kprobe_missed, (unsigned long long)r->files_live,
+				    (unsigned long long)r->objs_live, (unsigned long long)r->file_map_full,
+				    (unsigned long long)r->obj_map_full);
 	}
 	}
 	return k;

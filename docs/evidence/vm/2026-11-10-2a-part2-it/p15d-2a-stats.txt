@@ -1,0 +1,2 @@
+records: spine 0, bulk 0, daemon 0; invalid 0
+END: none (the run did not stop in order, or the WAL is cut)

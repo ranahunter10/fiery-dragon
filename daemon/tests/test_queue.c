@@ -4,8 +4,10 @@
  * producer and consumer thread. Run under ThreadSanitizer with `make test-c-tsan`.
  */
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "queue.h"
 
@@ -99,8 +101,23 @@ static void test_two_threads(void)
 	p15q_free(&q);
 }
 
+/* A queue that stops moving (a publish that never advances head, a release that never advances
+ * tail) hangs the two-thread test instead of failing it. The deadline turns that into a failed
+ * check, so a mutation sweep counts it as killed and a guest freeze stays a TIMEOUT (E-0159). The
+ * test takes well under a second; TSan's slowdown is far inside 30 s. */
+static void deadline(int sig)
+{
+	static const char msg[] = "FAIL daemon/tests/test_queue.c: no progress within 30 s (the queue stopped moving)\n";
+
+	(void)sig;
+	(void)!write(1, msg, sizeof(msg) - 1);
+	_exit(1);   /* exit-ok: test deadline, the queue stopped moving (E-0159) */
+}
+
 int main(void)
 {
+	signal(SIGALRM, deadline);
+	alarm(30);
 	test_single_thread();
 	test_two_threads();
 	printf("%s: %d failures\n", __FILE__, failures);

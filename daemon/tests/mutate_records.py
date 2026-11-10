@@ -88,6 +88,26 @@ M = [
  ("if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {", "if (r->reserved) {"),
  ("if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {", "if (!(h->flags & P15_F_ISN) && r->tcp_isn) {"),
  ('m += snprintf(buf + m, n - (size_t)m, " isn=%u", r->tcp_isn);', "m += 0;"),
+ # file identity (ADR-0015, STATE decision 19): OPEN, OPEN_VERDICT, BACKING, CLOSE, FD
+ ("case P15_T_OPEN:   return version == 1 ? sizeof(struct p15_open_v1) : 0;", "case P15_T_OPEN:   return 0;"),
+ ("\tif (p15_is_file_type(h->type) || h->type == P15_T_FD) {", "\tif (0) {"),
+ ("if ((len != 0 && len != sizeof(*f)) || full != len) {", "if (len != 0 && len != sizeof(*f)) {"),
+ ("if ((len != 0 && len != sizeof(*f)) || full != len) {", "if (full != len) {"),
+ ("\tif (!!len != !!want) {", "\tif (0) {"),
+ ("if (len && ((f->oflags & ~1u) || f->seen < 1 || f->seen > 5)) {", "if (len && (f->seen < 1 || f->seen > 5)) {"),
+ ("if (len && ((f->oflags & ~1u) || f->seen < 1 || f->seen > 5)) {", "if (len && (f->oflags & ~1u)) {"),
+ ("\t	if (r->fflags & ~ok) {", "\t	if (0) {"),
+ ("\t	if (!!(r->fflags & P15_FF_PATH_ERROR) != !!r->path_err) {\n\t\t\t*why = \"OPEN:", "\t\tif (0) {\n\t\t\t*why = \"OPEN:"),
+ ("\t	if (!(r->fflags & P15_FF_PATH_MISSING) && r->verdict) {", "\t\tif (0) {"),
+ ("(r->fflags & P15_FF_FULL_SIZE) && h->len == P15_OPEN_V1_MAX_SIZE, why);", "(r->fflags & P15_FF_FULL_SIZE), why);"),
+ ("(r->fflags & P15_FF_FULL_SIZE) && h->len == P15_OPEN_V1_MAX_SIZE, why);", "h->len == P15_OPEN_V1_MAX_SIZE, why);"),
+ ("\t	if (r->verdict >= 0) {", "\t\tif (r->verdict > 0) {"),
+ ("r->fflags & P15_FF_USER_OBJ_NEW, \"BACKING: user_facts", "r->fflags & P15_FF_OBJ_NEW, \"BACKING: user_facts"),
+ ("if (((const struct p15_close_v1 *)data)->fflags & ~(P15_FF_NEVER_OPENED | P15_FF_KTHREAD)) {", "if (0) {"),
+ ("if (check_part(data, fixed, r->facts_len, r->facts_full, 1, \"FD:", "if (check_part(data, fixed, r->facts_len, r->facts_full, r->facts_len, \"FD:"),
+ ("fixed + r->facts_len + r->path_len > h->len) {\n\t\t\t*why = \"variable field beyond len\";\n\t\t\treturn -EINVAL;\n\t\t}\n\t\tif (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,",
+  "fixed + r->facts_len + r->path_len > h->len + 8) {\n\t\t\t*why = \"variable field beyond len\";\n\t\t\treturn -EINVAL;\n\t\t}\n\t\tif (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,"),
+ ("return type == P15_T_OPEN || type == P15_T_OPEN_VERDICT || type == P15_T_BACKING || type == P15_T_CLOSE;", "return type == P15_T_OPEN || type == P15_T_OPEN_VERDICT || type == P15_T_BACKING;"),
 ]
 
 

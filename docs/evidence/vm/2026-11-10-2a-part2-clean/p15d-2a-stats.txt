@@ -1,0 +1,24 @@
+    [2] FILE_STATS ts=2984436175781 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=65 open_lost=0 missing=0 verdicts=0 backing=0 closes=56 close_lost=0 drained=128 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2985586302701 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=81 open_lost=0 missing=0 verdicts=0 backing=0 closes=72 close_lost=0 drained=160 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2986663379598 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=81 open_lost=0 missing=0 verdicts=0 backing=0 closes=72 close_lost=0 drained=160 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2987675022046 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=81 open_lost=0 missing=0 verdicts=0 backing=0 closes=72 close_lost=0 drained=160 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2988697943734 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=81 open_lost=0 missing=0 verdicts=0 backing=0 closes=72 close_lost=0 drained=160 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2989711566518 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=97 open_lost=0 missing=0 verdicts=0 backing=0 closes=88 close_lost=0 drained=192 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2990843180295 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=97 open_lost=0 missing=0 verdicts=0 backing=0 closes=88 close_lost=0 drained=192 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2992072281800 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=97 open_lost=0 missing=0 verdicts=0 backing=0 closes=88 close_lost=0 drained=192 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+    [2] FILE_STATS ts=2992662604337 tgid=230724 tid=230727 start=2961482499508 flags=0x0 opens=97 open_lost=0 missing=0 verdicts=0 backing=0 closes=88 close_lost=0 drained=192 invalid=0 fentry_missed=0 kprobe_missed=0 files_live=11 objs_live=48 map_full=0/0
+records: spine 18, bulk 192, daemon 364; invalid 0
+  FORK       8
+  EXEC       2
+  EXIT       5
+  RENAME     3
+  OPEN       101
+  CLOSE      91
+  CLOCK_SYNC 3
+  STATS      29
+  END        1
+  NET_STATS  29
+  PROC       271
+  SNAP_DONE  2
+  FILE_STATS 29
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1

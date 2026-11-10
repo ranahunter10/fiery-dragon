@@ -699,3 +699,58 @@ Variable-length fields, after the fixed part in this order:
 
 - `facts` (0 or 40 bytes, part OBJFACTS): the object's facts: always present (40 bytes)
 - `path` (at most 4096 bytes): bpf_d_path of the file, as in OPEN (anon_inode:[eventpoll], pipe:[N] and socket:[N] are the kernel's own names)
+
+## FILE_STATS (type 40, version 1, class STATS)
+
+The file-identity programs' health, written with every STATS record (ADR-0015, STATE decision 19): the counters of bpf/include/p15_file.h since the run's start, their books' drain side, the maps' fill and the kernel's skips. The books close as p15_file.h states; a lost OPEN, BACKING, CLOSE or session record, or a skipped session or free, makes the run DEGRADED.
+
+Fixed part 384 bytes; at most 384 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fentry_run` | u64 | the path fentry ran; cumulative |
+| 40 | `fentry_no_inode` | u64 | ... for a file without an inode (never expected: counted, nothing written); cumulative |
+| 48 | `open_emitted` | u64 | OPEN records the fentry submitted; cumulative |
+| 56 | `open_lost` | u64 | ... lost to a full bulk ring (run DEGRADED); cumulative |
+| 64 | `open_full_size` | u64 | ... written full size: no scratch slot was free (rule 6); cumulative |
+| 72 | `open_truncated` | u64 | ... whose path did not fit (dentry name, TRUNCATED); cumulative |
+| 80 | `open_path_error` | u64 | ... whose bpf_d_path failed otherwise (PATH_ERROR); cumulative |
+| 88 | `backing_emitted` | u64 | BACKING records submitted; cumulative |
+| 96 | `backing_lost` | u64 | BACKING records lost to a full bulk ring (run DEGRADED); cumulative |
+| 104 | `backing_user_unread` | u64 | BACKING without the overlay inode (user_obj 0, READ_FAILED); cumulative |
+| 112 | `session_entry` | u64 | the kprobe.session ran at entry; cumulative |
+| 120 | `session_no_inode` | u64 | ... for a file without an inode: no return run; cumulative |
+| 128 | `session_return` | u64 | the session's return run; cumulative |
+| 136 | `session_common` | u64 | ... with the OPEN written and verdict 0: nothing to write; cumulative |
+| 144 | `missing_emitted` | u64 | OPEN with PATH_MISSING (the fentry did not run); cumulative |
+| 152 | `missing_lost` | u64 | PATH_MISSING OPEN records lost to a full bulk ring (run DEGRADED); cumulative |
+| 160 | `verdict_emitted` | u64 | OPEN_VERDICT; cumulative |
+| 168 | `verdict_lost` | u64 | OPEN_VERDICT records lost to a full bulk ring (run DEGRADED); cumulative |
+| 176 | `session_no_cookie` | u64 | return run with an empty cookie (never expected); cumulative |
+| 184 | `session_no_entry` | u64 | return run without an open-file entry (its map was full); cumulative |
+| 192 | `free_run` | u64 | security_file_free ran (every struct file of the system); cumulative |
+| 200 | `close_emitted` | u64 | CLOSE records submitted; cumulative |
+| 208 | `close_lost` | u64 | CLOSE records lost to a full bulk ring (run DEGRADED); cumulative |
+| 216 | `free_unregistered` | u64 | a free of a file capture never registered (decision 19.5); cumulative |
+| 224 | `inode_free_run` | u64 | security_inode_free ran; cumulative |
+| 232 | `inode_free_hit` | u64 | ... and deleted an object entry; cumulative |
+| 240 | `file_map_full` | u64 | no open-file entry: the event is written with a fresh, unregistered id; cumulative |
+| 248 | `obj_map_full` | u64 | no object entry: the facts go inline, with a fresh id; cumulative |
+| 256 | `file_stale` | u64 | an entry whose stored inode differs from the live file's: replaced (rule 9); cumulative |
+| 264 | `obj_stale` | u64 | an entry whose dev/ino/gen differ from the live inode's: replaced; cumulative |
+| 272 | `file_race` | u64 | another program inserted the entry between lookup and insert; cumulative |
+| 280 | `obj_race` | u64 | another program inserted the object entry between lookup and insert; cumulative |
+| 288 | `facts_dup` | u64 | a second record carried an object's facts (decision 19.7: twice, never zero); cumulative |
+| 296 | `subvol_unknown` | u64 | facts of a btrfs object read without btrfs BTF (oflags SUBVOL_UNKNOWN); cumulative |
+| 304 | `kthread_open` | u64 | OPEN records written in a kernel thread (KTHREAD); cumulative |
+| 312 | `files_live` | u64 | open-file entries now (the FILES_LIVE gauge) |
+| 320 | `objs_live` | u64 | object entries now (the OBJS_LIVE gauge) |
+| 328 | `files_live_max` | u64 | the most open-file entries the drain saw at a poll, since the run's start |
+| 336 | `objs_live_max` | u64 | the most object entries the drain saw at a poll, since the run's start |
+| 344 | `file_drained` | u64 | file-identity records the drain copied into a batch, cumulative |
+| 352 | `file_invalid` | u64 | file-identity records refused by p15_rec_check, never written (run DEGRADED), cumulative |
+| 360 | `fentry_missed` | u64 | opens whose path fentry the kernel skipped (its recursion_misses): each has an OPEN with PATH_MISSING, so not a loss |
+| 368 | `kprobe_missed` | u64 | runs the kernel skipped of the session and the two free programs (recursion_misses; run DEGRADED) |
+| 376 | `file_map_entries` | u32 | the open-file map's size (--file-map-entries) |
+| 380 | `obj_map_entries` | u32 | the object map's size (--obj-map-entries) |

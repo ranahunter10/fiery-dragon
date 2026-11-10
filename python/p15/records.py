@@ -185,7 +185,7 @@ def _part(buf, p: int, vl: int, pname: str, rname: str, vname: str, f: dict, off
     row = np.frombuffer(buf, dt, count=1, offset=p)[0]
     out = {k: int(row[k]) for k in dt.names}
     if pname == "OBJFACTS" and (out["oflags"] & ~OBJ_SUBVOL_UNKNOWN or out["seen"] not in (1, 2, 3, 4, 5)):
-        raise RecordError(f"{rname}: {vname}: unknown oflags bits or an unknown 'seen'", off)
+        raise RecordError("OBJFACTS: unknown oflags bits or an unknown 'seen'", off)
     return out
 
 

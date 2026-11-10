@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-10 (UTC), PR "schema: the slice B identity records and ADR-0027 (step 2a, part 1)"
+**Last updated:** 2026-11-10 (UTC), PR "bpf: file identity programs, loader, checks, self-test and FILE_STATS (step 2a, part 2)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -131,7 +131,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 22. **Completing the capture layer, then the graph (maintainer, 2026-11-09).** One PR per step, in order; research before each design; each decision raised when it arises:
     1. ✅ slice B design: ADR-0015 and ADR-0005 accepted (PR #59; E-0139, E-0140); the read-path hook costs measured (PR #60, merged 2026-11-10, E-0138);
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
-       1. 🔧 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); kprobe.session + fentry on `security_file_open`, kprobe.multi on `security_file_free` and `security_inode_free`. ✅ dry run on the VM (`bpf/test/sliceb_probe`, PR #61, E-0146); 🔧 part 1: the records, the generator's parts and record-field flags, the Python decoder, ADR-0027 (E-0148); next part 2: `bpf/progs/file.bpf.c`, the loader, `p15_rec_check`, the self-test checks and FILE_STATS; part 3: the snapshot's FD pass, SNAP_DONE v2 and the `it_p15d.sh` case;
+       1. 🔧 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); kprobe.session + fentry on `security_file_open`, kprobe.multi on `security_file_free` and `security_inode_free`. ✅ dry run on the VM (PR #61, E-0146); ✅ part 1, the records and ADR-0027 (PR #62, E-0148); ✅ part 2, `bpf/progs/file.bpf.c` with the loader, `p15_rec_check`, the self-test, FILE_STATS and `it_p15d.sh` case 8 (PR #63; on the VM every case passes and the p15d sweep kills 42/42, E-0156 to E-0159); 🔧 next part 3: the snapshot's FD pass, SNAP_DONE v2;
        2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
        3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
        4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
@@ -213,7 +213,14 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 20. **The 2026-11-10 review** (maintainer: "recommendation and decision passed"; E-0147): merge #60, then #59, then #61, with merge commits; **ADR-0027:** on the anonymous-inode filesystem (magic `0x09041934`) the graph node is the open file (`fid`), not the object, superseding ADR-0015 rule 3 for that filesystem only; written in 2a's PR.
 
+21. **The 2026-11-10 review, second motion** (maintainer: "motion passed"; E-0149): PR #62 merged; step 2a in three PRs (part 1 records, part 2 programs, part 3 the FD pass).
+
+22a. **Standing acceptance (maintainer, 2026-11-10, E-0153):** "recommended decisions are accepted in advance ... I will review them once everything is stitched". Each decision is still recorded here with its evidence when it is taken, for that review. Not covered, and still asked first: anything that cannot be undone, GPL-2.0-only code, and where PIDSMaker runs. Taken under it:
+    1. Kernel threads' opens are kept, flagged KTHREAD; their share is measured in step 6 (E-0150).
+    2. **Facts epoch** (E-0151): an object's facts are written once per epoch; p15d starts a new epoch after its load-time self-tests, whose reader discards what it takes.
+    3. **Graph v0 before 2b** (E-0153): after 2a part 3, the DuckDB schema, builder and PIDSMaker export are built on the records that exist (FORK, EXEC, EXIT, OPEN with its access mode, CLOSE, FD, NET), so the path from capture to a detection number runs end to end early; 2b-2e then replace open-level file edges with measured transfers. The step 7 options (FD on a copy, the HTML view) stay in step 7.
+    4. **The cost of an open under capture is measured next to part 3** (a paired open/close microbenchmark with p15d on and off, ADR-0012's protocol), the first whole-pipeline number.
+
 ## Decisions waiting
 
-1. **Review and merge the step 2a part 1 PR** (records OPEN, OPEN_VERDICT, BACKING, CLOSE, FD and the OBJFACTS part; the generator's `[[part]]` and `[[fflag]]`; the Python decoder's checks; ADR-0027). Nothing emits these records yet.
-2. **Step 2a in three PRs** (E-0148). Recommended: part 1 (this one, no kernel code), part 2 (the BPF programs, loader, daemon checks, self-test, FILE_STATS; proven on the VM), part 3 (the FD pass with SNAP_DONE v2 and the `it_p15d.sh` case). One PR would be about 3,000 changed lines; the three are each reviewable alone and each leaves `main` working.
+1. **A bounded shutdown for p15d** (E-0158): if the closing snapshot or the final drain does not finish within a bound, p15d ends the run with an error instead of waiting; a test-only switch makes the writer stall so the guard is tested. Recommended, as its own PR after part 3. Taken under decision 22a unless the maintainer says otherwise.

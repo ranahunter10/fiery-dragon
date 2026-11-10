@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "f21ebef378764bbf01a6ca381dec2a9b9b6ef9c2fe8a64d695e2b47d841d7f59"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "24c4869743f410306569951f2dd5ac75532d9221baef54641362551b7cae8b9d"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -62,6 +62,7 @@ TYPES = {
     'PROC': 37,
     'SNAP_DONE': 38,
     'FD': 39,
+    'FILE_STATS': 40,
 }
 
 RECORDS = {
@@ -137,4 +138,7 @@ RECORDS = {
     (39, 1): Layout('FD', 39, 1, 'MARKER',
         np.dtype({'names': ['h', 'fid', 'obj', 'pos', 'fd', 'fflags', 'f_flags', 'f_mode', 'path_err', 'snap_id', 'facts_full', 'path_full', 'facts_len', 'path_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<i4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 56, 60, 64, 68, 72, 76, 80, 84, 88, 90, 92], 'itemsize': 96}),
         96, 4232, (('facts', 40), ('path', 4096)), (('facts', 'OBJFACTS'),)),
+    (40, 1): Layout('FILE_STATS', 40, 1, 'STATS',
+        np.dtype({'names': ['h', 'fentry_run', 'fentry_no_inode', 'open_emitted', 'open_lost', 'open_full_size', 'open_truncated', 'open_path_error', 'backing_emitted', 'backing_lost', 'backing_user_unread', 'session_entry', 'session_no_inode', 'session_return', 'session_common', 'missing_emitted', 'missing_lost', 'verdict_emitted', 'verdict_lost', 'session_no_cookie', 'session_no_entry', 'free_run', 'close_emitted', 'close_lost', 'free_unregistered', 'inode_free_run', 'inode_free_hit', 'file_map_full', 'obj_map_full', 'file_stale', 'obj_stale', 'file_race', 'obj_race', 'facts_dup', 'subvol_unknown', 'kthread_open', 'files_live', 'objs_live', 'files_live_max', 'objs_live_max', 'file_drained', 'file_invalid', 'fentry_missed', 'kprobe_missed', 'file_map_entries', 'obj_map_entries'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 380], 'itemsize': 384}),
+        384, 384, ()),
 }

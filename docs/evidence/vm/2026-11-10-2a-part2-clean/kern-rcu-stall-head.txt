@@ -1,0 +1,30 @@
+Nov 10 18:53:07 p15-dev kernel: rcu: INFO: rcu_preempt self-detected stall on CPU
+Nov 10 18:53:07 p15-dev kernel: rcu:         1-...!: (1 ticks this GP) idle=8454/0/0x1 softirq=628136/628136 fqs=0
+Nov 10 18:53:07 p15-dev kernel: rcu:         (t=279737 jiffies g=1468145 q=9 ncpus=3)
+Nov 10 18:53:07 p15-dev kernel: rcu: rcu_preempt kthread starved for 279737 jiffies! g1468145 f0x0 RCU_GP_WAIT_FQS(5) ->state=0x0 ->cpu=0
+Nov 10 18:53:07 p15-dev kernel: rcu:         Unless rcu_preempt kthread gets sufficient CPU time, OOM is now expected behavior.
+Nov 10 18:53:07 p15-dev kernel: rcu: RCU grace-period kthread stack dump:
+Nov 10 18:53:07 p15-dev kernel: task:rcu_preempt     state:R  running task     stack:0     pid:15    tgid:15    ppid:2      task_flags:0x208040 flags:0x00080000
+Nov 10 18:53:07 p15-dev kernel: Call Trace:
+Nov 10 18:53:07 p15-dev kernel:  <TASK>
+Nov 10 18:53:07 p15-dev kernel:  __schedule+0x2bb/0x650
+Nov 10 18:53:07 p15-dev kernel:  schedule+0x27/0xb0
+Nov 10 18:53:07 p15-dev kernel:  schedule_timeout+0x88/0x110
+Nov 10 18:53:07 p15-dev kernel:  ? __pfx_process_timeout+0x10/0x10
+Nov 10 18:53:07 p15-dev kernel:  rcu_gp_fqs_loop+0x102/0x490
+Nov 10 18:53:07 p15-dev kernel:  ? __pfx_rcu_gp_kthread+0x10/0x10
+Nov 10 18:53:07 p15-dev kernel:  rcu_gp_kthread+0xad/0x120
+Nov 10 18:53:07 p15-dev kernel:  kthread+0xf7/0x130
+Nov 10 18:53:07 p15-dev kernel:  ? __pfx_kthread+0x10/0x10
+Nov 10 18:53:07 p15-dev kernel:  ret_from_fork+0x195/0x2a0
+Nov 10 18:53:07 p15-dev kernel:  ? __pfx_kthread+0x10/0x10
+Nov 10 18:53:07 p15-dev kernel:  ? __pfx_kthread+0x10/0x10
+Nov 10 18:53:07 p15-dev kernel:  ret_from_fork_asm+0x1a/0x30
+Nov 10 18:53:07 p15-dev kernel:  </TASK>
+Nov 10 18:53:07 p15-dev kernel: rcu: Stack dump where RCU GP kthread last ran:
+Nov 10 18:53:07 p15-dev kernel: Sending NMI from CPU 1 to CPUs 0:
+Nov 10 18:53:07 p15-dev kernel: NMI backtrace for cpu 0
+Nov 10 18:53:07 p15-dev kernel: CPU: 0 UID: 0 PID: 254390 Comm: systemd-journal Kdump: loaded Tainted: G             L      7.0.0-38-generic #38-Ubuntu PREEMPT(lazy)
+Nov 10 18:53:07 p15-dev kernel: Tainted: [L]=SOFTLOCKUP
+Nov 10 18:53:07 p15-dev kernel: Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+Nov 10 18:53:07 p15-dev kernel: RIP: 0010:kmem_cache_alloc_noprof+0xd5/0x4b0

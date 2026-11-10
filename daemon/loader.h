@@ -15,12 +15,25 @@
 
 struct spine_bpf;
 struct net_bpf;
+struct file_bpf;
+
+/* What to load besides the spine (config.h). */
+struct p15_loader_opts {
+	uint32_t spine_ring_bytes, bulk_ring_bytes;
+	int net;                     /* the network-intent programs (ADR-0004) */
+	int files;                   /* the file-identity programs (ADR-0015) */
+	int test_no_path_fentry;     /* TEST ONLY: leave the path fentry unattached (ADR-0015 confirmation 1) */
+	uint32_t file_map_entries, obj_map_entries;
+};
 
 struct p15_loader {
 	struct spine_bpf *spine;
 	struct net_bpf *net;        /* NULL with --no-net */
+	struct file_bpf *file;      /* NULL with --no-files; owns the bulk ring when loaded (decision 19.4) */
 	int selftest_failed;       /* failed checks, or -errno if it could not run */
 	int net_selftest_failed;
+	int file_selftest_failed;
+	unsigned long long file_consumed;   /* file-identity records the self-tests took from the bulk ring */
 	__u64 daemon_start_ns;     /* from the self-test (ADR-0009 identity of p15d) */
 	__u64 spine_consumed;      /* records the self-tests took from the rings: part of the run's books */
 	unsigned long long net_consumed;
@@ -28,18 +41,21 @@ struct p15_loader {
 	int miss_fd[5];            /* program fds by spine record type 1..4, for recursion_misses (ADR-0020) */
 	int net_miss_fd[8];
 	int n_net_miss;
+	int file_fentry_fd;         /* the path fentry: its skips are located (PATH_MISSING), not lost */
+	int file_kprobe_fd[3];      /* the session and the two frees: their skips are losses */
+	int n_file_kprobe;
 	int ncpu;                   /* possible CPUs: the counter maps' row count (ADR-0026) */
 };
 
 /* Returns 0, or a P15_EXIT_* code with a reason in err. */
-P15_MUST_CHECK int p15_loader_start(struct p15_loader *l, uint32_t spine_ring_bytes, uint32_t bulk_ring_bytes, int net,
-				  char *err, size_t errlen);
+P15_MUST_CHECK int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char *err, size_t errlen);
 /* Detach every program (so the rings stop filling); the maps stay readable. */
 void p15_loader_detach(struct p15_loader *l);
 void p15_loader_free(struct p15_loader *l);
 int p15_loader_spine_rb_fd(const struct p15_loader *l);
 int p15_loader_counters_fd(const struct p15_loader *l);
-int p15_loader_bulk_rb_fd(const struct p15_loader *l);     /* -1 with --no-net */
-int p15_loader_bulk_counters_fd(const struct p15_loader *l);
+int p15_loader_bulk_rb_fd(const struct p15_loader *l);     /* -1 with --no-net and --no-files */
+int p15_loader_bulk_counters_fd(const struct p15_loader *l);  /* NET's counters; -1 with --no-net */
+int p15_loader_file_counters_fd(const struct p15_loader *l);  /* -1 with --no-files */
 
 #endif

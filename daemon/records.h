@@ -18,6 +18,9 @@
  */
 P15_MUST_CHECK int p15_rec_check(const void *data, size_t size, const char **why);
 
+/* 1 for the record types file.bpf.c writes to the bulk ring (OPEN, OPEN_VERDICT, BACKING, CLOSE). */
+int p15_is_file_type(__u16 type);
+
 /* "FORK", "EXEC", ..., or "?" for a type this build does not know. */
 const char *p15_type_name(__u16 type);
 
