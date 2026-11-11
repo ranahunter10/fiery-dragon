@@ -127,6 +127,8 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
         raise RecordError("PROC: non-zero reserved, unknown kind or unknown pflags", off)
     if lay.name == "SNAP_DONE" and f["kind"] not in (1, 2):
         raise RecordError("SNAP_DONE: unknown kind", off)
+    if lay.name == "SNAP_DONE" and f.get("fd_pass", 0) > 1:
+        raise RecordError("SNAP_DONE: fd_pass is neither 0 nor 1", off)
     if lay.name in _FFLAGS_OK:
         if f["fflags"] & ~_FFLAGS_OK[lay.name]:
             raise RecordError(f"{lay.name}: fflags bits this record never carries", off)

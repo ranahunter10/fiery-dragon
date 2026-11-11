@@ -26,6 +26,7 @@ struct p15_exec_v2 p15_probe_p15_exec_v2 __attribute__((used));
 struct p15_proc_v1 p15_probe_p15_proc_v1 __attribute__((used));
 struct p15_proc_v2 p15_probe_p15_proc_v2 __attribute__((used));
 struct p15_snap_done_v1 p15_probe_p15_snap_done_v1 __attribute__((used));
+struct p15_snap_done_v2 p15_probe_p15_snap_done_v2 __attribute__((used));
 struct p15_open_v1 p15_probe_p15_open_v1 __attribute__((used));
 struct p15_open_verdict_v1 p15_probe_p15_open_verdict_v1 __attribute__((used));
 struct p15_backing_v1 p15_probe_p15_backing_v1 __attribute__((used));

@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6).
 
-Each mutant plants one bug in daemon/records.c, rebuilds daemon/tests/test_records.c,
+Each mutant plants one bug in daemon/records.c (or, with a leading "snapshot_frame.c" entry,
+in daemon/snapshot_frame.c), rebuilds daemon/tests/test_records.c,
 daemon/tests/test_selftest.c and daemon/tests/test_snapshot.c against it, and expects at least
 one of them to fail. The source
 is restored after every mutant, also on error or Ctrl-C.
@@ -17,12 +18,14 @@ and the sweep stops. Left out as equivalent:
 """
 import os
 import pathlib
+import signal
 import subprocess
 import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SRC = ROOT / "daemon" / "records.c"
+FRAME = ROOT / "daemon" / "snapshot_frame.c"
 CC = os.environ.get("CC", "cc")
 LIBBPF_INC = ROOT / "build" / "libbpf"
 
@@ -71,7 +74,9 @@ M = [
  ("if (reserved || (kind != 1 && kind != 2) || (pflags & ~3u)) {", "if (reserved || (kind != 1 && kind != 2)) {"),
  ("if (check_tail(data, fixed, (size_t)ep_len + av_len, 0, why))",
   "if (check_tail(data, fixed, (size_t)ep_len + av_len, 1, why))"),
- ("((const struct p15_snap_done_v1 *)data)->kind != 2) {", "((const struct p15_snap_done_v1 *)data)->kind != 0) {"),
+ ("((const struct p15_snap_done_v2 *)data)->kind) != 2) {", "((const struct p15_snap_done_v2 *)data)->kind) != 0) {"),
+ ("(h->version == 1 ? ((const struct p15_snap_done_v1 *)data)->kind : ((const struct p15_snap_done_v2 *)data)->kind) != 1 &&",
+  "((const struct p15_snap_done_v1 *)data)->kind != 1 &&"),
  ("nlink=%u fsmagic=0x%x mode=0%o uid=%u self_exec_id=%llu ", "nlink=%u fsmagic=0x%x mode=0%o uid=%u "),
  # names and formatting
  ('case P15_T_END:        return "END";', 'case P15_T_END:        return "?";'),
@@ -108,19 +113,45 @@ M = [
  ("fixed + r->facts_len + r->path_len > h->len) {\n\t\t\t*why = \"variable field beyond len\";\n\t\t\treturn -EINVAL;\n\t\t}\n\t\tif (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,",
   "fixed + r->facts_len + r->path_len > h->len + 8) {\n\t\t\t*why = \"variable field beyond len\";\n\t\t\treturn -EINVAL;\n\t\t}\n\t\tif (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,"),
  ("return type == P15_T_OPEN || type == P15_T_OPEN_VERDICT || type == P15_T_BACKING || type == P15_T_CLOSE;", "return type == P15_T_OPEN || type == P15_T_OPEN_VERDICT || type == P15_T_BACKING;"),
+ # SNAP_DONE v2 (ADR-0015 rule 7)
+ ("case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : version == 2 ? sizeof(struct p15_snap_done_v2) : 0;",
+  "case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : 0;"),
+ ("((const struct p15_snap_done_v2 *)data)->fd_pass > 1) {", "((const struct p15_snap_done_v2 *)data)->fd_pass > 2) {"),
+ # the snapshot's framing and FD books (snapshot_frame.c)
+ ("snapshot_frame.c", "\tif (h->type != f->type)\n\t\treturn 0;", ""),
+ ("snapshot_frame.c", "return h->version == P15_FD_VERSION && ((const struct p15_fd *)rec)->snap_id == f->snap_id;", "return h->version == P15_FD_VERSION;"),
+ ("snapshot_frame.c", "return len >= sizeof(struct p15_fd) && len <= P15_FD_MAX_SIZE && len % 8 == 0;", "return len >= sizeof(struct p15_hdr) && len <= P15_FD_MAX_SIZE && len % 8 == 0;"),
+ ("snapshot_frame.c", "\tf->entries = &done->fd_entries;", "\tf->entries = &done->entries;"),
+ ("snapshot_frame.c", "\tf->invalid = &done->fd_invalid;", "\tf->invalid = &done->invalid;"),
+ ("snapshot_frame.c", "\tf->error = &done->fd_error;", "\tf->error = &done->error;"),
+ ("snapshot_frame.c", "\tif (!d->fd_pass)\n\t\treturn 0;", ""),
+ ("snapshot_frame.c", "\tif (d->fd_error) {\n\t\tsnprintf(why, n, \"snapshot %u: reading the FD", "\tif (0) {\n\t\tsnprintf(why, n, \"snapshot %u: reading the FD"),
+ ("snapshot_frame.c", "if (d->fd_files != d->fd_no_inode + d->fd_emitted + d->fd_write_failed) {", "if (d->fd_files != d->fd_emitted + d->fd_write_failed) {"),
+ ("snapshot_frame.c", "if (d->fd_files != d->fd_no_inode + d->fd_emitted + d->fd_write_failed) {", "if (d->fd_files < d->fd_emitted) {"),
+ ("snapshot_frame.c", "if (d->fd_emitted != d->fd_entries + d->fd_invalid + d->fd_unwritten) {", "if (0) {"),
+ ("snapshot_frame.c", "if (d->fd_emitted != d->fd_known + d->fd_registered + d->fd_map_full) {", "if (d->fd_emitted != d->fd_known + d->fd_registered) {"),
+ ("snapshot_frame.c", "if (d->fd_write_failed || d->fd_invalid || d->fd_unwritten) {", "if (d->fd_write_failed || d->fd_invalid) {"),
+ ("snapshot_frame.c", "\treturn fd_books_close(d, why, n);", "\treturn 0;"),
+ ("snapshot_frame.c", "\td->fd_pass = 1;", ""),
 ]
 
 
 def main() -> int:
-    orig = SRC.read_text()
+    origs = {SRC: SRC.read_text(), FRAME: FRAME.read_text()}
     killed = 0
+    # SIGTERM and SIGHUP unwind like Ctrl-C, so `finally` restores the sources (E-0155's lesson; a
+    # pkill during this sweep left mutant 17 in records.c, E-0160)
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, lambda *_: sys.exit(130))
     with tempfile.TemporaryDirectory() as tmp:
         try:
-            for i, (old, new) in enumerate(M):
+            for i, m in enumerate(M):
+                path, (old, new) = (FRAME, m[1:]) if len(m) == 3 else (SRC, m)
+                orig = origs[path]
                 if orig.count(old) != 1:
-                    print(f"mutant {i}: anchor not found exactly once; update this sweep")
+                    print(f"mutant {i}: anchor not found exactly once in {path.name}; update this sweep")
                     return 2
-                SRC.write_text(orig.replace(old, new))
+                path.write_text(orig.replace(old, new))
                 inc = (f"-Idaemon -Ischema/generated -Ibpf/include -I{LIBBPF_INC} "
                        "-fsanitize=address,undefined -fno-sanitize-recover=undefined")
                 build = subprocess.run(
@@ -130,16 +161,18 @@ def main() -> int:
                     f"{CC} -std=gnu11 -O1 {inc} daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c "
                     f"-o {tmp}/n", shell=True, cwd=ROOT, capture_output=True, text=True)
                 if build.returncode != 0:
+                    path.write_text(orig)
                     print(f"mutant {i} does not compile: not a valid mutant; fix this sweep\n{build.stderr[-400:]}")
                     return 2
                 r = subprocess.run(f"timeout 60 {tmp}/r && timeout 60 {tmp}/s && timeout 60 {tmp}/n", shell=True, cwd=ROOT,
                                    capture_output=True, text=True)
-                SRC.write_text(orig)
+                path.write_text(orig)
                 dead = r.returncode != 0
                 killed += dead
-                print(("killed   " if dead else "SURVIVED "), i, old.strip()[:72])
+                print(("killed   " if dead else "SURVIVED "), i, path.name, old.strip().splitlines()[0][:72], flush=True)
         finally:
-            SRC.write_text(orig)
+            for path, text in origs.items():
+                path.write_text(text)
     print(f"mutation sweep: {killed}/{len(M)} killed")
     return 0 if killed == len(M) else 1
 

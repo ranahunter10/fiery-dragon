@@ -22,6 +22,7 @@
 #include "p15_counters.h"
 #include "p15_file.h"
 #include "p15_records.h"
+#include "p15_snap.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -248,8 +249,9 @@ static __always_inline void facts_done(struct obj_ent *e, int carried)
 		count(P15_FC_FACTS_DUP);
 }
 
-/* The open-file entry of file (rule 1), created if absent; NULL when the map is full (counted). */
-static __always_inline struct file_ent *file_ent_get(struct file *file, struct inode *inode, __u64 obj)
+/* The open-file entry of file (rule 1), created if absent; NULL when the map is full (counted).
+ * *created: 1 if this call inserted it. */
+static __always_inline struct file_ent *file_ent_get_c(struct file *file, struct inode *inode, __u64 obj, int *created)
 {
 	__u64 key = (__u64)file;
 	struct file_ent *e = bpf_map_lookup_elem(&files, &key);
@@ -267,15 +269,24 @@ static __always_inline struct file_ent *file_ent_get(struct file *file, struct i
 		struct file_ent n = { .fid = new_id(), .obj = obj, .inode = (__u64)inode };
 
 		rc = bpf_map_update_elem(&files, &key, &n, BPF_NOEXIST);
-		if (!rc)
+		if (!rc) {
 			count(P15_FC_FILES_LIVE);
-		else if (rc == -EEXIST)
+			*created = 1;
+		} else if (rc == -EEXIST) {
 			count(P15_FC_FILE_RACE);
+		}
 	}
 	e = bpf_map_lookup_elem(&files, &key);
 	if (!e)
 		count(P15_FC_FILE_MAP_FULL);
 	return e;
+}
+
+static __always_inline struct file_ent *file_ent_get(struct file *file, struct inode *inode, __u64 obj)
+{
+	int created = 0;
+
+	return file_ent_get_c(file, inode, obj, &created);
 }
 
 /* OPEN into buf (a claimed slot, or a full-size reservation zeroed by the caller): fixed part, the
@@ -632,5 +643,147 @@ int file_inode_free(struct pt_regs *ctx)
 		count(P15_FC_INODE_FREE_HIT);
 		count_add(P15_FC_OBJS_LIVE, (__u64)-1);
 	}
+	return 0;
+}
+
+/* ---- the snapshot's FD pass (ADR-0015 rule 7) ----
+ *
+ * iter/task_file over every fd table: the kernel shows each (task, fd) once and skips threads that
+ * share their leader's table (kernel/bpf/task_iter.c lines 80 and 126, v7.0). For each descriptor
+ * one FD record: the descriptor's process (not the reader's), the open file's id (registered now
+ * if capture has not seen it: the first registration wins, rule 7), its object with the facts
+ * always present, the offset and the kernel's path. The iterator holds a reference on the file
+ * while the program runs, so the free that would end the id cannot race the row.
+ *
+ * p15d runs one pass at a time from one thread (daemon/snapshot.c), so the books and the buffer
+ * are plain globals and one per-CPU slot; the program runs with migration off. Books:
+ * bpf/include/p15_snap.h struct p15_fd_books; every early return has one. */
+struct p15_fd_books fd_books;
+__u32 fd_snap_id;
+
+#define FD_BUF (P15_FD_MAX_SIZE + 8)
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, __u32);
+	__type(value, __u8[FD_BUF]);
+} fd_scratch SEC(".maps");
+
+static __always_inline void fd_inc(__u64 *c)
+{
+	__sync_fetch_and_add(c, 1);
+}
+
+/* The FD row's facts are always in the record; mark them written in this epoch (without the
+ * duplicate count of facts_done: an FD row carries them whatever was written before). */
+static __always_inline void fd_facts_mark(struct obj_ent *e)
+{
+	__u32 cur = facts_epoch, old;
+
+	if (!e)
+		return;
+	old = e->facts_epoch;
+	if (old != cur)
+		__sync_val_compare_and_swap(&e->facts_epoch, old, cur);
+}
+
+SEC("iter/task_file")
+int file_fd_iter(struct bpf_iter__task_file *ctx)
+{
+	struct seq_file *seq = ctx->meta->seq;
+	struct task_struct *task = ctx->task;
+	struct file *file = ctx->file;
+	struct p15_part_objfacts *f;
+	struct obj_ent *oe = NULL;
+	struct file_ent *fe;
+	struct inode *inode;
+	struct p15_fd *r;
+	__u32 zero = 0, off, plen, len;
+	int carry, created = 0;
+	__u8 *buf;
+	long n;
+
+	if (!task || !file)
+		return 0;   /* the iterator's end-of-output call (ctx->task NULL): not a descriptor */
+	fd_inc(&fd_books.files);
+	inode = file->f_inode;
+	buf = bpf_map_lookup_elem(&fd_scratch, &zero);
+	if (!inode || !buf) {
+		fd_inc(&fd_books.no_inode);
+		return 0;
+	}
+	r = (void *)buf;
+	__builtin_memset(r, 0, sizeof(*r));
+	r->h.type = P15_T_FD;
+	r->h.version = P15_FD_VERSION;
+	r->h.ts_ns = bpf_ktime_get_boot_ns();
+	r->h.tgid = task->tgid;
+	r->h.tid = task->pid;
+	r->h.start_ns = BPF_CORE_READ(task, group_leader, start_boottime);
+	r->fd = ctx->fd;
+	r->snap_id = fd_snap_id;
+	r->f_flags = file->f_flags;
+	r->f_mode = file->f_mode;
+	r->pos = file->f_pos;
+
+	off = sizeof(*r);
+	f = (void *)(buf + off);
+	read_facts(inode, f);
+	f->seen = P15_SEEN_SNAPSHOT;
+	r->facts_len = r->facts_full = sizeof(*f);
+	off += sizeof(*f);
+	r->obj = obj_of(inode, f, &oe, &carry);
+	fe = file_ent_get_c(file, inode, r->obj, &created);
+	r->fid = fe ? fe->fid : new_id();
+
+	n = bpf_d_path(&file->f_path, (char *)(buf + off), P15_PATH_MAX);
+	if (n > 0) {
+		plen = (__u32)(n - 1) & (P15_PATH_MAX - 1);
+		r->path_full = plen;
+	} else if (n == -ENAMETOOLONG) {
+		const unsigned char *name = BPF_CORE_READ(file, f_path.dentry, d_name.name);
+		long m = bpf_probe_read_kernel_str(buf + off, 256, name);
+
+		plen = m > 0 ? (__u32)(m - 1) & 255 : 0;
+		r->path_full = P15_LEN_UNKNOWN;
+		r->h.flags |= P15_F_TRUNCATED;
+	} else {
+		plen = 0;
+		r->fflags |= P15_FF_PATH_ERROR;
+		r->path_err = (__s32)n;
+	}
+	r->path_len = plen;
+	len = off + plen;
+	{
+		__u32 end = (len + 7) & ~7u;
+
+		for (__u32 i = 0; i < 8; i++) {
+			__u32 p = len + i;
+
+			if (p < end && p < FD_BUF)
+				buf[p] = 0;   /* the slot holds the last row's bytes */
+		}
+		len = end;
+	}
+	if (len > P15_FD_MAX_SIZE)
+		len = P15_FD_MAX_SIZE;
+	r->h.len = len;
+	if (bpf_seq_write(seq, buf, len)) {
+		fd_inc(&fd_books.write_failed);
+		return 0;
+	}
+	fd_inc(&fd_books.emitted);
+	if (!fe)
+		fd_inc(&fd_books.map_full);
+	else if (created)
+		fd_inc(&fd_books.registered);
+	else
+		fd_inc(&fd_books.known);
+	if (r->fflags & P15_FF_PATH_ERROR)
+		fd_inc(&fd_books.path_error);
+	if (r->h.flags & P15_F_TRUNCATED)
+		fd_inc(&fd_books.truncated);
+	fd_facts_mark(oe);
 	return 0;
 }

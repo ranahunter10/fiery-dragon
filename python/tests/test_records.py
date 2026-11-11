@@ -155,6 +155,17 @@ class FileIdentity(unittest.TestCase):
         self.why(rec("OPEN", var={"path": b"/a"}, length=lay.max_size), "len larger than its fields need")
 
 
+class SnapDoneV2(unittest.TestCase):
+    def test_fd_pass_is_zero_or_one(self):
+        self.assertEqual(dec(rec("SNAP_DONE", kind=1, fd_pass=1, fd_entries=3)).f["fd_entries"], 3)
+        with self.assertRaises(R.RecordError) as cm:
+            dec(rec("SNAP_DONE", kind=1, fd_pass=2))
+        self.assertEqual(cm.exception.why, "SNAP_DONE: fd_pass is neither 0 nor 1")
+
+    def test_v1_still_reads(self):
+        self.assertEqual(dec(rec("SNAP_DONE", version=1, kind=2)).f["kind"], 2)
+
+
 class Decoding(unittest.TestCase):
     def test_no_defaults(self):
         r = dec(rec("EXIT", h_tgid=7, h_start_ns=9, exit_code=-1, group_dead=1))

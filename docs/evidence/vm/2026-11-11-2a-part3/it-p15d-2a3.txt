@@ -1,0 +1,194 @@
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/spine.bpf.c -o build/spine.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/net.bpf.c -o build/net.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/net.bpf.o > build/net.skel.h
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -mcpu=v3 -c bpf/progs/file.bpf.c -o build/file.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/file.bpf.o > build/file.skel.h
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/snap.bpf.c -o build/snap.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/snap.bpf.o > build/snap.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"bbf5e2ac465d"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15w_inspect.c daemon/records.c daemon/wal.c daemon/crc32c.c -o build/p15w-inspect
+daemon/tests/it_p15d.sh build
+network capture and file identity: on
+case 1: an 8 s run with 200 short processes, started once p15d is ready [t+0s]
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+p15d level=info code=start run_dir=/tmp/p15d-it-4QFzuA/c1/20261111T013431Z-6e0e2398 sched="SCHED_FIFO 1" spine_ring=4194304 net=on files=on
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-4QFzuA/c1/20261111T013431Z-6e0e2398//seg-00000000.p15w: segment 0, 586984 bytes, 211 batches, 4816 records, valid to the end
+  run.id = 20261111T013431Z-6e0e2398
+  kernel.release = 7.0.0-38-generic
+  schema.hash = fd750b091efcf9c3337fb7ddafce35ee102b7ee8c19da218a4b82753546a2d3e
+records: spine 818, bulk 2154, daemon 1844; invalid 0
+  FORK       205
+  EXEC       204
+  EXIT       205
+  RENAME     204
+  OPEN       1065
+  CLOSE      1089
+  CLOCK_SYNC 5
+  STATS      40
+  END        1
+  NET_STATS  40
+  PROC       281
+  SNAP_DONE  2
+  FD         1435
+  FILE_STATS 40
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 40)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:141:1 closing:140:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+  ok   pid 1 is in the opening snapshot
+case 2: stop by SIGTERM [t+13s]
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes) [t+17s]
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+p15d level=info code=start run_dir=/tmp/p15d-it-4QFzuA/c3/20261111T013447Z-6e0e2398 sched="normal (--no-rt)" spine_ring=4096 net=on files=on
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 82, bulk 4077, daemon 1744; invalid 0
+  FORK       23
+  EXEC       17
+  EXIT       23
+  RENAME     19
+  NET        1
+  OPEN       2026
+  CLOSE      2050
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        2
+  END        1
+  NET_STATS  6
+  PROC       285
+  SNAP_DONE  2
+  FD         1435
+  FILE_STATS 6
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)", closing snapshot 1
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+  reconciliation: repaired 0 12 380 380 opening:143:1 closing:142:1
+  ok   ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss (repaired)
+  ok   unexplained forks 0 <= counted 380, exits 12 <= counted 380
+case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect [t+26s]
+  ok   the Python reader's counts equal p15w-inspect's (c5)
+[1] NET    ts=51513851510526 tgid=294835 tid=294835 start=51513838261308 flags=0x0 op=BIND proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4624 peer=0 netns=4026531833
+[1] NET    ts=51513851518221 tgid=294835 tid=294835 start=51513838261308 flags=0x0 op=LISTEN proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4624 peer=0 netns=4026531833
+[1] NET    ts=51514367084888 tgid=294837 tid=294837 start=51514344362872 flags=0x4 op=CONNECT proto=tcp ret=0 local=127.0.0.1:42582 remote=127.0.0.1:18077 cookie=4625 peer=0 netns=4026531833 isn=252107866
+[1] NET    ts=51514367095136 tgid=294835 tid=294835 start=51513838261308 flags=0x4 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:42582 cookie=4626 peer=4624 netns=4026531833 isn=252107866
+[1] NET    ts=51514397062893 tgid=294838 tid=294838 start=51514371487539 flags=0x4 op=CONNECT proto=tcp ret=0 local=127.0.0.1:42596 remote=127.0.0.1:18077 cookie=8867 peer=0 netns=4026531833 isn=2309676703
+[1] NET    ts=51514397071972 tgid=294835 tid=294835 start=51513838261308 flags=0x4 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:42596 cookie=8868 peer=4624 netns=4026531833 isn=2309676703
+[1] NET    ts=51514418047185 tgid=294839 tid=294839 start=51514402469568 flags=0x0 op=CONNECT proto=tcp ret=-111 local=0.0.0.0:0 remote=127.0.0.1:18078 cookie=4627 peer=0 netns=4026531833
+records: spine 32, bulk 405, daemon 1764; invalid 0
+  FORK       9
+  EXEC       6
+  EXIT       9
+  RENAME     8
+  NET        7
+  OPEN       187
+  CLOSE      211
+  CLOCK_SYNC 2
+  STATS      13
+  END        1
+  NET_STATS  13
+  PROC       285
+  SNAP_DONE  2
+  FD         1435
+  FILE_STATS 13
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   the server's LISTEN on port 18077, with its socket cookie (4624)
+  ok   two ACCEPTs whose peer cookie is the listener's
+  ok   two CONNECTs to port 18077, ret 0
+  ok   the refused connect, ret -111 (ECONNREFUSED)
+  ok   NET_STATS records written
+Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+
+Listeners on port 18077
+  127.0.0.1:18077 tcp  cookie 4624  listening from 01:34:57.239 (t+0.034s)  by python3 (294835) ← bash (293838) ← make (293761) ← sudo (293760) ← sudo (293757) ← bash (1345) ← sshd-session (1344) ← sshd-session (1239) ← sshd (1236) ← systemd (1) [started before the capture]
+
+Connections accepted on port 18077
+  01:34:57.755 (t+0.550s)  127.0.0.1:42582 -> 127.0.0.1:18077  accepted by python3 (pid 294835)  (listener cookie 4624)
+      client: python3 (294837) ← bash (293838) ← make (293761) ← sudo (293760) ← sudo (293757) ← bash (1345) ← sshd-session (1344) ← sshd-session (1239) ← sshd (1236) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+0.550s)
+  01:34:57.785 (t+0.580s)  127.0.0.1:42596 -> 127.0.0.1:18077  accepted by python3 (pid 294835)  (listener cookie 4624)
+      client: python3 (294838) ← bash (293838) ← make (293761) ← sudo (293760) ← sudo (293757) ← bash (1345) ← sshd-session (1344) ← sshd-session (1239) ← sshd (1236) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+0.580s)
+
+Connects to port 18077
+  01:34:57.755 (t+0.550s)  127.0.0.1:42582 -> 127.0.0.1:18077 tcp  ok                      by python3 (294837) ← bash (293838) ← make (293761) ← sudo (293760) ← sudo (293757) ← bash (1345) ← sshd-session (1344) ← sshd-session (1239) ← sshd (1236) ← systemd (1) [started before the capture]
+  01:34:57.785 (t+0.580s)  127.0.0.1:42596 -> 127.0.0.1:18077 tcp  ok                      by python3 (294838) ← bash (293838) ← make (293761) ← sudo (293760) ← sudo (293757) ← bash (1345) ← sshd-session (1344) ← sshd-session (1239) ← sshd (1236) ← systemd (1) [started before the capture]
+  ok   p15-trace: text and HTML reports made
+  ok   p15-trace: 1 listener, 2 accepts, both clients found on this host
+  ok   p15-trace: the listener is the server process (294835), cookie 4624
+  ok   p15-trace: each accept joined to its client process and that process's parent
+  ok   p15-trace: both clients joined exactly, by the TCP client sequence number (ADR-0022)
+  ok   p15-trace: 2 exact joins, 0 set aside, every TCP record carries its ISN
+  ok   p15-trace: the refused connect to port 18078, with its process
+case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2 [t+37s]
+  ok   the Python reader's counts equal p15w-inspect's (c6)
+  ok   exit 0, WAL valid
+  ok   the memfd program ran (exit 0, vm.memfd_noexec=0)
+  ok   exactly one EXEC of p15-it-memfd (found 1)
+  ok     ... exe_name is the memfd's name (b'memfd:p15-it')
+  ok     ... nlink 0 on tmpfs (nlink 0, magic 0x1021994)
+  ok     ... the reader classes it 'runs from memory' (['runs from memory (no file on disk)', 'executable is writable by its runner'])
+  ok   the streams program ran
+  ok   exactly one EXEC of p15-it-streams (found 1)
+  ok     ... stdin is the pipe the workload opened (record {'ino': 1125637, 'dev': 16, 'mode': 4480}, fstat {'ino': 1125637, 'dev': 16, 'mode': 4480})
+  ok     ... stdout is the file the workload opened (record {'ino': 6064, 'dev': 42, 'mode': 33188}, fstat {'ino': 6064, 'dev': 42, 'mode': 33188})
+  ok     ... stderr is the socket the workload opened (record {'ino': 1125638, 'dev': 10, 'mode': 49663}, fstat {'ino': 1125638, 'dev': 10, 'mode': 49663})
+  ok   the pipeline ran
+  ok   one EXEC each of p15-it-writer and p15-it-reader (found 1, 1)
+  ok     ... joined writer -> reader by their shared pipe inode
+  ok     ... p15-trace's provenance block shows that pipe
+  ok     ... and the process that ran from memory
+  ok   one EXEC of p15-it-live, pid 294965
+  ok   one closing snapshot (found 1)
+  ok     ... it lists p15-it-live under the same process key as its EXEC
+  ok     ... PROC v2 and EXEC v2 agree on all 17 shared facts
+case 7: no map syscall once a program is attached (ADR-0026), traced with strace [t+47s]
+  ok   exit 0 under strace
+  ok   after the first event attach: 0 map lookups, updates or deletes (got: 0)
+  ok     ... while p15d did read the kernel's skip counters by info call (3785 calls): the trace saw the run
+case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open [t+51s]
+  ok   the Python reader's counts equal p15w-inspect's (c8)
+[1] OPEN   ts=51539283051289 tgid=293838 tid=293838 start=51484358036856 flags=0x0 fid=11317 obj=11316 fflags=0x1 f_flags=0101101 f_mode=0x4118002 verdict=0 path_err=0 path="/tmp/p15d-it8-t2ZmML/f1"(23) dev=0:42 ino=6084 gen=3101239962 mode=0100644 magic=0x1021994 nlink=1 subvol=0 oflags=0
+[1] OPEN   ts=51539288696271 tgid=295535 tid=295535 start=51539283691823 flags=0x0 fid=11332 obj=11316 fflags=0x0 f_flags=0100000 f_mode=0x4008001 verdict=0 path_err=0 path="/tmp/p15d-it8-t2ZmML/f1"(23)
+[1] OPEN   ts=51539306976682 tgid=295537 tid=295537 start=51539295667295 flags=0x0 fid=11388 obj=11387 fflags=0x1 f_flags=0104001 f_mode=0x4000002 verdict=0 path_err=0 path="/tmp/p15d-it8-t2ZmML/fifo"(25) dev=0:42 ino=6085 gen=2926401238 mode=010644 magic=0x1021994 nlink=1 subvol=0 oflags=0
+  ok   exit 0, WAL valid, the FIFO open failed with ENXIO
+  ok   an OPEN with its path for the create and the read of f1
+  ok     ... the first one carries the object's facts
+  ok   a file first opened while p15d was starting has its facts in the WAL (facts epoch)
+  ok     ... and every open of it names one object
+  ok   a CLOSE for f1's first open file (fid 11317), opened
+  ok   the FIFO open ends with CLOSE NEVER_OPENED (fid 11388)
+  ok   FILE_STATS records written, no OPEN lost
+  ok   END: exit 0, RUNNING, the books close with file identity in them
+case 9: files already open at start (ADR-0015 rule 7, the snapshot's FD pass) [t+59s]
+  ok   the Python reader's counts equal p15w-inspect's (c9)
+[2] FD     ts=51547742463092 tgid=295589 tid=295589 start=51543432956146 flags=0x0 snap=0 fd=3 fid=1498 obj=1497 pos=0 fflags=0x0 path="/tmp/p15d-it9-Jou115/held"(25)
+  ok   exit 0, WAL valid
+  ok   an FD row for the holder's fd 3, with the file's path (fid 1498, obj 1497)
+  ok     ... and for its fds 0, 1 and 2 (the streams of a process older than capture)
+  ok   a later open of the same file names the FD row's object
+  ok   the holder's exit ends that open file: CLOSE fid 1498
+  ok   SNAP_DONE carries the FD pass's books, nothing lost
+  ok   every segment's opening snapshot has an FD pass (5 segments)
+  ok   a file opened in two segments carries its facts in both (the facts epoch)
+  ok   END: exit 0, RUNNING, the books close
+case 4: a bad flag [t+68s]
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)

@@ -6,6 +6,7 @@
  * No root, no BPF. Run: make test-c
  */
 #include <errno.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +62,7 @@ static int put(void *ctx, const void *rec, uint32_t len)
 }
 
 static struct p15_snap_frame f;
-static struct p15_snap_done_v1 done;
+static struct p15_snap_done_v2 done;
 
 static void start(void)
 {
@@ -166,7 +167,7 @@ static void test_cut_short(void)
 
 static void test_books(void)
 {
-	struct p15_snap_done_v1 d;
+	struct p15_snap_done_v2 d;
 	struct p15_snap_books b = { .tasks = 90, .threads = 22, .emitted = 68, .kthreads = 59, .truncated = 2 };
 	char why[200];
 
@@ -233,8 +234,137 @@ static void test_records(void)
 	EXPECT(p15_rec_check(rec, r->h.len, &why) != 0, "exe_path_len above its maximum refused even when it tiles exactly");
 }
 
+/* One FD row of snapshot 7: descriptor fd of tgid, with its facts and a path; returns its len. */
+static unsigned mk_fd(unsigned char *out, unsigned tgid, unsigned fd, const char *path)
+{
+	struct p15_fd *r = (void *)out;
+	struct p15_part_objfacts *pf = (void *)(r + 1);
+	size_t pl = strlen(path);
+	unsigned len = (unsigned)((sizeof(*r) + sizeof(*pf) + pl + 7) & ~(size_t)7);
+
+	memset(out, 0, len);
+	r->h.type = P15_T_FD;
+	r->h.version = P15_FD_VERSION;
+	r->h.len = (__u16)len;
+	r->h.ts_ns = 2000 + fd;
+	r->h.tgid = r->h.tid = tgid;
+	r->h.start_ns = 50 + tgid;
+	r->fid = 100 + fd;
+	r->obj = 200 + fd;
+	r->fd = fd;
+	r->snap_id = 7;
+	r->facts_len = r->facts_full = sizeof(*pf);
+	pf->ino = 1000 + fd;
+	pf->seen = 2;
+	r->path_len = r->path_full = (__u16)pl;
+	memcpy(out + sizeof(*r) + sizeof(*pf), path, pl);
+	return len;
+}
+
+/* The FD pass: its own counters in SNAP_DONE v2, its own type, its snapshot id. */
+static void test_fd_pass(void)
+{
+	size_t n = 0, bad;
+	struct p15_fd *r;
+
+	n += mk_fd(stream + n, 70, 0, "/dev/pts/1");
+	n += mk_fd(stream + n, 70, 1, "/var/log/x");
+	bad = n;
+	n += mk_fd(stream + n, 70, 2, "pipe:[12]");
+	n += mk_proc(stream + n, 71, "/a", "", 0);            /* a PROC inside the FD pass: not its type */
+	n += mk_fd(stream + n, 72, 3, "anon_inode:[eventpoll]");
+	r = (void *)(stream + bad);
+	r->snap_id = 6;                                        /* another snapshot */
+	for (size_t step = 1; step <= n; step = step * 5 + 3) {
+		memset(&done, 0, sizeof(done));
+		nput = 0;
+		refuse = 0;
+		p15_snap_frame_init_fd(&f, 7, &done, put, NULL);
+		feed(stream, n, step);
+		p15_snap_frame_end(&f);
+		EXPECT(done.fd_entries == 3 && done.fd_invalid == 2 && done.fd_error == 0,
+		       "FD rows framed whatever the read size; a foreign snapshot and a PROC are invalid");
+		EXPECT(done.entries == 0 && done.invalid == 0, "the PROC counters are not touched");
+		EXPECT(nput == 3 && put_tgids[2] == 72, "in order");
+	}
+	/* A PROC v1 record (version 1, as FD's) whose bytes at FD's snap_id offset read 7: only the type
+	 * check keeps it out of the FD pass. */
+	{
+		struct p15_proc_v1 *v1 = (void *)stream;
+		unsigned len = (unsigned)((sizeof(*v1) + 7) & ~(size_t)7);
+		__u32 seven = 7;
+
+		memset(stream, 0, len);
+		v1->h.type = P15_T_PROC;
+		v1->h.version = 1;
+		v1->h.len = (__u16)len;
+		v1->h.tgid = v1->h.tid = 90;
+		v1->snap_id = 7;
+		v1->kind = P15_SNAP_OPENING;
+		memcpy(stream + offsetof(struct p15_fd, snap_id), &seven, sizeof(seven));
+		memset(&done, 0, sizeof(done));
+		p15_snap_frame_init_fd(&f, 7, &done, put, NULL);
+		feed(stream, len, len);
+		p15_snap_frame_end(&f);
+		EXPECT(done.fd_entries == 0 && done.fd_invalid == 1, "a PROC v1 record is not an FD row, whatever its bytes");
+	}
+	/* an FD row's len that can't be one: framing lost, counted on the FD books */
+	n = mk_fd(stream, 80, 0, "/x");
+	((struct p15_hdr *)stream)->len = (__u16)(sizeof(struct p15_fd) - 8);
+	memset(&done, 0, sizeof(done));
+	p15_snap_frame_init_fd(&f, 7, &done, put, NULL);
+	feed(stream, n, n);
+	p15_snap_frame_end(&f);
+	EXPECT(done.fd_invalid == 1 && done.fd_error == -EPROTO && done.error == 0, "FD framing lost");
+}
+
+static void test_fd_books(void)
+{
+	struct p15_snap_done_v2 d;
+	struct p15_snap_books b = { .tasks = 10, .threads = 2, .emitted = 8 };
+	struct p15_fd_books fb = { .files = 50, .no_inode = 1, .emitted = 49, .known = 9, .registered = 39, .map_full = 1,
+				   .truncated = 2 };
+	char why[300];
+
+	memset(&d, 0, sizeof(d));
+	p15_snap_books_fill(&d, &b);
+	d.entries = 8;
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) == 0, "without the FD pass the fd books are not read");
+	d.fd_files = 3;
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) == 0, "  ... even when they hold values (fd_pass 0)");
+	p15_snap_fd_books_fill(&d, &fb);
+	d.fd_entries = 49;
+	EXPECT(d.fd_pass == 1 && d.fd_truncated == 2 && d.fd_registered == 39, "FD books copied, fd_pass set");
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) == 0, "closing FD books");
+#define FD_BREAKS(field, delta, word, msg) do { d.field += (delta); \
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) && strstr(why, word), msg); d.field -= (delta); } while (0)
+	FD_BREAKS(fd_files, 1, "fd_files", "a descriptor the books don't explain");
+	FD_BREAKS(fd_no_inode, 1, "fd_files", "the no-inode return is on the books");
+	FD_BREAKS(fd_entries, 1, "fd_emitted", "an FD row p15d didn't account for");
+	FD_BREAKS(fd_known, 1, "fd_known", "known + registered + map_full must be emitted");
+	FD_BREAKS(fd_map_full, 1, "fd_known", "  ... map_full counts");
+	FD_BREAKS(fd_error, -5, "FD iterator", "a read error of the FD pass fails the snapshot");
+	d.fd_files += 1;
+	d.fd_write_failed += 1;
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) && strstr(why, "FD rows: 1 not written"), "an FD row the program lost");
+	d.fd_files -= 1;
+	d.fd_write_failed -= 1;
+	d.fd_entries -= 1;
+	d.fd_invalid += 1;
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) && strstr(why, "1 invalid"), "an invalid FD row fails it");
+	d.fd_invalid -= 1;
+	d.fd_unwritten += 1;
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) && strstr(why, "1 refused"), "an FD row the WAL refused fails it");
+	d.fd_unwritten -= 1;
+	d.fd_entries += 1;
+	d.tasks += 1;
+	EXPECT(p15_snap_books_close(&d, why, sizeof(why)) && strstr(why, "tasks"), "the PROC books still come first");
+}
+
 int main(void)
 {
+	test_fd_pass();
+	test_fd_books();
 	test_split_reads();
 	test_invalid_and_foreign();
 	test_refused();

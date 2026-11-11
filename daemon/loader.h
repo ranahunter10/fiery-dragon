@@ -16,6 +16,7 @@
 struct spine_bpf;
 struct net_bpf;
 struct file_bpf;
+struct bpf_link;
 
 /* What to load besides the spine (config.h). */
 struct p15_loader_opts {
@@ -30,6 +31,7 @@ struct p15_loader {
 	struct spine_bpf *spine;
 	struct net_bpf *net;        /* NULL with --no-net */
 	struct file_bpf *file;      /* NULL with --no-files; owns the bulk ring when loaded (decision 19.4) */
+	struct bpf_link *fd_iter_link; /* the snapshot's FD pass (ADR-0015 rule 7); NULL with --no-files */
 	int selftest_failed;       /* failed checks, or -errno if it could not run */
 	int net_selftest_failed;
 	int file_selftest_failed;

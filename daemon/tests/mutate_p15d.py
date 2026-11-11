@@ -79,6 +79,11 @@ M = [
     ("writer.c", "\tif (w->run->files)\n\t\tfile_stats(w);", "\tif (0)\n\t\tfile_stats(w);", IT),
     ("loader.c", "\tif (o->files && (code = load_file(l, o, err, errlen)))\n\t\treturn code;",
      "\tif (0 && (code = load_file(l, o, err, errlen)))\n\t\treturn code;", IT),
+    # the snapshot's FD pass (ADR-0015 rule 7, E-0160): case 9 of it_p15d.sh
+    ("snapshot.c", "\tif (s->fd_link && !k.wal_rc)\n\t\tfd_pass(s, &k, kind);", "\tif (0 && s->fd_link && !k.wal_rc)\n\t\tfd_pass(s, &k, kind);", IT),
+    ("snapshot.c", "\tif (kind == P15_SNAP_OPENING)\n\t\t__atomic_add_fetch(&s->file->data->facts_epoch, 1, __ATOMIC_SEQ_CST);",
+     "\tif (0 && kind == P15_SNAP_OPENING)\n\t\t__atomic_add_fetch(&s->file->data->facts_epoch, 1, __ATOMIC_SEQ_CST);", IT),
+    ("p15d.c", "\tp15_snapshot_set_fd(&snap, ld.file, ld.fd_iter_link);", "\tp15_snapshot_set_fd(&snap, NULL, NULL);", IT),
 ]
 
 

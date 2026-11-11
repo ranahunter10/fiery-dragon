@@ -12,6 +12,7 @@
 #include "exitcodes.h"
 #include "snapshot.h"
 #include "snap.skel.h"
+#include "file.skel.h"   /* after snapshot.h, which brings struct p15_fd_books */
 
 #define SNAP_BATCH_CAP (256u << 10)
 
@@ -36,6 +37,12 @@ int p15_snapshot_init(struct p15_snapshot *s, struct p15_run *run, char *err, si
 	return 0;
 }
 
+void p15_snapshot_set_fd(struct p15_snapshot *s, struct file_bpf *file, struct bpf_link *fd_link)
+{
+	s->file = file;
+	s->fd_link = fd_link;
+}
+
 void p15_snapshot_free(struct p15_snapshot *s)
 {
 	bpf_link__destroy(s->link);
@@ -58,8 +65,8 @@ static int flush(struct sink *k)
 	int rc = p15w_batch_flush(k->w, &k->s->batch);
 
 	if (rc) {
-		k->s->frame.done->entries -= count;
-		k->s->frame.done->unwritten += count;
+		*k->s->frame.entries -= count;
+		*k->s->frame.unwritten += count;
 		if (!k->wal_rc)
 			k->wal_rc = rc;
 	}
@@ -96,9 +103,43 @@ static int read_all(int fd, struct p15_snap_frame *f)
 	}
 }
 
+/*
+ * The FD pass (ADR-0015 rule 7): every open descriptor of every process, after the PROC pass, into
+ * the same batch. At an opening snapshot the facts epoch moves on first, so the new segment carries
+ * every object's facts again the first time it names it, an OPEN's as much as an FD row's
+ * (ADR-0007's self-describing segments, E-0160). The globals are written through the mapped .bss
+ * and .data: stores, not system calls (ADR-0026).
+ */
+static void fd_pass(struct p15_snapshot *s, struct sink *k, unsigned kind)
+{
+	struct p15_snap_done_v2 *d = &s->last;
+	uint64_t t0;
+	int fd, rc;
+
+	memset(&s->file->bss->fd_books, 0, sizeof(s->file->bss->fd_books));
+	s->file->bss->fd_snap_id = d->snap_id;
+	if (kind == P15_SNAP_OPENING)
+		__atomic_add_fetch(&s->file->data->facts_epoch, 1, __ATOMIC_SEQ_CST);
+	p15_snap_frame_init_fd(&s->frame, d->snap_id, d, put, k);
+	t0 = p15_boot_ns();
+	fd = bpf_iter_create(bpf_link__fd(s->fd_link));
+	if (fd < 0) {
+		d->fd_error = fd;
+	} else {
+		rc = read_all(fd, &s->frame);
+		if (rc && !d->fd_error)
+			d->fd_error = rc;
+		close(fd);
+	}
+	p15_snap_frame_end(&s->frame);
+	d->fd_duration_ns = p15_boot_ns() - t0;
+	flush(k);
+	p15_snap_fd_books_fill(d, &s->file->bss->fd_books);
+}
+
 int p15_snapshot_take(struct p15_snapshot *s, unsigned kind, struct p15w *w)
 {
-	struct p15_snap_done_v1 *d = &s->last;
+	struct p15_snap_done_v2 *d = &s->last;
 	struct sink k = { .s = s, .w = w, .wal_rc = 0 };
 	uint64_t t0;
 	char why[200];
@@ -126,6 +167,8 @@ int p15_snapshot_take(struct p15_snapshot *s, unsigned kind, struct p15w *w)
 	d->duration_ns = p15_boot_ns() - t0;
 	flush(&k);
 	p15_snap_books_fill(d, &s->skel->bss->books);
+	if (s->fd_link && !k.wal_rc)
+		fd_pass(s, &k, kind);
 
 	p15_daemon_hdr(s->run, d, P15_T_SNAP_DONE, P15_SNAP_DONE_VERSION, sizeof(*d));
 	rc = p15w_append(w, P15W_RING_DAEMON, 1, d, sizeof(*d));

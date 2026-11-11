@@ -18,7 +18,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;
 	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : version == 2 ? sizeof(struct p15_end_v2) : 0;
 	case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : version == 2 ? sizeof(struct p15_proc_v2) : 0;
-	case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : 0;
+	case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_v1) : version == 2 ? sizeof(struct p15_snap_done_v2) : 0;
 	case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : version == 2 ? sizeof(struct p15_net_v2) : 0;
 	case P15_T_NET_STATS: return version == 1 ? sizeof(struct p15_net_stats_v1) : version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
 	case P15_T_OPEN:   return version == 1 ? sizeof(struct p15_open_v1) : 0;
@@ -234,9 +234,15 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 			return -EINVAL;
 		}
 	}
-	if (h->type == P15_T_SNAP_DONE && ((const struct p15_snap_done_v1 *)data)->kind != 1 &&
-	    ((const struct p15_snap_done_v1 *)data)->kind != 2) {
+	/* kind sits at a different offset in each version */
+	if (h->type == P15_T_SNAP_DONE &&
+	    (h->version == 1 ? ((const struct p15_snap_done_v1 *)data)->kind : ((const struct p15_snap_done_v2 *)data)->kind) != 1 &&
+	    (h->version == 1 ? ((const struct p15_snap_done_v1 *)data)->kind : ((const struct p15_snap_done_v2 *)data)->kind) != 2) {
 		*why = "SNAP_DONE: unknown kind";
+		return -EINVAL;
+	}
+	if (h->type == P15_T_SNAP_DONE && h->version == 2 && ((const struct p15_snap_done_v2 *)data)->fd_pass > 1) {
+		*why = "SNAP_DONE: fd_pass is neither 0 nor 1";
 		return -EINVAL;
 	}
 	if (p15_is_file_type(h->type) || h->type == P15_T_FD) {
@@ -551,11 +557,17 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 	}
 	case P15_T_SNAP_DONE: {
 		const struct p15_snap_done_v1 *r = data;
+		const struct p15_snap_done_v2 *r2 = data;
+		uint32_t sid = h->version == 2 ? r2->snap_id : r->snap_id;
+		int32_t err = h->version == 2 ? r2->error : r->error;
+		uint16_t kind = h->version == 2 ? r2->kind : r->kind;
+		int m;
 
-		return k + snprintf(buf + k, n - k, " snap=%u/%s error=%d duration=%llu tasks=%llu threads=%llu emitted=%llu "
+		/* the u64 books before snap_id are at the same offsets in v1 and v2 */
+		m = k + snprintf(buf + k, n - k, " snap=%u/%s error=%d duration=%llu tasks=%llu threads=%llu emitted=%llu "
 				    "write_failed=%llu entries=%llu invalid=%llu unwritten=%llu kthreads=%llu exiting=%llu "
 				    "argv_failed=%llu path_unlocked=%llu path_not_found=%llu path_failed=%llu truncated=%llu",
-				    r->snap_id, r->kind == 1 ? "opening" : "closing", r->error,
+				    sid, kind == 1 ? "opening" : "closing", err,
 				    (unsigned long long)r->duration_ns, (unsigned long long)r->tasks,
 				    (unsigned long long)r->threads, (unsigned long long)r->emitted,
 				    (unsigned long long)r->write_failed, (unsigned long long)r->entries,
@@ -564,6 +576,18 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)r->argv_failed, (unsigned long long)r->path_unlocked,
 				    (unsigned long long)r->path_not_found, (unsigned long long)r->path_failed,
 				    (unsigned long long)r->truncated);
+		if (h->version == 2 && r2->fd_pass && m >= 0 && (size_t)m < n)
+			m += snprintf(buf + m, n - (size_t)m, " fd: error=%d duration=%llu files=%llu no_inode=%llu emitted=%llu "
+				      "write_failed=%llu entries=%llu invalid=%llu unwritten=%llu known=%llu registered=%llu "
+				      "map_full=%llu path_error=%llu truncated=%llu", r2->fd_error,
+				      (unsigned long long)r2->fd_duration_ns, (unsigned long long)r2->fd_files,
+				      (unsigned long long)r2->fd_no_inode, (unsigned long long)r2->fd_emitted,
+				      (unsigned long long)r2->fd_write_failed, (unsigned long long)r2->fd_entries,
+				      (unsigned long long)r2->fd_invalid, (unsigned long long)r2->fd_unwritten,
+				      (unsigned long long)r2->fd_known, (unsigned long long)r2->fd_registered,
+				      (unsigned long long)r2->fd_map_full, (unsigned long long)r2->fd_path_error,
+				      (unsigned long long)r2->fd_truncated);
+		return m;
 	}
 	case P15_T_OPEN: {
 		const struct p15_open_v1 *r = data;

@@ -222,6 +222,14 @@ int main(int argc, char **argv)
 	wo.sync_ns = (uint64_t)run.cfg.sync_ms * 1000000ull;
 	wo.meta = meta;
 	wo.nmeta = nm;
+	p15_snapshot_set_fd(&snap, ld.file, ld.fd_iter_link);   /* NULL, NULL with --no-files */
+	if (run.cfg.start_pause_ms) {
+		/* TEST ONLY (config.test_start_pause_ms in the header): the window between the self-tests and
+		 * the first opening snapshot, where only the loader's facts epoch keeps an object's facts
+		 * (E-0151, E-0161) */
+		fprintf(stderr, "p15d level=info code=test_pause ms=%u\n", run.cfg.start_pause_ms);
+		usleep(run.cfg.start_pause_ms * 1000u);
+	}
 	wo.on_open = p15_snapshot_on_open;
 	wo.on_open_ctx = &snap;
 	memset(&w, 0, sizeof(w));

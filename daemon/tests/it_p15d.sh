@@ -208,13 +208,18 @@ if [ "$NET_OK" = 1 ]; then
 # epoch, E-0151).
 E8=$(mktemp /tmp/p15d-it8-early-XXXXXX); E8=$(realpath "$E8"); D8=/nonexistent
 # the loop ends when the file goes, or after 20 s on its own, whatever happens to this script
-( end=$(( $(date +%s) + 20 )); while [ -e "$E8" ] && [ "$(date +%s)" -lt "$end" ]; do cat "$E8" >/dev/null 2>&1; done ) &
+( end=$(( $(date +%s) + 20 )); while [ -e "$E8" ] && [ ! -e "$E8.stop" ] && [ "$(date +%s)" -lt "$end" ]; do cat "$E8" >/dev/null 2>&1; done ) &
 loop=$!
-trap 'rm -f "$E8"' EXIT
-"$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 2>"$T/c8.err" &
+trap 'rm -f "$E8" "$E8.stop"' EXIT
+# p15d pauses after its self-tests, before the WAL opens (a test switch): the loop stops there, and
+# one last open of the file falls in that window. With the loop's opens during the self-tests taken
+# by their reader, only the loader's facts epoch puts this file's facts in the WAL (E-0161).
+"$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 --test-start-pause-ms 1500 2>"$T/c8.err" &
 pid=$!
+for _ in $(seq 150); do grep -q code=test_pause "$T/c8.err" 2>/dev/null && break; sleep 0.1; done
+touch "$E8.stop"; wait $loop 2>/dev/null; cat "$E8" >/dev/null   # the last open of it, in the window
 if started "$T/c8.err"; then
-    sleep 0.3; rm -f "$E8"; wait $loop 2>/dev/null
+    rm -f "$E8" "$E8.stop"
     D8=$(mktemp -d /tmp/p15d-it8-XXXXXX); D8=$(realpath "$D8")
     printf 'it_p15d\n' > "$D8/f1"; cat "$D8/f1" >/dev/null; mkfifo "$D8/fifo"
     "$PY" -c "
@@ -240,6 +245,43 @@ check "grep -q 'END: exit 0, state 0, invariant 1' $T/c8.txt" "END: exit 0, RUNN
 rm -rf "$D8"; rm -f "$E8"; kill $loop 2>/dev/null
 else
 echo "case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1) [t+${SECONDS}s]"
+fi
+
+echo "case 9: files already open at start (ADR-0015 rule 7, the snapshot's FD pass) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+D9=$(mktemp -d /tmp/p15d-it9-XXXXXX); D9=$(realpath "$D9")
+printf 'held\n' > "$D9/held"; printf 'again\n' > "$D9/again"
+# opened before p15d starts, held on fd 3, stdin a pipe: only the FD pass can name them
+( exec 3<"$D9/held"; exec sleep 6 ) < <(exec sleep 6) &
+holder=$!
+sleep 0.3
+# segments of 1 s: each opening snapshot repeats the FD pass and starts a new facts epoch, so a
+# file opened in two segments has its facts in both (ADR-0007's self-describing segments, E-0160)
+"$B/p15d" --wal-dir "$T/c9" --duration 4 --stats-ms 200 --rotate-s 1 2>"$T/c9.err" &
+pid=$!
+if started "$T/c9.err"; then
+    sleep 0.3; cat "$D9/held" "$D9/again" >/dev/null; kill $holder 2>/dev/null; wait $holder 2>/dev/null
+    sleep 2.2; cat "$D9/again" >/dev/null
+fi
+wait $pid; rc=$?
+RUN=$T/c9; inspect -v >"$T/c9.txt"; irc=$?
+row=$(grep -E "FD .* tgid=$holder .* snap=0 fd=3 " "$T/c9.txt" | head -1)
+echo "$row" | sed 's/^ *//' | cut -c1-240
+hfid=$(echo "$row" | sed -n 's/.* fid=\([0-9]*\) .*/\1/p'); hobj=$(echo "$row" | sed -n 's/.* obj=\([0-9]*\) .*/\1/p')
+check "[ $rc -eq 0 ] && [ $irc -eq 0 ]" "exit 0, WAL valid"
+held_ok=0; case "$row" in *"path=\"$D9/held\""*) held_ok=1;; esac
+check "[ $held_ok = 1 ]" "an FD row for the holder's fd 3, with the file's path (fid $hfid, obj $hobj)"
+check "[ \$(grep -cE \"FD .* tgid=$holder .* snap=0 fd=[012] \" $T/c9.txt) -eq 3 ]" "  ... and for its fds 0, 1 and 2 (the streams of a process older than capture)"
+check "[ -n \"$hobj\" ] && grep -qE \"OPEN .* obj=$hobj .*path=\\\"$D9/held\\\"\" $T/c9.txt" "a later open of the same file names the FD row's object"
+check "[ -n \"$hfid\" ] && grep -qE \"CLOSE .* fid=$hfid \" $T/c9.txt" "the holder's exit ends that open file: CLOSE fid $hfid"
+check "grep -qE 'SNAP_DONE .* fd: error=0 .* write_failed=0 .* invalid=0 unwritten=0' $T/c9.txt" "SNAP_DONE carries the FD pass's books, nothing lost"
+nseg=$(ls "$T"/c9/*/seg-*.p15w 2>/dev/null | wc -l)
+check "[ $nseg -ge 2 ] && [ \$(grep -cE 'SNAP_DONE .*/opening .* fd: error=0' $T/c9.txt) -ge 2 ]" "every segment's opening snapshot has an FD pass ($nseg segments)"
+check "[ \$(grep -cE \"OPEN .*path=\\\"$D9/again\\\".* dev=[0-9]+:[0-9]+ ino=\" $T/c9.txt) -eq 2 ]" "a file opened in two segments carries its facts in both (the facts epoch)"
+check "grep -q 'END: exit 0, state 0, invariant 1' $T/c9.txt" "END: exit 0, RUNNING, the books close"
+rm -rf "$D9"
+else
+echo "case 9: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)"
 fi
 
 echo "case 4: a bad flag [t+${SECONDS}s]"
