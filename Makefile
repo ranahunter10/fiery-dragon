@@ -296,6 +296,17 @@ bench-rw-hook-cost: $(OUT)/rw_hook_cost
 		| tee $(OUT)/rw_hook_cost.txt
 	python3 bench/rw_hook_cost/summarize.py $(OUT)/rw_hook_cost.txt
 
+# Decision 22a.4: what capture adds to an open and a close, p15d on against off, paired
+# (bench/open_cost/). root. The files live under DIR (a real filesystem: /tmp is a tmpfs on the VM).
+$(OUT)/open_cost: bench/open_cost/open_cost.c | $(OUT)
+	$(CC) -O2 -g -std=gnu11 $(WARN) $< -o $@
+
+bench-open-cost: $(OUT)/open_cost $(OUT)/p15d
+	$(or $(P15_PYTHON),python3) bench/open_cost/run.py --p15d $(OUT)/p15d --workload $(OUT)/open_cost \
+		--dir $(or $(DIR),/var/tmp/p15-open-cost) --rounds $(or $(ROUNDS),20) --same $(or $(SAME),200000) \
+		--distinct $(or $(DISTINCT),20000) $(P15D_ARGS) | tee $(OUT)/open_cost.txt
+	$(or $(P15_PYTHON),python3) bench/open_cost/summarize.py $(OUT)/open_cost.txt | tee $(OUT)/open_cost.md
+
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@
 

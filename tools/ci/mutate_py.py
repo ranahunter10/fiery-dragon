@@ -33,11 +33,13 @@ GEN = "schema/gen/gen.py"
 GRAW, GBUILD, GSQL, GPM, GCLI = ("python/p15/graph/raw.py", "python/p15/graph/build.py", "python/p15/graph/graph.sql",
                                  "python/p15/graph/pidsmaker.py", "python/p15/graph/__main__.py")
 _TG = "python/tests/test_graph.py"
+OCR, OCS = "bench/open_cost/run.py", "bench/open_cost/summarize.py"
+_TO = "bench/open_cost/test_open_cost.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
-         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG}
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -326,6 +328,46 @@ M = [
  (GCLI, "    bad = [k for k in MUST_BE_ZERO if res.counts.get(k, 0)]", "    bad = []"),
  (GCLI, '        return 2\n    print(f"graph: {a.out}")', '        return 0\n    print(f"graph: {a.out}")'),
  (GCLI, "        return 1\n    return 0", "        return 0\n    return 0"),
+ # ---- the open-cost harness (decision 22a.4): the driver's books and the report ----
+ (OCR, "    k = rnd % len(ARMS)\n", "    k = 0\n"),
+ (OCR, "            total += int((t / \"schedstat\").read_text().split()[0])", "            total = int((t / \"schedstat\").read_text().split()[0])"),
+ (OCR, "    if not tasks:\n", "    if False:\n"),
+ (OCR, "    if r.returncode != 0:\n", "    if False:\n"),
+ (OCR, 'if "pid" not in head or len(rows) != 3:', 'if "pid" not in head:'),
+ (OCR, "            if r.h[\"tgid\"] != pid:\n", "            if False:\n"),
+ (OCR, '            elif r.f["fflags"] & R.gen.FF_PATH_MISSING:', "            elif False:"),
+ (OCR, '            elif r.var["path"].startswith(prefix):', "            else:"),
+ (OCR, 'prefix = str(d).encode() + b"/"', "prefix = str(d).encode()"),
+ (OCR, '                out["facts"] += r.var["facts"] is not None', '                out["facts"] += 1'),
+ (OCR, '        if r.name == "CLOSE" and r.f["fid"] in fids:', '        if r.name == "CLOSE":'),
+ (OCR, 'for k in ("open_lost", "close_lost", "missing_lost", "verdict_lost", "backing_lost"))', 'for k in ("close_lost", "missing_lost", "verdict_lost", "backing_lost"))'),
+ (OCR, 'out["ok"] = int(end is not None and out["state"] == 0 and', 'out["ok"] = int(end is not None and'),
+ (OCR, 'out["state"] == 0 and out["invariant"] == 1 and out["lost"] == 0 and', 'out["state"] == 0 and out["lost"] == 0 and'),
+ (OCR, 'out["invariant"] == 1 and out["lost"] == 0 and', 'out["invariant"] == 1 and'),
+ (OCR, 'out["stops"] == 0 and 0 <= short <= out["path_missing"] and out["closes"] == out["opens"])', 'out["stops"] == 0 and short <= out["path_missing"] and out["closes"] == out["opens"])'),
+ (OCR, 'out["stops"] == 0 and 0 <= short <= out["path_missing"] and out["closes"] == out["opens"])', 'out["stops"] == 0 and 0 <= short and out["closes"] == out["opens"])'),
+ (OCR, 'out["stops"] == 0 and 0 <= short <= out["path_missing"] and out["closes"] == out["opens"])', 'out["stops"] == 0 and 0 <= short <= out["path_missing"])'),
+ (OCR, "        if proc.poll() is not None:\n", "        if False:\n"),
+ (OCR, "    if code != 0:\n        b[\"ok\"] = 0", "    if False:\n        b[\"ok\"] = 0"),
+ (OCR, "        if b[\"ok\"]:\n            log.unlink(missing_ok=True)", "        if True:\n            log.unlink(missing_ok=True)"),
+ (OCR, "    if not a.keep:\n", "    if False:\n"),
+ (OCS, "            elif int(rnd) >= 0:\n", "            elif True:\n"),
+ (OCS, "            if (arm, event) in rows[int(rnd)]:", "            if False:"),
+ (OCS, "            if arm not in ARMS or event not in EVENTS:", "            if event not in EVENTS:"),
+ (OCS, "            if set(f) != set(CAP_KEYS):", "            if False:"),
+ (OCS, '            if m[3] != "ok":', "            if False:"),
+ (OCS, '        elif line.startswith("error "):\n            bad.append(line)', '        elif line.startswith("error "):\n            pass'),
+ (OCS, "        elif line.strip():\n            raise ParseError(f\"unknown line: {line}\")", "        elif False:\n            raise ParseError(f\"unknown line: {line}\")"),
+ (OCS, "        if missing:\n            raise ParseError(f\"round {r}: missing", "        if False:\n            raise ParseError(f\"round {r}: missing"),
+ (OCS, "        if r not in caps:\n", "        if False:\n"),
+ (OCS, "diff = P.hodges_lehmann([a - b for a, b in zip(t, u)])", "diff = P.hodges_lehmann([a - b for a, b in zip(t, aa)])"),
+ (OCS, 't, u, aa = (per_op(rows, a, event, metric) for a in ("p15d", "none", "none2"))', 't, u, aa = (per_op(rows, a, event, metric) for a in ("p15d", "none2", "none"))'),
+ (OCS, 'recs = sum(x["opens"] + x["path_missing"] + x["closes"] for x in c)', 'recs = sum(x["opens"] + x["closes"] for x in c)'),
+ (OCS, "net = [(x[\"agent_cpu_ns\"] - ir * x[\"agent_wall_ns\"] / 1e9) / x[\"expected\"] for x, ir in zip(c, idle_rate)]", "net = [x[\"agent_cpu_ns\"] / x[\"expected\"] for x, ir in zip(c, idle_rate)]"),
+ (OCS, 'open_cpu = [sum(rows[r][("none", e)]["cpu_ns"] for e in OPEN_EVENTS) for r in rounds]', 'open_cpu = [sum(rows[r][("none", e)]["cpu_ns"] for e in EVENTS) for r in rounds]'),
+ (OCS, 'all_cpu = [sum(rows[r][("none", e)]["cpu_ns"] for e in EVENTS) for r in rounds]', 'all_cpu = [sum(rows[r][("none", e)]["cpu_ns"] for e in OPEN_EVENTS) for r in rounds]'),
+ (OCS, 'null_ns = P.median(per_op(rows, "none", "nullsys", "cpu_ns"))', 'null_ns = P.median(per_op(rows, "p15d", "same", "cpu_ns"))'),
+ (OCS, '    if bad:\n        out += ["## Books that did not close: no timing is reported", ""]', '    if False:\n        out += ["## Books that did not close: no timing is reported", ""]'),
 ]
 
 
