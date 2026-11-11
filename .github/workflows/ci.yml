@@ -103,6 +103,10 @@ jobs:
         run: uname -r && sudo make smoke-net
       - name: Step 2a dry run (ADR-0015 identity mechanisms, with an overlay mount; runner kernel, not the target)
         run: sudo build/sliceb_probe --overlay
+      - name: Open-cost harness (decision 22a.4): p15d on against off, the capture books close; not a measurement (runner kernel, not the target)
+        run: |
+          sudo make bench-open-cost P15_PYTHON="$(command -v python3)" ROUNDS=2 SAME=20000 DISTINCT=2000 DIR=/var/tmp/p15-open-cost > build/open_cost.log 2>&1 || { tail -40 build/open_cost.log; exit 1; }
+          grep '^capture' build/open_cost.txt && tail -12 build/open_cost.md
       - name: Hook-cost harness (ADR-0020 confirmation 5) loads every arm and its books close; not a measurement (runner kernel, not the target)
         run: sudo build/hook_cost build/spine.bpf.o 2 2000 20 > build/hook_cost.txt && tail -1 build/hook_cost.txt && python3 bench/hook_cost/summarize.py build/hook_cost.txt > /dev/null
       - name: Read-path hook-cost harness (decision 1a, N5) loads every arm, kprobe.session beside fentry, books close; not a measurement (runner kernel, not the target)

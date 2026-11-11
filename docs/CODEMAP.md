@@ -38,6 +38,15 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/hook_cost/summarize.py) | Summarize hook_cost output (bench/hook_cost/hook_cost.c) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `series`, `comparison`, `report` |
 | [`test_summarize.py`](../bench/hook_cost/test_summarize.py) | Tests for summarize.py on synthetic hook_cost output with a known answer. | `synth`, `overhead`, `SummarizeTest` |
 
+## bench/open_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`open_cost.c`](../bench/open_cost/open_cost.c) | the workload of the open-cost measurement (STATE decision 22a.4; ADR-0018 rule 2). |  |
+| [`run.py`](../bench/open_cost/run.py) | Drive the open-cost measurement (STATE decision 22a.4; ADR-0018 rule 2): the same workload (open_cost.c) with p15d capturing and without it, paired by round. | `RunError`, `rotation`, `agent_cpu_ns`, `make_files`, `workload`, `capture_books`, `wait_started`, `traced_arm` |
+| [`summarize.py`](../bench/open_cost/summarize.py) | Summarize an open-cost run (bench/open_cost/run.py) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `per_op`, `timing`, `capture_section`, `report` |
+| [`test_open_cost.py`](../bench/open_cost/test_open_cost.py) | Tests for the open-cost driver and its report (bench/open_cost/run.py, summarize.py). | `facts`, `opn`, `cls`, `wal`, `Books`, `Driver`, `run_text`, `Report` |
+
 ## bench/probes
 
 | File | Job | Public names |
