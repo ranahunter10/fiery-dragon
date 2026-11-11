@@ -58,8 +58,14 @@ jobs:
         run: python -m pip install --require-hashes "--only-binary=:all:" -r python/requirements.txt
       - name: Toolchain
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q clang llvm gcc make pkg-config libelf-dev zlib1g-dev libssl-dev python3-numpy strace
+          PKGS="clang llvm gcc make pkg-config libelf-dev zlib1g-dev libssl-dev python3-numpy strace"
+          # the runner's Azure mirror failed to resolve for hours on 2026-11-11 (E-0178): if the install fails,
+          # say so and try once more from archive.ubuntu.com
+          if ! { sudo apt-get update -q && sudo apt-get install -y -q $PKGS; }; then
+            echo "::warning::apt failed on the runner's mirror; retrying from archive.ubuntu.com"
+            sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            sudo apt-get update -q && sudo apt-get install -y -q $PKGS
+          fi
           uname -r; clang --version | head -1
       - name: vmlinux.h checksum
         run: cd bpf/vmlinux && sha256sum -c SHA256SUMS
