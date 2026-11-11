@@ -243,7 +243,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **The VM's rerun of the cost breakdown** (PR #69's commands, host on its charger in Best performance mode). Only a run the report does not mark UNSTEADY or SLOW is read for design. Recommendation: no change to ADR-0006 (transport) or ADR-0015 (the three programs per open) before it.
+1. **The VM's rerun of the cost breakdown** (PR #69's commands, host on its charger in Best performance mode). The rerun of E-0183 was SLOW again (365-381 ns per null syscall, the battery figure of E-0104); a host check comes first now (`open_cost` alone: its null syscall must be under 1.5 times 87.5 ns). Only a run the report does not mark UNSTEADY or SLOW is read for design. Recommendation: no change to ADR-0006 (transport) or ADR-0015 (the three programs per open) before it.
 2. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
 3. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
 4. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
