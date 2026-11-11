@@ -1,6 +1,7 @@
-case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes [t+44s]
-  queue_full and spine reserve failures: 576 0; EXEC of /bin/true: 2000; END: exit 0, state 0, invariant 1, signal 15, reason 
-  ok   the queue was full during the run (the path under test ran: queue_full 576)
+case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes, spine only [t+44s]
+  queue_full 584, spine reserve failures 0; EXEC of /bin/true: 2000; END: exit 0, state 0, invariant 1, signal 15, reason 
+  ok   the queue was full during the run (the path under test ran: queue_full 584)
   ok   the spine ring absorbed the backlog: no reserve failed
   ok   exit 0, RUNNING, the invariant closed: no record was taken and dropped (rc 0)
   ok   every one of the 2000 children's EXEC is in the WAL (got 2000)
+  SKIP the bulk ring's flood (file identity not loadable here; CI and the VM run it)
