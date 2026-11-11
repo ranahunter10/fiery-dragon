@@ -103,6 +103,8 @@ jobs:
         run: uname -r && sudo make smoke-net
       - name: Step 2a dry run (ADR-0015 identity mechanisms, with an overlay mount; runner kernel, not the target)
         run: sudo build/sliceb_probe --overlay
+      - name: Building-block cost harness loads and every iteration does its work; not a measurement (runner kernel, not the target)
+        run: sudo build/prim_cost 2 5000 > build/prim_cost.txt && python3 bench/prim_cost/summarize.py build/prim_cost.txt
       - name: Hook-cost harness (ADR-0020 confirmation 5) loads every arm and its books close; not a measurement (runner kernel, not the target)
         run: sudo build/hook_cost build/spine.bpf.o 2 2000 20 > build/hook_cost.txt && tail -1 build/hook_cost.txt && python3 bench/hook_cost/summarize.py build/hook_cost.txt > /dev/null
       - name: Read-path hook-cost harness (decision 1a, N5) loads every arm, kprobe.session beside fentry, books close; not a measurement (runner kernel, not the target)
