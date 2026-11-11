@@ -1,0 +1,22 @@
+# Pasted from the VM (p15-dev-2604, 7.0.0-38-generic), branch daemon/drain-room-first, 2026-11-11.
+# The full files stayed on the VM; it printed their sha256:
+#   183c2d4d900faced324f4b62569728711d35dc4b4a40c478bf9bfc69db2e3538  it-drain.txt
+#   1d0cfd5a4ce4e911e06350146ac9ebfcbcf2245589b15f720447416469a9d8cf  mutate-drain.txt
+
+$ sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 daemon/tests/it_p15d.sh build 2>&1 | tee ~/it-drain.txt | grep -E "case 11|queue_full|FAIL|it_p15d:"
+case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes, spine only [t+75s]
+  queue_full 523, spine reserve failures 0; EXEC of /bin/true: 2000; END: exit 0, state 0, invariant 1, signal 15, reason
+  ok   the queue was full during the run (the path under test ran: queue_full 523)
+  with file identity and NET: queue_full 172, spine reserve failures 0, bulk records lost to the ring 0; END: exit 0, state 0, invariant 1, signal 15, reason
+  ok     ... the queue was full during the run (queue_full 172)
+it_p15d: PASS (0 failed checks)
+
+$ sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 python3 daemon/tests/mutate_p15d.py 52 53 54 2>&1 | tee ~/mutate-drain.txt | tail -5
+baseline: the end-to-end test pass in 92 s; a mutant gets 367 s
+killed   52 drain.c got = ring__consume_n(r, room); (91 s)
+killed   53 drain.c n = take_all(d); (89 s)
+killed   54 drain.c int n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m; (122 s)
+mutation sweep: 3/3 killed (mutants [52, 53, 54] only)
+
+# The open-cost run repeated on this daemon (PR #67's harness; its files are recorded with #67):
+#   20 rounds, rc=0: opens expected 4,400,000; OPEN records with their path 4,400,000; CLOSE records 4,400,000; lost to the ring 0

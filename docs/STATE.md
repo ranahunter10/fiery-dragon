@@ -235,7 +235,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **The VM's runs for #68 and #67**: `it_p15d.sh` and mutants 52-54 for the drain fix, then the open-cost run again.
+1. **The open-cost numbers** (PR #67): the VM run on the fixed daemon closed its books; its files and report go into #67.
 2. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
 3. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
 4. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.

@@ -27,8 +27,13 @@ The fix: the drain asks how many records are certain to fit in its batch (`p15_d
 
 `container-mutants-49-54.txt`: the six new mutants of `mutate_p15d.py`, all killed.
 
+## The fix on the VM (MEAS, `vm-fix-pasted.txt`: the lines pasted in chat, with the sha256 of the full files)
+
+- `it_p15d.sh` passes every check with file identity and NET. Case 11, spine only: the queue was full 523 times, 2,000 of 2,000 EXEC records, exit 0, invariant closed. Case 11 with file identity: full 172 times, nothing lost to either ring, exit 0, invariant closed.
+- Mutants 52, 53 and 54 (the three that undo the fix and need the real kernel) are killed.
+- The open-cost run repeated: all 20 rounds valid, 4,400,000 of 4,400,000 opens in the WAL with their CLOSE records, none lost. At about 400,000 opens a second the default 4 MiB ring was enough.
+
 ## What is not shown
 
-- **The fix on the VM**, and with file identity (the dev container loads only the spine). The open-cost run must be repeated there.
-- Whether the VM can hold 400,000 opens a second without counted loss once nothing is dropped silently: the backlog now waits in a 4 MiB ring. If the ring fills, the loss is counted (OPEN_LOST, DEGRADED) and the harness will say so.
+- Hosted CI's BPF job for this PR: the runner could not install its Ubuntu packages (a DNS failure on its mirror, three times on 2026-11-11), so it never reached our code. It is re-run before the merge.
 - One unexplained failed check: of 14 runs of `it_p15d.sh` in the container during this work, one had a single failed check whose line was not captured (the mutation sweep printed only the end of the output; it now prints every FAIL line). The 13 others, and every run since, passed.
