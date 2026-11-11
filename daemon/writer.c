@@ -421,6 +421,8 @@ static void drain_queue(struct p15_writer *w)
  * drain published before the request go first, so the snapshot follows them in the WAL. */
 static void closing_snapshot(struct p15_writer *w)
 {
+	if (w->run->cfg.writer_stall_ms)
+		usleep(w->run->cfg.writer_stall_ms * 1000u);   /* TEST ONLY: config.test_writer_stall_ms in the header */
 	int rc;
 
 	drain_queue(w);
@@ -442,6 +444,7 @@ void *p15_writer_main(void *arg)
 	for (;;) {
 		uint64_t now;
 
+		atomic_fetch_add(&r->writer_beats, 1);   /* the stop's watchdog (E-0162) */
 		if (p15q_wait(&r->q, 100))
 			p15_fail(r, P15_EXIT_OSERR, "writer: wait on the queue failed");
 		drain_queue(w);
@@ -462,5 +465,6 @@ void *p15_writer_main(void *arg)
 	end_record(w);
 	w->close_rc = p15w_close(w->wal);
 	w->wal = NULL;
+	atomic_store(&r->writer_exited, 1);
 	return NULL;
 }

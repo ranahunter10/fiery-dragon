@@ -62,6 +62,8 @@ struct sink {
 static int flush(struct sink *k)
 {
 	uint32_t count = k->s->batch.count;
+
+	atomic_fetch_add(&k->s->run->writer_beats, 1);   /* a long snapshot is progress (E-0162) */
 	int rc = p15w_batch_flush(k->w, &k->s->batch);
 
 	if (rc) {

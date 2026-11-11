@@ -284,6 +284,19 @@ else
 echo "case 9: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)"
 fi
 
+echo "case 10: the stop's watchdog (E-0162): a writer that stands still, and one that is only slow [t+${SECONDS}s]"
+t0=$(date +%s)
+"$B/p15d" --wal-dir "$T/c10" $NET --duration 1 --stop-stall-s 2 --test-writer-stall-ms 30000 2>"$T/c10.err"; rc=$?
+dt=$(( $(date +%s) - t0 ))
+RUN=$T/c10; inspect >"$T/c10.txt" 2>&1
+check "[ $rc -eq 75 ]" "a writer stuck in the closing snapshot: exit 75 (STUCK), got $rc"
+check "[ $dt -lt 20 ]" "  ... within the watchdog's bound, not the writer's 30 s ($dt s)"
+check "grep -q 'code=stuck .*the closing snapshot' $T/c10.err" "  ... the log names the phase"
+check "grep -q 'valid to the end' $T/c10.txt && grep -q 'END: none' $T/c10.txt" "  ... the WAL is valid and has no END"
+"$B/p15d" --wal-dir "$T/c10b" $NET --duration 1 --stop-stall-s 2 --test-writer-stall-ms 800 2>"$T/c10b.err"; rc=$?
+RUN=$T/c10b; inspect >"$T/c10b.txt" 2>&1
+check "[ $rc -eq 0 ] && grep -q 'END: exit 0' $T/c10b.txt" "a writer slow for 0.8 s, under the 2 s bound: an orderly stop, END written"
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

@@ -44,6 +44,7 @@ void p15_drain_free(struct p15_drain *d);
 /* One poll of up to timeout_ms, then publish, then the counter read and GAP check. 0 or -errno. */
 P15_MUST_CHECK int p15_drain_poll(struct p15_drain *d, int timeout_ms);
 /* After the programs are detached: empty the rings, publish, final counter read. 0 or -errno. */
+/* -ETIMEDOUT: the writer stood still while the queue was full (the stop's watchdog, E-0162). */
 P15_MUST_CHECK int p15_drain_finish(struct p15_drain *d);
 /* Did spine records get lost since the previous read: a ring or build failure, or an event the
  * kernel skipped (recursion_misses, ADR-0020 rule 3)? Then the drain emits a GAP. */

@@ -96,6 +96,23 @@ static const char *raise_priority(int want_rt)
 	return "normal (SCHED_FIFO and nice refused)";
 }
 
+/*
+ * The stop's watchdog fired (E-0162): the writer made no progress for --stop-stall-s while p15d
+ * waited for it. The BPF programs are detached, the error is logged, and p15d exits without
+ * waiting: the writer still holds the WAL, so nothing it uses is freed, and END is not written
+ * (a reader says the run did not stop in order). A stop that cannot finish is never a silent wait.
+ */
+static int stuck(struct p15_run *r, struct p15_loader *l, const char *phase)
+{
+	char msg[256];
+
+	p15_loader_detach(l);
+	snprintf(msg, sizeof(msg), "the writer made no progress for %u s during %s; exiting without END "
+		 "(the WAL is valid up to its last synced batch)", r->cfg.stop_stall_s, phase);
+	logline("error", "stuck", msg);
+	return P15_EXIT_STUCK;
+}
+
 int main(int argc, char **argv)
 {
 	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
@@ -275,15 +292,33 @@ int main(int argc, char **argv)
 	 * or ends during it is in the snapshot, in an event, or both. The writer takes it (it owns the
 	 * WAL); this thread keeps draining meanwhile. Not on the fatal path: END then says 0. */
 	if (!atomic_load(&run.fatal_code)) {
+		struct p15_watch wd = { 0 };
+
 		atomic_store(&run.closing_req, P15_CLOSING_ASKED);
 		p15q_kick(&run.q);
-		while (atomic_load(&run.closing_req) != P15_CLOSING_DONE && !atomic_load(&run.fatal_code))
+		while (atomic_load(&run.closing_req) != P15_CLOSING_DONE && !atomic_load(&run.fatal_code)) {
 			if (p15_drain_poll(&d, 10))
 				p15_fail(&run, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
+			if (p15_writer_stalled(&run, &wd, p15_mono_ns()))
+				return stuck(&run, &ld, "the closing snapshot");
+		}
 	}
 	p15_loader_detach(&ld);
-	if (p15_drain_finish(&d))
+	rc = p15_drain_finish(&d);
+	if (rc == -ETIMEDOUT)
+		return stuck(&run, &ld, "the final drain");
+	if (rc)
 		p15_fail(&run, P15_EXIT_INTERNAL, "drain: final emptying failed");
+	{
+		struct p15_watch wd = { 0 };
+
+		/* the writer writes END and closes the WAL; wait for it as long as it moves (E-0162) */
+		while (!atomic_load(&run.writer_exited)) {
+			if (p15_writer_stalled(&run, &wd, p15_mono_ns()))
+				return stuck(&run, &ld, "END and the WAL's close");
+			usleep(10000);
+		}
+	}
 	pthread_join(wt, NULL);
 	if (w.close_rc)
 		p15_fail(&run, P15_EXIT_IO, "WAL close failed");

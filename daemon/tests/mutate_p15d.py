@@ -84,6 +84,11 @@ M = [
     ("snapshot.c", "\tif (kind == P15_SNAP_OPENING)\n\t\t__atomic_add_fetch(&s->file->data->facts_epoch, 1, __ATOMIC_SEQ_CST);",
      "\tif (0 && kind == P15_SNAP_OPENING)\n\t\t__atomic_add_fetch(&s->file->data->facts_epoch, 1, __ATOMIC_SEQ_CST);", IT),
     ("p15d.c", "\tp15_snapshot_set_fd(&snap, ld.file, ld.fd_iter_link);", "\tp15_snapshot_set_fd(&snap, NULL, NULL);", IT),
+    # the stop's watchdog (E-0162)
+    ("run.c", "\treturn ++w->still >= r->cfg.stop_stall_s * 10u;", "\treturn 0;", UNIT),
+    ("run.c", "\tif (now_ns - w->at_ns < 100000000ull)\n\t\treturn 0;                    /* not yet an observation */", "", UNIT),
+    ("run.c", "\tif (b != w->beats || !w->at_ns) {", "\tif (!w->at_ns) {", UNIT),
+    ("p15d.c", "\t\t\tif (p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");", "", IT),
 ]
 
 

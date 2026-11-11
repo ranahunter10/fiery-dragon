@@ -23,7 +23,8 @@
 	X(SELFTEST,  65, "the load-time self-test failed (ADR-0003); the run did not start")          \
 	X(IO,        74, "a WAL or output file could not be created, written or synced (EX_IOERR)")   \
 	X(OSERR,     71, "a system resource failed: memory, threads, signals, timers (EX_OSERR)")     \
-	X(INTERNAL,  70, "an internal consistency check failed; a bug (EX_SOFTWARE)")
+	X(INTERNAL,  70, "an internal consistency check failed; a bug (EX_SOFTWARE)")             \
+	X(STUCK,     75, "the stop's watchdog fired: the writer made no progress, the WAL has no END (EX_TEMPFAIL)")
 
 enum p15_exit {
 #define P15_X_ENUM(name, value, doc) P15_EXIT_##name = value,
