@@ -12,8 +12,9 @@ The walk passes when it never gives a wrong path without saying so:
     must be compared.
 Cases expected to be flagged (EXPECT) are listed as such; a case flagged that was expected equal is
 reported (a coverage gap, not a wrong path). Timing: per path, the median over rounds of ns per call
-for bpf_d_path and the walk in the fentry, and the walk in the kprobe.session. Exit 1 if the walk
-failed, a line does not parse, or a case is missing.
+for bpf_d_path and the walk in the fentry, and the walk in the kprobe.session. Every timed round must
+have exactly N runs of each program (the config line's n): fewer means samples were lost (E-0195).
+Exit 1 if the walk failed, a line does not parse, a case is missing, or a round is short.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ CASES = ("plain", "root", "dir", "proc", "sysfs", "devtmpfs", "deep40", "deep70"
          "overlay", "deleted", "memfd", "pipe", "chroot")
 EXPECT = {"deep70": "flagged", "pipe": "flagged"}
 WHY = {"deep70": "70 components: beyond the walk's 64, so TRUNCATED", "pipe": "pipefs names it (d_dname): DNAME"}
+CONFIG = re.compile(r"^config dir=\S+ rounds=(\d+) n=(\d+) ")
 CASE = re.compile(r"^case (\w+) (verdict=(\w+) flags=0x([0-9a-f]+) dpath_rc=(-?\d+) dpath_len=(\d+) walk_len=(\d+) "
                   r"dpath=(\S*) walk=(\S*)|open_failed errno=\d+|no_sample|mount_failed( errno=\d+)?|chroot_failed errno=\d+)$")
 RACE = re.compile(r"^race opens=(\d+) renames=(\d+) samples=(\d+) equal=(\d+) flagged=(\d+) moved=(\d+) raced=(\d+) "
@@ -48,6 +50,7 @@ def flag_names(v: int) -> str:
 
 def parse(text: str):
     cases, races, times, other, ends = {}, [], {}, [], []
+    n = None
     for line in text.splitlines():
         if line.startswith("case "):
             m = CASE.match(line)
@@ -77,15 +80,23 @@ def parse(text: str):
             if rnd < 0:
                 continue
             fr, dn, wf, kr, wk = map(int, m.groups()[2:])
-            if fr <= 0 or kr <= 0:
-                raise ParseError(f"time round {rnd} {path}: a program did not run ({line})")
-            times.setdefault(path, []).append((dn / fr, wf / fr, wk / kr))
+            if n is None:
+                raise ParseError("a time line before the config line")
+            if fr != n or kr != n:
+                raise ParseError(f"time round {rnd} {path}: {fr} fentry and {kr} kprobe runs, not {n} each ({line})")
+            times.setdefault(path, []).append((dn / n, wf / n, wk / n))
         elif line.startswith("end "):
             m = END.match(line)
             if not m:
                 raise ParseError(f"unparsed end: {line}")
             ends.append((int(m[1]), int(m[2], 16)))
-        elif line.startswith("config ") or not line.strip():
+        elif line.startswith("config "):
+            m = CONFIG.match(line)
+            if not m or n is not None:
+                raise ParseError(f"config line: {line}")
+            n = int(m[2])
+            other.append(line)
+        elif not line.strip():
             other.append(line)
         else:
             raise ParseError(f"unknown line: {line}")

@@ -35,7 +35,7 @@ def run(over=None, race="race opens=100 renames=900 samples=100 equal=90 flagged
     if times:
         for r in range(-1, 3):
             L.append(f"time round={r} path=short fentry_runs=100 dpath_ns={9000 + r} walk_fentry_ns={12000 + 100 * r * r} "
-                     f"kprobe_runs=50 walk_kprobe_ns={5500 + r}")
+                     f"kprobe_runs=100 walk_kprobe_ns={11000 + r}")
     if end:
         L.append(end)
     return "\n".join(L) + "\n" + extra
@@ -90,10 +90,13 @@ class Report(unittest.TestCase):
                                   "dpath_failed=0 open_failed=0\n"), "one race line"),
                        (run(extra="case plain verdict=equal\n"), "unparsed case"),
                        (run(extra=case("plain") + "\n"), "case plain twice"),
-                       (run(extra="time round=1 path=x fentry_runs=0 dpath_ns=1 walk_fentry_ns=1 kprobe_runs=1 walk_kprobe_ns=1\n"),
-                        "did not run"),
-                       (run(extra="time round=1 path=x fentry_runs=1 dpath_ns=1 walk_fentry_ns=1 kprobe_runs=0 walk_kprobe_ns=1\n"),
-                        "did not run"),
+                       (run(extra="time round=1 path=x fentry_runs=99 dpath_ns=1 walk_fentry_ns=1 kprobe_runs=100 walk_kprobe_ns=1\n"),
+                        "not 100 each"),
+                       (run(extra="time round=1 path=x fentry_runs=100 dpath_ns=1 walk_fentry_ns=1 kprobe_runs=99 walk_kprobe_ns=1\n"),
+                        "not 100 each"),
+                       (run(extra="config dir=/x rounds=3 n=100 kallsyms_rename_lock=1 kallsyms_mount_lock=1\n"), "config line"),
+                       ("time round=1 path=x fentry_runs=1 dpath_ns=1 walk_fentry_ns=1 kprobe_runs=1 walk_kprobe_ns=1\n" + run(),
+                        "before the config"),
                        (run(extra="hello\n"), "unknown line"), (run(end=None), "one end line"),
                        (run(extra="end lost=1 kprobe_flags=0x0\n"), "one end line"),
                        (run(end="end lost=x"), "unparsed end")):

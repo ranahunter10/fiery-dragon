@@ -260,7 +260,12 @@ static void timing(const char *label, const char *path, long rounds, long n)
 
 			if (fd >= 0)
 				close(fd);
+			/* A discarded ring record keeps its space until a reader passes it (E-0195): read the
+			 * ring as the opens go, or the fentry finds it full and stops (f_lost). */
+			if ((i & 127) == 127)
+				ring_buffer__consume(RB);
 		}
+		ring_buffer__consume(RB);
 		printf("time round=%ld path=%s fentry_runs=%llu dpath_ns=%llu walk_fentry_ns=%llu kprobe_runs=%llu "
 		       "walk_kprobe_ns=%llu\n",
 		       r, label, (unsigned long long)(S->bss->f_runs - fr0), (unsigned long long)(S->bss->f_dpath_ns - fd0),

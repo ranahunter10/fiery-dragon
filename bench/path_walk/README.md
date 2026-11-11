@@ -13,7 +13,7 @@
 2. **Rename race**: a thread on CPU 0 renames `race/a` to `race/b` and back while this thread opens `race/a/x/y/f` (or `b`) N times. A sample whose counters moved between `bpf_d_path` and the end of the walk is not compared, because each string may be right for its own instant; it is counted as `moved`.
 3. **Timing**: ROUNDS rounds of N opens of a 7-component path (`plain/a/b/c/file` under DIR) and a 25-component one (`deep/d00/.../d19/f20`), a warm-up round first, reporting ns per call of `bpf_d_path`, the walk in the fentry and the walk in the kprobe.
 
-`summarize.py` fails the run on any MISMATCH in a case or in the race, on a case that could not run, on a race that compared no sample, and on a line it cannot parse. An unexpected flag on a case expected equal is a note (a gap in coverage, not a wrong path).
+Every timed round must have exactly N runs of each program; fewer means the fentry found the ring full (a discarded record keeps its space until the reader passes it, E-0195), and the round fails. `summarize.py` also fails the run on any MISMATCH in a case or in the race, on a case that could not run, on a race that compared no sample, and on a line it cannot parse. An unexpected flag on a case expected equal is a note (a gap in coverage, not a wrong path).
 
 ```
 make build/path_walk                                       # as the user
