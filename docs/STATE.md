@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-11 (UTC), PR "graph: v0: generated raw tables in DuckDB, the graph in SQL, a PIDSMaker export"
+**Last updated:** 2026-11-11 (UTC), PR "bench: what a ring record, a map operation and each of our programs cost"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -229,10 +229,18 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 25. **Graph v0, taken under 22a** (E-0165, ADR-0028): raw tables generated from `schema/records.toml` into DuckDB 2.0.0 (pinned); the graph built in SQL over them (`python/p15/graph/graph.sql`) with processes from `p15/proctree.py`; file nodes by ADR-0015's trust table and ADR-0027; sockets paired only by the exact ISN rule; an open is one OPEN edge with its access mode, never a READ or WRITE; the PIDSMaker export writes its four tables as CSV plus a manifest of everything not exported. State: 29 tests, 98 mutants killed in the dev container; the first real run graphed on the VM (E-0168): 136 process, 652 file and 7 socket nodes from a 60 s capture, the three must-be-zero counts at zero. PIDSMaker has not read the export yet.
 
+26. **The maintainer, 2026-11-11** (E-0171): #66 merged; the PIDS evaluation harness (where PIDSMaker runs, what the first detection number is measured on) is decided once capture is strong; until then the order of decision 22 holds, with every number of the system measured as it is built.
+
+27. **A full queue loses nothing, taken under 22a** (E-0173, E-0174): the VM's first open-cost run showed the drain dropping one record at every queue-full moment (libbpf consumes a record its callback refuses). The drain now asks for room before it reads a ring. No ADR: ADR-0017 layer 2 already says the ring absorbs the backlog; the code did not do it.
+
+28. **The open-cost harness, taken under 22a** (E-0172): `bench/open_cost`, p15d on against off, paired; the primary metric is the workload thread's CPU time per open+close, declared in its README before any run. The VM run on the fixed daemon (E-0176): 1,396.3 ns of thread CPU added per open+close of a known file (95 % interval 1,367.6 to 1,440.6), 2 records and 171.6 bytes in the WAL, p15d 552.1 ns per open+close above 14.65 ms/s idle; [evidence](evidence/vm/2026-11-11-open-cost/README.md).
+
+29. **The cost split is measured before any redesign, taken under 22a** (E-0177): `bench/prim_cost` times each kernel-side building block alone (a ring record three ways, a hash lookup, an insert and delete, an atomic counter, a per-CPU copy, a clock read) and `prog_stats.py` reads each of p15d's programs' `run_cnt` and `run_time_ns` around a command. No VM number yet; no change to ADR-0006 or ADR-0015 is proposed before the VM's output is read.
+
 ## Decisions waiting
 
-1. **Where PIDSMaker runs** (the maintainer's decision, the brief). Its Docker image is Ubuntu 22.04 with CUDA 12.1 torch and its compose file reserves NVIDIA GPUs (R-041). Recommendation: not on `p15-dev-2604` (the measurement target: 8 GB, no GPU, kernel held, kept free of third-party code); a machine with Docker and an NVIDIA GPU (the Windows host through WSL2, or a lab server). The export is plain CSV plus `load.sql`, so it does not depend on the answer.
-2. **What the first detection number is measured on.** PIDSMaker needs benign training windows and an attack window with labelled malicious nodes; no such run of ours exists. Recommendation: first reproduce one of its own small baselines (CLEARSCOPE_E3, 0.6 GB compressed) to prove the harness, and record our own labelled run only after step 2b, when reads and writes exist: a number on open-level edges measures the pipeline, not detection (ADR-0028 consequences).
-3. **Next in code:** the open-cost microbenchmark (22a.4), then step 2b.
-4. **A tamper-window metric for step 6** (from eAudit §2.3 and §4.5, R-042; E-0170): how many records are still only in memory at a chosen instant. ADR-0018 does not have it, and our 1 s `fdatasync` (ADR-0007) is the weak side against eAudit's few hundred records. Recommendation: add the metric to step 6's protocol by a new ADR and measure before changing any design; a spine record's time to disk is the number to report.
-5. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170): eAudit lost up to 60 % with one ring-buffer record per event on 12 cores and none once records were batched per CPU. Recommendation: keep ADR-0005's plan (fold in the kernel, one record per fold) and let 2b's ceiling gate decide; batching is the named fallback if the gate fails, not something to build first.
+1. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
+2. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
+3. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
+4. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
+5. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.

@@ -10,7 +10,7 @@
  *   either thread:          p15q_depth, p15q_kick
  * The producer fills the slot p15q_acquire returned and publishes it; until then the
  * consumer can't see it. If every slot is full, p15q_acquire returns NULL and counts it
- * (q->full): the drain then leaves records in the BPF ring, which absorbs the backlog.
+ * (q->full): the drain then reads nothing more from that BPF ring, which absorbs the backlog.
  */
 #ifndef P15_QUEUE_H
 #define P15_QUEUE_H

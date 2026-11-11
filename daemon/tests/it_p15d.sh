@@ -297,6 +297,42 @@ check "grep -q 'valid to the end' $T/c10.txt && grep -q 'END: none' $T/c10.txt" 
 RUN=$T/c10b; inspect >"$T/c10b.txt" 2>&1
 check "[ $rc -eq 0 ] && grep -q 'END: exit 0' $T/c10b.txt" "a writer slow for 0.8 s, under the 2 s bound: an orderly stop, END written"
 
+echo "case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes, spine only [t+${SECONDS}s]"
+# from the last STATS and FILE_STATS: queue_full, the spine's reserve failures, file records lost to the bulk ring
+qstat() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+last = {r.name: r for r in wal.read_run(Path(sys.argv[1])).ring_records(2)}
+st, fs = last['STATS'], last.get('FILE_STATS')
+bulk = sum(v for k, v in fs.f.items() if k.endswith('_lost')) if fs else 0
+print(st.f['queue_full'], sum(st.f[t + '_reserve_failed'] for t in ('fork', 'exec', 'exit', 'rename')), bulk)" "$1"; }
+"$B/p15d" --wal-dir "$T/c11" --no-net --no-files --queue-batches 4 --batch-kb 16 --test-writer-batch-ms 100 --stop-stall-s 60 2>"$T/c11.err" &
+pid=$!
+started "$T/c11.err" && storm 2000
+sleep 1; kill -TERM $pid; wait $pid; rc=$?
+RUN=$T/c11; inspect >"$T/c11.txt" 2>&1
+d11=$(ls -d "$T"/c11/*/ | head -1); n_exec=$(true_execs "$d11"); read -r qf rf _ <<<"$(qstat "$d11")"
+echo "  queue_full $qf, spine reserve failures $rf; EXEC of /bin/true: ${n_exec:-0}; $(grep -o 'END: [^\"]*' "$T/c11.txt")"
+check "[ \"\${qf:-0}\" -gt 0 ]" "the queue was full during the run (the path under test ran: queue_full ${qf:-none})"
+check "[ \"\${rf:-1}\" = 0 ]" "the spine ring absorbed the backlog: no reserve failed"
+check "[ $rc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c11.txt" "exit 0, RUNNING, the invariant closed: no record was taken and dropped (rc $rc)"
+check "[ \"\${n_exec:-0}\" -ge 2000 ]" "every one of the 2000 children's EXEC is in the WAL (got ${n_exec:-0})"
+if [ "$NET_OK" = 1 ]; then
+    # the bulk ring's turn: every exec opens a few files, so 600 processes flood it with OPEN and CLOSE.
+    # A bulk ring that fills is a counted loss (DEGRADED, exit 3) and allowed; a broken invariant is not.
+    "$B/p15d" --wal-dir "$T/c11b" --queue-batches 4 --batch-kb 16 --test-writer-batch-ms 20 --stop-stall-s 60 2>"$T/c11b.err" &
+    pid=$!
+    started "$T/c11b.err" && storm 600
+    sleep 1; kill -TERM $pid; wait $pid; rc=$?
+    RUN=$T/c11b; inspect >"$T/c11b.txt" 2>&1
+    d11=$(ls -d "$T"/c11b/*/ | head -1); read -r qf rf bl <<<"$(qstat "$d11")"
+    echo "  with file identity and NET: queue_full $qf, spine reserve failures $rf, bulk records lost to the ring $bl; $(grep -o 'END: [^\"]*' "$T/c11b.txt")"
+    check "[ \"\${qf:-0}\" -gt 0 ]" "  ... the queue was full during the run (queue_full ${qf:-none})"
+    check "{ [ $rc -eq 0 ] || [ $rc -eq 3 ]; } && grep -qE 'END: exit [03], state [01], invariant 1' $T/c11b.txt" "  ... the invariant closed with the bulk ring flooded: every record written or counted (rc $rc)"
+    check "[ $rc -eq 0 ] || [ \"\${bl:-0}\" -gt 0 ]" "  ... and a DEGRADED end only with a counted loss (lost $bl)"
+else
+    echo "  SKIP the bulk ring's flood (file identity not loadable here; CI and the VM run it)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

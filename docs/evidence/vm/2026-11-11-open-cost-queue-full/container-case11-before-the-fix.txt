@@ -1,0 +1,8 @@
+# it_p15d.sh case 11 with daemon/drain.c of main (f7dc42c) and this PR's slow-writer hook, dev container, 2026-11-11.
+# Lines as printed by the test (the run was made once to show the failure, then drain.c was restored).
+case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes [t+45s]
+  queue_full and spine reserve failures: 398 0; EXEC of /bin/true: 1899; END: exit 4, state 2, invariant 2, signal 15, reason 
+  ok   the queue was full during the run (the path under test ran: queue_full 398)
+  ok   the spine ring absorbed the backlog: no reserve failed
+  FAIL exit 0, RUNNING, the invariant closed: no record was taken and dropped (rc 4)
+  FAIL every one of the 2000 children's EXEC is in the WAL (got 1899)

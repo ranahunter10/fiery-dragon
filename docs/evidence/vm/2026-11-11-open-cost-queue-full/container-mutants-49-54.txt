@@ -1,0 +1,9 @@
+baseline: the unit tests pass in 2 s; a mutant gets 120 s
+baseline: the end-to-end test pass in 55 s; a mutant gets 221 s
+killed   49 drain.c return (d->open->cap - d->open->len) / P15_RECORD_MAX_SIZE; (2 s)
+killed   50 drain.c (d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX (2 s)
+killed   51 drain.c (d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX (2 s)
+killed   52 drain.c got = ring__consume_n(r, room); (54 s)
+killed   53 drain.c n = take_all(d); (55 s)
+killed   54 drain.c int n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m; (53 s)
+mutation sweep: 6/6 killed (mutants [49, 50, 51, 52, 53, 54] only)

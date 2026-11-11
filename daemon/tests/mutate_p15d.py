@@ -89,7 +89,13 @@ M = [
     ("run.c", "\tif (now_ns - w->at_ns < 100000000ull)\n\t\treturn 0;                    /* not yet an observation */", "", UNIT),
     ("run.c", "\tif (b != w->beats || !w->at_ns) {", "\tif (!w->at_ns) {", UNIT),
     ("p15d.c", "\t\t\tif (p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");",
-     "\t\t\tif (0 && p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");", IT),
+     "\t\t\tif (0 && p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");", IT),    # room before a read (E-0173): the unit test of p15_drain_room, and case 11 of it_p15d.sh
+    ("drain.c", "\treturn (d->open->cap - d->open->len) / P15_RECORD_MAX_SIZE;", "\treturn (d->open->cap - d->open->len) / P15_RECORD_MAX_SIZE + 1;", UNIT),
+    ("drain.c", "(d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", "(d->open->ring != ring))", UNIT),
+    ("drain.c", "(d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", "(d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", UNIT),
+    ("drain.c", "\t\tgot = ring__consume_n(r, room);", "\t\tgot = ring__consume(r);", IT),
+    ("drain.c", "\tn = take_all(d);\n\tnote_poll_gap(d, p15_boot_ns());", "\tn = ring_buffer__consume(d->rb);\n\tnote_poll_gap(d, p15_boot_ns());", IT),
+    ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;", "\tint n = 0, m;", IT),
 ]
 
 
@@ -122,7 +128,9 @@ def main() -> int:
             dt = time.monotonic() - t0
             if r.returncode:
                 print(f"baseline: the {name} fail on the unmutated tree (exit {r.returncode} after {dt:.0f} s); "
-                      "no mutant was run\n" + (r.stdout + r.stderr)[-3000:], flush=True)
+                      "no mutant was run\n" +
+                      "".join(ln + "\n" for ln in (r.stdout + r.stderr).splitlines() if "FAIL" in ln) +   # wherever it failed
+                      (r.stdout + r.stderr)[-3000:], flush=True)
                 return 2
             limit[test] = max(120, int(4 * dt))
             print(f"baseline: the {name} pass in {dt:.0f} s; a mutant gets {limit[test]} s", flush=True)

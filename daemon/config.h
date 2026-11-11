@@ -39,6 +39,8 @@ struct p15_config {
 				      * long (E-0162) */
 	uint32_t writer_stall_ms;    /* --test-writer-stall-ms: TEST ONLY, the writer sleeps this long before the
 				      * closing snapshot */
+	uint32_t writer_batch_ms;    /* --test-writer-batch-ms: TEST ONLY, the writer sleeps this long after each
+				      * batch, so the queue fills (E-0173) */
 };
 
 /* Fill c from argv. Returns 0, or -EINVAL with a one-line reason in err (exit USAGE/CONFIG). */

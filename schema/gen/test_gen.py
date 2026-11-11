@@ -59,6 +59,12 @@ class RealSchemaTest(unittest.TestCase):
         self.assertEqual(ex.fixed_size, 64)
         self.assertEqual(ex.max_size, 64 + 256 + 1024)
 
+    def test_the_largest_record_is_emitted(self):
+        s = gen.load(gen.SCHEMA)
+        biggest = max(r.max_size for r in s.records)
+        self.assertIn(f"#define P15_RECORD_MAX_SIZE {biggest}\n", gen.emit_c(s))
+        self.assertEqual(biggest, max(r.max_size for r in s.records if r.name in ("OPEN", "FD")))   # today: a path record
+
     def test_every_fixed_part_is_a_multiple_of_8(self):
         for r in self.s.records:
             self.assertEqual(r.fixed_size % 8, 0, r.name)
