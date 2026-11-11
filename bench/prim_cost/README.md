@@ -8,9 +8,20 @@
 The first says what a design could save (for example one ring record against one per-CPU copy: the two-level buffer of eAudit, R-042 §3.5). The second says which program to look at.
 
 ```
-sudo make bench-prim-cost ROUNDS=20                 # raw lines in build/prim_cost.txt, the report in build/prim_cost.md
-sudo python3 bench/prim_cost/prog_stats.py --p15d build/p15d --ops 220000 -- build/open_cost /var/tmp/p15-open-cost 200000 20000
+make build/prim_cost build/open_cost build/p15d      # as the user: never build under sudo
+sudo build/prim_cost 20 20000 > build/prim_cost.txt
+python3 bench/prim_cost/summarize.py build/prim_cost.txt --ref-nullsys-ns 87.5 | tee build/prim_cost.md
+sudo python3 bench/prim_cost/prog_stats.py --p15d build/p15d --ops 220000 --rounds 7 --ref-nullsys-ns 89.1 \
+     -- build/open_cost /var/tmp/p15-open-cost 200000 20000 > build/prog_stats.txt
 ```
+
+**Host speed (declared before the run that uses it; E-0180, E-0181).** The first VM run was taken on a host four to five times slower than the open-cost run, and nothing in its output said so. Every round of both harnesses now records what a null syscall (`getppid`) costs: `prim_cost` times 100,000 of them after each round, `prog_stats.py` reads the `nullsys` row its command (`open_cost`) prints. The report states the median and the range, and marks the run **not quotable** when
+- the dearest round's null syscall is more than **1.5** times the cheapest's (UNSTEADY), or
+- the median is more than **1.5** times the reference given with `--ref-nullsys-ns` (SLOW). The references are E-0176's: 87.5 ns without capture (for `prim_cost`), 89.1 ns with p15d running (for `prog_stats.py`).
+
+A run marked so is a valid result ("not resolved on this host"); its costs are not used. 1.5 is a judgement, not a measured limit: E-0176's 20 untraced rounds ran from 85.6 to 98.1 ns per null syscall (`open_cost.txt`), and the slow run's one figure was 355.2 ns.
+
+`prog_stats.py` runs the command `--rounds` times under one p15d and reports each program's median ns per run with its cheapest and dearest round. After the first round the "distinct" files are objects p15d already knows.
 
 **Limits.**
 - `prim_cost` is one thread on one CPU: no contention on the ring's lock or on a hash bucket. Step 2b's ceiling gate measures those.

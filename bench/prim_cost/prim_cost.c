@@ -8,6 +8,9 @@
  * round, after one untimed warm-up round (round -1). The time is taken inside the program, around
  * the loop. The ring is emptied (untimed) after every run, so a reservation never fails for a full
  * ring. One "row" line per run; summarize.py subtracts the empty loop and makes the report.
+ * After every round, one "host" line: the thread-CPU time of 100,000 getppid() calls, timed as
+ * bench/open_cost times its null syscalls. It is the run's own record of how fast the host was
+ * (E-0180: a run on a throttled host is not told apart from a good one by the costs alone).
  * Exit 0 if every iteration of every run did what it should.
  */
 #define _GNU_SOURCE
@@ -16,6 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/syscall.h>
+#include <time.h>
 #include <unistd.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
@@ -32,6 +37,20 @@ static int on_sample(void *ctx, void *data, size_t size)
 	(void)size;
 	(*(unsigned long long *)ctx)++;
 	return 0;
+}
+
+#define NULLSYS_N 100000L
+
+/* Thread-CPU ns of NULLSYS_N null syscalls: the host-speed control of every round. */
+static unsigned long long nullsys_ns(void)
+{
+	struct timespec a, b;
+
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &a);
+	for (long i = 0; i < NULLSYS_N; i++)
+		syscall(SYS_getppid);
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &b);
+	return (unsigned long long)((b.tv_sec - a.tv_sec) * 1000000000LL + (b.tv_nsec - a.tv_nsec));
 }
 
 static int run(int fd)
@@ -98,6 +117,7 @@ int main(int argc, char **argv)
 				sent += (unsigned long long)iters;
 			ring_buffer__consume(rb);
 		}
+		printf("host round=%ld nullsys_n=%ld ns=%llu\n", r, NULLSYS_N, nullsys_ns());
 	}
 	printf("ring sent=%llu consumed=%llu %s\n", sent, seen, sent == seen ? "ok" : "FAIL");
 	ring_buffer__free(rb);

@@ -389,6 +389,27 @@ M = [
  (PCP, "    if not isinstance(progs, list):\n", "    if False:\n"),
  (PCP, '        if "id" not in p:\n', "        if False:\n"),
  (PCP, """line += f" {r['runs'] / ops:.3f} | {r['ns'] / ops:.1f} |\"""", """line += f" {r['runs'] / ops:.3f} | {r['ns'] / r['runs']:.1f} |\""""),
+ # ---- the host-speed control and the rounds of prog_stats (E-0180) ----
+ (PCS, "    if hi > STEADY * lo:\n", "    if False:\n"),
+ (PCS, "    if hi > STEADY * lo:\n", "    if hi >= STEADY * lo:\n"),
+ (PCS, "    if ref is not None and med > SLOW * ref:\n", "    if ref is not None and med >= SLOW * ref:\n"),
+ (PCS, "    if ref is not None and med > SLOW * ref:\n", "    if False:\n"),
+ (PCS, "    if not ns:\n", "    if False:\n"),
+ (PCS, "            if int(m[1]) in host:\n", "            if False:\n"),
+ (PCS, "            if int(m[2]) <= 0 or int(m[3]) <= 0:\n", "            if int(m[2]) <= 0:\n"),
+ (PCS, "            if int(m[2]) <= 0 or int(m[3]) <= 0:\n", "            if int(m[3]) <= 0:\n"),
+ (PCS, "        if host and r not in host:\n", "        if False:\n"),
+ (PCS, "[host[r] for r in sorted(rows) if r in host]", "list(host.values())"),
+ (PCS, "lo, hi, med = min(ns), max(ns), P.median(ns)", "lo, hi, med = min(ns), max(ns), max(ns)"),
+ (PCP, "    if not m or int(m[1]) <= 0 or int(m[2]) <= 0:\n", "    if not m or int(m[1]) <= 0:\n"),
+ (PCP, "    if not m or int(m[1]) <= 0 or int(m[2]) <= 0:\n", "    if not m or int(m[2]) <= 0:\n"),
+ (PCP, 'NULLSYS = re.compile(r"^row event=nullsys', 'NULLSYS = re.compile(r"row event=nullsys'),
+ (PCP, "    if any(x is None for x in ns) and any(x is not None for x in ns):\n", "    if False:\n"),
+ (PCP, 'e["runs"] += r["runs"]', 'e["runs"] = r["runs"]'),
+ (PCP, 'key=lambda e: -P.median(e["ns"])', 'key=lambda e: P.median(e["ns"])'),
+ (PCP, "{min(e['per_run']):.1f} to", "{max(e['per_run']):.1f} to"),
+ (PCP, "{P.median(total) / ops:.1f}", "{sum(total) / ops:.1f}"),
+ (PCP, "{e['runs'] / (ops * len(e['ns'])):.3f}", "{e['runs'] / ops:.3f}"),
 ]
 
 

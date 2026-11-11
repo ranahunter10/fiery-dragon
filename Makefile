@@ -317,7 +317,7 @@ $(OUT)/prim_cost: bench/prim_cost/prim_cost.c $(OUT)/prim_cost.skel.h $(LIBBPF_A
 
 bench-prim-cost: $(OUT)/prim_cost
 	$(OUT)/prim_cost $(or $(ROUNDS),20) $(or $(ITERS),20000) | tee $(OUT)/prim_cost.txt
-	$(or $(P15_PYTHON),python3) bench/prim_cost/summarize.py $(OUT)/prim_cost.txt | tee $(OUT)/prim_cost.md
+	$(or $(P15_PYTHON),python3) bench/prim_cost/summarize.py $(OUT)/prim_cost.txt $(if $(REF),--ref-nullsys-ns $(REF)) | tee $(OUT)/prim_cost.md
 
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@

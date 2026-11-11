@@ -237,10 +237,15 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 29. **The cost split is measured before any redesign, taken under 22a** (E-0177): `bench/prim_cost` times each kernel-side building block alone (a ring record three ways, a hash lookup, an insert and delete, an atomic counter, a per-CPU copy, a clock read) and `prog_stats.py` reads each of p15d's programs' `run_cnt` and `run_time_ns` around a command. No VM number yet; no change to ADR-0006 or ADR-0015 is proposed before the VM's output is read.
 
+30. **A cost run must show its host's speed, taken under 22a** (E-0180, E-0181): the first VM run of the cost-breakdown harnesses was on a host four to five times slower than the open-cost run and is not quotable ([evidence](evidence/vm/2026-11-11-prim-cost-slow-host/README.md)). Both harnesses now record a null syscall's cost every round; a run is not quotable when rounds differ by more than 1.5 times or the median is more than 1.5 times E-0176's reference. No design change is proposed from the slow run.
+
+31. **The maintainer, 2026-11-11** (E-0182): "do the recommended steps": #68 and #67 merged with merge commits on green CI; #69 merges once the VM's run with the host-speed control is in it.
+
 ## Decisions waiting
 
-1. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
-2. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
-3. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
-4. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
-5. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
+1. **The VM's rerun of the cost breakdown** (PR #69's commands, host on its charger in Best performance mode). Only a run the report does not mark UNSTEADY or SLOW is read for design. Recommendation: no change to ADR-0006 (transport) or ADR-0015 (the three programs per open) before it.
+2. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
+3. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
+4. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
+5. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
+6. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
