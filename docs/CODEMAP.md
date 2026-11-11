@@ -55,6 +55,15 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/open_sections/summarize.py) | Summarize open_sections output (bench/open_sections/open_sections.c). | `ParseError`, `parse`, `single`, `contend`, `report` |
 | [`test_summarize.py`](../bench/open_sections/test_summarize.py) | Tests for the open_sections report (bench/open_sections/summarize.py). | `single`, `contend`, `Single`, `Contend` |
 
+## bench/path_walk
+
+| File | Job | Public names |
+|---|---|---|
+| [`path_walk.bpf.c`](../bench/path_walk/path_walk.bpf.c) | the dentry walk of bpf/include/p15_dpath.h against the kernel's own bpf_d_path, on the same opens, and what each costs (bench/path_walk/README.md, gate 2 of STATE decision 28). | `fentry/security_file_open → pw_fentry`, `kprobe.session/security_file_open` |
+| [`path_walk.c`](../bench/path_walk/path_walk.c) | drive path_walk.bpf.c (root). |  |
+| [`summarize.py`](../bench/path_walk/summarize.py) | Summarize a path_walk run (bench/path_walk/path_walk.c): gate 2 of STATE decision 28. | `ParseError`, `flag_names`, `parse`, `report` |
+| [`test_path_walk.py`](../bench/path_walk/test_path_walk.py) | Tests for the path_walk report (bench/path_walk/summarize.py). | `case`, `run`, `Report` |
+
 ## bench/prim_cost
 
 | File | Job | Public names |
@@ -116,6 +125,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`p15_counters.h`](../bpf/include/p15_counters.h) | Per-cause counters shared by the BPF programs and the daemon (ADR-0006, accounting invariant). |  |
+| [`p15_dpath.h`](../bpf/include/p15_dpath.h) | a file's path by walking its dentries and mounts, the way the kernel's d_path does (fs/d_path.c v7.0: d_path L265-292, prepend_path L155-196, __prepend_path L101-139), for a pro... |  |
 | [`p15_file.h`](../bpf/include/p15_file.h) | File identity (ADR-0015, STATE decision 19): what file.bpf.c and p15d share. |  |
 | [`p15_kernel.h`](../bpf/include/p15_kernel.h) | Kernel facts the BPF programs need that vmlinux.h does not carry (macros are not in BTF). |  |
 | [`p15_prof.h`](../bpf/include/p15_prof.h) | Section timing for bench/open_sections (STATE decision waiting 1): where the file programs' time goes, section by section. |  |
