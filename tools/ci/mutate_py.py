@@ -9,6 +9,7 @@ Each mutant plants one bug in a file and expects that file's unit tests (test_<n
 it, or in python/tests/ for the python/p15 package) to fail. The file is restored after every mutant, also on error or Ctrl-C.
 
     python3 tools/ci/mutate_py.py        (or: make mutate-py)
+    python3 tools/ci/mutate_py.py 172-265   only those mutants (a range or numbers): for a re-run, never for the gate
 
 Exit 0 only if every mutant is killed. Left out as untestable here: wal.py's refusal of
 google-crc32c's pure-Python fallback (the pinned wheel is always the C one; the guard is three
@@ -28,10 +29,15 @@ QUANT, HOOKS = "bench/quant/paired.py", "bench/hook_cost/summarize.py"
 RWH = "bench/rw_hook_cost/summarize.py"
 SNAP, RECON = "python/p15/snapshot.py", "python/p15/reconcile.py"
 PROV = "python/p15/provenance.py"
+GEN = "schema/gen/gen.py"
+GRAW, GBUILD, GSQL, GPM, GCLI = ("python/p15/graph/raw.py", "python/p15/graph/build.py", "python/p15/graph/graph.sql",
+                                 "python/p15/graph/pidsmaker.py", "python/p15/graph/__main__.py")
+_TG = "python/tests/test_graph.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
-         NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP}
+         NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -221,10 +227,118 @@ M = [
  (PROV, "if sin == \"socket\" and sout == \"socket\":", "if sin == \"socket\" or sout == \"socket\":"),
  (PROV, "w = writers.get((e.f[\"stdin_dev\"], e.f[\"stdin_ino\"]))", "w = writers.get((e.f[\"stdin_dev\"], 0))"),
  (PROV, "if w is not None and w is not e:", "if w is not None:"),
+ # ---- graph v0 (ADR-0028): the generated raw tables, the loader, the node and edge rules, the export ----
+ (GEN, 'if f.name not in ("type", "len"):', 'if f.name not in ("type",):'),
+ (GEN, 'key=lambda r: -r.version):', 'key=lambda r: r.version):'),
+ (GEN, 'if not f.name.startswith("_")]   # padding is not data', 'if True]'),
+ (GEN, "if cn in seen_here or cn in fixed:", "if cn in seen_here:"),
+ (GEN, "if cn in seen_here or cn in fixed:", "if cn in fixed:"),
+ (GEN, "if cn in cols and cols[cn][0] != ct:", "if False:"),
+ (GEN, "cols.setdefault(cn, (ct, cd))", "cols[cn] = (ct, cd)"),
+ (GEN, 'return "BLOB" if ctype.startswith("char[") else SQL_TYPES[ctype]', 'return "BLOB" if ctype.startswith("char[") else "UBIGINT"'),
+ (GEN, 'new += [(f"{v.name}_{f.name}", _sql_type(f.ctype), f"{v.name}: {f.doc}")', 'new += [(f"{f.name}", _sql_type(f.ctype), f"{v.name}: {f.doc}")'),
+ (GRAW, '        elif v is not None:           # an absent part is None: its columns stay NULL\n            out[k] = v', '        else:\n            out[k] = v'),
+ (GRAW, '                out[f"{k}_{pk}"] = pv', '                out[f"{k}_{pk}"] = 0'),
+ (GRAW, "        if len(b) >= FLUSH_ROWS:\n            self.flush(r.name)", "        if len(b) >= FLUSH_ROWS:\n            b.clear()"),
+ (GRAW, "            if extra:\n", "            if False:\n"),
+ (GRAW, "mask = [v is None for v in vals]", "mask = [False for v in vals]"),
+ (GRAW, "        rows.clear()\n", "        pass\n"),
+ (GRAW, "    if errors:\n", "    if False:\n"),
+ (GRAW, 'counts["record_error"] = len(errors)', 'counts["record_error"] = 0'),
+ (GRAW, "meta = [(i, k, v) for i, seg in enumerate(run.segments) for k, v in seg.meta.items()]", "meta = []"),
+ (GBUILD, 'return bytes(b).decode("utf-8", "backslashreplace")', 'return bytes(b).decode("utf-8", "replace")'),
+ (GBUILD, "return socket.inet_ntop(socket.AF_INET, bytes(raw_addr)[:4])", "return socket.inet_ntop(socket.AF_INET, bytes(raw_addr)[-4:])"),
+ (GBUILD, "    if family == socket.AF_INET6:\n", "    if True:\n"),
+ (GBUILD, 'keys = [r.proc] if ring < 2 or r.name in ("PROC", "FD") else []', 'keys = [r.proc] if ring < 1 or r.name in ("PROC", "FD") else []'),
+ (GBUILD, 'keys = [r.proc] if ring < 2 or r.name in ("PROC", "FD") else []', 'keys = [r.proc] if ring < 2 or r.name in ("PROC",) else []'),
+ (GBUILD, "    if out.exists():\n", "    if False:\n"),
+ (GBUILD, "        if not done:\n            out.unlink(missing_ok=True)", "        if False:\n            out.unlink(missing_ok=True)"),
+ (GBUILD, 'im.filename if im else None, " ".join(im.argv) if im and im.argv else None, p.comm,', 'im.filename if im else None, None, p.comm,'),
+ (GBUILD, "par = p.parent or (None, None)", "par = (None, None)"),
+ (GBUILD, 'p.origin or "forked in the run", p.kthread, p.in_gap,', 'p.origin, p.kthread, p.in_gap,'),
+ (GBUILD, "min(seen) if seen else k[1], p.fork_ns, p.exit_ns, p.exit_code,", "min(seen) if seen else k[1], p.fork_ns, p.exit_ns, 0,"),
+ (GSQL, "fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_btrfs() AND (oflags & 1) = 0);", "fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_btrfs());"),
+ (GSQL, "fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_btrfs() AND (oflags & 1) = 0);", "fs_magic IN (m_xfs(), m_tmpfs()) OR (fs_magic = m_btrfs() AND (oflags & 1) = 0);"),
+ (GSQL, "fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_btrfs() AND (oflags & 1) = 0);", "true;"),
+ (GSQL, "    WHEN fs_magic = m_anon() AND fid IS NOT NULL THEN 'fid'   -- ADR-0027\n", ""),
+ (GSQL, "    WHEN 'tuple' THEN 't:' || dev || ':' || subvol || ':' || ino || ':' || gen", "    WHEN 'tuple' THEN 't:' || dev || ':' || subvol || ':' || ino"),
+ (GSQL, "    WHEN 'tuple' THEN 't:' || dev || ':' || subvol || ':' || ino || ':' || gen", "    WHEN 'tuple' THEN 't:' || dev || ':0:' || ino || ':' || gen"),
+ (GSQL, "    WHEN 'fid' THEN 'f:' || fid\n", "    WHEN 'fid' THEN 'o:' || obj\n"),
+ (GSQL, "WHEN 16384 THEN 'dir' WHEN 8192 THEN 'char' WHEN 4096 THEN 'pipe'", "WHEN 16384 THEN 'dir' WHEN 8192 THEN 'char' WHEN 4096 THEN 'file'"),
+ (GSQL, "QUALIFY row_number() OVER (PARTITION BY obj ORDER BY ts_ns, ring, seq) = 1;", "QUALIFY row_number() OVER (PARTITION BY obj ORDER BY ts_ns DESC, ring, seq) = 1;"),
+ (GSQL, "FROM raw_fd WHERE facts_len > 0\n", "FROM raw_fd WHERE false\n"),
+ (GSQL, "FROM raw_backing WHERE user_facts_len > 0;", "FROM raw_backing WHERE false;"),
+ (GSQL, "SELECT * FROM fid_row QUALIFY row_number() OVER (PARTITION BY fid ORDER BY pri, ts_ns, ring, seq) = 1\n), path AS (", "SELECT * FROM fid_row QUALIFY row_number() OVER (PARTITION BY fid ORDER BY ts_ns DESC, ring, seq) = 1\n), path AS ("),
+ (GSQL, "bool_or((fflags & 32) <> 0) AS never_opened", "false AS never_opened"),
+ (GSQL, "        UNION ALL SELECT fid, verdict FROM raw_open WHERE verdict < 0) GROUP BY fid", "        ) GROUP BY fid"),
+ (GSQL, "        SELECT fid, verdict FROM raw_open_verdict\n        UNION ALL SELECT", "        SELECT"),
+ (GSQL, "ON o.dev = e.dev AND o.ino = e.ino AND o.gen = e.gen AND o.ts_ns <= e.ts_ns", "ON o.dev = e.dev AND o.ino = e.ino AND o.gen = e.gen"),
+ (GSQL, "ON o.dev = e.dev AND o.ino = e.ino AND o.gen = e.gen AND o.ts_ns <= e.ts_ns", "ON o.ino = e.ino AND o.gen = e.gen AND o.ts_ns <= e.ts_ns"),
+ (GSQL, "OVER (PARTITION BY e.ring, e.seq ORDER BY o.ts_ns DESC, o.obj DESC) = 1", "OVER (PARTITION BY e.ring, e.seq ORDER BY o.ts_ns, o.obj) = 1"),
+ (GSQL, "       CASE WHEN e.fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) THEN 't:' || e.dev || ':0:' || e.ino || ':' || e.gen\n            WHEN m.key IS NOT NULL THEN m.key", "       CASE WHEN m.key IS NOT NULL THEN m.key"),
+ (GSQL, "    FROM obj_facts o WHERE NOT EXISTS (SELECT 1 FROM openfile f WHERE f.obj = o.obj)", "    FROM obj_facts o"),
+ (GSQL, "    FROM obj_facts o WHERE NOT EXISTS (SELECT 1 FROM openfile f WHERE f.obj = o.obj)", "    FROM obj_facts o WHERE false"),
+ (GSQL, "ORDER BY (op IN (1, 2)) DESC, ts_ns, seq) = 1", "ORDER BY ts_ns, seq) = 1"),
+ (GSQL, "nullif((SELECT max(peer_cookie) FROM r WHERE r.cookie = f.cookie), 0) AS listener_cookie", "NULL AS listener_cookie"),
+ (GSQL, "(SELECT bool_or(op = 3 AND ret = 0) FROM r WHERE r.cookie = f.cookie) AS listening", "(SELECT bool_or(ret = 0) FROM r WHERE r.cookie = f.cookie) AS listening"),
+ (GSQL, "(row_number() OVER (ORDER BY kind_order, first_ns, key))::BIGINT AS node_id", "(row_number() OVER (ORDER BY first_ns, key))::BIGINT AS node_id"),
+ (GSQL, "SELECT DISTINCT fo.file_node AS real_node, un.node_id AS user_node", "SELECT DISTINCT un.node_id AS real_node, fo.file_node AS user_node"),
+ (GSQL, " AND (c.flags & 4) <> 0 AND (a.flags & 4) <> 0 AND c.tcp_isn = a.tcp_isn", " AND c.tcp_isn = a.tcp_isn"),
+ (GSQL, " AND (c.flags & 4) <> 0 AND (a.flags & 4) <> 0 AND c.tcp_isn = a.tcp_isn", " AND (c.flags & 4) <> 0 AND (a.flags & 4) <> 0"),
+ (GSQL, " AND c.netns = a.netns AND c.family = a.family AND c.laddr = a.raddr AND c.lport = a.rport", " AND c.netns = a.netns AND c.family = a.family AND c.laddr = a.raddr"),
+ (GSQL, " AND c.raddr = a.laddr AND c.rport = a.lport AND c.ret IN (0, -115) AND a.ret = 0", " AND c.raddr = a.laddr AND c.rport = a.lport AND c.ret IN (0) AND a.ret = 0"),
+ (GSQL, "FROM raw_fork WHERE kind = 1\n", "FROM raw_fork\n"),
+ (GSQL, "SELECT ts_ns, 'p:' || tgid || ':' || start_ns AS src, 'p:' || child_tgid || ':' || child_start_ns AS dst,", "SELECT ts_ns, 'p:' || child_tgid || ':' || child_start_ns AS src, 'p:' || tgid || ':' || start_ns AS dst,"),
+ (GSQL, "SELECT e.ts_ns, x.file_key, 'p:' || e.tgid || ':' || e.start_ns, 'EXECUTE', true, 0, NULL, NULL, e.ring, e.seq", "SELECT e.ts_ns, 'p:' || e.tgid || ':' || e.start_ns, x.file_key, 'EXECUTE', true, 0, NULL, NULL, e.ring, e.seq"),
+ (GSQL, "       f.verdict = 0 AND NOT f.never_opened, f.verdict, o.fid,", "       f.verdict = 0, f.verdict, o.fid,"),
+ (GSQL, "       f.verdict = 0 AND NOT f.never_opened, f.verdict, o.fid,", "       NOT f.never_opened, f.verdict, o.fid,"),
+ (GSQL, "       CASE (o.f_mode & 3) WHEN 1 THEN 'r' WHEN 2 THEN 'w' WHEN 3 THEN 'rw' ELSE '-' END, o.ring, o.seq", "       CASE (o.f_mode & 3) WHEN 1 THEN 'w' WHEN 2 THEN 'r' WHEN 3 THEN 'rw' ELSE '-' END, o.ring, o.seq"),
+ (GSQL, "      QUALIFY row_number() OVER (PARTITION BY d.tgid, d.start_ns, d.fid ORDER BY d.ts_ns, d.seq) = 1)", "      )"),
+ (GSQL, "      QUALIFY row_number() OVER (PARTITION BY d.tgid, d.start_ns, d.fid ORDER BY d.ts_ns, d.seq) = 1)", "      QUALIFY row_number() OVER (PARTITION BY d.fid ORDER BY d.ts_ns, d.seq) = 1)"),
+ (GSQL, "'CONNECT', ret IN (0, -115), ret, NULL, NULL, ring, seq", "'CONNECT', true, ret, NULL, NULL, ring, seq"),
+ (GSQL, "SELECT ts_ns, 's:' || sock_cookie, 'p:' || tgid || ':' || start_ns, 'ACCEPT', ret = 0, ret, NULL, NULL, ring, seq", "SELECT ts_ns, 'p:' || tgid || ':' || start_ns, 's:' || sock_cookie, 'ACCEPT', ret = 0, ret, NULL, NULL, ring, seq"),
+ (GSQL, "CASE op WHEN 3 THEN 'LISTEN' ELSE 'BIND' END", "'LISTEN'"),
+ (GSQL, "        HAVING count(DISTINCT (ino, subvol, dev, gen, fs_magic, mode & 61440)) > 1)),", "        HAVING count(DISTINCT (ino, subvol, dev, gen, fs_magic, mode & 61440, nlink)) > 1)),"),
+ (GSQL, "        HAVING count(DISTINCT (ino, subvol, dev, gen, fs_magic, mode & 61440)) > 1)),", "        HAVING false)),"),
+ (GSQL, "(SELECT fid FROM fid_row GROUP BY fid HAVING count(DISTINCT obj) > 1)),", "(SELECT fid FROM fid_row GROUP BY fid HAVING false)),"),
+ (GSQL, "WHERE how = 'open' AND path IS NULL),", "WHERE path IS NULL),"),
+ (GSQL, "coalesce(s.open_path, x.name) AS path,", "s.open_path AS path,"),
+ (GSQL, "coalesce(s.open_path, x.name) AS path,", "coalesce(x.name, s.open_path) AS path,"),
+ (GSQL, "    SELECT b.value::UBIGINT AS boottime_ns, r.value::UBIGINT AS realtime_ns", "    SELECT b.value::UBIGINT AS boottime_ns, b.value::UBIGINT AS realtime_ns"),
+ (GPM, "WHERE e.ok ORDER BY e.edge_id", "ORDER BY e.edge_id"),
+ (GPM, "sha256(u.uuid) AS hash_id, coalesce(p.exe_path, '{NULL}') AS path,", "md5(u.uuid) AS hash_id, coalesce(p.exe_path, '{NULL}') AS path,"),
+ (GPM, "(c.realtime_ns + (e.ts_ns - c.boottime_ns))::BIGINT AS timestamp_rec", "e.ts_ns::BIGINT AS timestamp_rec"),
+ (GPM, "SELECT sha256(su.uuid) AS src_node, e.src::VARCHAR AS src_index_id, o.name AS operation,", "SELECT sha256(su.uuid) AS src_node, e.dst::VARCHAR AS src_index_id, o.name AS operation,"),
+ (GPM, "(SELECT run FROM run_id) || ':' || e.ring || ':' || e.seq || ':' || e.op AS event_uuid,", "(SELECT run FROM run_id) || ':' || e.seq || ':' || e.op AS event_uuid,"),
+ (GPM, "s.laddr AS src_addr, s.lport::VARCHAR AS src_port,", "s.raddr AS src_addr, s.lport::VARCHAR AS src_port,"),
+ (GPM, '    out.mkdir(parents=True, exist_ok=False)', '    out.mkdir(parents=True, exist_ok=True)'),
+ (GPM, '"OPEN": "EVENT_OPEN",', '"OPEN": "EVENT_READ",'),
+ (GPM, "    if unknown:\n", "    if False:\n"),
+ (GPM, '{f"{op} (not allowed by the kernel)": n for op, ok, n in by_op if not ok}', '{f"{op} (not allowed by the kernel)": n for op, ok, n in by_op if ok}'),
+ (GPM, "for op, ok, n in by_op if ok and op in NOT_EXPORTED},", "for op, ok, n in by_op if op in NOT_EXPORTED},"),
+ (GPM, '"SELECT count(*) FROM edge e WHERE e.ok AND e.ts_ns < (SELECT min(boottime_ns) FROM clock)"', '"SELECT count(*) FROM edge e WHERE e.ok AND e.ts_ns > (SELECT min(boottime_ns) FROM clock)"'),
+ (GPM, '"events_exported": exported,      # counted from the rows written, not from the graph', '"events_exported": {OPS[op]: n for op, ok, n in by_op if ok and op in OPS},'),
+ (GPM, "if sum(exported.values()) + before_clock != sum(n for op, ok, n in by_op if ok and op in OPS):", "if False:"),
+ (GPM, "coalesce(p.cmd, p.comm, '{NULL}') AS cmd", "coalesce(p.cmd, p.comm, '') AS cmd"),
+ (GCLI, '    if res.raw_rows["record_error"]:\n', "    if False:\n"),
+ (GCLI, "    bad = [k for k in MUST_BE_ZERO if res.counts.get(k, 0)]", "    bad = []"),
+ (GCLI, '        return 2\n    print(f"graph: {a.out}")', '        return 0\n    print(f"graph: {a.out}")'),
+ (GCLI, "        return 1\n    return 0", "        return 0\n    return 0"),
 ]
 
 
+def _only(args: list[str]) -> set[int] | None:
+    if not args:
+        return None
+    out: set[int] = set()
+    for a in args:
+        lo, _, hi = a.partition("-")
+        out |= set(range(int(lo), int(hi or lo) + 1))
+    return out
+
+
 def main() -> int:
+    only = _only(sys.argv[1:])
     originals = {f: (ROOT / f).read_text() for f in {m[0] for m in M}}
     # No bytecode: a cached .pyc is trusted by source mtime (1 s) and size, so a mutant written
     # within the same second as an earlier one of the same size would run the stale code.
@@ -235,6 +349,8 @@ def main() -> int:
     killed = 0
     try:
         for i, (f, old, new) in enumerate(M):
+            if only is not None and i not in only:
+                continue
             if originals[f].count(old) != 1:
                 print(f"mutant {i}: anchor not found exactly once in {f}; update this sweep")
                 return 2
@@ -249,8 +365,9 @@ def main() -> int:
     finally:
         for f, text in originals.items():
             (ROOT / f).write_text(text)
-    print(f"mutation sweep: {killed}/{len(M)} killed")
-    return 0 if killed == len(M) else 1
+    total = len(M) if only is None else len(only & set(range(len(M))))
+    print(f"mutation sweep: {killed}/{total} killed" + ("" if only is None else " (a subset: not the gate)"))
+    return 0 if killed == total else 1
 
 
 if __name__ == "__main__":

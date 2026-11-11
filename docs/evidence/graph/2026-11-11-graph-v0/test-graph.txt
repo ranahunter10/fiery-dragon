@@ -1,0 +1,30 @@
+test_cli (python.tests.test_graph.BuildFile.test_cli) ... ok
+test_refuses_to_overwrite_and_leaves_nothing_half_built (python.tests.test_graph.BuildFile.test_refuses_to_overwrite_and_leaves_nothing_half_built) ... ok
+test_text_and_addr (python.tests.test_graph.BuildFile.test_text_and_addr) ... ok
+test_a_pair_needs_the_isn_and_mirrored_endpoints (python.tests.test_graph.ExecEdges.test_a_pair_needs_the_isn_and_mirrored_endpoints) ... ok
+test_a_thread_is_not_a_clone_edge_and_a_socket_shows_its_connection (python.tests.test_graph.ExecEdges.test_a_thread_is_not_a_clone_edge_and_a_socket_shows_its_connection) ... ok
+test_exec_joins_the_file_its_open_named (python.tests.test_graph.ExecEdges.test_exec_joins_the_file_its_open_named)
+test_scenario_processes_edges_and_sockets (python.tests.test_graph.ExecEdges.test_scenario_processes_edges_and_sockets) ... ok
+test_anonymous_inode_node_is_the_open_file (python.tests.test_graph.FileNodes.test_anonymous_inode_node_is_the_open_file)
+test_backing_joins_overlay_and_real_file (python.tests.test_graph.FileNodes.test_backing_joins_overlay_and_real_file) ... ok
+test_btrfs_by_subvolume_or_per_lifetime (python.tests.test_graph.FileNodes.test_btrfs_by_subvolume_or_per_lifetime) ... ok
+test_facts_from_any_record_and_missing_facts_counted (python.tests.test_graph.FileNodes.test_facts_from_any_record_and_missing_facts_counted)
+test_falsifier_counts (python.tests.test_graph.FileNodes.test_falsifier_counts)
+test_one_pipe_two_ends_is_one_node (python.tests.test_graph.FileNodes.test_one_pipe_two_ends_is_one_node) ... ok
+test_overlay_object_known_only_from_backing (python.tests.test_graph.FileNodes.test_overlay_object_known_only_from_backing) ... ok
+test_trusted_filesystem_joins_by_tuple (python.tests.test_graph.FileNodes.test_trusted_filesystem_joins_by_tuple)
+test_untrusted_filesystem_never_merges (python.tests.test_graph.FileNodes.test_untrusted_filesystem_never_merges)
+test_close_only_fid_is_counted_and_has_no_edge (python.tests.test_graph.OpenEdges.test_close_only_fid_is_counted_and_has_no_edge) ... ok
+test_denied_and_failed_opens_are_edges_that_did_not_happen (python.tests.test_graph.OpenEdges.test_denied_and_failed_opens_are_edges_that_did_not_happen) ... ok
+test_held_is_the_first_sighting_and_an_open_wins_over_a_later_snapshot_row (python.tests.test_graph.OpenEdges.test_held_is_the_first_sighting_and_an_open_wins_over_a_later_snapshot_row) ... ok
+test_open_edge_direction_access_and_openfile (python.tests.test_graph.OpenEdges.test_open_edge_direction_access_and_openfile) ... ok
+test_an_operation_with_no_rule_is_refused (python.tests.test_graph.PidsmakerExport.test_an_operation_with_no_rule_is_refused) ... ok
+test_opens_are_events_only_when_they_happened_and_never_reads_or_writes (python.tests.test_graph.PidsmakerExport.test_opens_are_events_only_when_they_happened_and_never_reads_or_writes) ... ok
+test_tables (python.tests.test_graph.PidsmakerExport.test_tables) ... ok
+test_a_record_that_fails_its_check_is_listed_not_loaded (python.tests.test_graph.RawTables.test_a_record_that_fails_its_check_is_listed_not_loaded) ... ok
+test_a_row_with_an_unknown_column_is_refused (python.tests.test_graph.RawTables.test_a_row_with_an_unknown_column_is_refused) ... ok
+test_every_layout_fits_its_table (python.tests.test_graph.RawTables.test_every_layout_fits_its_table)
+test_flushes_in_chunks (python.tests.test_graph.RawTables.test_flushes_in_chunks) ... ok
+test_rows_values_and_nulls (python.tests.test_graph.RawTables.test_rows_values_and_nulls) ... ok
+Ran 28 tests in 7.037s
+OK

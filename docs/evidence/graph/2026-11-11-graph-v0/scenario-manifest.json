@@ -1,0 +1,36 @@
+{
+  "run.id": "20261102T100000Z-scenario",
+  "boot_id": "b1",
+  "schema.hash": "fd750b091efcf9c3337fb7ddafce35ee102b7ee8c19da218a4b82753546a2d3e",
+  "rows": {
+    "subject_node_table": 7,
+    "file_node_table": 5,
+    "netflow_node_table": 7,
+    "event_table": 15
+  },
+  "events_exported": {
+    "EVENT_ACCEPT": 3,
+    "EVENT_CLONE": 5,
+    "EVENT_CONNECT": 2,
+    "EVENT_EXECUTE": 5
+  },
+  "edges_not_exported": {
+    "CONNECT (not allowed by the kernel)": 1,
+    "BIND (no flow)": 1,
+    "LISTEN (no flow)": 1,
+    "edges before the first clock anchor (no wall time)": 0
+  },
+  "wall_ns": {
+    "first": 1793613600000000500,
+    "last": 1793613604000000020
+  },
+  "absent_by_design": [
+    "EVENT_READ",
+    "EVENT_WRITE",
+    "EVENT_SENDTO",
+    "EVENT_SENDMSG",
+    "EVENT_RECVFROM",
+    "EVENT_RECVMSG"
+  ],
+  "absent_why": "capture step 2b (measured transfers) is not built yet; an access mode is not a transfer"
+}

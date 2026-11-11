@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-11 (UTC), PR "daemon: a bounded stop: the writer's progress, not a wait, decides it"
+**Last updated:** 2026-11-11 (UTC), PR "graph: v0: generated raw tables in DuckDB, the graph in SQL, a PIDSMaker export"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -227,6 +227,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 24. **The bounded stop, taken under 22a** (E-0162): the stop gives up when the writer makes no progress (its beat counter does not move) for `--stop-stall-s`, default 30 s, counted in observations at least 100 ms apart so a host freeze of the guest is one observation; p15d then detaches, logs `code=stuck` with the phase, and exits 75 (STUCK, new in `daemon/exitcodes.h`) without END. Defaults: 30 s (a WAL fdatasync on a slow disk under load fits), the snapshot's batches count as progress.
 
+25. **Graph v0, taken under 22a** (E-0165, ADR-0028): raw tables generated from `schema/records.toml` into DuckDB 2.0.0 (pinned); the graph built in SQL over them (`python/p15/graph/graph.sql`) with processes from `p15/proctree.py`; file nodes by ADR-0015's trust table and ADR-0027; sockets paired only by the exact ISN rule; an open is one OPEN edge with its access mode, never a READ or WRITE; the PIDSMaker export writes its four tables as CSV plus a manifest of everything not exported. State: 28 tests, 96 mutants killed in the dev container; a real run with OPEN, FD and NET records has **not** been graphed yet (the container loads only the spine; the VM commands are in PR #66).
+
 ## Decisions waiting
 
-1. **Next: graph v0** (decision 22a.3): the DuckDB star schema from `schema/records.toml`, the builder from the WAL, the PIDSMaker export. Where PIDSMaker runs is the maintainer's decision (the brief): asked when the export exists.
+1. **Where PIDSMaker runs** (the maintainer's decision, the brief). Its Docker image is Ubuntu 22.04 with CUDA 12.1 torch and its compose file reserves NVIDIA GPUs (R-041). Recommendation: not on `p15-dev-2604` (the measurement target: 8 GB, no GPU, kernel held, kept free of third-party code); a machine with Docker and an NVIDIA GPU (the Windows host through WSL2, or a lab server). The export is plain CSV plus `load.sql`, so it does not depend on the answer.
+2. **What the first detection number is measured on.** PIDSMaker needs benign training windows and an attack window with labelled malicious nodes; no such run of ours exists. Recommendation: first reproduce one of its own small baselines (CLEARSCOPE_E3, 0.6 GB compressed) to prove the harness, and record our own labelled run only after step 2b, when reads and writes exist: a number on open-level edges measures the pipeline, not detection (ADR-0028 consequences).
+3. **Next in code: the VM graph of a real run** (PR #66's commands), then the open-cost microbenchmark (22a.4), then step 2b.

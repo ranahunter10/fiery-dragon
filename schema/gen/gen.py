@@ -372,6 +372,12 @@ def emit_py(s: Schema) -> str:
         L.append(f"    ({r.type}, {r.version}): Layout({r.name!r}, {r.type}, {r.version}, {r.cls!r},")
         L.append(f"        {_np_dtype_expr(r.fields, r.fixed_size, True)},")
         L.append(f"        {r.fixed_size}, {r.max_size}, {var!r}{', ' + repr(parts) if parts else ''}),")
+    L += ["}", "", "# The raw DuckDB tables of p15_records.sql: record name -> ((column, DuckDB type), ...), in order.",
+          "SQL_COLUMNS = {"]
+    for name, cols in sql_columns(s).items():
+        L.append(f"    {name!r}: (")
+        L += [f"        ({n!r}, {t!r})," for n, t, _ in cols]
+        L.append("    ),")
     L += ["}", ""]
     return "\n".join(L)
 
@@ -404,6 +410,69 @@ def emit_md(s: Schema) -> str:
     return "\n".join(L) + "\n"
 
 
+# C type -> DuckDB type (ADR-0019 G1: the Python -> DuckDB boundary is generated). char[N] is BLOB:
+# the exact N bytes, as the reader keeps them.
+SQL_TYPES = {"u8": "UTINYINT", "u16": "USMALLINT", "u32": "UINTEGER", "u64": "UBIGINT", "i32": "INTEGER",
+             "i64": "BIGINT"}
+SQL_KEY = (("ring", "UTINYINT", "the ring the record came from: 0 spine, 1 bulk, 2 daemon"),
+           ("seq", "UBIGINT", "its sequence number in that ring; (ring, seq) names a record of the run"))
+
+
+def _sql_type(ctype: str) -> str:
+    return "BLOB" if ctype.startswith("char[") else SQL_TYPES[ctype]
+
+
+def sql_columns(s: Schema) -> dict[str, list[tuple[str, str, str]]]:
+    """Per record name, the columns of its raw table `raw_<name>`: (column, DuckDB type, doc).
+    One table holds every version of a type: the columns are the latest version's, then any that
+    only an older version has; a column a row's version lacks is NULL. The header's type and len
+    are not columns (the table is the type; len is a framing fact). A variable field is a BLOB; a
+    part field is one nullable column per part field, `<var>_<field>`."""
+    parts = {p.name: p for p in s.parts}
+    out: dict[str, list[tuple[str, str, str]]] = {}
+    for name in dict.fromkeys(r.name for r in s.records):
+        cols: dict[str, tuple[str, str]] = {n: (t, d) for n, t, d in SQL_KEY}
+        for f in s.header:
+            if f.name not in ("type", "len"):
+                cols[f.name] = (_sql_type(f.ctype), f.doc)
+        for r in sorted((r for r in s.records if r.name == name), key=lambda r: -r.version):
+            new: list[tuple[str, str, str]] = [(f.name, _sql_type(f.ctype), f.doc) for f in r.fields
+                                               if not f.name.startswith("_")]   # padding is not data
+            for v in r.var:
+                if v.part:
+                    new += [(f"{v.name}_{f.name}", _sql_type(f.ctype), f"{v.name}: {f.doc}")
+                            for f in parts[v.part].fields]
+                else:
+                    new.append((v.name, "BLOB", v.doc))
+            seen_here: set[str] = set()
+            fixed = {k for k, _, _ in SQL_KEY} | {f.name for f in s.header}
+            for cn, ct, cd in new:
+                if cn in seen_here or cn in fixed:
+                    raise SchemaError(f"{name} v{r.version}: column {cn} appears twice in the raw table")
+                seen_here.add(cn)
+                if cn in cols and cols[cn][0] != ct:
+                    raise SchemaError(f"{name}: column {cn} is {cols[cn][0]} in one version and {ct} in v{r.version}")
+                cols.setdefault(cn, (ct, cd))
+        out[name] = [(n, t, d) for n, (t, d) in cols.items()]
+    return out
+
+
+def emit_sql(s: Schema) -> str:
+    L = ["-- SPDX-License-Identifier: MIT", f"-- {BANNER}",
+         "-- Raw record tables for DuckDB (ADR-0019 G1): one table per record type, every version in it.",
+         "-- A column the row's version does not have is NULL. Loaded by python/p15/graph/raw.py.",
+         f"-- schema.hash {schema_hash(s)}", ""]
+    for name, cols in sql_columns(s).items():
+        L.append(f"CREATE TABLE raw_{name.lower()} (")
+        w = max(len(n) for n, _, _ in cols)
+        for i, (n, t, d) in enumerate(cols):
+            d1 = " ".join(d.split())
+            tc = t + ("," if i < len(cols) - 1 else "")
+            L.append(f"    {n:<{w}} {tc:<10} -- {d1[:100]}{'...' if len(d1) > 100 else ''}")
+        L += [");", ""]
+    return "\n".join(L)
+
+
 def emit_probe(s: Schema) -> str:
     L = ["// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause", f"// {BANNER}",
          "// Puts every record struct into the object's BTF for the three-way layout check (ADR-0008).",
@@ -417,7 +486,7 @@ def emit_probe(s: Schema) -> str:
 
 def render(s: Schema) -> dict[str, str]:
     return {"p15_records.h": emit_c(s), "p15_records.py": emit_py(s), "RECORDS.md": emit_md(s),
-            "p15_layout_probe.bpf.c": emit_probe(s)}
+            "p15_layout_probe.bpf.c": emit_probe(s), "p15_records.sql": emit_sql(s)}
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,0 +1,102 @@
+killed    172 gen.py if f.name not in ("type", "len"):
+killed    173 gen.py key=lambda r: -r.version):
+killed    174 gen.py if not f.name.startswith("_")]   # padding is not data
+killed    175 gen.py if cn in seen_here or cn in fixed:
+killed    176 gen.py if cn in seen_here or cn in fixed:
+killed    177 gen.py if cn in cols and cols[cn][0] != ct:
+killed    178 gen.py cols.setdefault(cn, (ct, cd))
+killed    179 gen.py return "BLOB" if ctype.startswith("char[") else SQL_TYPES[ct
+killed    180 gen.py new += [(f"{v.name}_{f.name}", _sql_type(f.ctype), f"{v.name
+killed    181 raw.py elif v is not None:           # an absent part is None: its 
+killed    182 raw.py out[f"{k}_{pk}"] = pv
+killed    183 raw.py if len(b) >= FLUSH_ROWS:
+            self.flush(r.name)
+killed    184 raw.py if extra:
+killed    185 raw.py mask = [v is None for v in vals]
+killed    186 raw.py rows.clear()
+killed    187 raw.py if errors:
+killed    188 raw.py counts["record_error"] = len(errors)
+killed    189 raw.py meta = [(i, k, v) for i, seg in enumerate(run.segments) for 
+killed    190 build.py return bytes(b).decode("utf-8", "backslashreplace")
+killed    191 build.py return socket.inet_ntop(socket.AF_INET, bytes(raw_addr)[:4])
+killed    192 build.py if family == socket.AF_INET6:
+killed    193 build.py keys = [r.proc] if ring < 2 or r.name in ("PROC", "FD") else
+killed    194 build.py keys = [r.proc] if ring < 2 or r.name in ("PROC", "FD") else
+killed    195 build.py if out.exists():
+killed    196 build.py if not done:
+            out.unlink(missing_ok=True)
+killed    197 build.py im.filename if im else None, " ".join(im.argv) if im and im.
+killed    198 build.py par = p.parent or (None, None)
+killed    199 build.py p.origin or "forked in the run", p.kthread, p.in_gap,
+killed    200 build.py min(seen) if seen else k[1], p.fork_ns, p.exit_ns, p.exit_co
+killed    201 graph.sql fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_
+killed    202 graph.sql fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_
+killed    203 graph.sql fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) OR (fs_magic = m_
+killed    204 graph.sql WHEN fs_magic = m_anon() AND fid IS NOT NULL THEN 'fid'   --
+killed    205 graph.sql WHEN 'tuple' THEN 't:' || dev || ':' || subvol || ':' || ino
+killed    206 graph.sql WHEN 'tuple' THEN 't:' || dev || ':' || subvol || ':' || ino
+killed    207 graph.sql WHEN 'fid' THEN 'f:' || fid
+killed    208 graph.sql WHEN 16384 THEN 'dir' WHEN 8192 THEN 'char' WHEN 4096 THEN '
+killed    209 graph.sql QUALIFY row_number() OVER (PARTITION BY obj ORDER BY ts_ns, 
+killed    210 graph.sql FROM raw_fd WHERE facts_len > 0
+killed    211 graph.sql FROM raw_backing WHERE user_facts_len > 0;
+killed    212 graph.sql SELECT * FROM fid_row QUALIFY row_number() OVER (PARTITION B
+killed    213 graph.sql bool_or((fflags & 32) <> 0) AS never_opened
+killed    214 graph.sql UNION ALL SELECT fid, verdict FROM raw_open WHERE verdict < 
+killed    215 graph.sql SELECT fid, verdict FROM raw_open_verdict
+        UNION ALL 
+killed    216 graph.sql ON o.dev = e.dev AND o.ino = e.ino AND o.gen = e.gen AND o.t
+killed    217 graph.sql ON o.dev = e.dev AND o.ino = e.ino AND o.gen = e.gen AND o.t
+killed    218 graph.sql OVER (PARTITION BY e.ring, e.seq ORDER BY o.ts_ns DESC, o.ob
+killed    219 graph.sql CASE WHEN e.fs_magic IN (m_ext4(), m_xfs(), m_tmpfs()) THEN 
+killed    220 graph.sql FROM obj_facts o WHERE NOT EXISTS (SELECT 1 FROM openfile f 
+killed    221 graph.sql FROM obj_facts o WHERE NOT EXISTS (SELECT 1 FROM openfile f 
+killed    222 graph.sql ORDER BY (op IN (1, 2)) DESC, ts_ns, seq) = 1
+killed    223 graph.sql nullif((SELECT max(peer_cookie) FROM r WHERE r.cookie = f.co
+killed    224 graph.sql (SELECT bool_or(op = 3 AND ret = 0) FROM r WHERE r.cookie = 
+killed    225 graph.sql (row_number() OVER (ORDER BY kind_order, first_ns, key))::BI
+killed    226 graph.sql SELECT DISTINCT fo.file_node AS real_node, un.node_id AS use
+killed    227 graph.sql AND (c.flags & 4) <> 0 AND (a.flags & 4) <> 0 AND c.tcp_isn 
+killed    228 graph.sql AND (c.flags & 4) <> 0 AND (a.flags & 4) <> 0 AND c.tcp_isn 
+killed    229 graph.sql AND c.netns = a.netns AND c.family = a.family AND c.laddr = 
+killed    230 graph.sql AND c.raddr = a.laddr AND c.rport = a.lport AND c.ret IN (0,
+killed    231 graph.sql FROM raw_fork WHERE kind = 1
+killed    232 graph.sql SELECT ts_ns, 'p:' || tgid || ':' || start_ns AS src, 'p:' |
+killed    233 graph.sql SELECT e.ts_ns, x.file_key, 'p:' || e.tgid || ':' || e.start
+killed    234 graph.sql f.verdict = 0 AND NOT f.never_opened, f.verdict, o.fid,
+killed    235 graph.sql f.verdict = 0 AND NOT f.never_opened, f.verdict, o.fid,
+killed    236 graph.sql CASE (o.f_mode & 3) WHEN 1 THEN 'r' WHEN 2 THEN 'w' WHEN 3 T
+killed    237 graph.sql QUALIFY row_number() OVER (PARTITION BY d.tgid, d.start_ns, 
+killed    238 graph.sql QUALIFY row_number() OVER (PARTITION BY d.tgid, d.start_ns, 
+killed    239 graph.sql 'CONNECT', ret IN (0, -115), ret, NULL, NULL, ring, seq
+killed    240 graph.sql SELECT ts_ns, 's:' || sock_cookie, 'p:' || tgid || ':' || st
+killed    241 graph.sql CASE op WHEN 3 THEN 'LISTEN' ELSE 'BIND' END
+killed    242 graph.sql HAVING count(DISTINCT (ino, subvol, dev, gen, fs_magic, mode
+killed    243 graph.sql HAVING count(DISTINCT (ino, subvol, dev, gen, fs_magic, mode
+killed    244 graph.sql (SELECT fid FROM fid_row GROUP BY fid HAVING count(DISTINCT 
+killed    245 graph.sql WHERE how = 'open' AND path IS NULL),
+killed    246 graph.sql coalesce(s.open_path, x.name) AS path,
+killed    247 graph.sql coalesce(s.open_path, x.name) AS path,
+killed    248 graph.sql SELECT b.value::UBIGINT AS boottime_ns, r.value::UBIGINT AS 
+killed    249 pidsmaker.py WHERE e.ok ORDER BY e.edge_id
+killed    250 pidsmaker.py sha256(u.uuid) AS hash_id, coalesce(p.exe_path, '{NULL}') AS
+killed    251 pidsmaker.py (c.realtime_ns + (e.ts_ns - c.boottime_ns))::BIGINT AS times
+killed    252 pidsmaker.py SELECT sha256(su.uuid) AS src_node, e.src::VARCHAR AS src_in
+killed    253 pidsmaker.py (SELECT run FROM run_id) || ':' || e.ring || ':' || e.seq ||
+killed    254 pidsmaker.py s.laddr AS src_addr, s.lport::VARCHAR AS src_port,
+killed    255 pidsmaker.py out.mkdir(parents=True, exist_ok=False)
+killed    256 pidsmaker.py "OPEN": "EVENT_OPEN",
+killed    257 pidsmaker.py if unknown:
+killed    258 pidsmaker.py {f"{op} (not allowed by the kernel)": n for op, ok, n in by_
+killed    259 pidsmaker.py for op, ok, n in by_op if ok and op in NOT_EXPORTED},
+killed    260 pidsmaker.py "SELECT count(*) FROM edge e WHERE e.ok AND e.ts_ns < (SELEC
+killed    261 pidsmaker.py "events_exported": exported,      # counted from the rows wr
+killed    262 pidsmaker.py if sum(exported.values()) + before_clock != sum(n for op, ok
+killed    263 pidsmaker.py coalesce(p.cmd, p.comm, '{NULL}') AS cmd
+killed    264 __main__.py if res.raw_rows["record_error"]:
+killed    265 __main__.py bad = [k for k in MUST_BE_ZERO if res.counts.get(k, 0)]
+killed    266 __main__.py return 2
+    print(f"graph: {a.out}")
+killed    267 __main__.py return 1
+    return 0
+mutation sweep: 96/96 killed (a subset: not the gate)
