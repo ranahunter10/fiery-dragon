@@ -406,7 +406,10 @@ static __always_inline struct path_slot *claim(void)
 static __always_inline int write_backing(struct file *file, struct inode *inode)
 {
 	struct backing_file *bf = (void *)((char *)file - bpf_core_field_offset(struct backing_file, file));
-	struct inode *uinode = BPF_CORE_READ(bf, user_path.dentry, d_inode);
+	/* bf is computed, not a BTF pointer: read through the helper, then cast for read_facts' direct
+	 * loads. The NULL test is on the scalar: a cast pointer is one the verifier takes as non-NULL. */
+	void *uraw = BPF_CORE_READ(bf, user_path.dentry, d_inode);
+	struct inode *uinode = uraw ? bpf_core_cast(uraw, struct inode) : NULL;
 	struct p15_part_objfacts f, uf;
 	struct obj_ent *oe, *uoe = NULL;
 	struct file_ent *fe;
