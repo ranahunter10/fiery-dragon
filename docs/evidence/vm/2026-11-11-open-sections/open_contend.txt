@@ -1,0 +1,3 @@
+config mode=contend workers=12 n=200000 ncpu=3 dir=/var/tmp/p15-open-cost
+contend workers=12 n=200000 opens=2400000 fentry_run=2156161 session_entry=2400018 session_no_inode=0 missing=243857 open_emitted=2156161 open_lost=0 missing_lost=0 close_emitted=2400018 close_lost=0 rmiss_path=243857 rmiss_session=0 rmiss_free=0 lmiss_session=0 lmiss_free=0
+books ok open=2400018 close=2400018 other=0

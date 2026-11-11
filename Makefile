@@ -55,7 +55,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe $(OUT)/sliceb_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/prim_cost
+         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/prim_cost $(OUT)/open_sections
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
@@ -125,6 +125,12 @@ $(OUT)/%.bpf.o: bpf/progs/%.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_rec
 # file identity (ADR-0015): the id counter and the slot claim read the result of an atomic
 # (fetch-add, compare-and-swap), which needs BPF ISA v3 (clang 18 refuses it otherwise; E-0144)
 $(OUT)/file.bpf.o: BPF_CFLAGS += -mcpu=v3
+
+# The same programs with section timing (bpf/include/p15_prof.h), for bench/open_sections only:
+# p15d never loads this object.
+$(OUT)/file_prof.bpf.o: bpf/progs/file.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_records.h \
+                        bpf/include/*.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -mcpu=v3 -DP15_PROFILE -c $< -o $@
 
 $(OUT)/p15-spine: daemon/p15_spine.c $(DAEMON_COMMON) daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/p15_spine.c $(DAEMON_COMMON) $(LDLIBS) -o $@
@@ -311,6 +317,11 @@ bench-open-cost: $(OUT)/open_cost $(OUT)/p15d
 # (bench/prim_cost/): where a capture program's time can go. root.
 $(OUT)/prim_cost.bpf.o: bench/prim_cost/prim_cost.bpf.c bpf/vmlinux/vmlinux.h $(LIBBPF_A) | $(OUT)
 	$(CLANG) $(BPF_CFLAGS) -mcpu=v3 -c $< -o $@
+
+# Where the file programs' time goes, section by section, and the path program's skips under
+# contention (bench/open_sections/). root.
+$(OUT)/open_sections: bench/open_sections/open_sections.c daemon/counters.c $(OUT)/file_prof.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/open_sections/open_sections.c daemon/counters.c $(LDLIBS) -o $@
 
 $(OUT)/prim_cost: bench/prim_cost/prim_cost.c $(OUT)/prim_cost.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) bench/prim_cost/prim_cost.c $(LDLIBS) -o $@

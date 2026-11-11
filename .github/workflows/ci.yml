@@ -109,6 +109,13 @@ jobs:
           grep '^capture' build/open_cost.txt && tail -12 build/open_cost.md
       - name: Building-block cost harness loads and every iteration does its work; not a measurement (runner kernel, not the target)
         run: sudo build/prim_cost 2 5000 > build/prim_cost.txt && python3 bench/prim_cost/summarize.py build/prim_cost.txt
+      - name: Section-timing harness loads the profiled file programs, single and contend, and its books close; not a measurement (runner kernel, not the target)
+        run: |
+          sudo mkdir -p /var/tmp/p15-os && echo x | sudo tee /var/tmp/p15-os/same > /dev/null
+          sudo build/open_sections single 2 20000 /var/tmp/p15-os > build/open_sections.txt || { cat build/open_sections.txt; exit 1; }
+          python3 bench/open_sections/summarize.py build/open_sections.txt > /dev/null
+          sudo build/open_sections contend 6 20000 /var/tmp/p15-os > build/open_contend.txt || { cat build/open_contend.txt; exit 1; }
+          python3 bench/open_sections/summarize.py build/open_contend.txt
       - name: Hook-cost harness (ADR-0020 confirmation 5) loads every arm and its books close; not a measurement (runner kernel, not the target)
         run: sudo build/hook_cost build/spine.bpf.o 2 2000 20 > build/hook_cost.txt && tail -1 build/hook_cost.txt && python3 bench/hook_cost/summarize.py build/hook_cost.txt > /dev/null
       - name: Read-path hook-cost harness (decision 1a, N5) loads every arm, kprobe.session beside fentry, books close; not a measurement (runner kernel, not the target)

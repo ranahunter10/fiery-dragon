@@ -37,6 +37,7 @@ OCR, OCS = "bench/open_cost/run.py", "bench/open_cost/summarize.py"
 _TO = "bench/open_cost/test_open_cost.py"
 PCS, PCP = "bench/prim_cost/summarize.py", "bench/prim_cost/prog_stats.py"
 _TPC = "bench/prim_cost/test_prim_cost.py"
+OSS = "bench/open_sections/summarize.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
@@ -410,6 +411,22 @@ M = [
  (PCP, "{min(e['per_run']):.1f} to", "{max(e['per_run']):.1f} to"),
  (PCP, "{P.median(total) / ops:.1f}", "{sum(total) / ops:.1f}"),
  (PCP, "{e['runs'] / (ops * len(e['ns'])):.3f}", "{e['runs'] / ops:.3f}"),
+ # ---- open_sections: the section report and the skip count under contention (decisions waiting 1-2) ----
+ (OSS, "            if rows[r][s][0] != cfg[\"n\"]:\n", "            if False:\n"),
+ (OSS, 'WHOLE = ("open_all", "sess_entry", "sess_return", "free_all")', 'WHOLE = ("open_all",)'),
+ (OSS, "        if r not in d[\"host\"]:\n", "        if False:\n"),
+ (OSS, '        net = [per(r, s) - per(r, "empty") for r in timed]', '        net = [per(r, s) for r in timed]'),
+ (OSS, '    timed = [r for r in sorted(rows) if r >= 0]', '    timed = sorted(rows)'),
+ (OSS, '            rest = med[whole] - sum(med[p] for p in parts)', '            rest = med[whole]'),
+ (OSS, '            if m[1] != "ok":\n', '            if False:\n'),
+ (OSS, '    if out["books"] is None:\n', '    if False:\n'),
+ (OSS, '    if c["fentry_run"] + c["missing"] < c["opens"]:\n', '    if c["fentry_run"] < c["opens"]:\n'),
+ (OSS, '    seen = c["fentry_run"] + c["missing"]', '    seen = c["fentry_run"]'),
+ (OSS, '{3 / seen:.2e}', '{1 / seen:.2e}'),
+ (OSS, '+ ("" if c["missing"] else', '+ ("" if True else'),
+ (OSS, '            if sec in out["rows"][r]:\n', '            if False:\n'),
+ (OSS, '        if d["contend"] is not None:\n', '        if False:\n'),
+ (OSS, 'out += PC.host_lines([d["host"][r] for r in timed], ref)[0]', 'out += PC.host_lines([d["host"][r] for r in sorted(rows)], ref)[0]'),
 ]
 
 
