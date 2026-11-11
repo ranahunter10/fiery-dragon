@@ -47,6 +47,14 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/open_cost/summarize.py) | Summarize an open-cost run (bench/open_cost/run.py) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `per_op`, `timing`, `capture_section`, `report` |
 | [`test_open_cost.py`](../bench/open_cost/test_open_cost.py) | Tests for the open-cost driver and its report (bench/open_cost/run.py, summarize.py). | `facts`, `opn`, `cls`, `wal`, `Books`, `Driver`, `run_text`, `Report` |
 
+## bench/open_sections
+
+| File | Job | Public names |
+|---|---|---|
+| [`open_sections.c`](../bench/open_sections/open_sections.c) | where the file programs' time goes, section by section, and how often the kernel skips the path program when tasks contend for the CPUs (STATE decisions waiting 1 and 2). |  |
+| [`summarize.py`](../bench/open_sections/summarize.py) | Summarize open_sections output (bench/open_sections/open_sections.c). | `ParseError`, `parse`, `single`, `contend`, `report` |
+| [`test_summarize.py`](../bench/open_sections/test_summarize.py) | Tests for the open_sections report (bench/open_sections/summarize.py). | `single`, `contend`, `Single`, `Contend` |
+
 ## bench/prim_cost
 
 | File | Job | Public names |
@@ -110,6 +118,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`p15_counters.h`](../bpf/include/p15_counters.h) | Per-cause counters shared by the BPF programs and the daemon (ADR-0006, accounting invariant). |  |
 | [`p15_file.h`](../bpf/include/p15_file.h) | File identity (ADR-0015, STATE decision 19): what file.bpf.c and p15d share. |  |
 | [`p15_kernel.h`](../bpf/include/p15_kernel.h) | Kernel facts the BPF programs need that vmlinux.h does not carry (macros are not in BTF). |  |
+| [`p15_prof.h`](../bpf/include/p15_prof.h) | Section timing for bench/open_sections (STATE decision waiting 1): where the file programs' time goes, section by section. |  |
 | [`p15_snap.h`](../bpf/include/p15_snap.h) | The process snapshot's books (ADR-0007 rule 3, ADR-0023), shared by snap.bpf.c, which counts, and p15d, which zeroes them before each snapshot and copies them into SNAP_DONE aft... |  |
 
 ## bpf/progs

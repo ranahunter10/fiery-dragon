@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-11 (UTC), PR "bench: what a ring record, a map operation and each of our programs cost"
+**Last updated:** 2026-11-11 (UTC), PR "bench: time each section of the file programs, and the path program's skips under contention"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -243,10 +243,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 32. **Where a capture program's time goes, taken under 22a** (E-0184, [evidence](evidence/vm/2026-11-11-prim-cost-ac/README.md)): the first clean run (host on AC, Best performance). Program bodies 1,139 ns per open+close: the path program 561, the session program 289, the close program 289. A ring record costs 25-36 ns alone, about 6 % of the bodies: **per-CPU batching is not built now** (decision waiting 5 stands). No design change yet: the two unknowns below come first.
 
+33. **Section timing in a separate build, taken under 22a** (E-0185): brackets in `file.bpf.c` that compile to nothing in p15d's build (checked instruction for instruction) and a profiled object only `bench/open_sections` loads. Chosen over a copy of the programs (it would drift from the shipped code) and over `bpf_stats` (whole programs only). #69 merged (E-0186).
+
 ## Decisions waiting
 
-1. **Time `bpf_d_path` inside the path program** (the inferred ~400 ns of its 561): a test-only build that brackets each section of `file_open_path` with clock reads into a per-CPU array, run on the VM with the host check. Recommendation: build it next; the options it decides between (a path once per object and epoch, a dentry walk like Tetragon's and Tracee's, a path cache like Tracee's; R-043) each reopen ADR-0015 and need an ADR with that number.
-2. **The path program's skip rate under multi-core contention** (more workers than vCPUs): it decides whether the session program (289 ns per open+close) can go. Recommendation: measure with the same build, before changing ADR-0015's three programs.
+1. **Time `bpf_d_path` inside the path program** (the inferred ~400 ns of its 561): built (`bench/open_sections`, decision 33); the VM run is next, with the host check. Recommendation: build it next; the options it decides between (a path once per object and epoch, a dentry walk like Tetragon's and Tracee's, a path cache like Tracee's; R-043) each reopen ADR-0015 and need an ADR with that number.
+2. **The path program's skip rate under multi-core contention** (more workers than vCPUs): it decides whether the session program (289 ns per open+close) can go. Built (`open_sections contend`); recommendation: run it on the VM before changing ADR-0015's three programs.
 3. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
 4. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
 5. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.

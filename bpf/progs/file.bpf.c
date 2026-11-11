@@ -23,6 +23,7 @@
 #include "p15_file.h"
 #include "p15_records.h"
 #include "p15_snap.h"
+#include "p15_prof.h"   /* empty unless -DP15_PROFILE (bench/open_sections) */
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -301,10 +302,18 @@ static __always_inline __u32 build_open(__u8 *buf, struct file *file, struct ino
 	long n;
 
 	__builtin_memset(r, 0, sizeof(*r));
+	PROF_T(t_hdr);
 	fill_hdr(&r->h, P15_T_OPEN, P15_OPEN_VERSION);
+	PROF_ADD(P15_PROF_OPEN_HDR, t_hdr);
+	PROF_T(t_facts);
 	read_facts(inode, &f);
+	PROF_ADD(P15_PROF_OPEN_FACTS, t_facts);
+	PROF_T(t_obj);
 	r->obj = obj_of(inode, &f, oe, carried);
+	PROF_ADD(P15_PROF_OPEN_OBJ, t_obj);
+	PROF_T(t_file);
 	*fe = file_ent_get(file, inode, r->obj);
+	PROF_ADD(P15_PROF_OPEN_FILE, t_file);
 	r->fid = *fe ? (*fe)->fid : new_id();
 	r->f_flags = BPF_CORE_READ(file, f_flags);
 	r->f_mode = BPF_CORE_READ(file, f_mode);
@@ -319,7 +328,9 @@ static __always_inline __u32 build_open(__u8 *buf, struct file *file, struct ino
 		off += sizeof(f);
 	}
 	/* bpf_d_path (allowed on security_file_open, K10): the kernel's own path */
+	PROF_T(t_dpath);
 	n = bpf_d_path(&file->f_path, (char *)(buf + off), P15_PATH_MAX);
+	PROF_ADD(P15_PROF_OPEN_DPATH, t_dpath);
 	if (n > 0) {
 		plen = (__u32)(n - 1) & (P15_PATH_MAX - 1);
 		r->path_full = plen;
@@ -445,6 +456,9 @@ int BPF_PROG(file_open_path, struct file *file)
 	int carried = 0;
 	__u32 len;
 
+	PROF_T(t_empty);
+	PROF_ADD(P15_PROF_EMPTY, t_empty);
+	PROF_T(t_all);
 	count(P15_FC_FENTRY_RUN);
 	inode = BPF_CORE_READ(file, f_inode);
 	if (!inode) {
@@ -454,14 +468,18 @@ int BPF_PROG(file_open_path, struct file *file)
 	if (BPF_CORE_READ(file, f_mode) & P15_FMODE_BACKING)
 		return write_backing(file, inode);
 
+	PROF_T(t_claim);
 	s = claim();
+	PROF_ADD(P15_PROF_OPEN_CLAIM, t_claim);
 	if (s) {
 		long rc;
 
 		len = build_open(s->rec, file, inode, &oe, &fe, &carried, 1);
 		if (len > P15_OPEN_MAX_SIZE)
 			len = P15_OPEN_MAX_SIZE;
+		PROF_T(t_out);
 		rc = bpf_ringbuf_output(&bulk_rb, s->rec, len, wake());
+		PROF_ADD(P15_PROF_OPEN_OUTPUT, t_out);
 		asm volatile("" ::: "memory");
 		s->busy = 0;
 		if (rc) {
@@ -489,6 +507,7 @@ int BPF_PROG(file_open_path, struct file *file)
 	facts_done(oe, carried);
 	if (fe)
 		__sync_fetch_and_or(&fe->state, ST_FENTRY_RAN);
+	PROF_ADD(P15_PROF_OPEN_ALL, t_all);
 	return 0;
 }
 
@@ -562,6 +581,7 @@ int file_open_session(struct pt_regs *ctx)
 		struct obj_ent *oe;
 		int carry;
 
+		PROF_T(t_sess);
 		count(P15_FC_SESSION_ENTRY);
 		file = (struct file *)PT_REGS_PARM1(ctx);
 		*cookie = (__u64)file;
@@ -571,11 +591,19 @@ int file_open_session(struct pt_regs *ctx)
 			return 1;   /* no return run */
 		}
 		read_facts(inode, &f);
-		fe = file_ent_get(file, inode, obj_of(inode, &f, &oe, &carry));
+		{
+			__u64 obj = obj_of(inode, &f, &oe, &carry);
+
+			PROF_T(t_sfile);
+			fe = file_ent_get(file, inode, obj);
+			PROF_ADD(P15_PROF_SESS_FILE, t_sfile);
+		}
 		if (fe)
 			__sync_fetch_and_or(&fe->state, ST_SESSION_ENTRY);
+		PROF_ADD(P15_PROF_SESS_ENTRY, t_sess);
 		return 0;
 	}
+	PROF_T(t_ret);
 	count(P15_FC_SESSION_RETURN);
 	key = *cookie;
 	if (!key) {
@@ -594,6 +622,7 @@ int file_open_session(struct pt_regs *ctx)
 		write_verdict(fe, ret);
 	else
 		count(P15_FC_SESSION_COMMON);
+	PROF_ADD(P15_PROF_SESS_RETURN, t_ret);
 	return 0;
 }
 
@@ -605,12 +634,16 @@ int file_free(struct pt_regs *ctx)
 	struct file_ent *fe;
 	struct p15_close *r;
 
+	PROF_T(t_free);
 	count(P15_FC_FREE_RUN);
+	PROF_T(t_flook);
 	fe = bpf_map_lookup_elem(&files, &key);
+	PROF_ADD(P15_PROF_FREE_LOOKUP, t_flook);
 	if (!fe) {
 		count(P15_FC_FREE_UNREGISTERED);
 		return 0;
 	}
+	PROF_T(t_fring);
 	r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
 	if (r) {
 		__builtin_memset(r, 0, sizeof(*r));
@@ -628,8 +661,12 @@ int file_free(struct pt_regs *ctx)
 	} else {
 		count(P15_FC_CLOSE_LOST);
 	}
+	PROF_ADD(P15_PROF_FREE_RING, t_fring);
+	PROF_T(t_fdel);
 	if (!bpf_map_delete_elem(&files, &key))
 		count_add(P15_FC_FILES_LIVE, (__u64)-1);
+	PROF_ADD(P15_PROF_FREE_DELETE, t_fdel);
+	PROF_ADD(P15_PROF_FREE_ALL, t_free);
 	return 0;
 }
 
