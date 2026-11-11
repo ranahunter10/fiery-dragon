@@ -38,6 +38,14 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/hook_cost/summarize.py) | Summarize hook_cost output (bench/hook_cost/hook_cost.c) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `series`, `comparison`, `report` |
 | [`test_summarize.py`](../bench/hook_cost/test_summarize.py) | Tests for summarize.py on synthetic hook_cost output with a known answer. | `synth`, `overhead`, `SummarizeTest` |
 
+## bench/idle_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`run.py`](../bench/idle_cost/run.py) | Drive the idle-cost measurement (gate 3 of STATE decision 28): p15d's own CPU per second on a host that asks nothing of it, under several settings, compared at the same backgrou... | `RunError`, `arm_args`, `rotation`, `threads_cpu`, `boot_ns`, `window_books`, `wait_started`, `one` |
+| [`summarize.py`](../bench/idle_cost/summarize.py) | Summarize an idle-cost run (bench/idle_cost/run.py): gate 3 of STATE decision 28. | `ParseError`, `parse`, `ms_per_s`, `report` |
+| [`test_idle_cost.py`](../bench/idle_cost/test_idle_cost.py) | Tests for the idle-cost harness (bench/idle_cost/run.py, summarize.py). | `run_line`, `thread`, `good`, `Summary`, `Harness` |
+
 ## bench/open_cost
 
 | File | Job | Public names |
