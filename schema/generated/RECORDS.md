@@ -710,7 +710,7 @@ Fixed part 56 bytes; at most 56 bytes with its variable fields.
 |---:|---|---|---|
 | 0 | `h` | header | common header |
 | 32 | `fid` | u64 | the open-file id that ends |
-| 40 | `obj` | u64 | its object id |
+| 40 | `obj` | u64 | its object id; 0 when no program of the open computed it (the path program skipped and the session's return missed, both counted) |
 | 48 | `fflags` | u32 | P15_FF_* (NEVER_OPENED, KTHREAD) |
 | 52 | `f_mode` | u32 | file->f_mode at the free |
 

@@ -1,0 +1,83 @@
+# The maintainer's terminal, pasted (2026-11-12). The raw .txt files stayed on the VM; their sha256 are at the end.
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && sudo chown -R "$USER" build; git fetch origin && git checkout -B bpf/open-path-v2 origin/bpf/open-path-v2
+make -j3 build/p15d build/p15w-inspect build/net_probe build/open_sections build/open_cost && git log --oneline -1
+[sudo: authenticate] Password:
+remote: Enumerating objects: 106, done.
+remote: Counting objects: 100% (87/87), done.
+remote: Compressing objects: 100% (25/25), done.
+remote: Total 52 (delta 33), reused 45 (delta 27), pack-reused 0 (from 0)
+Unpacking objects: 100% (52/52), 20.64 KiB | 19.00 KiB/s, done.
+From https://github.com/ranahunter10/fiery-dragon
+ * [new branch]      bpf/open-path-v2 -> origin/bpf/open-path-v2
+   8668e0b..b83f3fe  main             -> origin/main
+Previous HEAD position was 8438404 bench: time each section of the file programs, and the path program's skips under contention
+branch 'bpf/open-path-v2' set up to track 'origin/bpf/open-path-v2'.
+Switched to a new branch 'bpf/open-path-v2'
+make: 'build/p15w-inspect' is up to date.
+make: 'build/open_cost' is up to date.
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -mcpu=v3 -c bpf/progs/file.bpf.c -o build/file.bpf.o
+make: 'build/net_probe' is up to date.
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -mcpu=v3 -DP15_PROFILE -c bpf/progs/file.bpf.c -o build/file_prof.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/file.bpf.o > build/file.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/file_prof.bpf.o > build/file_prof.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"7d58f45468dd"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/open_sections/open_sections.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/open_sections
+7d58f45 (HEAD -> bpf/open-path-v2, origin/bpf/open-path-v2) docs: the verifier's refusal on CI and the second push's case 12 (E-0191)
+ashu@p15-dev:~/fiery-dragon$ sudo -v && sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 daemon/tests/it_p15d.sh build 2>&1 | tee ~/it-v2.txt | grep -E "case 12|PATH_MISSING|FAIL|it_p15d:"
+case 12: the path program left unattached: the session return writes every open, with its object (E-0190) [t+91s]
+  OPEN 4 (PATH_MISSING 4); CLOSE of those 2, naming the OPEN's object 2
+  ok   every OPEN came from the session return (PATH_MISSING)
+it_p15d: PASS (0 failed checks)
+ashu@p15-dev:~/fiery-dragon$ build/open_cost /var/tmp/p15-open-cost 1 1 | grep nullsys
+sudo build/open_sections single 20 200000 /var/tmp/p15-open-cost > build/open_sections.txt
+~/p15venv/bin/python bench/open_sections/summarize.py build/open_sections.txt --ref-nullsys-ns 87.5 | tee build/open_sections.md
+workload pid=48986 cpu=2 same=1 distinct=1 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=86374347 wall_ns=86370828
+# open_sections: where the file programs' time goes
+
+Run: 20 rounds of 200,000 open+close, pinned.
+
+Host speed: a null syscall cost 85.9 ns (median of 20 rounds; 83.1 to 100.0).
+
+| section | samples per open | ns per sample (median) | cheapest to dearest round | net of the bracket |
+|---|---|---|---|---|
+| empty | 1.000 | 14.9 | 14.5 to 16.5 |  |
+| open_all | 1.000 | 507.5 | 485.3 to 531.5 | 492.5 |
+| open_claim | 1.000 | 23.3 | 22.5 to 23.9 | 8.2 |
+| open_hdr | 1.000 | 30.8 | 29.7 to 32.0 | 15.8 |
+| open_facts | 1.000 | 21.1 | 20.0 to 22.1 | 5.9 |
+| open_obj | 1.000 | 32.4 | 30.6 to 35.4 | 17.4 |
+| open_file | 1.000 | 28.1 | 27.0 to 29.7 | 13.1 |
+| open_dpath | 1.000 | 109.0 | 104.0 to 117.4 | 93.7 |
+| open_output | 1.000 | 52.5 | 48.5 to 57.0 | 37.6 |
+| sess_entry | 1.000 | 154.6 | 145.8 to 165.8 | 139.6 |
+| sess_file | 1.000 | 97.4 | 90.7 to 107.2 | 82.4 |
+| sess_return | 1.000 | 35.3 | 33.6 to 37.5 | 20.3 |
+| free_all | 1.000 | 260.0 | 251.0 to 274.5 | 244.9 |
+| free_lookup | 1.000 | 39.8 | 36.0 to 42.7 | 25.0 |
+| free_ring | 1.000 | 67.4 | 63.4 to 74.3 | 52.6 |
+| free_delete | 1.000 | 58.5 | 56.2 to 62.2 | 43.7 |
+
+- open_all: 507.5 ns, of which its 7 timed sections 297.0; the rest, 210.5 ns, is untimed code and the inner brackets' own cost.
+- sess_entry: 154.6 ns, of which its 1 timed sections 97.4; the rest, 57.2 ns, is untimed code and the inner brackets' own cost.
+- free_all: 260.0 ns, of which its 3 timed sections 165.8; the rest, 94.2 ns, is untimed code and the inner brackets' own cost.
+
+ashu@p15-dev:~/fiery-dragon$ sudo build/open_sections contend 12 200000 /var/tmp/p15-open-cost > build/open_contend.txt
+~/p15venv/bin/python bench/open_sections/summarize.py build/open_contend.txt | tee build/open_contend.md
+sha256sum ~/it-v2.txt build/open_sections.txt build/open_sections.md build/open_contend.txt build/open_contend.md
+# open_sections: where the file programs' time goes
+
+Run: 12 processes, not pinned, 200,000 open+close each (2,400,000), on 3 CPUs.
+
+- Opens seen by the session program while the workers ran (all tasks): 2,400,026; path program runs: 2,141,522.
+- **Path program skipped: 258,504 opens** (OPEN written with PATH_MISSING), 1.08e-01 of 2,400,026.
+- The kernel's own counts: recursion_misses path 258504, session 0, close 0; kprobe_multi.missed session 0, close 0.
+- Records lost to a full ring: OPEN 0, PATH_MISSING 0, CLOSE 0.
+
+90a8b7f3a50de4c5781d293025a726bff0200dcf71d9ea21d9cd12c85ba5bb10  /home/ashu/it-v2.txt
+ee5c1ef25e430271fa815604080583624fc5575f25bcfe3bd46a3646505b5ef6  build/open_sections.txt
+1e0dacd69a8e5e6725df82272e5b135b302c5b7e4ee04fee602fa3e8daa9a08a  build/open_sections.md
+a8fd53802b77ed8923d162c64249713e314e226a7f76ad4961f99757cd698cc4  build/open_contend.txt
+914541e8773619569071a6eb72456e7bb673dd88496e4b87beaa75b8c854cb65  build/open_contend.md
+ashu@p15-dev:~/fiery-dragon$

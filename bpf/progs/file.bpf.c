@@ -6,11 +6,15 @@
  *                                       and copied to the bulk ring at its exact size; a full-size,
  *                                       zeroed reservation when no slot is free; BACKING instead for an
  *                                       FMODE_BACKING file (overlayfs)
- *   kprobe.session/security_file_open  entry: registers the open file and its object, so both programs
- *                                       name one fid whichever runs first; return: OPEN_VERDICT if the
- *                                       LSM denied, OPEN with PATH_MISSING if the fentry did not run
+ *   kprobe.session/security_file_open  entry: registers the open file (its object is filled in by
+ *                                       whichever program computes it), so both programs name one fid;
+ *                                       return: OPEN_VERDICT if the LSM denied, OPEN with PATH_MISSING
+ *                                       and the facts if the fentry did not run (E-0189)
  *   kprobe.multi/security_file_free    CLOSE (NEVER_OPENED, KTHREAD) and the open-file entry's end
  *   kprobe.multi/security_inode_free   the object entry's end
+ * Kernel fields are read with direct loads, not bpf_probe_read_kernel: the fentry's argument and
+ * bpf_get_current_task_btf() are BTF pointers, and the kprobes cast theirs with bpf_core_cast; the
+ * verifier turns each load into one exception-protected load instead of a helper call (E-0190).
  * Opens are not filtered (decision 19.3). Records go to the bulk ring this object owns; NET reuses it
  * (decision 19.4). Counters: bpf/include/p15_file.h, one per early return.
  */
@@ -158,9 +162,7 @@ static __always_inline __u64 wake(void)
 
 static __always_inline int kthread(void)
 {
-	struct task_struct *t = bpf_get_current_task_btf();
-
-	return !!(BPF_CORE_READ(t, flags) & PF_KTHREAD);
+	return !!(bpf_get_current_task_btf()->flags & PF_KTHREAD);
 }
 
 static __always_inline void fill_hdr(struct p15_hdr *h, __u16 type, __u16 version)
@@ -171,19 +173,21 @@ static __always_inline void fill_hdr(struct p15_hdr *h, __u16 type, __u16 versio
 	h->version = version;
 	h->flags = 0;
 	h->ts_ns = bpf_ktime_get_boot_ns();
-	h->tgid = BPF_CORE_READ(t, tgid);
-	h->tid = BPF_CORE_READ(t, pid);
-	h->start_ns = BPF_CORE_READ(t, group_leader, start_boottime);
+	h->tgid = t->tgid;
+	h->tid = t->pid;
+	h->start_ns = t->group_leader->start_boottime;
 }
 
 static __always_inline void read_facts(struct inode *inode, struct p15_part_objfacts *f)
 {
-	f->ino = BPF_CORE_READ(inode, i_ino);
-	f->dev = BPF_CORE_READ(inode, i_sb, s_dev);
-	f->gen = BPF_CORE_READ(inode, i_generation);
-	f->mode = BPF_CORE_READ(inode, i_mode);
-	f->fs_magic = (__u32)BPF_CORE_READ(inode, i_sb, s_magic);
-	f->nlink = BPF_CORE_READ(inode, __i_nlink);
+	struct super_block *sb = inode->i_sb;
+
+	f->ino = inode->i_ino;
+	f->dev = sb->s_dev;
+	f->gen = inode->i_generation;
+	f->mode = inode->i_mode;
+	f->fs_magic = (__u32)sb->s_magic;
+	f->nlink = inode->__i_nlink;
 	f->subvol = 0;
 	f->seen = P15_SEEN_OPEN;
 	f->oflags = 0;
@@ -250,11 +254,12 @@ static __always_inline void facts_done(struct obj_ent *e, int carried)
 		count(P15_FC_FACTS_DUP);
 }
 
-/* The open-file entry of file (rule 1), created if absent; NULL when the map is full (counted).
- * *created: 1 if this call inserted it. */
-static __always_inline struct file_ent *file_ent_get_c(struct file *file, struct inode *inode, __u64 obj, int *created)
+/* The open-file entry of the file at `key` (rule 1), created if absent; NULL when the map is full
+ * (counted). *created: 1 if this call inserted it. obj 0 means "not computed yet": the session's
+ * entry registers the file before anyone has read the inode's facts, and the first caller that has
+ * the object fills it in (both compute the same id for one inode). */
+static __always_inline struct file_ent *file_ent_get_key(__u64 key, struct inode *inode, __u64 obj, int *created)
 {
-	__u64 key = (__u64)file;
 	struct file_ent *e = bpf_map_lookup_elem(&files, &key);
 	long rc;
 
@@ -264,8 +269,11 @@ static __always_inline struct file_ent *file_ent_get_c(struct file *file, struct
 			count_add(P15_FC_FILES_LIVE, (__u64)-1);
 		e = NULL;
 	}
-	if (e)
+	if (e) {
+		if (!e->obj && obj)
+			e->obj = obj;
 		return e;
+	}
 	{
 		struct file_ent n = { .fid = new_id(), .obj = obj, .inode = (__u64)inode };
 
@@ -280,14 +288,21 @@ static __always_inline struct file_ent *file_ent_get_c(struct file *file, struct
 	e = bpf_map_lookup_elem(&files, &key);
 	if (!e)
 		count(P15_FC_FILE_MAP_FULL);
+	else if (!e->obj && obj)
+		e->obj = obj;   /* lost the insert race to the session's entry */
 	return e;
+}
+
+static __always_inline struct file_ent *file_ent_get_c(struct file *file, struct inode *inode, __u64 obj, int *created)
+{
+	return file_ent_get_key((__u64)file, inode, obj, created);
 }
 
 static __always_inline struct file_ent *file_ent_get(struct file *file, struct inode *inode, __u64 obj)
 {
 	int created = 0;
 
-	return file_ent_get_c(file, inode, obj, &created);
+	return file_ent_get_key((__u64)file, inode, obj, &created);
 }
 
 /* OPEN into buf (a claimed slot, or a full-size reservation zeroed by the caller): fixed part, the
@@ -315,8 +330,8 @@ static __always_inline __u32 build_open(__u8 *buf, struct file *file, struct ino
 	*fe = file_ent_get(file, inode, r->obj);
 	PROF_ADD(P15_PROF_OPEN_FILE, t_file);
 	r->fid = *fe ? (*fe)->fid : new_id();
-	r->f_flags = BPF_CORE_READ(file, f_flags);
-	r->f_mode = BPF_CORE_READ(file, f_mode);
+	r->f_flags = file->f_flags;
+	r->f_mode = file->f_mode;
 	if (kthread()) {
 		r->fflags |= P15_FF_KTHREAD;
 		count(P15_FC_KTHREAD_OPEN);
@@ -391,7 +406,10 @@ static __always_inline struct path_slot *claim(void)
 static __always_inline int write_backing(struct file *file, struct inode *inode)
 {
 	struct backing_file *bf = (void *)((char *)file - bpf_core_field_offset(struct backing_file, file));
-	struct inode *uinode = BPF_CORE_READ(bf, user_path.dentry, d_inode);
+	/* bf is computed, not a BTF pointer: read through the helper, then cast for read_facts' direct
+	 * loads. The NULL test is on the scalar: a cast pointer is one the verifier takes as non-NULL. */
+	void *uraw = BPF_CORE_READ(bf, user_path.dentry, d_inode);
+	struct inode *uinode = uraw ? bpf_core_cast(uraw, struct inode) : NULL;
 	struct p15_part_objfacts f, uf;
 	struct obj_ent *oe, *uoe = NULL;
 	struct file_ent *fe;
@@ -418,8 +436,8 @@ static __always_inline int write_backing(struct file *file, struct inode *inode)
 	}
 	fe = file_ent_get(file, inode, r->obj);
 	r->fid = fe ? fe->fid : new_id();
-	r->f_flags = BPF_CORE_READ(file, f_flags);
-	r->f_mode = BPF_CORE_READ(file, f_mode);
+	r->f_flags = file->f_flags;
+	r->f_mode = file->f_mode;
 	if (kthread())
 		r->fflags |= P15_FF_KTHREAD;
 	tail = (__u8 *)(r + 1);
@@ -460,12 +478,12 @@ int BPF_PROG(file_open_path, struct file *file)
 	PROF_ADD(P15_PROF_EMPTY, t_empty);
 	PROF_T(t_all);
 	count(P15_FC_FENTRY_RUN);
-	inode = BPF_CORE_READ(file, f_inode);
+	inode = file->f_inode;
 	if (!inode) {
 		count(P15_FC_FENTRY_NO_INODE);
 		return 0;
 	}
-	if (BPF_CORE_READ(file, f_mode) & P15_FMODE_BACKING)
+	if (file->f_mode & P15_FMODE_BACKING)
 		return write_backing(file, inode);
 
 	PROF_T(t_claim);
@@ -515,7 +533,7 @@ int BPF_PROG(file_open_path, struct file *file)
  * OPEN_VERDICT. */
 static __always_inline void write_missing(struct file *file, struct file_ent *fe, int verdict)
 {
-	struct inode *inode = BPF_CORE_READ(file, f_inode);
+	struct inode *inode = file->f_inode;
 	struct p15_part_objfacts f;
 	struct obj_ent *oe;
 	struct p15_open *r;
@@ -531,10 +549,12 @@ static __always_inline void write_missing(struct file *file, struct file_ent *fe
 	fill_hdr(&r->h, P15_T_OPEN, P15_OPEN_VERSION);
 	read_facts(inode, &f);
 	r->obj = obj_of(inode, &f, &oe, &carry);
+	if (!fe->obj)
+		fe->obj = r->obj;   /* the session's entry left it for the program that reads the facts */
 	r->fid = fe->fid;
 	r->fflags = P15_FF_PATH_MISSING | (kthread() ? P15_FF_KTHREAD : 0);
-	r->f_flags = BPF_CORE_READ(file, f_flags);
-	r->f_mode = BPF_CORE_READ(file, f_mode);
+	r->f_flags = file->f_flags;
+	r->f_mode = file->f_mode;
 	r->verdict = verdict;
 	if (carry) {
 		__builtin_memcpy(r + 1, &f, sizeof(f));
@@ -576,28 +596,24 @@ int file_open_session(struct pt_regs *ctx)
 	int ret;
 
 	if (!bpf_session_is_return(ctx)) {
-		struct p15_part_objfacts f;
 		struct inode *inode;
-		struct obj_ent *oe;
-		int carry;
+		int created = 0;
 
 		PROF_T(t_sess);
 		count(P15_FC_SESSION_ENTRY);
-		file = (struct file *)PT_REGS_PARM1(ctx);
-		*cookie = (__u64)file;
-		inode = BPF_CORE_READ(file, f_inode);
+		key = PT_REGS_PARM1(ctx);
+		*cookie = key;
+		file = bpf_core_cast((void *)key, struct file);
+		inode = file->f_inode;
 		if (!inode) {
 			count(P15_FC_SESSION_NO_INODE);
 			return 1;   /* no return run */
 		}
-		read_facts(inode, &f);
-		{
-			__u64 obj = obj_of(inode, &f, &oe, &carry);
-
-			PROF_T(t_sfile);
-			fe = file_ent_get(file, inode, obj);
-			PROF_ADD(P15_PROF_SESS_FILE, t_sfile);
-		}
+		/* only the registration, so the fentry and the return name one fid; the facts and the
+		 * object are read by the program that writes the record (E-0188: they cost 65 ns here) */
+		PROF_T(t_sfile);
+		fe = file_ent_get_key(key, inode, 0, &created);
+		PROF_ADD(P15_PROF_SESS_FILE, t_sfile);
 		if (fe)
 			__sync_fetch_and_or(&fe->state, ST_SESSION_ENTRY);
 		PROF_ADD(P15_PROF_SESS_ENTRY, t_sess);
@@ -617,7 +633,7 @@ int file_open_session(struct pt_regs *ctx)
 	}
 	ret = (int)PT_REGS_RC(ctx);
 	if (!(fe->state & ST_FENTRY_RAN))
-		write_missing((struct file *)key, fe, ret);
+		write_missing(bpf_core_cast((void *)key, struct file), fe, ret);
 	else if (ret)
 		write_verdict(fe, ret);
 	else
@@ -629,8 +645,8 @@ int file_open_session(struct pt_regs *ctx)
 SEC("kprobe.multi/security_file_free")
 int file_free(struct pt_regs *ctx)
 {
-	struct file *file = (struct file *)PT_REGS_PARM1(ctx);
-	__u64 key = (__u64)file;
+	__u64 key = PT_REGS_PARM1(ctx);
+	struct file *file = bpf_core_cast((void *)key, struct file);
 	struct file_ent *fe;
 	struct p15_close *r;
 
@@ -651,7 +667,7 @@ int file_free(struct pt_regs *ctx)
 		r->h.len = sizeof(*r);
 		r->fid = fe->fid;
 		r->obj = fe->obj;
-		r->f_mode = BPF_CORE_READ(file, f_mode);
+		r->f_mode = file->f_mode;
 		if (!(r->f_mode & P15_FMODE_OPENED))
 			r->fflags |= P15_FF_NEVER_OPENED;
 		if (kthread())
@@ -757,7 +773,7 @@ int file_fd_iter(struct bpf_iter__task_file *ctx)
 	r->h.ts_ns = bpf_ktime_get_boot_ns();
 	r->h.tgid = task->tgid;
 	r->h.tid = task->pid;
-	r->h.start_ns = BPF_CORE_READ(task, group_leader, start_boottime);
+	r->h.start_ns = task->group_leader->start_boottime;
 	r->fd = ctx->fd;
 	r->snap_id = fd_snap_id;
 	r->f_flags = file->f_flags;

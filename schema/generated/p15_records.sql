@@ -451,7 +451,7 @@ CREATE TABLE raw_close (
     tid      UINTEGER,  -- thread id, init pid namespace
     start_ns UBIGINT,   -- group_leader->start_boottime: with tgid and the segment's boot_id, the process identity (ADR-0009)
     fid      UBIGINT,   -- the open-file id that ends
-    obj      UBIGINT,   -- its object id
+    obj      UBIGINT,   -- its object id; 0 when no program of the open computed it (the path program skipped and the session's...
     fflags   UINTEGER,  -- P15_FF_* (NEVER_OPENED, KTHREAD)
     f_mode   UINTEGER   -- file->f_mode at the free
 );
