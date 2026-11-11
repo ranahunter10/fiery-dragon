@@ -414,6 +414,10 @@ static void drain_queue(struct p15_writer *w)
 	while ((s = p15q_peek(&w->run->q))) {
 		append(w, s->ring, s->count, s->buf, s->len);
 		p15q_release(&w->run->q);
+		if (w->run->cfg.writer_batch_ms) {
+			atomic_fetch_add(&w->run->writer_beats, 1);       /* slow, not stuck (E-0162) */
+			usleep(w->run->cfg.writer_batch_ms * 1000u);  /* TEST ONLY: config.test_writer_batch_ms */
+		}
 	}
 }
 

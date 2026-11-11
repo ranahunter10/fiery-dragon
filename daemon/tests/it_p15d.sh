@@ -297,6 +297,23 @@ check "grep -q 'valid to the end' $T/c10.txt && grep -q 'END: none' $T/c10.txt" 
 RUN=$T/c10b; inspect >"$T/c10b.txt" 2>&1
 check "[ $rc -eq 0 ] && grep -q 'END: exit 0' $T/c10b.txt" "a writer slow for 0.8 s, under the 2 s bound: an orderly stop, END written"
 
+echo "case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes [t+${SECONDS}s]"
+"$B/p15d" --wal-dir "$T/c11" $NET --queue-batches 4 --batch-kb 16 --test-writer-batch-ms 100 --stop-stall-s 60 2>"$T/c11.err" &
+pid=$!
+started "$T/c11.err" && storm 2000
+sleep 1; kill -TERM $pid; wait $pid; rc=$?
+RUN=$T/c11; inspect >"$T/c11.txt" 2>&1
+d11=$(ls -d "$T"/c11/*/ | head -1); n_exec=$(true_execs "$d11")
+qf=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+st = [r for r in wal.read_run(Path(sys.argv[1])).ring_records(2) if r.name == 'STATS'][-1]
+print(st.f['queue_full'], st.f['fork_reserve_failed'] + st.f['exec_reserve_failed'] + st.f['exit_reserve_failed'] + st.f['rename_reserve_failed'])" "$d11")
+echo "  queue_full and spine reserve failures: $qf; EXEC of /bin/true: ${n_exec:-0}; $(grep -o 'END: [^\"]*' "$T/c11.txt")"
+check "[ \"\${qf%% *}\" -gt 0 ]" "the queue was full during the run (the path under test ran: queue_full ${qf%% *})"
+check "[ \"\${qf##* }\" = 0 ]" "the spine ring absorbed the backlog: no reserve failed"
+check "[ $rc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c11.txt" "exit 0, RUNNING, the invariant closed: no record was taken and dropped (rc $rc)"
+check "[ \"\${n_exec:-0}\" -ge 2000 ]" "every one of the 2000 children's EXEC is in the WAL (got ${n_exec:-0})"
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

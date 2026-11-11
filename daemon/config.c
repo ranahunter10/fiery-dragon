@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "p15_records.h"
 
 struct opt {
 	const char *flag;
@@ -31,8 +32,13 @@ static const struct opt OPTS[] = {
 	{ "--test-start-pause-ms", U32(start_pause_ms),   0,    10000,   0,      0 },
 	{ "--stop-stall-s",        U32(stop_stall_s),     1,    3600,    30,     0 },
 	{ "--test-writer-stall-ms", U32(writer_stall_ms), 0,    600000,  0,      0 },
+	{ "--test-writer-batch-ms", U32(writer_batch_ms), 0,    10000,   0,      0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
+
+/* The smallest batch (--batch-kb's minimum above) must take the largest record of the schema: the
+ * drain reads a ring only when its batch has that much room (p15_drain_room, E-0173). */
+_Static_assert(16 * 1024 >= P15_RECORD_MAX_SIZE, "--batch-kb's minimum is smaller than the largest record");
 
 void p15_config_usage(FILE *f)
 {
@@ -136,6 +142,7 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.spine_ring_kb", "config.bulk_ring_kb", "config.queue_batches", "config.batch_kb",
 		"config.test_drain_pause_ms", "config.file_map_entries", "config.obj_map_entries",
 		"config.test_start_pause_ms", "config.stop_stall_s", "config.test_writer_stall_ms",
+		"config.test_writer_batch_ms",
 	};
 	size_t n = 0;
 
