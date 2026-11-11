@@ -193,6 +193,9 @@ again:
 				"the create is an OPEN with PATH_MISSING, no path, verdict 0, and the facts of fstat");
 		failed += check(log, b && (b->fflags & P15_FF_PATH_MISSING) && !(b->fflags & P15_FF_OBJ_NEW) && b->fid != a->fid,
 				"the reopen too: the same object without its facts again, its own open-file id");
+		wait_close(rb, a ? a->fid : 0);
+		failed += check(log, a && find_close(a->fid) && find_close(a->fid)->obj == a->obj,
+				"the create's CLOSE names its object: the return filled in what the session's entry left (E-0190)");
 		goto out;
 	}
 	/* The fentry is preemptible: when another task is preempted inside it on this CPU, the kernel

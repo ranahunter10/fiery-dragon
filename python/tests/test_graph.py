@@ -291,6 +291,17 @@ class OpenEdges(Base):
         self.assertEqual((cn["open_denied"], cn["open_never_opened"], cn["open_no_path"]), (2, 1, 2))
         self.assertEqual((cn["edge_OPEN"], cn["edge_OPEN_failed"]), (2, 3))
 
+    def test_a_close_without_an_object_id_is_a_node_of_its_own(self):
+        """CLOSE obj 0 (no program of the open computed the object, E-0190): never an object id, so
+        two such fids are two nodes, and an OPEN's object with a later CLOSE obj 0 is no conflict."""
+        F = dict(dev=DEV, gen=9, mode=REG, fs_magic=EXT4)
+        c = self.graph(bulk=[close(T0 + 1, A, 1, 0), close(T0 + 2, A, 2, 0),
+                             opn(T0 + 3, A, 3, 10, b"/a", facts(ino=1, **F)), close(T0 + 4, A, 3, 0)])
+        self.assertEqual(self.q(c, "SELECT fid, rule, file_key FROM openfile ORDER BY fid"),
+                         [(1, "obj-unknown", "u:1"), (2, "obj-unknown", "u:2"), (3, "tuple", f"t:{DEV}:0:1:9")])
+        self.assertEqual(self.res.counts["fid_two_objs"], 0)
+        self.assertEqual(self.res.counts["file_rule_obj-unknown"], 2)
+
     def test_close_only_fid_is_counted_and_has_no_edge(self):
         c = self.graph(bulk=[close(T0 + 5, A, 9, 10)])
         self.assertEqual(self.q(c, "SELECT how, rule FROM openfile"), [("close-only", "obj-no-facts")])

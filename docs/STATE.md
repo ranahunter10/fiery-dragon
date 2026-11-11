@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-11 (UTC), PR "bench: time each section of the file programs, and the path program's skips under contention"
+**Last updated:** 2026-11-12 (UTC), PR "bpf: open path v2: direct loads, and the session entry only registers the open file"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -246,6 +246,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 33. **Section timing in a separate build, taken under 22a** (E-0185): brackets in `file.bpf.c` that compile to nothing in p15d's build (checked instruction for instruction) and a profiled object only `bench/open_sections` loads. Chosen over a copy of the programs (it would drift from the shipped code) and over `bpf_stats` (whole programs only). #69 merged (E-0186).
 
 34. **What the section timing and the contention run show** (E-0187 to E-0189, [evidence](evidence/vm/2026-11-11-open-sections/README.md)): `bpf_d_path` costs 87 ns, not the 400 ns inferred (E-0188 corrects E-0184); and under contention (12 processes, 3 vCPUs) the path fentry is skipped for 10.2 % of opens, each counted and written as an OPEN with `PATH_MISSING`, while the kprobe programs are never skipped. The session program is therefore not removable: it is what keeps those opens. No design change is taken here.
+
+28. **The plan to a complete capture layer, taken under 22a** (2026-11-12, after the maintainer's "complete capture layer plus DuckDB and graph, tested on real workloads, before the PIDSMaker export"): gates in order. (1) open path v2: direct loads, one owner per open (E-0190); (2) names that survive a skipped path program: a bounded dentry walk in the session's return, checked against bpf_d_path (decision waiting 1); (3) idle cost; (4) a real-workload harness and a one-hour soak with the graph of that run; (5) step 2b with the ceiling gate; (6) 2c folding by Xu's rule; (7) 2d and 2e; (8) steps 3-5; (9) step 6 against the published tools, tamper window included; (10) graph v1: a streaming builder, reduction, backtracking queries, the demo; then the PIDSMaker export. Cost budgets proposed for the maintainer: program bodies under 0.5 us per open+close, p15d idle under 2 ms of CPU per second.
 
 ## Decisions waiting
 

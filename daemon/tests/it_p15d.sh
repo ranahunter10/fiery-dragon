@@ -333,6 +333,28 @@ else
     echo "  SKIP the bulk ring's flood (file identity not loadable here; CI and the VM run it)"
 fi
 
+echo "case 12: the path program left unattached: the session return writes every open, with its object (E-0190) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    "$B/p15d" --wal-dir "$T/c12" --test-no-path-fentry --duration 2 2>"$T/c12.err"; rc=$?
+    RUN=$T/c12; inspect >"$T/c12.txt" 2>&1
+    # a failed self-test ends p15d with its own exit code before start: rc 0 means its no-path checks passed
+    check "[ $rc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c12.txt" "the self-test's no-path checks passed; exit 0, RUNNING, the invariant closed (rc $rc)"
+    c12=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+from p15 import records as R
+bulk = list(wal.read_run(Path(sys.argv[1])).ring_records(1))
+opens = {r.f['fid']: r for r in bulk if r.name == 'OPEN'}
+closes = [r for r in bulk if r.name == 'CLOSE' and r.f['fid'] in opens]
+print(len(opens), sum(1 for r in opens.values() if r.f['fflags'] & R.gen.FF_PATH_MISSING),
+      len(closes), sum(1 for r in closes if r.f['obj'] == opens[r.f['fid']].f['obj'] != 0))" "$(ls -d "$T"/c12/*/ | head -1)")
+    read -r n_open n_missing n_close n_same <<<"$c12"
+    echo "  OPEN $n_open (PATH_MISSING $n_missing); CLOSE of those $n_close, naming the OPEN's object $n_same"
+    check "[ \"\${n_open:-0}\" -gt 0 ] && [ \"$n_open\" = \"$n_missing\" ]" "every OPEN came from the session return (PATH_MISSING)"
+    check "[ \"\${n_close:-0}\" -gt 0 ] && [ \"$n_close\" = \"$n_same\" ]" "every CLOSE of those opens names the OPEN's object, not 0"
+else
+    echo "  SKIP (file identity not loadable here; CI and the VM run it)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

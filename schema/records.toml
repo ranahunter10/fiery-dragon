@@ -710,7 +710,7 @@ class = "OPEN"
 doc = "A struct file capture had registered was freed (security_file_free, ADR-0015 rule 8): the end of its open-file id. Belongs to the open file, not to a process: the header names whichever task freed it (the closer, task work, or the delayed_fput worker, flagged KTHREAD)."
 fields = [
   { name = "fid",      c = "u64", doc = "the open-file id that ends" },
-  { name = "obj",      c = "u64", doc = "its object id" },
+  { name = "obj",      c = "u64", doc = "its object id; 0 when no program of the open computed it (the path program skipped and the session's return missed, both counted)" },
   { name = "fflags",   c = "u32", doc = "P15_FF_* (NEVER_OPENED, KTHREAD)" },
   { name = "f_mode",   c = "u32", doc = "file->f_mode at the free" },
 ]

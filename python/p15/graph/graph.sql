@@ -80,7 +80,8 @@ SELECT fid, obj, ts_ns, ring, seq, tgid, start_ns, f_flags, f_mode, NULL, 'backi
 UNION ALL
 SELECT fid, obj, ts_ns, ring, seq, NULL, NULL, f_flags, f_mode, path, 'snapshot', 2 FROM raw_fd
 UNION ALL
-SELECT fid, obj, ts_ns, ring, seq, NULL, NULL, NULL, f_mode, NULL, 'close-only', 3 FROM raw_close;
+-- obj 0 in a CLOSE: neither open program computed it (counted in the kernel: E-0190); not an object id
+SELECT fid, nullif(obj, 0), ts_ns, ring, seq, NULL, NULL, NULL, f_mode, NULL, 'close-only', 3 FROM raw_close;
 
 CREATE TABLE openfile AS
 WITH first AS (
@@ -98,8 +99,9 @@ WITH first AS (
 SELECT f.fid, f.obj, f.how, f.ts_ns AS first_ns, f.tgid AS opener_tgid, f.start_ns AS opener_start_ns,
        f.f_flags, f.f_mode, p.path, c.closed_ns, coalesce(c.never_opened, false) AS never_opened,
        coalesce(d.verdict, 0) AS verdict,
-       file_rule(f.fid, o.fs_magic, o.oflags) AS rule,
-       file_key(f.fid, f.obj, o.fs_magic, o.oflags, o.dev, o.subvol, o.ino, o.gen) AS file_key
+       CASE WHEN f.obj IS NULL THEN 'obj-unknown' ELSE file_rule(f.fid, o.fs_magic, o.oflags) END AS rule,
+       CASE WHEN f.obj IS NULL THEN 'u:' || f.fid      -- no object id at all: a node of its own, never merged
+            ELSE file_key(f.fid, f.obj, o.fs_magic, o.oflags, o.dev, o.subvol, o.ino, o.gen) END AS file_key
 FROM first f
 LEFT JOIN path p USING (fid)
 LEFT JOIN closed c USING (fid)
