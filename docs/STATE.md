@@ -229,5 +229,5 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 ## Decisions waiting
 
-1. **Run the bounded stop on the VM** (`it_p15d.sh` with case 10, and the four new p15d mutants); then it is merged.
+1. **Run mutant 48 on the VM** (the bounded stop passed every case there and three of its four mutants were killed, E-0163); at 1/1 #65 is merged.
 2. **Next: graph v0** (decision 22a.3): the DuckDB star schema from `schema/records.toml`, the builder from the WAL, the PIDSMaker export. Where PIDSMaker runs is the maintainer's decision (the brief): asked when the export exists.

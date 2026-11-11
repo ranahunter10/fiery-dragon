@@ -88,7 +88,8 @@ M = [
     ("run.c", "\treturn ++w->still >= r->cfg.stop_stall_s * 10u;", "\treturn 0;", UNIT),
     ("run.c", "\tif (now_ns - w->at_ns < 100000000ull)\n\t\treturn 0;                    /* not yet an observation */", "", UNIT),
     ("run.c", "\tif (b != w->beats || !w->at_ns) {", "\tif (!w->at_ns) {", UNIT),
-    ("p15d.c", "\t\t\tif (p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");", "", IT),
+    ("p15d.c", "\t\t\tif (p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");",
+     "\t\t\tif (0 && p15_writer_stalled(&run, &wd, p15_mono_ns()))\n\t\t\t\treturn stuck(&run, &ld, \"the closing snapshot\");", IT),
 ]
 
 
