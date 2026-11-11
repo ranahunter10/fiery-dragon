@@ -32,6 +32,8 @@ struct p15_config {
 	uint32_t file_map_entries;   /* --file-map-entries: open-file map size (decision 19.6, E-0142) */
 	uint32_t obj_map_entries;    /* --obj-map-entries: object map size */
 	int test_no_path_fentry;     /* --test-no-path-fentry: TEST ONLY, leave the path fentry unattached */
+	uint32_t start_pause_ms;     /* --test-start-pause-ms: TEST ONLY, wait after the load-time self-tests,
+				      * before the WAL opens (E-0161) */
 	uint32_t drain_pause_ms;     /* --test-drain-pause-ms: TEST ONLY, sleep after each poll to force overflow */
 };
 

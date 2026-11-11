@@ -1,0 +1,59 @@
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_records.c daemon/records.c -o build/test_records
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/hook_cost/hook_cost.c daemon/records.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/hook_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_queue.c daemon/queue.c -lpthread -o build/test_queue
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c -o build/test_snapshot
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_counters.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/test_counters
+python3 daemon/tests/mutate_p15d.py
+baseline: the unit tests pass in 0 s; a mutant gets 120 s
+baseline: the end-to-end test pass in 68 s; a mutant gets 270 s
+killed   0 counters.c for (int r = 0; r <= ncpu; r++) (2 s)
+killed   1 counters.c *ncpu_rodata = (uint32_t)ncpu; (3 s)
+killed   2 counters.c if (ncpu <= 0 || ncpu > P15_CTR_NCPU_MAX) (3 s)
+killed   3 counters.c bpf_map__type(map) != BPF_MAP_TYPE_ARRAY || (3 s)
+killed   4 counters.c !(bpf_map__map_flags(map) & BPF_F_MMAPABLE) || (3 s)
+killed   5 counters.c bpf_map__value_size(map) != sizeof(uint64_t) || (2 s)
+killed   6 counters.c bpf_map__max_entries(map) != P15_CTR_ENTRIES((uint32_t)ncpu)) (3 s)
+killed   7 drain.c p15_counters_sum(c, sum); (72 s)
+killed   8 loader.c if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counte (124 s)
+killed   9 p15d.c code = p15_snapshot_init(&snap, &run, err, sizeof(err)); (72 s)
+killed   10 queue.c if (h - t >= q->n) { (3 s)
+killed   11 queue.c atomic_store_explicit(&q->head, h, memory_order_release); (33 s)
+killed   12 queue.c s->count = 0; (3 s)
+killed   13 queue.c return t == h ? NULL : &q->slots[t % q->n]; (3 s)
+killed   14 queue.c while (d > m && !atomic_compare_exchange_weak_explicit (3 s)
+killed   15 config.c snprintf(err, errlen, "unknown argument '%s'", f); (2 s)
+killed   16 config.c if (v < OPTS[i].lo || v > OPTS[i].hi || (2 s)
+killed   17 config.c (OPTS[i].pow2 && (v & (v - 1))) (2 s)
+killed   18 config.c if (!c->wal_root) { (3 s)
+killed   19 drain.c if (p15_spine_loss_changed(d->prev_ctr, now_ctr, d->prev_missed, now_m (71 s)
+killed   20 drain.c now_missed[t] != prev_missed[t]; (3 s)
+killed   21 drain.c for (int t = 1; t < P15_SPINE_TYPES; t++) (3 s)
+killed   22 drain.c atomic_fetch_add(&d->run->drained[h->type], 1); (74 s)
+killed   23 writer.c drained -= r->spine_selftest_consumed; (3 s)
+killed   24 writer.c uint64_t emitted = 0, drained = r->spine_selftest_consumed; (2 s)
+killed   25 writer.c if (inv == P15_INV_BROKEN) (2 s)
+killed   26 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_ (3 s)
+killed   27 writer.c if (emitted != drained + atomic_load(&r->spine_invalid)) { (2 s)
+killed   28 writer.c buf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal); (73 s)
+killed   29 run.c case P15_RUN_DEGRADED: (73 s)
+killed   30 drain.c atomic_fetch_add(is_net ? &d->run->net_drained : &d->run->file_drained (71 s)
+killed   31 writer.c if (r->files) { (3 s)
+killed   32 writer.c A(BACKING_LOST) + A(FENTRY_NO_INODE)) { (3 s)
+killed   33 writer.c if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) || (3 s)
+killed   34 writer.c A(VERDICT_LOST) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) { (3 s)
+killed   35 writer.c A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED) (2 s)
+killed   36 writer.c if (A(FREE_RUN) != A(CLOSE_EMITTED) + A(CLOSE_LOST) + A(FREE_UNREGISTE (3 s)
+killed   37 writer.c uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_cons (2 s)
+killed   38 writer.c if (!r->net && atomic_load(&r->file_drained) != atomic_load(&r->net_wr (2 s)
+SURVIVED 39 loader.c if (l->file) (73 s)
+killed   40 writer.c if (w->run->files) (73 s)
+killed   41 loader.c if (o->files && (code = load_file(l, o, err, errlen))) (70 s)
+killed   42 snapshot.c if (s->fd_link && !k.wal_rc) (71 s)
+NO BUILD 43 snapshot.c if (kind == P15_SNAP_OPENING) (4 s)
+killed   44 p15d.c p15_snapshot_set_fd(&snap, ld.file, ld.fd_iter_link); (72 s)
+mutation sweep: 43/45 killed
+make: *** [Makefile:254: mutate-p15d] Error 1

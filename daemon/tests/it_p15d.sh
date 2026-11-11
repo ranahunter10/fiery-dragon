@@ -208,13 +208,18 @@ if [ "$NET_OK" = 1 ]; then
 # epoch, E-0151).
 E8=$(mktemp /tmp/p15d-it8-early-XXXXXX); E8=$(realpath "$E8"); D8=/nonexistent
 # the loop ends when the file goes, or after 20 s on its own, whatever happens to this script
-( end=$(( $(date +%s) + 20 )); while [ -e "$E8" ] && [ "$(date +%s)" -lt "$end" ]; do cat "$E8" >/dev/null 2>&1; done ) &
+( end=$(( $(date +%s) + 20 )); while [ -e "$E8" ] && [ ! -e "$E8.stop" ] && [ "$(date +%s)" -lt "$end" ]; do cat "$E8" >/dev/null 2>&1; done ) &
 loop=$!
-trap 'rm -f "$E8"' EXIT
-"$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 2>"$T/c8.err" &
+trap 'rm -f "$E8" "$E8.stop"' EXIT
+# p15d pauses after its self-tests, before the WAL opens (a test switch): the loop stops there, and
+# one last open of the file falls in that window. With the loop's opens during the self-tests taken
+# by their reader, only the loader's facts epoch puts this file's facts in the WAL (E-0161).
+"$B/p15d" --wal-dir "$T/c8" --duration 4 --stats-ms 200 --test-start-pause-ms 1500 2>"$T/c8.err" &
 pid=$!
+for _ in $(seq 150); do grep -q code=test_pause "$T/c8.err" 2>/dev/null && break; sleep 0.1; done
+touch "$E8.stop"; wait $loop 2>/dev/null; cat "$E8" >/dev/null   # the last open of it, in the window
 if started "$T/c8.err"; then
-    sleep 0.3; rm -f "$E8"; wait $loop 2>/dev/null
+    rm -f "$E8" "$E8.stop"
     D8=$(mktemp -d /tmp/p15d-it8-XXXXXX); D8=$(realpath "$D8")
     printf 'it_p15d\n' > "$D8/f1"; cat "$D8/f1" >/dev/null; mkfifo "$D8/fifo"
     "$PY" -c "
