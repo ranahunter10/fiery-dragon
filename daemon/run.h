@@ -88,6 +88,10 @@ struct p15_run {
 	/* the closing snapshot (ADR-0023 rule 1): main asks while the hooks are attached, the writer
 	 * (which owns the WAL) takes it, main waits for it, then detaches */
 	_Atomic int closing_req;                 /* enum p15_closing */
+	/* the stop's watchdog (E-0162): the writer adds one per loop and per snapshot batch; main watches it
+	 * while it waits for the writer, and gives up when it stands still (p15_writer_stalled) */
+	_Atomic uint64_t writer_beats;
+	_Atomic int writer_exited;
 	_Atomic int closing_result;              /* END closing_snapshot: 1 taken, 0 not, -errno failed */
 };
 
@@ -100,5 +104,16 @@ int p15_run_exit_code(struct p15_run *r);
 /* CLOCK_BOOTTIME and CLOCK_MONOTONIC in ns. */
 uint64_t p15_boot_ns(void);
 uint64_t p15_mono_ns(void);
+
+/* The stop's watchdog. It counts observations at least 100 ms apart in which writer_beats did not
+ * move, not seconds: a guest frozen by its host for minutes (E-0158) adds one observation when it
+ * resumes, not the frozen span, so a freeze alone never fires it. */
+struct p15_watch {
+	uint64_t beats, at_ns;
+	uint32_t still;
+};
+
+/* 1 when the writer stood still for cfg.stop_stall_s worth of observations. now_ns: CLOCK_MONOTONIC. */
+int p15_writer_stalled(struct p15_run *r, struct p15_watch *w, uint64_t now_ns);
 
 #endif

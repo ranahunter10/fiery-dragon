@@ -36,6 +36,22 @@ void p15_fail(struct p15_run *r, int exit_code, const char *reason)
 		p15q_kick(&r->q);
 }
 
+int p15_writer_stalled(struct p15_run *r, struct p15_watch *w, uint64_t now_ns)
+{
+	uint64_t b = atomic_load(&r->writer_beats);
+
+	if (b != w->beats || !w->at_ns) {
+		w->beats = b;
+		w->at_ns = now_ns;
+		w->still = 0;
+		return 0;
+	}
+	if (now_ns - w->at_ns < 100000000ull)
+		return 0;                    /* not yet an observation */
+	w->at_ns = now_ns;
+	return ++w->still >= r->cfg.stop_stall_s * 10u;
+}
+
 int p15_run_exit_code(struct p15_run *r)
 {
 	int f = atomic_load(&r->fatal_code);

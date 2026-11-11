@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-10 (UTC), PR "bpf: the snapshot's FD pass and SNAP_DONE v2 (step 2a, part 3)"
+**Last updated:** 2026-11-11 (UTC), PR "daemon: a bounded stop: the writer's progress, not a wait, decides it"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -225,6 +225,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     1. The FD pass's iterator lives in `file.bpf.c` (it shares the open-file and object maps, so an FD row and a later OPEN name one id); its books go in SNAP_DONE v2, as ADR-0015 rule 7 says; a lost or invalid FD row makes the snapshot incomplete and the run INVALID, as for PROC.
     2. The FD pass runs in every snapshot, opening and closing; each opening snapshot starts a new facts epoch first, so every segment carries the facts of each object it names, an OPEN's as much as an FD row's (ADR-0007's self-describing segments).
 
+24. **The bounded stop, taken under 22a** (E-0162): the stop gives up when the writer makes no progress (its beat counter does not move) for `--stop-stall-s`, default 30 s, counted in observations at least 100 ms apart so a host freeze of the guest is one observation; p15d then detaches, logs `code=stuck` with the phase, and exits 75 (STUCK, new in `daemon/exitcodes.h`) without END. Defaults: 30 s (a WAL fdatasync on a slow disk under load fits), the snapshot's batches count as progress.
+
 ## Decisions waiting
 
-1. **A bounded shutdown for p15d** (E-0158): if the closing snapshot or the final drain does not finish within a bound, p15d ends the run with an error instead of waiting; a test-only switch makes the writer stall so the guard is tested. Recommended, as its own PR after part 3. Taken under decision 22a unless the maintainer says otherwise.
+1. **Next: graph v0** (decision 22a.3): the DuckDB star schema from `schema/records.toml`, the builder from the WAL, the PIDSMaker export. Where PIDSMaker runs is the maintainer's decision (the brief): asked when the export exists.

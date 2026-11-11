@@ -29,6 +29,8 @@ static const struct opt OPTS[] = {
 	{ "--file-map-entries",    U32(file_map_entries), 1024, 4194304, 65536,  0 },
 	{ "--obj-map-entries",     U32(obj_map_entries),  1024, 4194304, 131072, 0 },
 	{ "--test-start-pause-ms", U32(start_pause_ms),   0,    10000,   0,      0 },
+	{ "--stop-stall-s",        U32(stop_stall_s),     1,    3600,    30,     0 },
+	{ "--test-writer-stall-ms", U32(writer_stall_ms), 0,    600000,  0,      0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
@@ -133,7 +135,7 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.duration_s", "config.stats_ms", "config.sync_ms", "config.rotate_mb", "config.rotate_s",
 		"config.spine_ring_kb", "config.bulk_ring_kb", "config.queue_batches", "config.batch_kb",
 		"config.test_drain_pause_ms", "config.file_map_entries", "config.obj_map_entries",
-		"config.test_start_pause_ms",
+		"config.test_start_pause_ms", "config.stop_stall_s", "config.test_writer_stall_ms",
 	};
 	size_t n = 0;
 

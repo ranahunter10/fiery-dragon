@@ -170,6 +170,34 @@ int main(void)
 	r.files = 0;
 	r.filec[P15_FC_FREE_RUN] = 99;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "without file identity its books are not read");
+	/* the stop's watchdog (E-0162): it counts observations 100 ms apart, not time */
+	{
+		struct p15_watch wd = { 0 };
+		uint64_t t = 1000000000ull;
+		int fired = 0, n;
+
+		reset();
+		r.cfg.stop_stall_s = 2;           /* 20 observations */
+		EXPECT(!p15_writer_stalled(&r, &wd, t), "the first call only records");
+		for (n = 1; n <= 40 && !fired; n++)
+			fired = p15_writer_stalled(&r, &wd, t + (uint64_t)n * 100000000ull);
+		EXPECT(fired && n - 1 == 20, "a still writer: fires at the 20th observation 100 ms apart");
+		memset(&wd, 0, sizeof(wd));
+		p15_writer_stalled(&r, &wd, t);
+		for (n = 1; n <= 19; n++)
+			p15_writer_stalled(&r, &wd, t + (uint64_t)n * 100000000ull);
+		r.writer_beats++;                 /* one beat resets it */
+		EXPECT(!p15_writer_stalled(&r, &wd, t + 20 * 100000000ull), "a beat before the limit resets the count");
+		for (n = 21, fired = 0; n <= 39; n++)
+			fired |= p15_writer_stalled(&r, &wd, t + (uint64_t)n * 100000000ull);
+		EXPECT(!fired, "  ... so 19 more still observations do not fire");
+		memset(&wd, 0, sizeof(wd));
+		p15_writer_stalled(&r, &wd, t);
+		EXPECT(!p15_writer_stalled(&r, &wd, t + 280ull * 1000000000ull), "a 280 s freeze is one observation, not 2,800");
+		for (n = 0, fired = 0; n < 1000 && !fired; n++)
+			fired = p15_writer_stalled(&r, &wd, t + 280ull * 1000000000ull + (uint64_t)n * 1000000ull);
+		EXPECT(!fired, "  ... and calls 1 ms apart are not observations");
+	}
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }

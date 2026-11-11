@@ -29,7 +29,7 @@ int main(void)
 {
 	size_t n = sizeof(rows) / sizeof(rows[0]);
 
-	EXPECT(n == 10, "ten codes in the table");
+	EXPECT(n == 11, "eleven codes in the table");
 	EXPECT(rows[0].value == 0 && !strcmp(rows[0].name, "OK"), "OK is 0 and first");
 	for (size_t i = 0; i < n; i++) {
 		char what[96];

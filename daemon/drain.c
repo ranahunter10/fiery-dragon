@@ -439,14 +439,19 @@ int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 
 int p15_drain_finish(struct p15_drain *d)
 {
+	struct p15_watch wd = { 0 };
 	int n, rc;
 
 	do {
 		d->queue_full_now = 0;
 		n = ring_buffer__consume(d->rb);
 		publish(d);
-		if (d->queue_full_now)
+		if (d->queue_full_now) {
+			/* the writer is behind: wait for it, but not for a writer that stands still (E-0162) */
+			if (p15_writer_stalled(d->run, &wd, p15_mono_ns()))
+				return -ETIMEDOUT;
 			usleep(1000);
+		}
 	} while (n > 0 || d->queue_full_now);
 	if (n < 0 && n != -ENOSPC)
 		return n;

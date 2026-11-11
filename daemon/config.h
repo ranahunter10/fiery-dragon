@@ -35,6 +35,10 @@ struct p15_config {
 	uint32_t start_pause_ms;     /* --test-start-pause-ms: TEST ONLY, wait after the load-time self-tests,
 				      * before the WAL opens (E-0161) */
 	uint32_t drain_pause_ms;     /* --test-drain-pause-ms: TEST ONLY, sleep after each poll to force overflow */
+	uint32_t stop_stall_s;       /* --stop-stall-s: the stop gives up when the writer makes no progress for this
+				      * long (E-0162) */
+	uint32_t writer_stall_ms;    /* --test-writer-stall-ms: TEST ONLY, the writer sleeps this long before the
+				      * closing snapshot */
 };
 
 /* Fill c from argv. Returns 0, or -EINVAL with a one-line reason in err (exit USAGE/CONFIG). */
