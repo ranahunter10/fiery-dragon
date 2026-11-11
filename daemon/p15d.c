@@ -284,7 +284,7 @@ int main(int argc, char **argv)
 
 	poll_ms = P15_POLL_MIN_MS;
 	while (!atomic_load(&run.stop) && (!end_ns || p15_mono_ns() < end_ns)) {
-		if (p15_drain_poll(&d, poll_ms))   /* ADR-0020 rule 2: records don't wake the drain below the high-water mark */
+		if (p15_drain_poll(&d, poll_ms))   /* ADR-0020 rule 2, ADR-0030: high-water wake-ups, an adaptive timer */
 			p15_fail(&run, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
 		poll_ms = p15_poll_next(poll_ms, d.last_taken, d.queue_full_now, (int)run.cfg.poll_max_ms);
 		if (run.cfg.drain_pause_ms)

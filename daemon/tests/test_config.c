@@ -36,7 +36,7 @@ int main(void)
 	EXPECT(parse(&c, err, 2, "--wal-dir", "/tmp/x") == 0, "minimal");
 	EXPECT(c.stats_ms == 1000 && c.sync_ms == 1000 && c.rotate_mb == 64 && c.rotate_s == 60 &&
 	       c.spine_ring_kb == 4096 && c.queue_batches == 64 && c.batch_kb == 256 && c.realtime == 1 &&
-	       c.duration_s == 0 && !c.textfile && c.net == 1 && c.poll_max_ms == 10, "defaults (ADR-0006, ADR-0007, ADR-0017)");
+	       c.duration_s == 0 && !c.textfile && c.net == 1 && c.poll_max_ms == 200, "defaults (ADR-0006, ADR-0007, ADR-0017)");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--poll-max-ms", "9") != 0 &&
 	       parse(&c, err, 4, "--wal-dir", "/tmp/x", "--poll-max-ms", "1001") != 0 &&
 	       parse(&c, err, 4, "--wal-dir", "/tmp/x", "--poll-max-ms", "200") == 0 && c.poll_max_ms == 200, "--poll-max-ms 10..1000");
@@ -56,7 +56,7 @@ int main(void)
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
 	n = p15_config_meta(&c, kv, vals, 24);
 	EXPECT(n == 21, "every setting echoed");
-	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "10"), "the poll maximum echoed (gate 3)");
+	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "200"), "the poll maximum echoed, its default 200 (ADR-0030)");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
 	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "65536") &&
 	       !strcmp(kv[11].key, "config.obj_map_entries") && !strcmp(kv[11].value, "131072"),

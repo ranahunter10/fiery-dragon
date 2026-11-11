@@ -33,7 +33,7 @@ static const struct opt OPTS[] = {
 	{ "--stop-stall-s",        U32(stop_stall_s),     1,    3600,    30,     0 },
 	{ "--test-writer-stall-ms", U32(writer_stall_ms), 0,    600000,  0,      0 },
 	{ "--test-writer-batch-ms", U32(writer_batch_ms), 0,    10000,   0,      0 },
-	{ "--poll-max-ms",         U32(poll_max_ms),      10,   1000,    10,     0 },
+	{ "--poll-max-ms",         U32(poll_max_ms),      10,   1000,    200,    0 },   /* ADR-0030 */
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 

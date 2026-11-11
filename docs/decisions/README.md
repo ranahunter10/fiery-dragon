@@ -26,7 +26,7 @@ To write a new one:
 | [0017](0017-spine-flood-resilience.md) | Spine flood resilience: exact-size records, a drain that never waits on disk, a raised drain priority, located loss, a measured headroom (supersedes ADR-0006 rules 1 and 4) | accepted | 2026-10-25 |
 | [0018](0018-measurement-protocol-v2.md) | Measurement protocol v2: dimensionless headlines, rates against a same-host ceiling, paired timing reported with its raw costs, one shared workload set (supersedes ADR-0012's timing rules) | accepted | 2026-10-25 |
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
-| [0020](0020-kernel-skipped-events.md) | Events the kernel skips: spine exec/exit/rename on classic tracepoints, wake-ups only at a high-water mark, every skip (`recursion_misses`) counted and located (supersedes ADR-0003 rule 1 for those hooks, ADR-0006 rule 3; rule 6: daemon records in WAL ring 2) | accepted | 2026-11-05 |
+| [0020](0020-kernel-skipped-events.md) | Events the kernel skips: spine exec/exit/rename on classic tracepoints, wake-ups only at a high-water mark, every skip (`recursion_misses`) counted and located (supersedes ADR-0003 rule 1 for those hooks, ADR-0006 rule 3; rule 6: daemon records in WAL ring 2) | accepted; rule 2's 10 ms timer superseded by 0030 | 2026-11-05 |
 | [0021](0021-vm-three-vcpus.md) | The VM runs with 3 vCPUs (supersedes ADR-0001's VM row) | accepted | 2026-11-05 |
 | [0022](0022-exact-client-join-tcp-isn.md) | Join a TCP client to its accept by the client's initial sequence number (NET v2; supersedes ADR-0004 rules 2 and 6 in part) | accepted | 2026-11-05 |
 | [0023](0023-lifecycle-reconciliation.md) | Reconcile the process tree against a closing snapshot | accepted | 2026-11-05 |
@@ -36,6 +36,7 @@ To write a new one:
 | [0027](0027-anonymous-inodes-named-by-open-file.md) | On the anonymous-inode filesystem the graph node is the open file, not the object (supersedes ADR-0015 rule 3 in part) | accepted | 2026-11-10 |
 | [0028](0028-graph-v0-duckdb-raw-tables-and-star.md) | Graph v0: generated raw tables in DuckDB, a star built in SQL over them, and a PIDSMaker export that states what it leaves out | accepted (under STATE decision 22a) | 2026-11-11 |
 | [0029](0029-path-walked-when-the-fentry-is-skipped.md) | When the path fentry is skipped, the session's return walks the path (a sequence-checked dentry walk, `d_dname` names made as the kernel makes them), and an overlay's real file gets BACKING (supersedes ADR-0015 rule 6 in part) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
+| [0030](0030-adaptive-drain-poll.md) | The drain's timer adapts: 10 ms after work, doubling to 200 ms when idle; the writer sleeps until its next deadline (supersedes ADR-0020 rule 2's 10 ms timer) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
 
 ## Planned (from capture blueprint v1, §8.3)
 

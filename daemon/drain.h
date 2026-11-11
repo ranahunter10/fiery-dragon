@@ -48,7 +48,8 @@ void p15_drain_free(struct p15_drain *d);
 uint32_t p15_drain_room(struct p15_drain *d, unsigned ring);
 /* The drain's poll timeouts (gate 3): records wake the drain only at a ring's high-water mark (ADR-0020
  * rule 2), so the timeout bounds how long a record waits. After a poll that took records, or left some
- * for want of a batch, the next waits P15_POLL_MIN_MS; after an empty one, twice the last, up to max_ms. */
+ * for want of a batch, the next waits P15_POLL_MIN_MS; after an empty one, twice the last, up to max_ms
+ * (--poll-max-ms, default 200: ADR-0030). */
 #define P15_POLL_MIN_MS 10
 int p15_poll_next(int cur_ms, int took, int queue_full, int max_ms);
 /* One poll of up to timeout_ms, then publish, then the counter read and GAP check. 0 or -errno. */
