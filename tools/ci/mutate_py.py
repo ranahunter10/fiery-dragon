@@ -40,11 +40,13 @@ _TPC = "bench/prim_cost/test_prim_cost.py"
 OSS = "bench/open_sections/summarize.py"
 PWS, _TPW = "bench/path_walk/summarize.py", "bench/path_walk/test_path_walk.py"
 ICS, ICR, _TIC = "bench/idle_cost/summarize.py", "bench/idle_cost/run.py", "bench/idle_cost/test_idle_cost.py"
+SKC, SKS, SKP, _TSK = ("bench/soak/check.py", "bench/soak/summarize.py", "bench/soak/soak.py",
+                       "bench/soak/test_soak.py")
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
-         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW, ICS: _TIC, ICR: _TIC}
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW, ICS: _TIC, ICR: _TIC, SKC: _TSK, SKS: _TSK, SKP: _TSK}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -413,6 +415,29 @@ M = [
  (PCP, "{min(e['per_run']):.1f} to", "{max(e['per_run']):.1f} to"),
  (PCP, "{P.median(total) / ops:.1f}", "{sum(total) / ops:.1f}"),
  (PCP, "{e['runs'] / (ops * len(e['ns'])):.3f}", "{e['runs'] / ops:.3f}"),
+ # ---- soak: every operation the workload logged, in the WAL and the graph (gate 4) ----
+ (SKC, '        return k if k >= 0 and ts <= self.steps[k]["t1"] else -1', '        return k if k >= 0 else -1'),
+ (SKC, '            kind = "open_w" if r.f["f_flags"] & O_ACCMODE else "open_r"', '            kind = "open_w"'),
+ (SKC, '                    if f[kind][key] >= n:', '                    if f[kind][key] >= 1:'),
+ (SKC, '        elif r.f["op"] == OP_ACCEPT and r.f["lport"] in w["accept"]:', '        elif r.f["op"] == OP_ACCEPT and r.f["rport"] in w["accept"]:'),
+ (SKC, '        elif r.f["op"] == OP_CONNECT and r.f["rport"] in w["connect"]:', '        elif r.f["rport"] in w["connect"]:'),
+ (SKC, '            a0 = r.var["argv"].split(b"\\0", 1)[0].decode(errors="replace")', '            a0 = r.var["argv"].decode(errors="replace")'),
+ (SKC, '        self.steps = sorted((s for s in steps if s.get("ok")), key=lambda s: s["t0"])', '        self.steps = sorted(steps, key=lambda s: s["t0"])'),
+ (SKC, """            progs += [p for p in w["exec"] if p.endswith(f"/prog{s['i']}")]""", """            progs += list(w["exec"])"""),
+ (SKS, '        if t["found"] != t["expected"]:\n', '        if False:\n'),
+ (SKS, '        if not (e["exit"] == 0 and e["end"] == 1 and e["state"] == 0 and e["invariant"] == 1):\n',
+  '        if not (e["exit"] == 0 and e["end"] == 1):\n'),
+ (SKS, '        if e["read_errors"] or e["stops"]:\n', '        if e["stops"]:\n'),
+ (SKS, '            if books.get(k, 0):\n', '            if False:\n'),
+ (SKS, '            if got != want:\n', '            if False:\n'),
+ (SKS, '        if g["rc"] != 0:\n', '        if False:\n'),
+ (SKS, '        if len(d["failed"]) > 0.1 * (nsteps + len(d["failed"])):\n', '        if len(d["failed"]) > 0.1 * nsteps + 9:\n'),
+ (SKS, '        if span_h >= 0.25 and rss[-1] > rss[0] * 1.5 and rss[-1] - rss[0] > 10 * 1024:\n', '        if rss[-1] > rss[0] * 1.5:\n'),
+ (SKS, '            raise ParseError(f"unknown line: {line}")', '            pass'),
+ (SKS, '            if d["end"] is not None:\n', '            if False:\n'),
+ (SKS, '    fails, notes = list(d["errors"]), []', '    fails, notes = [], []'),
+ (SKP, "        k = f\"{name}:{cause}\" if cause else name", "        k = name"),
+ (SKP, '                out[k] += float(val)', '                out[k] = float(val)'),
  # ---- idle_cost: p15d's CPU on an idle host (gate 3) ----
  (ICS, "'yes' if med[arm] < budget and max(cpu) < budget else 'no'", "'yes' if med[arm] < budget else 'no'"),
  (ICS, '    if d["bad"]:\n', '    if False:\n'),
