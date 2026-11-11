@@ -253,7 +253,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 30. **Gate 2's harness, taken under 29** (E-0194): `bench/path_walk` checks a bounded, sequence-checked dentry walk (`bpf/include/p15_dpath.h`) against `bpf_d_path` on the same opens (16 cases, a rename race) and times it in the fentry and in a kprobe.session. It fails on any path that differs without a flag. CI's runner is the first load; the VM run decides decision waiting 1 by ADR.
 
-31. **Gate 2 decided and built, taken under 22a and 29** (E-0196, E-0197): [ADR-0029](decisions/0029-path-walked-when-the-fentry-is-skipped.md), option (a). A skipped open's OPEN carries the walked path (PATH_WALKED); an overlay's real file gets BACKING from the return. Confirmed when the VM's `open_sections contend` shows the skipped opens walked with the right path and the books closed. Next: gate 3, idle cost.
+31. **Gate 2 decided and built, taken under 22a and 29** (E-0196, E-0197): [ADR-0029](decisions/0029-path-walked-when-the-fentry-is-skipped.md), option (a). A skipped open's OPEN carries the walked path (PATH_WALKED); an overlay's real file gets BACKING from the return. Confirmed on the VM (E-0198, [evidence](evidence/vm/2026-11-12-path-walk-fallback/README.md)): 192,715 of 2,400,000 opens skipped under contention, all 192,715 walked with the right path, books ok. Next: gate 3, idle cost.
 
 ## Decisions waiting
 
