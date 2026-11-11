@@ -17,3 +17,5 @@ What it shows (MEAS):
 What it does not show: a workload (this is an idle VM plus three commands); PIDSMaker reading the CSV; a detection number.
 
 One operator fact: p15d run with sudo writes its run directory readable by root only; `p15.graph` answered with a Python traceback. Fixed in the same PR (one line, exit 2).
+
+**The fix on the VM** (`85e60bb`, the same run directory graphed again; `graph-v0-vm-rerun-85e60bb.txt` is the pasted `tail -4`, no sha256 was printed for it): all 259 allowed opens are exported (was 255), `event_table` has 276 rows (was 272), and 4 events are reported as timed by the first clock anchor.

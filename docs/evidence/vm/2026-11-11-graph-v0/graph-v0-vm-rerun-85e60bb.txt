@@ -1,0 +1,4 @@
+pidsmaker: /tmp/g1/pm: subject_node_table 136, file_node_table 652, netflow_node_table 7, event_table 276
+  exported: EVENT_ACCEPT 1, EVENT_CLONE 5, EVENT_CONNECT 7, EVENT_EXECUTE 4, EVENT_OPEN 259
+  not exported: BIND (no flow): 1, HELD (a descriptor already open at a snapshot: a state, not an event): 590, LISTEN (no flow): 1
+  timed by the first clock anchor: 4
