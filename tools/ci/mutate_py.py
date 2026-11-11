@@ -35,11 +35,13 @@ GRAW, GBUILD, GSQL, GPM, GCLI = ("python/p15/graph/raw.py", "python/p15/graph/bu
 _TG = "python/tests/test_graph.py"
 OCR, OCS = "bench/open_cost/run.py", "bench/open_cost/summarize.py"
 _TO = "bench/open_cost/test_open_cost.py"
+PCS, PCP = "bench/prim_cost/summarize.py", "bench/prim_cost/prog_stats.py"
+_TPC = "bench/prim_cost/test_prim_cost.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
-         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO}
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -368,6 +370,46 @@ M = [
  (OCS, 'all_cpu = [sum(rows[r][("none", e)]["cpu_ns"] for e in EVENTS) for r in rounds]', 'all_cpu = [sum(rows[r][("none", e)]["cpu_ns"] for e in OPEN_EVENTS) for r in rounds]'),
  (OCS, 'null_ns = P.median(per_op(rows, "none", "nullsys", "cpu_ns"))', 'null_ns = P.median(per_op(rows, "p15d", "same", "cpu_ns"))'),
  (OCS, '    if bad:\n        out += ["## Books that did not close: no timing is reported", ""]', '    if False:\n        out += ["## Books that did not close: no timing is reported", ""]'),
+
+ # ---- prim_cost and prog_stats (after E-0176): where a capture program's time goes ----
+ (PCS, "            if ok != n:\n", "            if False:\n"),
+ (PCS, "            elif int(rnd) >= 0:\n                if prim in rows[int(rnd)]:", "            elif True:\n                if prim in rows[int(rnd)]:"),
+ (PCS, "                if prim in rows[int(rnd)]:\n", "                if False:\n"),
+ (PCS, '            if m[3] != "ok" or ring[0] != ring[1]:', '            if m[3] != "ok":'),
+ (PCS, '            if m[3] != "ok" or ring[0] != ring[1]:', "            if ring[0] != ring[1]:"),
+ (PCS, "    if ring is None:\n", "    if False:\n"),
+ (PCS, "        if missing:\n", "        if False:\n"),
+ (PCS, '        net = [rows[r][p] - rows[r]["empty"] for r in rounds]', "        net = [rows[r][p] for r in rounds]"),
+ (PCS, "    if bad:\n        return", "    if False:\n        return"),
+ (PCS, '        elif line.strip():\n            raise ParseError(f"unknown line: {line}")', '        elif False:\n            raise ParseError(f"unknown line: {line}")'),
+ (PCP, "        if runs < 0 or ns < 0:\n", "        if False:\n"),
+ (PCP, "        if runs:\n", "        if True:\n"),
+ (PCP, 'runs, ns = a["run_cnt"] - b["run_cnt"], a["run_time_ns"] - b["run_time_ns"]', 'runs, ns = a["run_cnt"], a["run_time_ns"]'),
+ (PCP, 'return sorted(out, key=lambda r: -r["ns"])', "return out[::-1]"),
+ (PCP, "    if not isinstance(progs, list):\n", "    if False:\n"),
+ (PCP, '        if "id" not in p:\n', "        if False:\n"),
+ (PCP, """line += f" {r['runs'] / ops:.3f} | {r['ns'] / ops:.1f} |\"""", """line += f" {r['runs'] / ops:.3f} | {r['ns'] / r['runs']:.1f} |\""""),
+ # ---- the host-speed control and the rounds of prog_stats (E-0180) ----
+ (PCS, "    if hi > STEADY * lo:\n", "    if False:\n"),
+ (PCS, "    if hi > STEADY * lo:\n", "    if hi >= STEADY * lo:\n"),
+ (PCS, "    if ref is not None and med > SLOW * ref:\n", "    if ref is not None and med >= SLOW * ref:\n"),
+ (PCS, "    if ref is not None and med > SLOW * ref:\n", "    if False:\n"),
+ (PCS, "    if not ns:\n", "    if False:\n"),
+ (PCS, "            if int(m[1]) in host:\n", "            if False:\n"),
+ (PCS, "            if int(m[2]) <= 0 or int(m[3]) <= 0:\n", "            if int(m[2]) <= 0:\n"),
+ (PCS, "            if int(m[2]) <= 0 or int(m[3]) <= 0:\n", "            if int(m[3]) <= 0:\n"),
+ (PCS, "        if host and r not in host:\n", "        if False:\n"),
+ (PCS, "[host[r] for r in sorted(rows) if r in host]", "list(host.values())"),
+ (PCS, "lo, hi, med = min(ns), max(ns), P.median(ns)", "lo, hi, med = min(ns), max(ns), max(ns)"),
+ (PCP, "    if not m or int(m[1]) <= 0 or int(m[2]) <= 0:\n", "    if not m or int(m[1]) <= 0:\n"),
+ (PCP, "    if not m or int(m[1]) <= 0 or int(m[2]) <= 0:\n", "    if not m or int(m[2]) <= 0:\n"),
+ (PCP, 'NULLSYS = re.compile(r"^row event=nullsys', 'NULLSYS = re.compile(r"row event=nullsys'),
+ (PCP, "    if any(x is None for x in ns) and any(x is not None for x in ns):\n", "    if False:\n"),
+ (PCP, 'e["runs"] += r["runs"]', 'e["runs"] = r["runs"]'),
+ (PCP, 'key=lambda e: -P.median(e["ns"])', 'key=lambda e: P.median(e["ns"])'),
+ (PCP, "{min(e['per_run']):.1f} to", "{max(e['per_run']):.1f} to"),
+ (PCP, "{P.median(total) / ops:.1f}", "{sum(total) / ops:.1f}"),
+ (PCP, "{e['runs'] / (ops * len(e['ns'])):.3f}", "{e['runs'] / ops:.3f}"),
 ]
 
 

@@ -1,0 +1,20 @@
+# Per-program cost while `build/open_cost /var/tmp/p15-open-cost 200000 20000` ran (bpf_stats on: not an overhead measurement)
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,047 | 388.69 | 1766.4 | 1.000 | 1766.8 |
+| file_free | kprobe | 220,132 | 316.01 | 1435.6 | 1.001 | 1436.4 |
+| file_open_session | kprobe | 440,094 | 274.90 | 624.6 | 2.000 | 1249.5 |
+| spine_exec | tracepoint | 2 | 0.02 | 8291.5 | 0.000 | 0.1 |
+| file_inode_free | kprobe | 8 | 0.02 | 2000.6 | 0.000 | 0.1 |
+| spine_fork | tracing | 2 | 0.01 | 4007.5 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.01 | 3871.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.01 | 3224.5 | 0.000 | 0.0 |
+| **all** | | 880,289 | 979.66 | | 4.001 | 4453.0 |
+
+workload pid=43406 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=355199666 wall_ns=355393053
+row event=same n=200000 cpu_ns=2259999315 wall_ns=2456272331
+row event=distinct n=20000 cpu_ns=483545130 wall_ns=529350847
+
+p15d exit 0; its log and WAL: /tmp/p15-prog-stats-ofs0fjn5

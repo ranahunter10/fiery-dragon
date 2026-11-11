@@ -1,0 +1,212 @@
+config cpu=2 rounds=20 iters=20000
+row round=-1 prim=empty n=20000 ns=178220 ok=20000
+row round=-1 prim=ring_reserve_submit n=20000 ns=3576858 ok=20000
+row round=-1 prim=ring_reserve_discard n=20000 ns=2104486 ok=20000
+row round=-1 prim=ring_output n=20000 ns=2409855 ok=20000
+row round=-1 prim=hash_lookup n=20000 ns=1384621 ok=20000
+row round=-1 prim=hash_update_delete n=20000 ns=8598315 ok=20000
+row round=-1 prim=counter n=20000 ns=576736 ok=20000
+row round=-1 prim=percpu_copy n=20000 ns=1390402 ok=20000
+row round=-1 prim=ktime n=20000 ns=1372949 ok=20000
+host round=-1 nullsys_n=100000 ns=44105676
+row round=0 prim=ring_reserve_submit n=20000 ns=3475289 ok=20000
+row round=0 prim=ring_reserve_discard n=20000 ns=2094293 ok=20000
+row round=0 prim=ring_output n=20000 ns=2561208 ok=20000
+row round=0 prim=hash_lookup n=20000 ns=1207508 ok=20000
+row round=0 prim=hash_update_delete n=20000 ns=7368568 ok=20000
+row round=0 prim=counter n=20000 ns=679243 ok=20000
+row round=0 prim=percpu_copy n=20000 ns=1403600 ok=20000
+row round=0 prim=ktime n=20000 ns=1445317 ok=20000
+row round=0 prim=empty n=20000 ns=180671 ok=20000
+host round=0 nullsys_n=100000 ns=37977884
+row round=1 prim=ring_reserve_discard n=20000 ns=1968063 ok=20000
+row round=1 prim=ring_output n=20000 ns=3013893 ok=20000
+row round=1 prim=hash_lookup n=20000 ns=1181664 ok=20000
+row round=1 prim=hash_update_delete n=20000 ns=8855974 ok=20000
+row round=1 prim=counter n=20000 ns=597046 ok=20000
+row round=1 prim=percpu_copy n=20000 ns=1466403 ok=20000
+row round=1 prim=ktime n=20000 ns=1761647 ok=20000
+row round=1 prim=empty n=20000 ns=374746 ok=20000
+row round=1 prim=ring_reserve_submit n=20000 ns=3698842 ok=20000
+host round=1 nullsys_n=100000 ns=39227738
+row round=2 prim=ring_output n=20000 ns=2370092 ok=20000
+row round=2 prim=hash_lookup n=20000 ns=1285982 ok=20000
+row round=2 prim=hash_update_delete n=20000 ns=8460916 ok=20000
+row round=2 prim=counter n=20000 ns=563733 ok=20000
+row round=2 prim=percpu_copy n=20000 ns=1431164 ok=20000
+row round=2 prim=ktime n=20000 ns=1529731 ok=20000
+row round=2 prim=empty n=20000 ns=180661 ok=20000
+row round=2 prim=ring_reserve_submit n=20000 ns=3921240 ok=20000
+row round=2 prim=ring_reserve_discard n=20000 ns=2210673 ok=20000
+host round=2 nullsys_n=100000 ns=36089527
+row round=3 prim=hash_lookup n=20000 ns=1163590 ok=20000
+row round=3 prim=hash_update_delete n=20000 ns=8396698 ok=20000
+row round=3 prim=counter n=20000 ns=612298 ok=20000
+row round=3 prim=percpu_copy n=20000 ns=1345003 ok=20000
+row round=3 prim=ktime n=20000 ns=1563977 ok=20000
+row round=3 prim=empty n=20000 ns=180623 ok=20000
+row round=3 prim=ring_reserve_submit n=20000 ns=3314255 ok=20000
+row round=3 prim=ring_reserve_discard n=20000 ns=2128345 ok=20000
+row round=3 prim=ring_output n=20000 ns=2419231 ok=20000
+host round=3 nullsys_n=100000 ns=36495897
+row round=4 prim=hash_update_delete n=20000 ns=8139668 ok=20000
+row round=4 prim=counter n=20000 ns=576412 ok=20000
+row round=4 prim=percpu_copy n=20000 ns=1345403 ok=20000
+row round=4 prim=ktime n=20000 ns=1334467 ok=20000
+row round=4 prim=empty n=20000 ns=180688 ok=20000
+row round=4 prim=ring_reserve_submit n=20000 ns=3291685 ok=20000
+row round=4 prim=ring_reserve_discard n=20000 ns=2100783 ok=20000
+row round=4 prim=ring_output n=20000 ns=2261189 ok=20000
+row round=4 prim=hash_lookup n=20000 ns=1161410 ok=20000
+host round=4 nullsys_n=100000 ns=36299600
+row round=5 prim=counter n=20000 ns=541964 ok=20000
+row round=5 prim=percpu_copy n=20000 ns=1414865 ok=20000
+row round=5 prim=ktime n=20000 ns=1284349 ok=20000
+row round=5 prim=empty n=20000 ns=241163 ok=20000
+row round=5 prim=ring_reserve_submit n=20000 ns=3302415 ok=20000
+row round=5 prim=ring_reserve_discard n=20000 ns=2412705 ok=20000
+row round=5 prim=ring_output n=20000 ns=2546920 ok=20000
+row round=5 prim=hash_lookup n=20000 ns=4518846 ok=20000
+row round=5 prim=hash_update_delete n=20000 ns=10024684 ok=20000
+host round=5 nullsys_n=100000 ns=40665973
+row round=6 prim=percpu_copy n=20000 ns=1594804 ok=20000
+row round=6 prim=ktime n=20000 ns=1926451 ok=20000
+row round=6 prim=empty n=20000 ns=371562 ok=20000
+row round=6 prim=ring_reserve_submit n=20000 ns=3337551 ok=20000
+row round=6 prim=ring_reserve_discard n=20000 ns=2210578 ok=20000
+row round=6 prim=ring_output n=20000 ns=2297896 ok=20000
+row round=6 prim=hash_lookup n=20000 ns=1185544 ok=20000
+row round=6 prim=hash_update_delete n=20000 ns=7566866 ok=20000
+row round=6 prim=counter n=20000 ns=541574 ok=20000
+host round=6 nullsys_n=100000 ns=35376138
+row round=7 prim=ktime n=20000 ns=1294210 ok=20000
+row round=7 prim=empty n=20000 ns=180708 ok=20000
+row round=7 prim=ring_reserve_submit n=20000 ns=3311415 ok=20000
+row round=7 prim=ring_reserve_discard n=20000 ns=2177106 ok=20000
+row round=7 prim=ring_output n=20000 ns=2554582 ok=20000
+row round=7 prim=hash_lookup n=20000 ns=1960689 ok=20000
+row round=7 prim=hash_update_delete n=20000 ns=9675423 ok=20000
+row round=7 prim=counter n=20000 ns=541543 ok=20000
+row round=7 prim=percpu_copy n=20000 ns=1486376 ok=20000
+host round=7 nullsys_n=100000 ns=38375634
+row round=8 prim=empty n=20000 ns=181081 ok=20000
+row round=8 prim=ring_reserve_submit n=20000 ns=3273608 ok=20000
+row round=8 prim=ring_reserve_discard n=20000 ns=2377000 ok=20000
+row round=8 prim=ring_output n=20000 ns=2805943 ok=20000
+row round=8 prim=hash_lookup n=20000 ns=1116164 ok=20000
+row round=8 prim=hash_update_delete n=20000 ns=7880899 ok=20000
+row round=8 prim=counter n=20000 ns=578226 ok=20000
+row round=8 prim=percpu_copy n=20000 ns=1342021 ok=20000
+row round=8 prim=ktime n=20000 ns=1471199 ok=20000
+host round=8 nullsys_n=100000 ns=46454171
+row round=9 prim=ring_reserve_submit n=20000 ns=3344271 ok=20000
+row round=9 prim=ring_reserve_discard n=20000 ns=2468234 ok=20000
+row round=9 prim=ring_output n=20000 ns=3619925 ok=20000
+row round=9 prim=hash_lookup n=20000 ns=1195420 ok=20000
+row round=9 prim=hash_update_delete n=20000 ns=10804472 ok=20000
+row round=9 prim=counter n=20000 ns=232712 ok=20000
+row round=9 prim=percpu_copy n=20000 ns=718386 ok=20000
+row round=9 prim=ktime n=20000 ns=585325 ok=20000
+row round=9 prim=empty n=20000 ns=79835 ok=20000
+host round=9 nullsys_n=100000 ns=39588114
+row round=10 prim=ring_reserve_discard n=20000 ns=3082409 ok=20000
+row round=10 prim=ring_output n=20000 ns=4041431 ok=20000
+row round=10 prim=hash_lookup n=20000 ns=1756609 ok=20000
+row round=10 prim=hash_update_delete n=20000 ns=8908541 ok=20000
+row round=10 prim=counter n=20000 ns=541597 ok=20000
+row round=10 prim=percpu_copy n=20000 ns=1429422 ok=20000
+row round=10 prim=ktime n=20000 ns=1406828 ok=20000
+row round=10 prim=empty n=20000 ns=180756 ok=20000
+row round=10 prim=ring_reserve_submit n=20000 ns=4057406 ok=20000
+host round=10 nullsys_n=100000 ns=39586156
+row round=11 prim=ring_output n=20000 ns=2302605 ok=20000
+row round=11 prim=hash_lookup n=20000 ns=1192658 ok=20000
+row round=11 prim=hash_update_delete n=20000 ns=9469105 ok=20000
+row round=11 prim=counter n=20000 ns=541539 ok=20000
+row round=11 prim=percpu_copy n=20000 ns=1598851 ok=20000
+row round=11 prim=ktime n=20000 ns=1598229 ok=20000
+row round=11 prim=empty n=20000 ns=180659 ok=20000
+row round=11 prim=ring_reserve_submit n=20000 ns=3609266 ok=20000
+row round=11 prim=ring_reserve_discard n=20000 ns=2782838 ok=20000
+host round=11 nullsys_n=100000 ns=40732237
+row round=12 prim=hash_lookup n=20000 ns=1245395 ok=20000
+row round=12 prim=hash_update_delete n=20000 ns=8060715 ok=20000
+row round=12 prim=counter n=20000 ns=612877 ok=20000
+row round=12 prim=percpu_copy n=20000 ns=1566987 ok=20000
+row round=12 prim=ktime n=20000 ns=1358333 ok=20000
+row round=12 prim=empty n=20000 ns=180648 ok=20000
+row round=12 prim=ring_reserve_submit n=20000 ns=3366956 ok=20000
+row round=12 prim=ring_reserve_discard n=20000 ns=2515276 ok=20000
+row round=12 prim=ring_output n=20000 ns=2446455 ok=20000
+host round=12 nullsys_n=100000 ns=38039720
+row round=13 prim=hash_update_delete n=20000 ns=8462207 ok=20000
+row round=13 prim=counter n=20000 ns=541586 ok=20000
+row round=13 prim=percpu_copy n=20000 ns=1496869 ok=20000
+row round=13 prim=ktime n=20000 ns=1534831 ok=20000
+row round=13 prim=empty n=20000 ns=180668 ok=20000
+row round=13 prim=ring_reserve_submit n=20000 ns=3290781 ok=20000
+row round=13 prim=ring_reserve_discard n=20000 ns=2126562 ok=20000
+row round=13 prim=ring_output n=20000 ns=2468656 ok=20000
+row round=13 prim=hash_lookup n=20000 ns=1099141 ok=20000
+host round=13 nullsys_n=100000 ns=36016921
+row round=14 prim=counter n=20000 ns=596541 ok=20000
+row round=14 prim=percpu_copy n=20000 ns=1417567 ok=20000
+row round=14 prim=ktime n=20000 ns=1276732 ok=20000
+row round=14 prim=empty n=20000 ns=180633 ok=20000
+row round=14 prim=ring_reserve_submit n=20000 ns=3396601 ok=20000
+row round=14 prim=ring_reserve_discard n=20000 ns=2069496 ok=20000
+row round=14 prim=ring_output n=20000 ns=2251246 ok=20000
+row round=14 prim=hash_lookup n=20000 ns=1429183 ok=20000
+row round=14 prim=hash_update_delete n=20000 ns=8925332 ok=20000
+host round=14 nullsys_n=100000 ns=36036580
+row round=15 prim=percpu_copy n=20000 ns=1356180 ok=20000
+row round=15 prim=ktime n=20000 ns=1378063 ok=20000
+row round=15 prim=empty n=20000 ns=872542 ok=20000
+row round=15 prim=ring_reserve_submit n=20000 ns=3412200 ok=20000
+row round=15 prim=ring_reserve_discard n=20000 ns=2069613 ok=20000
+row round=15 prim=ring_output n=20000 ns=2560964 ok=20000
+row round=15 prim=hash_lookup n=20000 ns=1185062 ok=20000
+row round=15 prim=hash_update_delete n=20000 ns=7714640 ok=20000
+row round=15 prim=counter n=20000 ns=541507 ok=20000
+host round=15 nullsys_n=100000 ns=42658985
+row round=16 prim=ktime n=20000 ns=1546736 ok=20000
+row round=16 prim=empty n=20000 ns=375279 ok=20000
+row round=16 prim=ring_reserve_submit n=20000 ns=2450498 ok=20000
+row round=16 prim=ring_reserve_discard n=20000 ns=1986415 ok=20000
+row round=16 prim=ring_output n=20000 ns=3060787 ok=20000
+row round=16 prim=hash_lookup n=20000 ns=1263199 ok=20000
+row round=16 prim=hash_update_delete n=20000 ns=12206224 ok=20000
+row round=16 prim=counter n=20000 ns=423809 ok=20000
+row round=16 prim=percpu_copy n=20000 ns=1290966 ok=20000
+host round=16 nullsys_n=100000 ns=35918920
+row round=17 prim=empty n=20000 ns=181065 ok=20000
+row round=17 prim=ring_reserve_submit n=20000 ns=3556359 ok=20000
+row round=17 prim=ring_reserve_discard n=20000 ns=2042766 ok=20000
+row round=17 prim=ring_output n=20000 ns=2884233 ok=20000
+row round=17 prim=hash_lookup n=20000 ns=1372021 ok=20000
+row round=17 prim=hash_update_delete n=20000 ns=9329581 ok=20000
+row round=17 prim=counter n=20000 ns=829285 ok=20000
+row round=17 prim=percpu_copy n=20000 ns=1572202 ok=20000
+row round=17 prim=ktime n=20000 ns=1768198 ok=20000
+host round=17 nullsys_n=100000 ns=37179580
+row round=18 prim=ring_reserve_submit n=20000 ns=3425348 ok=20000
+row round=18 prim=ring_reserve_discard n=20000 ns=2394079 ok=20000
+row round=18 prim=ring_output n=20000 ns=3993071 ok=20000
+row round=18 prim=hash_lookup n=20000 ns=1358050 ok=20000
+row round=18 prim=hash_update_delete n=20000 ns=8594497 ok=20000
+row round=18 prim=counter n=20000 ns=575000 ok=20000
+row round=18 prim=percpu_copy n=20000 ns=3418015 ok=20000
+row round=18 prim=ktime n=20000 ns=1324167 ok=20000
+row round=18 prim=empty n=20000 ns=221643 ok=20000
+host round=18 nullsys_n=100000 ns=38072941
+row round=19 prim=ring_reserve_discard n=20000 ns=2360953 ok=20000
+row round=19 prim=ring_output n=20000 ns=3002490 ok=20000
+row round=19 prim=hash_lookup n=20000 ns=1452698 ok=20000
+row round=19 prim=hash_update_delete n=20000 ns=8635093 ok=20000
+row round=19 prim=counter n=20000 ns=572176 ok=20000
+row round=19 prim=percpu_copy n=20000 ns=1352881 ok=20000
+row round=19 prim=ktime n=20000 ns=1331587 ok=20000
+row round=19 prim=empty n=20000 ns=191498 ok=20000
+row round=19 prim=ring_reserve_submit n=20000 ns=2472314 ok=20000
+host round=19 nullsys_n=100000 ns=41228519
+ring sent=840000 consumed=840000 ok

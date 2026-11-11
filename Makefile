@@ -55,7 +55,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe $(OUT)/sliceb_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost
+         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/prim_cost
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
@@ -306,6 +306,18 @@ bench-open-cost: $(OUT)/open_cost $(OUT)/p15d
 		--dir $(or $(DIR),/var/tmp/p15-open-cost) --rounds $(or $(ROUNDS),20) --same $(or $(SAME),200000) \
 		--distinct $(or $(DISTINCT),20000) $(P15D_ARGS) | tee $(OUT)/open_cost.txt
 	$(or $(P15_PYTHON),python3) bench/open_cost/summarize.py $(OUT)/open_cost.txt | tee $(OUT)/open_cost.md
+
+# What a ring record, a hash-map operation and a counter cost on this host, each alone in a loop
+# (bench/prim_cost/): where a capture program's time can go. root.
+$(OUT)/prim_cost.bpf.o: bench/prim_cost/prim_cost.bpf.c bpf/vmlinux/vmlinux.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -mcpu=v3 -c $< -o $@
+
+$(OUT)/prim_cost: bench/prim_cost/prim_cost.c $(OUT)/prim_cost.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/prim_cost/prim_cost.c $(LDLIBS) -o $@
+
+bench-prim-cost: $(OUT)/prim_cost
+	$(OUT)/prim_cost $(or $(ROUNDS),20) $(or $(ITERS),20000) | tee $(OUT)/prim_cost.txt
+	$(or $(P15_PYTHON),python3) bench/prim_cost/summarize.py $(OUT)/prim_cost.txt $(if $(REF),--ref-nullsys-ns $(REF)) | tee $(OUT)/prim_cost.md
 
 $(OUT)/core_smoke: bpf/test/core_smoke.c $(OUT)/core_smoke.skel.h $(LIBBPF_A)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@

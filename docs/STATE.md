@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-11 (UTC), PR "bench: what capture adds to an open and a close"
+**Last updated:** 2026-11-11 (UTC), PR "bench: what a ring record, a map operation and each of our programs cost"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -235,10 +235,20 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 28. **The open-cost harness, taken under 22a** (E-0172): `bench/open_cost`, p15d on against off, paired; the primary metric is the workload thread's CPU time per open+close, declared in its README before any run. The VM run on the fixed daemon (E-0176): 1,396.3 ns of thread CPU added per open+close of a known file (95 % interval 1,367.6 to 1,440.6), 2 records and 171.6 bytes in the WAL, p15d 552.1 ns per open+close above 14.65 ms/s idle; [evidence](evidence/vm/2026-11-11-open-cost/README.md).
 
+29. **The cost split is measured before any redesign, taken under 22a** (E-0177): `bench/prim_cost` times each kernel-side building block alone (a ring record three ways, a hash lookup, an insert and delete, an atomic counter, a per-CPU copy, a clock read) and `prog_stats.py` reads each of p15d's programs' `run_cnt` and `run_time_ns` around a command. No VM number yet; no change to ADR-0006 or ADR-0015 is proposed before the VM's output is read.
+
+30. **A cost run must show its host's speed, taken under 22a** (E-0180, E-0181): the first VM run of the cost-breakdown harnesses was on a host four to five times slower than the open-cost run and is not quotable ([evidence](evidence/vm/2026-11-11-prim-cost-slow-host/README.md)). Both harnesses now record a null syscall's cost every round; a run is not quotable when rounds differ by more than 1.5 times or the median is more than 1.5 times E-0176's reference. No design change is proposed from the slow run.
+
+31. **The maintainer, 2026-11-11** (E-0182): "do the recommended steps": #68 and #67 merged with merge commits on green CI; #69 merges once the VM's run with the host-speed control is in it.
+
+32. **Where a capture program's time goes, taken under 22a** (E-0184, [evidence](evidence/vm/2026-11-11-prim-cost-ac/README.md)): the first clean run (host on AC, Best performance). Program bodies 1,139 ns per open+close: the path program 561, the session program 289, the close program 289. A ring record costs 25-36 ns alone, about 6 % of the bodies: **per-CPU batching is not built now** (decision waiting 5 stands). No design change yet: the two unknowns below come first.
+
 ## Decisions waiting
 
-1. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
-2. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
-3. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
-4. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
-5. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
+1. **Time `bpf_d_path` inside the path program** (the inferred ~400 ns of its 561): a test-only build that brackets each section of `file_open_path` with clock reads into a per-CPU array, run on the VM with the host check. Recommendation: build it next; the options it decides between (a path once per object and epoch, a dentry walk like Tetragon's and Tracee's, a path cache like Tracee's; R-043) each reopen ADR-0015 and need an ADR with that number.
+2. **The path program's skip rate under multi-core contention** (more workers than vCPUs): it decides whether the session program (289 ns per open+close) can go. Recommendation: measure with the same build, before changing ADR-0015's three programs.
+3. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
+4. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
+5. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
+6. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
+7. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.

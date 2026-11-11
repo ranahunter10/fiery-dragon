@@ -47,6 +47,16 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/open_cost/summarize.py) | Summarize an open-cost run (bench/open_cost/run.py) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `per_op`, `timing`, `capture_section`, `report` |
 | [`test_open_cost.py`](../bench/open_cost/test_open_cost.py) | Tests for the open-cost driver and its report (bench/open_cost/run.py, summarize.py). | `facts`, `opn`, `cls`, `wal`, `Books`, `Driver`, `run_text`, `Report` |
 
+## bench/prim_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`prim_cost.bpf.c`](../bench/prim_cost/prim_cost.bpf.c) | what the kernel-side building blocks of a capture record cost on this host, each timed alone in a loop inside one BPF program (bench/prim_cost/README.md). | `syscall` |
+| [`prim_cost.c`](../bench/prim_cost/prim_cost.c) | run each building block of prim_cost.bpf.c in a timed loop (root). |  |
+| [`prog_stats.py`](../bench/prim_cost/prog_stats.py) | What each of p15d's BPF programs costs while a command runs, from the kernel's own program statistics (ADR-0018 rule 3.2). | `StatsError`, `parse_progs`, `delta`, `table`, `host_ns`, `host_of`, `summary`, `bpftool` |
+| [`summarize.py`](../bench/prim_cost/summarize.py) | Summarize prim_cost output (bench/prim_cost/prim_cost.c). | `ParseError`, `host_lines`, `parse`, `report` |
+| [`test_prim_cost.py`](../bench/prim_cost/test_prim_cost.py) | Tests for the prim_cost report and the per-program statistics (bench/prim_cost). | `text`, `Report`, `ProgStats` |
+
 ## bench/probes
 
 | File | Job | Public names |
