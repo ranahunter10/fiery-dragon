@@ -80,23 +80,25 @@ killed    247 graph.sql coalesce(s.open_path, x.name) AS path,
 killed    248 graph.sql SELECT b.value::UBIGINT AS boottime_ns, r.value::UBIGINT AS 
 killed    249 pidsmaker.py WHERE e.ok ORDER BY e.edge_id
 killed    250 pidsmaker.py sha256(u.uuid) AS hash_id, coalesce(p.exe_path, '{NULL}') AS
-killed    251 pidsmaker.py (c.realtime_ns + (e.ts_ns - c.boottime_ns))::BIGINT AS times
-killed    252 pidsmaker.py SELECT sha256(su.uuid) AS src_node, e.src::VARCHAR AS src_in
-killed    253 pidsmaker.py (SELECT run FROM run_id) || ':' || e.ring || ':' || e.seq ||
-killed    254 pidsmaker.py s.laddr AS src_addr, s.lport::VARCHAR AS src_port,
-killed    255 pidsmaker.py out.mkdir(parents=True, exist_ok=False)
-killed    256 pidsmaker.py "OPEN": "EVENT_OPEN",
-killed    257 pidsmaker.py if unknown:
-killed    258 pidsmaker.py {f"{op} (not allowed by the kernel)": n for op, ok, n in by_
-killed    259 pidsmaker.py for op, ok, n in by_op if ok and op in NOT_EXPORTED},
-killed    260 pidsmaker.py "SELECT count(*) FROM edge e WHERE e.ok AND e.ts_ns < (SELEC
-killed    261 pidsmaker.py "events_exported": exported,      # counted from the rows wr
-killed    262 pidsmaker.py if sum(exported.values()) + before_clock != sum(n for op, ok
-killed    263 pidsmaker.py coalesce(p.cmd, p.comm, '{NULL}') AS cmd
-killed    264 __main__.py if res.raw_rows["record_error"]:
-killed    265 __main__.py bad = [k for k in MUST_BE_ZERO if res.counts.get(k, 0)]
-killed    266 __main__.py return 2
+killed    251 pidsmaker.py w.wall_ns AS timestamp_rec
+killed    252 pidsmaker.py FROM edge e ASOF LEFT JOIN clock c ON e.ts_ns >= c.boottime_
+killed    253 pidsmaker.py + (e.ts_ns::BIGINT - coalesce(c.boottime_ns, f.boottime_ns):
+killed    254 __main__.py except (W.RunError, W.HeaderError, R.RecordError, OSError) a
+killed    255 pidsmaker.py SELECT sha256(su.uuid) AS src_node, e.src::VARCHAR AS src_in
+killed    256 pidsmaker.py (SELECT run FROM run_id) || ':' || e.ring || ':' || e.seq ||
+killed    257 pidsmaker.py s.laddr AS src_addr, s.lport::VARCHAR AS src_port,
+killed    258 pidsmaker.py out.mkdir(parents=True, exist_ok=False)
+killed    259 pidsmaker.py "OPEN": "EVENT_OPEN",
+killed    260 pidsmaker.py if unknown:
+killed    261 pidsmaker.py {f"{op} (not allowed by the kernel)": n for op, ok, n in by_
+killed    262 pidsmaker.py for op, ok, n in by_op if ok and op in NOT_EXPORTED},
+killed    263 pidsmaker.py "SELECT count(*) FROM edge e WHERE e.ok AND e.ts_ns < (SELEC
+killed    264 pidsmaker.py if sum(exported.values()) != sum(n for op, ok, n in by_op if
+killed    265 pidsmaker.py coalesce(p.cmd, p.comm, '{NULL}') AS cmd
+killed    266 __main__.py if res.raw_rows["record_error"]:
+killed    267 __main__.py bad = [k for k in MUST_BE_ZERO if res.counts.get(k, 0)]
+killed    268 __main__.py return 2
     print(f"graph: {a.out}")
-killed    267 __main__.py return 1
+killed    269 __main__.py return 1
     return 0
-mutation sweep: 96/96 killed (a subset: not the gate)
+mutation sweep: 98/98 killed (a subset: not the gate)

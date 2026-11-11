@@ -4,9 +4,9 @@ Evidence for E-0165 and E-0166 (ADR-0028). Dev container: kernel 6.18.44, Python
 
 | File | What it is |
 |---|---|
-| `test-graph.txt` | `python3 -m unittest -v python/tests/test_graph.py`: 28 tests, OK |
+| `test-graph.txt` | `python3 -m unittest -v python/tests/test_graph.py`: 29 tests, OK |
 | `test-gen.txt` | `python3 -m unittest schema/gen/test_gen.py`: 39 tests, OK (4 new, `SqlTest`) |
-| `mutate-graph.txt` | `python3 tools/ci/mutate_py.py 172-267`: the 96 graph mutants, 96 killed. The other 172 mutants of the sweep touch files this PR does not change and were not re-run |
+| `mutate-graph.txt` | `python3 tools/ci/mutate_py.py 172-269`: the 98 graph mutants, 98 killed. The other 172 mutants of the sweep touch files this PR does not change and were not re-run |
 | `scenario-graph.txt`, `scenario-manifest.json` | `python3 -m p15.graph` on the synthetic scenario of `python/tests/scenario.py` (with snapshots), and the export's manifest |
 | `container-spine-run.txt` | `python3 -m p15.graph` on a real 5 s p15d run in the container with `--no-files --no-net` |
 
@@ -15,6 +15,6 @@ What they show:
 - The real spine-only run: 80 process nodes, 13 CLONE and 12 EXECUTE edges, every exec's file named by the ext4 tuple, `edge_without_node`, `obj_facts_conflict` and `fid_two_objs` all 0.
 
 What they do not show:
-- **No real OPEN, FD, BACKING, CLOSE or NET record was graphed.** p15d's file and net programs fail to load in this container (`-EPERM`), so those rules are tested on synthetic records only. The first real graph is the VM run in PR #66.
+- **No real OPEN, FD, BACKING, CLOSE or NET record was graphed.** p15d's file and net programs fail to load in this container (`-EPERM`), so those rules are tested on synthetic records only. The first real graph is the VM run of E-0168 (`docs/evidence/vm/2026-11-11-graph-v0/`).
 - PIDSMaker has not been run; that its loader accepts the CSV files is OPEN.
 - DuckDB facts used by the loader (a dict of numpy arrays is scanned; u64 above 2^63, BLOBs with NUL bytes and masked NULLs survive) are checked by `RawTables.test_rows_values_and_nulls`.

@@ -427,6 +427,8 @@ class BuildFile(Base):
         self.assertEqual(CLI.main([str(self.d / "run"), str(self.d / "g.duckdb")]), 2)           # exists
         (self.d / "nothing").mkdir()
         self.assertEqual(CLI.main([str(self.d / "nothing"), str(self.d / "x.duckdb")]), 2)       # not a run
+        self.assertEqual(CLI.main([str(self.d / "no-such-dir"), str(self.d / "x.duckdb")]), 2)   # an OSError, one line
+        self.assertFalse((self.d / "x.duckdb").exists())
         run_of(self.d / "bad", bulk=[close(T0 + 3, A, 1, 11), close(T0 + 4, A, 1, 12)])           # one fid, two objects
         self.assertEqual(CLI.main([str(self.d / "bad"), str(self.d / "bad.duckdb")]), 1)
         broken = bytearray(close(T0 + 3, A, 1, 11))
@@ -494,15 +496,27 @@ class PidsmakerExport(Base):
                    daemon=[fd(T0 + 4, A, 1, 10, 3, facts(ino=1, seen=2, **F), b"/w")])
         m = PM.export(self.d / "g.duckdb", self.d / "pm")
         ev = self.rows("event_table")
-        self.assertEqual([(r[2], r[6]) for r in ev], [("EVENT_OPEN", str(SC.WALL + 1))])
-        self.assertEqual(ev[0][1], self.rows("file_node_table")[1][3])          # file -> process
-        self.assertEqual(m["events_exported"], {"EVENT_OPEN": 1})
+        # the open stamped 5 ns before the first clock anchor is exported, timed by that anchor
+        self.assertEqual([(r[2], r[6]) for r in ev], [("EVENT_OPEN", str(SC.WALL - 5)), ("EVENT_OPEN", str(SC.WALL + 1))])
+        self.assertEqual(m["events_timed_by_the_first_anchor"], 1)
+        self.assertEqual(m["wall_ns"], {"first": SC.WALL - 5, "last": SC.WALL + 1})
+        self.assertEqual(ev[1][1], self.rows("file_node_table")[1][3])          # file -> process
+        self.assertEqual(m["events_exported"], {"EVENT_OPEN": 2})
         self.assertEqual(m["edges_not_exported"], {
             "BIND (not allowed by the kernel)": 1, "CONNECT (not allowed by the kernel)": 1,
             "OPEN (not allowed by the kernel)": 1,
-            "HELD (a descriptor already open at a snapshot: a state, not an event)": 1,
-            "edges before the first clock anchor (no wall time)": 1})
+            "HELD (a descriptor already open at a snapshot: a state, not an event)": 1})
         self.assertEqual(self.rows("subject_node_table")[0][2:4], ["null", "null"])
+
+    def test_wall_time_follows_the_nearest_earlier_anchor(self):
+        """The wall clock was stepped by 7 us between two anchors: an event after the second uses it."""
+        F = dict(dev=DEV, gen=9, mode=REG, fs_magic=EXT4)
+        self.graph(bulk=[opn(T0 + 50, A, 1, 10, b"/a", facts(ino=1, **F)), opn(T0 + 150, A, 2, 11, b"/b", facts(ino=2, **F))],
+                   daemon=[rec("CLOCK_SYNC", h_ts_ns=T0 + 100, boottime_ns=T0 + 100, monotonic_ns=T0 + 100,
+                               realtime_ns=SC.WALL + 100 + 7000)])
+        m = PM.export(self.d / "g.duckdb", self.d / "pm")
+        self.assertEqual([r[6] for r in self.rows("event_table")], [str(SC.WALL + 50), str(SC.WALL + 150 + 7000)])
+        self.assertEqual(m["events_timed_by_the_first_anchor"], 0)
 
     def test_an_operation_with_no_rule_is_refused(self):
         self.graph(bulk=[SC.net(T0 + 1, A, "CONNECT", 1, "127.0.0.1:1", "127.0.0.1:2")])

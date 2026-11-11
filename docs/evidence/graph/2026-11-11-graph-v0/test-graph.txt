@@ -21,10 +21,11 @@ test_open_edge_direction_access_and_openfile (python.tests.test_graph.OpenEdges.
 test_an_operation_with_no_rule_is_refused (python.tests.test_graph.PidsmakerExport.test_an_operation_with_no_rule_is_refused) ... ok
 test_opens_are_events_only_when_they_happened_and_never_reads_or_writes (python.tests.test_graph.PidsmakerExport.test_opens_are_events_only_when_they_happened_and_never_reads_or_writes) ... ok
 test_tables (python.tests.test_graph.PidsmakerExport.test_tables) ... ok
+test_wall_time_follows_the_nearest_earlier_anchor (python.tests.test_graph.PidsmakerExport.test_wall_time_follows_the_nearest_earlier_anchor)
 test_a_record_that_fails_its_check_is_listed_not_loaded (python.tests.test_graph.RawTables.test_a_record_that_fails_its_check_is_listed_not_loaded) ... ok
 test_a_row_with_an_unknown_column_is_refused (python.tests.test_graph.RawTables.test_a_row_with_an_unknown_column_is_refused) ... ok
 test_every_layout_fits_its_table (python.tests.test_graph.RawTables.test_every_layout_fits_its_table)
 test_flushes_in_chunks (python.tests.test_graph.RawTables.test_flushes_in_chunks) ... ok
 test_rows_values_and_nulls (python.tests.test_graph.RawTables.test_rows_values_and_nulls) ... ok
-Ran 28 tests in 7.037s
+Ran 29 tests in 7.524s
 OK

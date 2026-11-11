@@ -23,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     try:
         res = B.build(a.run_dir, a.out)
-    except (W.RunError, W.HeaderError, R.RecordError, FileExistsError) as e:
+    except (W.RunError, W.HeaderError, R.RecordError, OSError) as e:     # OSError: unreadable, missing, or OUT exists
         print(f"p15.graph: {e}", file=sys.stderr)
         return 2
     print(f"graph: {a.out}")
@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pidsmaker: {a.pidsmaker}: " + ", ".join(f"{k} {v}" for k, v in m["rows"].items()))
         print("  exported: " + ", ".join(f"{k} {v}" for k, v in m["events_exported"].items()))
         print("  not exported: " + (", ".join(f"{k}: {v}" for k, v in m["edges_not_exported"].items() if v) or "none"))
+        print(f"  timed by the first clock anchor: {m['events_timed_by_the_first_anchor']}")
     if bad:
         print("INVALID: " + ", ".join(bad) + " must be 0", file=sys.stderr)
         return 1

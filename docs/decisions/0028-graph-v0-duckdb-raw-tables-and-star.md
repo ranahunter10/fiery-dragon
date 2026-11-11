@@ -59,7 +59,7 @@ The capture layer writes records; nothing yet turns a run into a graph. Decision
 7. **The PIDSMaker export** (`python/p15/graph/pidsmaker.py`) writes the four tables PIDSMaker reads, as CSV in its column order, and a manifest:
    - only allowed edges (`ok`), as EVENT_CLONE, EVENT_EXECUTE, EVENT_OPEN, EVENT_CONNECT, EVENT_ACCEPT, in PIDSMaker's own direction (object → subject for EXECUTE, OPEN and ACCEPT);
    - no EVENT_READ, EVENT_WRITE, EVENT_SENDTO/SENDMSG or EVENT_RECVFROM/RECVMSG until capture measures them (driver 2);
-   - `timestamp_rec` is wall-clock ns through the nearest earlier clock anchor; `hash_id` is sha256 of the node's uuid, as PIDSMaker's loaders compute it;
+   - `timestamp_rec` is wall-clock ns through the nearest earlier clock anchor; an event stamped before the first anchor (the hooks attach before the first segment header is written) uses the first one, and the manifest counts such events; `hash_id` is sha256 of the node's uuid, as PIDSMaker's loaders compute it;
    - the manifest lists every edge not exported, by reason, and the export refuses to finish if its counts do not close.
 8. **The books.** `graph_count` holds, by name: three counts that must be zero (`edge_without_node`, `obj_facts_conflict`, `fid_two_objs`: the last two are ADR-0015's falsifiers), the file nodes per rule, the open files per first sighting, the opens without a path, denied or failed, the execs per join, the accepts without a pair, and the edges per operation. `python3 -m p15.graph` exits 1 when a must-be-zero count or a record error is not zero.
 9. **A graph file is written once.** The builder refuses an existing file and removes a half-built one.
@@ -75,10 +75,10 @@ The capture layer writes records; nothing yet turns a run into a graph. Decision
 
 ### Confirmation
 
-- `python/tests/test_graph.py` (28 tests): each rule above has a test that fails when it is broken, including ADR-0027's confirmation (one object id with two fids is two nodes; one fid in two processes is one node) and ADR-0015's (an evicted ext4 file is one node; two pipes with one inode number are two).
+- `python/tests/test_graph.py` (29 tests): each rule above has a test that fails when it is broken, including ADR-0027's confirmation (one object id with two fids is two nodes; one fid in two processes is one node) and ADR-0015's (an evicted ext4 file is one node; two pipes with one inode number are two).
 - `schema/gen/test_gen.py` `SqlTest`: the generated tables, and that the committed SQL loads into DuckDB with exactly the generated columns.
-- `tools/ci/mutate_py.py`: 95 mutants of the generator's SQL part, the loader, the builder, `graph.sql`, the export and the CLI.
-- Not yet shown: a run with real OPEN, FD and NET records. The dev container loads only the spine programs (the file and net programs fail with EPERM there), so the first real graph is built on the VM (the commands are in the PR).
+- `tools/ci/mutate_py.py`: 98 mutants of the generator's SQL part, the loader, the builder, `graph.sql`, the export and the CLI.
+- A real run on the VM (E-0168): 259 OPEN, 2,107 FD and 10 NET records, the three must-be-zero counts at zero, every exec joined by tuple. The dev container cannot show this (its file and net programs fail to load with EPERM).
 
 ### Falsifier
 
@@ -98,9 +98,10 @@ Reopen if:
 | 4 | PIDSMaker is Apache-2.0; nothing of it is copied here | SRC | its `LICENSE` |
 | 5 | A dependency graph's edges carry a type, a time and the direction of information flow; backtracking follows them by time | PDF | Xu et al. CCS'16 §2.1 (R-039) |
 | 6 | DuckDB 2.0.0 inserts from a dict of numpy arrays, keeps u64 above 2^63, BLOBs with NULs and masked NULLs | MEAS | [`2026-11-11-graph-v0`](../evidence/graph/2026-11-11-graph-v0/README.md) |
-| 7 | The 28 tests pass and the 95 mutants are killed in the dev container | MEAS | same |
+| 7 | The 29 tests pass and the 98 mutants are killed in the dev container | MEAS | same |
 | 8 | The file and net programs do not load in the dev container (EPERM), so no real OPEN or NET record was graphed here | MEAS | same |
-| 9 | The export is accepted by PIDSMaker | OPEN | PIDSMaker has not been run (the maintainer decides where) |
+| 9 | On a real VM run the falsifier counts are zero, 4 of 4 execs join by tuple and the one local connection pairs by ISN | MEAS | [`vm/2026-11-11-graph-v0`](../evidence/vm/2026-11-11-graph-v0/README.md) |
+| 10 | The export is accepted by PIDSMaker | OPEN | PIDSMaker has not been run (the maintainer decides where) |
 
 ## Pros and cons of the options
 

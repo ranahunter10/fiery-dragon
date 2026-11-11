@@ -16,7 +16,9 @@ What the export keeps to:
     measure reads and writes until step 2b, so no EVENT_READ or EVENT_WRITE is made up from an
     access mode;
   - timestamp_rec is wall-clock ns (PIDSMaker cuts its windows by calendar time), from the
-    nearest earlier clock anchor;
+    nearest earlier clock anchor; an event stamped before the first anchor (the hooks attach
+    before the first segment header is written) uses the first one: an anchor is an offset
+    between two clocks, and it holds a few milliseconds earlier as well;
   - hash_id is sha256 of node_uuid, as PIDSMaker's own loaders compute it; index_id is node_id.
 """
 
@@ -49,11 +51,18 @@ QUERIES = {
         SELECT sha256(su.uuid) AS src_node, e.src::VARCHAR AS src_index_id, o.name AS operation,
                sha256(du.uuid) AS dst_node, e.dst::VARCHAR AS dst_index_id,
                (SELECT run FROM run_id) || ':' || e.ring || ':' || e.seq || ':' || e.op AS event_uuid,
-               (c.realtime_ns + (e.ts_ns - c.boottime_ns))::BIGINT AS timestamp_rec
+               w.wall_ns AS timestamp_rec
         FROM edge e JOIN ops o ON o.op = e.op JOIN uuid su ON su.node_id = e.src JOIN uuid du ON du.node_id = e.dst
-        ASOF JOIN clock c ON e.ts_ns >= c.boottime_ns
+        JOIN wall w ON w.edge_id = e.edge_id
         WHERE e.ok ORDER BY e.edge_id""",
 }
+# every edge's wall time: the nearest earlier anchor, or the first anchor for an edge before it
+WALL = """
+CREATE TEMP TABLE wall AS
+SELECT e.edge_id, (coalesce(c.realtime_ns, f.realtime_ns)::BIGINT
+                   + (e.ts_ns::BIGINT - coalesce(c.boottime_ns, f.boottime_ns)::BIGINT))::BIGINT AS wall_ns
+FROM edge e ASOF LEFT JOIN clock c ON e.ts_ns >= c.boottime_ns
+CROSS JOIN (SELECT boottime_ns, realtime_ns FROM clock ORDER BY boottime_ns LIMIT 1) f"""
 COLUMNS = {"subject_node_table": 5, "file_node_table": 4, "netflow_node_table": 7, "event_table": 7}
 
 
@@ -69,6 +78,7 @@ def export(graph: Path, out: Path) -> dict:
                     [meta["boot_id"], meta["run.id"]])
         con.execute("CREATE TEMP TABLE ops (op VARCHAR, name VARCHAR)")
         con.executemany("INSERT INTO ops VALUES (?, ?)", sorted(OPS.items()))
+        con.execute(WALL)
         before_clock = con.execute(
             "SELECT count(*) FROM edge e WHERE e.ok AND e.ts_ns < (SELECT min(boottime_ns) FROM clock)").fetchone()[0]
         rows = {}
@@ -78,8 +88,8 @@ def export(graph: Path, out: Path) -> dict:
         exported = dict(con.execute(
             f"SELECT operation, count(*) FROM ({QUERIES['event_table']}) GROUP BY operation ORDER BY operation").fetchall())
         by_op = con.execute("SELECT op, ok, count(*) FROM edge GROUP BY op, ok ORDER BY op, ok").fetchall()
-        span = con.execute("""SELECT min(c.realtime_ns + (e.ts_ns - c.boottime_ns)), max(c.realtime_ns + (e.ts_ns - c.boottime_ns))
-                              FROM edge e ASOF JOIN clock c ON e.ts_ns >= c.boottime_ns WHERE e.ok""").fetchone()
+        span = con.execute("SELECT min(w.wall_ns), max(w.wall_ns) FROM edge e JOIN wall w USING (edge_id) "
+                           "JOIN ops o ON o.op = e.op WHERE e.ok").fetchone()
     finally:
         con.close()
     manifest = {
@@ -89,7 +99,8 @@ def export(graph: Path, out: Path) -> dict:
         "edges_not_exported": {
             **{f"{op} (not allowed by the kernel)": n for op, ok, n in by_op if not ok},
             **{f"{op} ({NOT_EXPORTED[op]})": n for op, ok, n in by_op if ok and op in NOT_EXPORTED},
-            "edges before the first clock anchor (no wall time)": before_clock},
+            },
+        "events_timed_by_the_first_anchor": before_clock,     # stamped before it; exported
         "wall_ns": {"first": span[0], "last": span[1]},
         "absent_by_design": ["EVENT_READ", "EVENT_WRITE", "EVENT_SENDTO", "EVENT_SENDMSG", "EVENT_RECVFROM",
                              "EVENT_RECVMSG"],
@@ -98,8 +109,9 @@ def export(graph: Path, out: Path) -> dict:
     unknown = sorted({op for op, _, _ in by_op} - OPS.keys() - NOT_EXPORTED.keys())
     if unknown:
         raise ValueError(f"edge operations with no export rule: {unknown}")
-    if sum(exported.values()) + before_clock != sum(n for op, ok, n in by_op if ok and op in OPS):
-        raise ValueError("the export's books do not close: allowed edges with a rule = events written + edges with no wall time")
+    if sum(exported.values()) != sum(n for op, ok, n in by_op if ok and op in OPS):
+        raise ValueError("the export's books do not close: every allowed edge with a rule must be an event written "
+                         "(a run with no clock anchor has no wall time)")
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     load = ["-- Load into a database whose four tables PIDSMaker's postgres/init-create-databases.sh created.",
             "-- psql -U postgres -d <dataset> -f load.sql   (run from this directory)"]

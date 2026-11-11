@@ -23,3 +23,4 @@ tree: exec 5, exit_process 4, fork_process 5, from_snapshot 2, pre_existing 2, r
 pidsmaker: /tmp/gt/pm: subject_node_table 7, file_node_table 5, netflow_node_table 7, event_table 15
   exported: EVENT_ACCEPT 3, EVENT_CLONE 5, EVENT_CONNECT 2, EVENT_EXECUTE 5
   not exported: CONNECT (not allowed by the kernel): 1, BIND (no flow): 1, LISTEN (no flow): 1
+  timed by the first clock anchor: 0
