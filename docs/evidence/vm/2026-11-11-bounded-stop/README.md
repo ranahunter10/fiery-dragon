@@ -5,3 +5,5 @@ Evidence for E-0163. PR #65 at `07a66d7`, brought to the VM as a git bundle (`fd
 What they show (MEAS, 7.0.0-38-generic):
 - `make it-p15d`: PASS, every case. Case 10: a writer stalled 30 s before the closing snapshot ends the stop with exit 75 (STUCK) in 4 s, the log names the phase, the WAL is valid without END; a writer slow for 0.8 s under a 2 s bound stops in order with END.
 - `mutate_p15d.py 45 46 47 48`: the three watchdog mutants of `run.c` killed in 2 s each; mutant 48 (no watchdog on the closing wait) did not build: removing the line left its watch unused. It now disables the line instead.
+
+**Mutant 48 on the VM** at `cf92bbe` (brought with `git pull --ff-only` from `fd2.bundle`, sha256 `90e2ff5a...c019a`; pasted in chat, the VM's `mutate-48.txt` has sha256 `29993f16...8e0a`): `killed 48 p15d.c if (p15_writer_stalled(&run, &wd, p15_mono_ns())) (107 s)`, `1/1 killed`. Without the watchdog the stop waited out the writer's 30 s and case 10 failed. All four watchdog mutants are killed.
