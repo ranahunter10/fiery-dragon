@@ -241,11 +241,14 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 31. **The maintainer, 2026-11-11** (E-0182): "do the recommended steps": #68 and #67 merged with merge commits on green CI; #69 merges once the VM's run with the host-speed control is in it.
 
+32. **Where a capture program's time goes, taken under 22a** (E-0184, [evidence](evidence/vm/2026-11-11-prim-cost-ac/README.md)): the first clean run (host on AC, Best performance). Program bodies 1,139 ns per open+close: the path program 561, the session program 289, the close program 289. A ring record costs 25-36 ns alone, about 6 % of the bodies: **per-CPU batching is not built now** (decision waiting 5 stands). No design change yet: the two unknowns below come first.
+
 ## Decisions waiting
 
-1. **The VM's rerun of the cost breakdown** (PR #69's commands, host on its charger in Best performance mode). The rerun of E-0183 was SLOW again (365-381 ns per null syscall, the battery figure of E-0104); a host check comes first now (`open_cost` alone: its null syscall must be under 1.5 times 87.5 ns). Only a run the report does not mark UNSTEADY or SLOW is read for design. Recommendation: no change to ADR-0006 (transport) or ADR-0015 (the three programs per open) before it.
-2. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
-3. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
-4. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
-5. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
-6. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
+1. **Time `bpf_d_path` inside the path program** (the inferred ~400 ns of its 561): a test-only build that brackets each section of `file_open_path` with clock reads into a per-CPU array, run on the VM with the host check. Recommendation: build it next; the options it decides between (a path once per object and epoch, a dentry walk like Tetragon's and Tracee's, a path cache like Tracee's; R-043) each reopen ADR-0015 and need an ADR with that number.
+2. **The path program's skip rate under multi-core contention** (more workers than vCPUs): it decides whether the session program (289 ns per open+close) can go. Recommendation: measure with the same build, before changing ADR-0015's three programs.
+3. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
+4. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.
+5. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
+6. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
+7. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
