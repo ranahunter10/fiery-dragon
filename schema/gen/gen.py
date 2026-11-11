@@ -329,6 +329,9 @@ def emit_c(s: Schema) -> str:
         L.append(f"#define P15_{name}_MAX_SIZE P15_{name}_V{r.version}_MAX_SIZE")
         for v in r.var:
             L.append(f"#define P15_{name}_{v.name.upper()}_MAX P15_{name}_V{r.version}_{v.name.upper()}_MAX")
+    L += ["", "/* The largest record any (type, version) can be: a batch with this much free takes any record",
+          " * (the drain makes room before it reads a ring, daemon/drain.c). */",
+          f"#define P15_RECORD_MAX_SIZE {max(r.max_size for r in s.records)}"]
     L += ["", "#endif /* P15_RECORDS_H */", ""]
     return "\n".join(L)
 

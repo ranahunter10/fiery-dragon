@@ -1297,4 +1297,8 @@ P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v1, obj_map_entries) == 380, "p15_
 #define p15_file_stats p15_file_stats_v1
 #define P15_FILE_STATS_MAX_SIZE P15_FILE_STATS_V1_MAX_SIZE
 
+/* The largest record any (type, version) can be: a batch with this much free takes any record
+ * (the drain makes room before it reads a ring, daemon/drain.c). */
+#define P15_RECORD_MAX_SIZE 4232
+
 #endif /* P15_RECORDS_H */

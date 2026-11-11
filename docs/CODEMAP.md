@@ -132,8 +132,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`counters.h`](../daemon/counters.h) | The BPF loss counters, read without a bpf() map call (ADR-0026). | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum`, `p15_counters_sum_rows` |
 | [`crc32c.c`](../daemon/crc32c.c) | Table-driven CRC32C, one byte per step. | `p15_crc32c` |
 | [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c` |
-| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
-| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record, copies it at its own len into a queue batch, and publishes batches to the writer. | `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
+| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
+| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_free`, `p15_drain_room`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
 | [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd` |
 | [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd`, `p15_loader_file_counters_fd` |
@@ -164,7 +164,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1` |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |

@@ -52,7 +52,7 @@ int main(void)
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
 	n = p15_config_meta(&c, kv, vals, 24);
-	EXPECT(n == 19, "every setting echoed");
+	EXPECT(n == 20, "every setting echoed");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
 	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "65536") &&
 	       !strcmp(kv[11].key, "config.obj_map_entries") && !strcmp(kv[11].value, "131072"),

@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): polls the BPF rings, checks every record,
- * copies it at its own len into a queue batch, and publishes batches to the writer. It never
- * touches the disk. After every poll it reads the BPF loss counters (through their mapping, never a
+ * The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue
+ * batch, reads no more records than fit, checks each and copies it at its own len, and publishes
+ * batches to the writer. It never touches the disk, and it never takes a record it cannot keep: with
+ * the queue full, records stay in their ring (E-0173). After every poll it reads the BPF loss counters (through their mapping, never a
  * map syscall: ADR-0026) and the kernel's per-program
  * skip counters (recursion_misses, ADR-0020 rule 3); if spine records were lost or skipped since
  * the previous read it emits a GAP record that brackets the loss in time. Records don't wake it
@@ -41,6 +42,9 @@ struct p15_drain {
 P15_MUST_CHECK int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
 				int bulk_ctr_fd, int file_ctr_fd);
 void p15_drain_free(struct p15_drain *d);
+/* The records of `ring` (P15W_RING_*) that are certain to fit in its batch now; 0 when no batch is
+ * free. Publishes a batch it cannot use. For p15_drain_poll and the tests. */
+uint32_t p15_drain_room(struct p15_drain *d, unsigned ring);
 /* One poll of up to timeout_ms, then publish, then the counter read and GAP check. 0 or -errno. */
 P15_MUST_CHECK int p15_drain_poll(struct p15_drain *d, int timeout_ms);
 /* After the programs are detached: empty the rings, publish, final counter read. 0 or -errno. */
