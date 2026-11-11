@@ -185,6 +185,64 @@ class PartAndFflagTest(unittest.TestCase):
                  "share a bit or a name")
 
 
+class SqlTest(unittest.TestCase):
+    """The raw DuckDB tables (ADR-0019 G1, ADR-0028 rule 1): generated from the same schema."""
+
+    def test_one_table_per_name_with_every_versions_columns(self):
+        s = gen.load(schema(
+            rec(fields='{ name = "x", c = "u64" }, { name = "old_only", c = "u32" }, { name = "pad0", c = "u32" }') +
+            rec(version=2, fields='{ name = "x", c = "u64" }, { name = "c16", c = "char[16]" }, { name = "n", c = "i32" }',
+                var='{ name = "s", max = 9 }') +
+            rec(name="B", type_=2, fields='{ name = "b8", c = "u8" }, { name = "p1", c = "u8" }, { name = "b16", c = "u16" }, '
+                                           '{ name = "p2", c = "u32" }, { name = "i", c = "i64" }')))
+        cols = gen.sql_columns(s)
+        self.assertEqual(list(cols), ["A", "B"])
+        self.assertEqual([(n, t) for n, t, _ in cols["A"]],
+                         [("ring", "UTINYINT"), ("seq", "UBIGINT"), ("version", "USMALLINT"), ("flags", "USMALLINT"),
+                          ("ts_ns", "UBIGINT"), ("tgid", "UINTEGER"), ("tid", "UINTEGER"), ("start_ns", "UBIGINT"),
+                          ("x", "UBIGINT"), ("c16", "BLOB"), ("n", "INTEGER"), ("s_full", "UINTEGER"), ("s_len", "USMALLINT"),
+                          ("s", "BLOB"), ("old_only", "UINTEGER"), ("pad0", "UINTEGER")])
+        self.assertEqual([(n, t) for n, t, _ in cols["B"]][8:],
+                         [("b8", "UTINYINT"), ("p1", "UTINYINT"), ("b16", "USMALLINT"), ("p2", "UINTEGER"), ("i", "BIGINT")])
+        sql = gen.emit_sql(s)
+        self.assertEqual(sql.count("CREATE TABLE raw_a ("), 1)
+        self.assertIn("    s        BLOB", sql)
+        self.assertIn("_pad", [f.name for f in s.records[1].fields])     # the generator padded v2's fixed part
+        self.assertNotIn("_pad", sql)                                    # and padding is not a column
+        self.assertIn(gen.schema_hash(s), sql)
+        self.assertIn("'A': (", gen.emit_py(s))
+        self.assertIn("('old_only', 'UINTEGER'),", gen.emit_py(s))
+
+    def test_part_fields_become_columns(self):
+        s = gen.load(schema(PART + rec(var='{ name = "pt", part = "PT" }, { name = "s", max = 9 }')))
+        names = [n for n, _, _ in gen.sql_columns(s)["A"]]
+        part = [f"pt_{f.name}" for f in s.parts[0].fields]
+        self.assertEqual(names[-len(part) - 1:], part + ["s"])
+
+    def test_a_column_with_two_types_or_a_reserved_name_is_an_error(self):
+        two = gen.load(schema(rec(fields='{ name = "x", c = "u64" }') + rec(version=2, fields='{ name = "x", c = "i64" }')))
+        with self.assertRaisesRegex(gen.SchemaError, "column x is BIGINT in one version and UBIGINT in v1"):
+            gen.sql_columns(two)
+        for name in ("seq", "tgid"):
+            clash = gen.load(schema(rec(fields=f'{{ name = "{name}", c = "u64" }}')))
+            with self.assertRaisesRegex(gen.SchemaError, f"column {name} appears twice"):
+                gen.sql_columns(clash)
+        s = gen.load(schema(PART + rec(fields='{ name = "x", c = "u64" }, { name = "pt_a", c = "u64" }',
+                                       var='{ name = "pt", part = "PT" }')))
+        with self.assertRaisesRegex(gen.SchemaError, "column pt_a appears twice"):
+            gen.sql_columns(s)
+
+    def test_real_schema_loads_into_duckdb(self):
+        import duckdb
+        con = duckdb.connect()
+        con.execute((gen.OUT / "p15_records.sql").read_text())
+        s = gen.load(gen.SCHEMA)
+        for name, cols in gen.sql_columns(s).items():
+            got = [(r[0], r[1]) for r in con.execute(f"DESCRIBE raw_{name.lower()}").fetchall()]
+            self.assertEqual(got, [(n, t) for n, t, _ in cols], name)
+        con.close()
+
+
 class LockTest(unittest.TestCase):
     def run_main(self, *args):
         out, err = io.StringIO(), io.StringIO()

@@ -1,0 +1,32 @@
+graph: /tmp/g1/g.duckdb
+records: FORK 8, EXEC 4, EXIT 8, RENAME 6, CLOCK_SYNC 6, STATS 59, END 1, NET 10, NET_STATS 59, PROC 391, SNAP_DONE 3, OPEN 259, CLOSE 276, FD 2107, FILE_STATS 59
+  accept_not_paired            0
+  edge_ACCEPT                  1
+  edge_BIND                    1
+  edge_CLONE                   5
+  edge_CONNECT                 7
+  edge_EXECUTE                 4
+  edge_HELD                    590
+  edge_LISTEN                  1
+  edge_OPEN                    259
+  edge_without_node            0
+  exec_file_tuple              4
+  fid_two_objs                 0
+  file_rule_fid                167
+  file_rule_obj                280
+  file_rule_tuple              205
+  node_file                    652
+  node_proc                    136
+  node_sock                    7
+  obj_facts_conflict           0
+  open_denied                  0
+  open_never_opened            0
+  open_no_path                 0
+  openfile_close-only          1
+  openfile_open                259
+  openfile_snapshot            516
+tree: exec 4, exit_process 6, exit_thread 2, fork_process 5, fork_thread 3, from_snapshot 131, pre_existing 131, rename 6
+pidsmaker: /tmp/g1/pm: subject_node_table 136, file_node_table 652, netflow_node_table 7, event_table 272
+  exported: EVENT_ACCEPT 1, EVENT_CLONE 5, EVENT_CONNECT 7, EVENT_EXECUTE 4, EVENT_OPEN 255
+  not exported: BIND (no flow): 1, HELD (a descriptor already open at a snapshot: a state, not an event): 590, LISTEN (no flow): 1, edges before the first clock anchor (no wall time): 4
+rc=0

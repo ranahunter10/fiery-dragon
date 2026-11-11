@@ -1,0 +1,26 @@
+graph: /tmp/gt/g.duckdb
+records: FORK 5, EXEC 5, EXIT 4, RENAME 2, CLOCK_SYNC 1, STATS 1, END 1, NET 8, NET_STATS 1, PROC 5, SNAP_DONE 2
+  accept_not_paired            1
+  edge_ACCEPT                  3
+  edge_BIND                    1
+  edge_CLONE                   5
+  edge_CONNECT                 2
+  edge_CONNECT_failed          1
+  edge_EXECUTE                 5
+  edge_LISTEN                  1
+  edge_without_node            0
+  exec_file_unjoined           5
+  fid_two_objs                 0
+  file_rule_exec-unjoined      5
+  node_file                    5
+  node_proc                    7
+  node_sock                    7
+  obj_facts_conflict           0
+  open_denied                  0
+  open_never_opened            0
+  open_no_path                 0
+tree: exec 5, exit_process 4, fork_process 5, from_snapshot 2, pre_existing 2, rename 2
+pidsmaker: /tmp/gt/pm: subject_node_table 7, file_node_table 5, netflow_node_table 7, event_table 15
+  exported: EVENT_ACCEPT 3, EVENT_CLONE 5, EVENT_CONNECT 2, EVENT_EXECUTE 5
+  not exported: CONNECT (not allowed by the kernel): 1, BIND (no flow): 1, LISTEN (no flow): 1
+  timed by the first clock anchor: 0

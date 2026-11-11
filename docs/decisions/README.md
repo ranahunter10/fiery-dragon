@@ -34,6 +34,7 @@ To write a new one:
 | [0025](0025-code-provenance-exec-v2.md) | Code provenance on EXEC and PROC: the executable's own facts, credentials, `self_exec_id` and fds 0-2 (EXEC v2, PROC v2) | accepted | 2026-11-06 |
 | [0026](0026-counters-read-without-map-syscalls.md) | The BPF counters are an mmapable array, and p15d makes no map syscall once a program is attached (supersedes ADR-0006 rule 6 in part) | accepted | 2026-11-08 |
 | [0027](0027-anonymous-inodes-named-by-open-file.md) | On the anonymous-inode filesystem the graph node is the open file, not the object (supersedes ADR-0015 rule 3 in part) | accepted | 2026-11-10 |
+| [0028](0028-graph-v0-duckdb-raw-tables-and-star.md) | Graph v0: generated raw tables in DuckDB, a star built in SQL over them, and a PIDSMaker export that states what it leaves out | accepted (under STATE decision 22a) | 2026-11-11 |
 
 ## Planned (from capture blueprint v1, §8.3)
 

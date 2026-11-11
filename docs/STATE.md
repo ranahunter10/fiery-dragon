@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-11 (UTC), PR "daemon: a bounded stop: the writer's progress, not a wait, decides it"
+**Last updated:** 2026-11-11 (UTC), PR "graph: v0: generated raw tables in DuckDB, the graph in SQL, a PIDSMaker export"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -227,6 +227,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 24. **The bounded stop, taken under 22a** (E-0162): the stop gives up when the writer makes no progress (its beat counter does not move) for `--stop-stall-s`, default 30 s, counted in observations at least 100 ms apart so a host freeze of the guest is one observation; p15d then detaches, logs `code=stuck` with the phase, and exits 75 (STUCK, new in `daemon/exitcodes.h`) without END. Defaults: 30 s (a WAL fdatasync on a slow disk under load fits), the snapshot's batches count as progress.
 
+25. **Graph v0, taken under 22a** (E-0165, ADR-0028): raw tables generated from `schema/records.toml` into DuckDB 2.0.0 (pinned); the graph built in SQL over them (`python/p15/graph/graph.sql`) with processes from `p15/proctree.py`; file nodes by ADR-0015's trust table and ADR-0027; sockets paired only by the exact ISN rule; an open is one OPEN edge with its access mode, never a READ or WRITE; the PIDSMaker export writes its four tables as CSV plus a manifest of everything not exported. State: 29 tests, 98 mutants killed in the dev container; the first real run graphed on the VM (E-0168): 136 process, 652 file and 7 socket nodes from a 60 s capture, the three must-be-zero counts at zero. PIDSMaker has not read the export yet.
+
 ## Decisions waiting
 
-1. **Next: graph v0** (decision 22a.3): the DuckDB star schema from `schema/records.toml`, the builder from the WAL, the PIDSMaker export. Where PIDSMaker runs is the maintainer's decision (the brief): asked when the export exists.
+1. **Where PIDSMaker runs** (the maintainer's decision, the brief). Its Docker image is Ubuntu 22.04 with CUDA 12.1 torch and its compose file reserves NVIDIA GPUs (R-041). Recommendation: not on `p15-dev-2604` (the measurement target: 8 GB, no GPU, kernel held, kept free of third-party code); a machine with Docker and an NVIDIA GPU (the Windows host through WSL2, or a lab server). The export is plain CSV plus `load.sql`, so it does not depend on the answer.
+2. **What the first detection number is measured on.** PIDSMaker needs benign training windows and an attack window with labelled malicious nodes; no such run of ours exists. Recommendation: first reproduce one of its own small baselines (CLEARSCOPE_E3, 0.6 GB compressed) to prove the harness, and record our own labelled run only after step 2b, when reads and writes exist: a number on open-level edges measures the pipeline, not detection (ADR-0028 consequences).
+3. **Next in code:** the open-cost microbenchmark (22a.4), then step 2b.
+4. **A tamper-window metric for step 6** (from eAudit §2.3 and §4.5, R-042; E-0170): how many records are still only in memory at a chosen instant. ADR-0018 does not have it, and our 1 s `fdatasync` (ADR-0007) is the weak side against eAudit's few hundred records. Recommendation: add the metric to step 6's protocol by a new ADR and measure before changing any design; a spine record's time to disk is the number to report.
+5. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170): eAudit lost up to 60 % with one ring-buffer record per event on 12 cores and none once records were batched per CPU. Recommendation: keep ADR-0005's plan (fold in the kernel, one record per fold) and let 2b's ceiling gate decide; batching is the named fallback if the gate fails, not something to build first.

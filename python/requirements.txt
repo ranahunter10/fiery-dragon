@@ -8,3 +8,6 @@ google-crc32c==1.9.0 \
 numpy==2.5.4 \
     --hash=sha256:6ffa07666f8da0eef81d149934a626d0d95fbd6838432a33e66245423a9062c0 \
     --hash=sha256:d549420b8858885cea8838a727842249218b9c1da24dd517e25c9c7a948310a3
+# DuckDB (MIT): the graph store (ADR-0028). One abi3 wheel serves CPython 3.12 and later.
+duckdb==2.0.0 \
+    --hash=sha256:ab51ec57d329d6f3df37c0287b55d71c3fc07bb54b61d1afed09104f953b1431

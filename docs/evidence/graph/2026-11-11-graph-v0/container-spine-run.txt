@@ -1,0 +1,19 @@
+graph: /tmp/g0/g.duckdb
+records: FORK 15, EXEC 12, EXIT 12, RENAME 14, CLOCK_SYNC 1, STATS 5, END 1, PROC 131, SNAP_DONE 2
+  accept_not_paired            0
+  edge_CLONE                   13
+  edge_EXECUTE                 12
+  edge_without_node            0
+  exec_file_tuple              12
+  fid_two_objs                 0
+  file_rule_tuple              6
+  node_file                    6
+  node_proc                    80
+  obj_facts_conflict           0
+  open_denied                  0
+  open_never_opened            0
+  open_no_path                 0
+tree: exec 12, exit_process 12, fork_missing 1, fork_process 13, fork_thread 2, from_snapshot 65, pre_existing 66, pre_existing_unlisted 1, rename 14
+pidsmaker: /tmp/g0/pm: subject_node_table 80, file_node_table 6, netflow_node_table 0, event_table 25
+  exported: EVENT_CLONE 13, EVENT_EXECUTE 12
+  not exported: 

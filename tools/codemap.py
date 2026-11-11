@@ -18,12 +18,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "CODEMAP.md"
 SKIP = ("third_party/", "bpf/vmlinux/", "docs/", "schema/generated/")
-EXTS = (".c", ".h", ".py", ".sh", ".toml")
+EXTS = (".c", ".h", ".py", ".sh", ".toml", ".sql")
 
 C_FUNC = re.compile(r"^(?!static\b)(?:[A-Za-z_][\w\s\*]*?)\b([a-z_][a-z0-9_]*)\s*\([^;]*\)\s*$")
 C_PROTO = re.compile(r"^(?!static\b|#|typedef\b)[A-Za-z_][\w\s\*]*?\b([a-z_][a-z0-9_]*)\s*\([^)]*\)?[^;]*;")
 BPF_PROG = re.compile(r"^SEC\(\"([^\"]+)\"\)")
 PY_DEF = re.compile(r"^(?:def|class)\s+([A-Za-z_]\w*)")
+SQL_TABLE = re.compile(r"^CREATE TABLE ([a-z_][a-z0-9_]*)")
 SH_FUNC = re.compile(r"^([a-z_][a-z0-9_]*)\s*\(\)\s*\{")
 
 
@@ -52,8 +53,9 @@ def job(text: str, path: str) -> str:
         hash_comment = path.endswith((".py", ".sh", ".toml")) and s.startswith("#")
         if s.startswith("#") and not hash_comment:
             continue                      # C preprocessor line
-        if s.startswith(("/*", "*", "//")) or hash_comment:
-            s = s.lstrip("/*# ").rstrip("*/ ").strip()
+        sql_comment = path.endswith(".sql") and s.startswith("--")
+        if s.startswith(("/*", "*", "//")) or hash_comment or sql_comment:
+            s = s.lstrip("/*#- ").rstrip("*/ ").strip()
             if s:
                 body.append(s)
             continue
@@ -86,6 +88,8 @@ def names(text: str, path: str) -> list[str]:
             m = PY_DEF.match(ln)
         elif path.endswith(".sh"):
             m = SH_FUNC.match(ln)
+        elif path.endswith(".sql"):
+            m = SQL_TABLE.match(ln)
         else:
             m = None
         if m and m.group(1) not in ("main", "if", "for", "while", "return", "sizeof"):
