@@ -3,6 +3,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/epoll.h>
 #include <string.h>
 #include <unistd.h>
 #include <bpf/bpf.h>
@@ -36,7 +37,28 @@ static void publish(struct p15_drain *d)
 	d->open = NULL;   /* an acquired but empty slot is simply acquired again next time */
 }
 
-/* Copy one record (len bytes) into a batch of `ring`. -ENOSPC if no batch is free. */
+/* How many more records of `ring` are certain to fit in its batch: the batch's free bytes over the
+ * largest record of the schema. A batch of another ring, or one without that much room, is published
+ * first and a fresh one acquired. 0: no batch is free (the queue is full; p15q_acquire counted it).
+ *
+ * This is asked BEFORE a ring is read, because a record cannot be handed back: libbpf advances the
+ * consumer position before it calls the callback and stores it even when the callback fails
+ * (third_party/libbpf/src/ringbuf.c, ringbuf_process_ring), so a record the callback refuses is
+ * gone, uncounted (E-0173). */
+uint32_t p15_drain_room(struct p15_drain *d, unsigned ring)
+{
+	if (d->open && (d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))
+		publish(d);
+	if (!d->open) {
+		d->open = p15q_acquire(&d->run->q, ring);
+		if (!d->open)
+			return 0;
+	}
+	return (d->open->cap - d->open->len) / P15_RECORD_MAX_SIZE;
+}
+
+/* Copy one record (len bytes) into a batch of `ring`. -ENOSPC if no batch is free: for a ring's
+ * record that cannot happen after p15_drain_room, and the callbacks treat it as a bug. */
 static int put(struct p15_drain *d, unsigned ring, const void *rec, uint32_t len)
 {
 	if (d->open && (d->open->ring != ring || d->open->len + len > d->open->cap))
@@ -66,8 +88,10 @@ static int on_spine(void *ctx, void *data, size_t size)
 	}
 	rc = put(d, P15W_RING_SPINE, data, h->len);
 	if (rc) {
-		d->queue_full_now = 1;
-		return rc;                  /* left in the ring: libbpf does not advance past it */
+		/* take() asked for room first, so this is a bug; the record is gone (libbpf has moved past
+		 * it) and the books will not close: say why */
+		p15_run_set_state(d->run, P15_RUN_INVALID, "a spine record had no room in its batch (a drain bug)");
+		return 0;
 	}
 	atomic_fetch_add(&d->run->drained[h->type], 1);
 	atomic_fetch_add(&d->run->spine_seq_next, 1);
@@ -95,8 +119,8 @@ static int on_bulk(void *ctx, void *data, size_t size)
 	}
 	rc = put(d, P15W_RING_BULK, data, h->len);
 	if (rc) {
-		d->queue_full_now = 1;
-		return rc;
+		p15_run_set_state(d->run, P15_RUN_INVALID, "a bulk record had no room in its batch (a drain bug)");
+		return 0;
 	}
 	atomic_fetch_add(is_net ? &d->run->net_drained : &d->run->file_drained, 1);
 	return 0;
@@ -419,17 +443,55 @@ static int after_poll(struct p15_drain *d)
 	return 0;
 }
 
+/* Read one ring, never more than its batch has room for. What does not fit stays in the ring, which
+ * absorbs the backlog (ADR-0017 layer 2); the kernel side counts a reserve that then fails. */
+static int take(struct p15_drain *d, struct ring *r, unsigned wal_ring)
+{
+	int total = 0;
+
+	for (;;) {
+		uint32_t room = p15_drain_room(d, wal_ring);
+		int got;
+
+		if (!room) {
+			if (ring__avail_data_size(r))
+				d->queue_full_now = 1;
+			return total;
+		}
+		got = ring__consume_n(r, room);
+		if (got < 0)
+			return got;
+		total += got;
+		if ((uint32_t)got < room)
+			return total;       /* the ring is empty, or its next record is still being written */
+	}
+}
+
+/* The spine first: when batches are scarce it gets the next free one. */
+static int take_all(struct p15_drain *d)
+{
+	int n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;
+
+	if (n < 0 || !d->bulk)
+		return n;
+	m = take(d, d->bulk, P15W_RING_BULK);
+	return m < 0 ? m : n + m;
+}
+
 int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 {
+	struct epoll_event ev[2];
 	int n;
 
 	d->queue_full_now = 0;
-	n = ring_buffer__poll(d->rb, timeout_ms);
-	/* below the high-water mark records don't wake us, and poll only reads rings that woke it */
-	if (n >= 0 || n == -EINTR)
-		n = ring_buffer__consume(d->rb);
+	/* Wait only: ring_buffer__poll would read the rings itself, without asking for room. Below the
+	 * high-water mark records don't wake us (ADR-0020 rule 2), so the rings are read after every wait. */
+	n = epoll_wait(ring_buffer__epoll_fd(d->rb), ev, 2, timeout_ms);
+	if (n < 0 && errno != EINTR)
+		return -errno;
+	n = take_all(d);
 	note_poll_gap(d, p15_boot_ns());
-	if (n < 0 && n != -ENOSPC && n != -EINTR)
+	if (n < 0)
 		return n;
 	n = after_poll(d);
 	if (d->queue_full_now)
@@ -444,7 +506,7 @@ int p15_drain_finish(struct p15_drain *d)
 
 	do {
 		d->queue_full_now = 0;
-		n = ring_buffer__consume(d->rb);
+		n = take_all(d);
 		publish(d);
 		if (d->queue_full_now) {
 			/* the writer is behind: wait for it, but not for a writer that stands still (E-0162) */
@@ -453,7 +515,7 @@ int p15_drain_finish(struct p15_drain *d)
 			usleep(1000);
 		}
 	} while (n > 0 || d->queue_full_now);
-	if (n < 0 && n != -ENOSPC)
+	if (n < 0)
 		return n;
 	rc = after_poll(d);
 	atomic_store(&d->run->drain_done, 1);

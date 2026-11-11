@@ -8,7 +8,9 @@
 #include "exitcodes.h"
 #include "p15_file.h"
 #include "p15_records.h"
+#include "queue.h"
 #include "run.h"
+#include "wal.h"
 #include "writer.h"
 
 static int failures;
@@ -63,9 +65,55 @@ static void test_loss_changed(void)
 	EXPECT(!p15_spine_loss_changed(pc, nc, pm, nm), "slot 0 is ignored");
 }
 
+/* The drain asks for room before it reads a ring (E-0173): a record cannot be handed back to libbpf. */
+static void test_drain_room(void)
+{
+	struct p15_drain d;
+	struct p15q q;
+	struct p15q_slot *s;
+	const uint32_t cap = 3 * P15_RECORD_MAX_SIZE + 100;
+
+	memset(&d, 0, sizeof(d));
+	reset();
+	EXPECT(p15q_init(&q, 4, cap) == 0, "queue");
+	r.q = q;
+	d.run = &r;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 3 && d.open && d.open->ring == P15W_RING_BULK, "a fresh batch: cap / the largest record");
+	d.open->len = 100;
+	d.open->count = 1;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 3, "exactly three still fit");
+	d.open->len = 101;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 2, "one byte more: two");
+	d.open->len = cap - P15_RECORD_MAX_SIZE;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 1 && p15q_depth(&r.q) == 0, "room for one: the batch is kept");
+	d.open->len = cap - P15_RECORD_MAX_SIZE + 1;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 3 && p15q_depth(&r.q) == 1,
+	       "less than one largest record free: published, a fresh batch");
+	s = d.open;
+	EXPECT(p15_drain_room(&d, P15W_RING_SPINE) == 3 && d.open == s && d.open->ring == P15W_RING_SPINE && p15q_depth(&r.q) == 1,
+	       "an empty batch of another ring is taken over, not published");
+	d.open->len = 8;
+	d.open->count = 1;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 3 && p15q_depth(&r.q) == 2 && d.open->ring == P15W_RING_BULK,
+	       "a batch of another ring with records is published first");
+	d.open->len = 8;
+	d.open->count = 1;
+	EXPECT(p15_drain_room(&d, P15W_RING_SPINE) == 3 && p15q_depth(&r.q) == 3, "third published");
+	d.open->len = 8;
+	d.open->count = 1;
+	EXPECT(p15_drain_room(&d, P15W_RING_BULK) == 0 && d.open == NULL && p15q_depth(&r.q) == 4 && atomic_load(&r.q.full) == 1,
+	       "every batch taken: no room, counted, nothing acquired");
+	EXPECT(p15_drain_room(&d, P15W_RING_SPINE) == 0 && atomic_load(&r.q.full) == 2, "still none");
+	(void)p15q_peek(&r.q);
+	p15q_release(&r.q);
+	EXPECT(p15_drain_room(&d, P15W_RING_SPINE) == 3 && d.open, "the writer released one: room again");
+	p15q_free(&r.q);
+}
+
 int main(void)
 {
 	test_loss_changed();
+	test_drain_room();
 	char why[200];
 
 	reset();
