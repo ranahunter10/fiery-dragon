@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "bench: the dentry walk against bpf_d_path (gate 2 harness)"
+**Last updated:** 2026-11-12 (UTC), PR "bpf: when the path fentry is skipped, the session return walks the path (ADR-0029)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -253,9 +253,11 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 30. **Gate 2's harness, taken under 29** (E-0194): `bench/path_walk` checks a bounded, sequence-checked dentry walk (`bpf/include/p15_dpath.h`) against `bpf_d_path` on the same opens (16 cases, a rename race) and times it in the fentry and in a kprobe.session. It fails on any path that differs without a flag. CI's runner is the first load; the VM run decides decision waiting 1 by ADR.
 
+31. **Gate 2 decided and built, taken under 22a and 29** (E-0196, E-0197): [ADR-0029](decisions/0029-path-walked-when-the-fentry-is-skipped.md), option (a). A skipped open's OPEN carries the walked path (PATH_WALKED); an overlay's real file gets BACKING from the return. Confirmed when the VM's `open_sections contend` shows the skipped opens walked with the right path and the books closed. Next: gate 3, idle cost.
+
 ## Decisions waiting
 
-1. **An open's path must survive a skipped fentry** (E-0189; unchanged by a 25 % shorter program, E-0192): today one open in ten under heavy contention has no path. Options, each a new ADR superseding part of ADR-0015: (a) keep the fentry and `bpf_d_path`, and when it was skipped, resolve the path in the session's return by a bounded dentry walk (the way Tetragon and Tracee resolve every path, R-043), marked as walked; (b) one kprobe.session per open doing all of it with the walk, no fentry (saves the repeated facts and map work, E-0188, but every path becomes a walk); (c) keep it as it is. Recommendation: (a), after measuring the walk's cost and checking its result against `bpf_d_path` on the same opens (bind mounts, chroot, deleted files, deep paths) in a harness, then the ADR. The harness ran on the VM (E-0196, [evidence](evidence/vm/2026-11-12-path-walk/README.md)): the walk is right or flagged in every case and in a rename race (0 wrong without a flag in 19,788 compared samples), and costs 1.5 to 1.6 times `bpf_d_path` (233 against 156 ns on 8 components). By the rule stated before the run, that decides (a): ADR-0029, in the next PR.
+1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
 2. **The same exposure in the network fexit programs** (ADR-0004): measure their skips under contention before 2e. Recommendation: add a network arm to `open_sections contend`'s pattern in the 2e PR.
 3. **Spine batches behind bulk batches** (E-0174). The queue is one FIFO: under a bulk flood every slot can hold bulk records, and the spine waits in its ring. ADR-0017 says the spine is never shed. Recommendation: measure first in step 2b's ceiling gate (spine reserve failures while the bulk ring is saturated); if any, reserve queue slots for the spine by a new ADR.
 4. **A soak run before step 2b.** Everything so far was measured for about a minute, and E-0173 was found by the first run that pushed the writer. Recommendation: one hour of p15d with file identity under the census light workloads, then the graph of that run, before any read/write hook is added.

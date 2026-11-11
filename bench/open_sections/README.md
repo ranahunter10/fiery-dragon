@@ -17,7 +17,7 @@ python3 bench/open_sections/summarize.py build/open_contend.txt
 
 **single** times N open+close of one file per round, pinned, and reports each section's ns per sample (this process's runs only) with the cheapest and dearest round, net of an empty bracket. Every round must have exactly N samples of each whole program, or no time is reported. The host-speed rule is `bench/prim_cost`'s (SLOW or UNSTEADY: not quotable).
 
-**contend** runs WORKERS processes, not pinned, each N open+close, and reports how many opens got an OPEN with `PATH_MISSING` (the path program did not run), against every open the programs saw, with the kernel's `recursion_misses` and `kprobe_multi.missed`. Zero skips is reported with its 95 % bound (3 / opens).
+**contend** runs WORKERS processes, not pinned, each N open+close, and reports how many opens got an OPEN with `PATH_MISSING` (the path program did not run), against every open the programs saw, with the kernel's `recursion_misses` and `kprobe_multi.missed`. Zero skips is reported with its 95 % bound (3 / opens). Since ADR-0029 the session return walks a skipped open's path: a `walk` line gives the walk's counters and the walked OPENs read, and of those naming `DIR/same` how many have another path, which must be none.
 
 **Limits.**
 - Each bracket costs two clock reads (about 13 ns each on the VM, E-0184) and two atomic adds; the whole-program figures contain their inner brackets, so they are larger than the program without them. The sections are compared with each other and with the empty bracket, not with `prog_stats.py`.

@@ -26,7 +26,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_BACKING: return version == 1 ? sizeof(struct p15_backing_v1) : 0;
 	case P15_T_CLOSE:  return version == 1 ? sizeof(struct p15_close_v1) : 0;
 	case P15_T_FD:     return version == 1 ? sizeof(struct p15_fd_v1) : 0;
-	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : 0;
+	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : version == 2 ? sizeof(struct p15_file_stats_v2) : 0;
 	}
 	return 0;
 }
@@ -87,17 +87,27 @@ static int check_file(const void *data, size_t fixed, const char **why)
 	switch (h->type) {
 	case P15_T_OPEN: {
 		const struct p15_open_v1 *r = data;
-		const __u32 ok = P15_FF_OBJ_NEW | P15_FF_PATH_MISSING | P15_FF_PATH_ERROR | P15_FF_FULL_SIZE | P15_FF_KTHREAD;
+		const __u32 ok = P15_FF_OBJ_NEW | P15_FF_PATH_MISSING | P15_FF_PATH_WALKED | P15_FF_PATH_RACED |
+				 P15_FF_PATH_ERROR | P15_FF_FULL_SIZE | P15_FF_KTHREAD;
+		const __u32 ret = P15_FF_PATH_MISSING | P15_FF_PATH_WALKED;   /* written by the session's return */
 
 		if (r->fflags & ~ok) {
 			*why = "OPEN: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		if ((r->fflags & ret) == ret || ((r->fflags & P15_FF_PATH_RACED) && !(r->fflags & P15_FF_PATH_WALKED))) {
+			*why = "OPEN: PATH_WALKED with PATH_MISSING, or PATH_RACED without PATH_WALKED";
+			return -EINVAL;
+		}
+		if ((r->fflags & P15_FF_PATH_WALKED) && (r->fflags & (P15_FF_PATH_ERROR | P15_FF_FULL_SIZE))) {
+			*why = "OPEN: a walked path with PATH_ERROR or FULL_SIZE (those are the fentry's)";
 			return -EINVAL;
 		}
 		if (!!(r->fflags & P15_FF_PATH_ERROR) != !!r->path_err) {
 			*why = "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err";
 			return -EINVAL;
 		}
-		if (!(r->fflags & P15_FF_PATH_MISSING) && r->verdict) {
+		if (!(r->fflags & ret) && r->verdict) {
 			*why = "OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)";
 			return -EINVAL;
 		}
@@ -633,6 +643,28 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 	}
 	case P15_T_FILE_STATS: {
 		const struct p15_file_stats_v1 *r = data;
+
+		if (h->version == 2) {
+			const struct p15_file_stats_v2 *s = data;
+
+			k += snprintf(buf + k, n - k, " walked=%llu raced=%llu walk_truncated=%llu unnamed=%llu ret_backing=%llu/%llu",
+				      (unsigned long long)s->walked, (unsigned long long)s->walk_raced,
+				      (unsigned long long)s->walk_truncated, (unsigned long long)s->walk_unnamed,
+				      (unsigned long long)s->ret_backing_emitted, (unsigned long long)s->ret_backing_lost);
+			if (k < 0 || (size_t)k >= n)
+				return k;
+			return k + snprintf(buf + k, n - k, " opens=%llu open_lost=%llu missing=%llu verdicts=%llu backing=%llu "
+					    "closes=%llu close_lost=%llu drained=%llu invalid=%llu fentry_missed=%llu "
+					    "kprobe_missed=%llu files_live=%llu objs_live=%llu map_full=%llu/%llu",
+					    (unsigned long long)s->open_emitted, (unsigned long long)s->open_lost,
+					    (unsigned long long)s->missing_emitted, (unsigned long long)s->verdict_emitted,
+					    (unsigned long long)s->backing_emitted, (unsigned long long)s->close_emitted,
+					    (unsigned long long)s->close_lost, (unsigned long long)s->file_drained,
+					    (unsigned long long)s->file_invalid, (unsigned long long)s->fentry_missed,
+					    (unsigned long long)s->kprobe_missed, (unsigned long long)s->files_live,
+					    (unsigned long long)s->objs_live, (unsigned long long)s->file_map_full,
+					    (unsigned long long)s->obj_map_full);
+		}
 
 		return k + snprintf(buf + k, n - k, " opens=%llu open_lost=%llu missing=%llu verdicts=%llu backing=%llu "
 				    "closes=%llu close_lost=%llu drained=%llu invalid=%llu fentry_missed=%llu kprobe_missed=%llu "

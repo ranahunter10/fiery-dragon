@@ -4,8 +4,8 @@
  * creates, closes and reopens a file and opens a FIFO that fails in ->open, in a fresh directory
  * under /tmp; the OPEN and CLOSE records attributed to its own tgid must match what it did and
  * what fstat(2) and fstatfs(2) report. With no_path_fentry (the test-only switch that leaves the
- * fentry unattached) every open must instead arrive as OPEN with PATH_MISSING, from the
- * kprobe.session return.
+ * fentry unattached) every open must instead arrive as OPEN with PATH_WALKED and its path, from
+ * the kprobe.session return (ADR-0029).
  */
 #ifndef P15_SELFTEST_FILE_H
 #define P15_SELFTEST_FILE_H

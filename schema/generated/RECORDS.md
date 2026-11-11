@@ -29,11 +29,13 @@ Common header of every record, 32 bytes (ADR-0008).
 
 - bit 0 `OBJ_NEW`: the record carries the object's facts (its `facts` part): the first record capture wrote for this object id, or a repeat (ADR-0015 rule 2; decision 19.7)
 - bit 1 `USER_OBJ_NEW`: BACKING: the record carries the overlay object's facts (its `user_facts` part)
-- bit 2 `PATH_MISSING`: OPEN written by the kprobe.session return because the path fentry did not run for this open (skipped for another task, ADR-0015 rule 6): no path, nothing guessed
+- bit 2 `PATH_MISSING`: OPEN written by the kprobe.session return because the path fentry did not run for this open (skipped for another task, ADR-0015 rule 6), without a path: the walk could not name it (a filesystem whose d_dname it does not know, a task without fs; ADR-0029 rule 2). Nothing guessed
 - bit 3 `PATH_ERROR`: bpf_d_path failed for a reason other than length: the path is empty and path_err holds the errno
 - bit 4 `FULL_SIZE`: OPEN: no path scratch slot was free, so the record was reserved at its maximum size; the bytes after the path are zero (ADR-0015 rule 6)
 - bit 5 `NEVER_OPENED`: CLOSE: the struct file was freed without FMODE_OPENED: its open failed after security_file_open, in ->open (ADR-0015 rule 5)
 - bit 6 `KTHREAD`: the record was written in a kernel thread (PF_KTHREAD): its header names that thread, not the file's user (ADR-0015 rule 8)
+- bit 7 `PATH_WALKED`: OPEN written by the kprobe.session return because the path fentry did not run: the path is the bounded dentry walk's (bpf/include/p15_dpath.h, ADR-0029), equal to bpf_d_path's in every case the harness checks; with TRUNCATED, its last components, not rooted
+- bit 8 `PATH_RACED`: with PATH_WALKED: a rename or mount changed the tree during both tries of the walk, so the path may join two states of it; kept, not trusted (ADR-0029 rule 3)
 
 ## Part OBJFACTS (40 bytes)
 
@@ -638,7 +640,7 @@ Fixed part 272 bytes; at most 272 bytes with its variable fields.
 
 ## OPEN (type 6, version 1, class OPEN)
 
-One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with the path, or, with PATH_MISSING, by the kprobe.session return when the fentry did not run. An FMODE_BACKING open writes BACKING instead. The header names the task that opened.
+One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with bpf_d_path's path, or, when the fentry did not run, by the kprobe.session return with the walked path (PATH_WALKED) or none (PATH_MISSING) (ADR-0029). An FMODE_BACKING open writes BACKING instead, from either program. The header names the task that opened.
 
 Fixed part 80 bytes; at most 4216 bytes with its variable fields.
 
@@ -647,10 +649,10 @@ Fixed part 80 bytes; at most 4216 bytes with its variable fields.
 | 0 | `h` | header | common header |
 | 32 | `fid` | u64 | the open-file id (ADR-0015 rule 1): one struct file for its lifetime; shared by fork, dup and SCM_RIGHTS |
 | 40 | `obj` | u64 | the object id of the file's inode (ADR-0015 rule 1) |
-| 48 | `fflags` | u32 | P15_FF_* (OBJ_NEW, PATH_MISSING, PATH_ERROR, FULL_SIZE, KTHREAD) |
+| 48 | `fflags` | u32 | P15_FF_* (OBJ_NEW, PATH_MISSING, PATH_WALKED, PATH_RACED, PATH_ERROR, FULL_SIZE, KTHREAD) |
 | 52 | `f_flags` | u32 | file->f_flags: the open flags (O_ACCMODE, O_APPEND, O_CREAT, ...) as the kernel holds them |
 | 56 | `f_mode` | u32 | file->f_mode at security_file_open (FMODE_READ, FMODE_WRITE, ...; FMODE_OPENED is not set yet) |
-| 60 | `verdict` | i32 | with PATH_MISSING: security_file_open's return; otherwise 0, and a denial follows as OPEN_VERDICT |
+| 60 | `verdict` | i32 | with PATH_MISSING or PATH_WALKED (the session's return wrote it): security_file_open's return; otherwise 0, and a denial follows as OPEN_VERDICT |
 | 64 | `path_err` | i32 | with PATH_ERROR: bpf_d_path's negative errno; else 0 |
 | 68 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
 | 72 | `path_full` | u32 | full length of path in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
@@ -660,7 +662,7 @@ Fixed part 80 bytes; at most 4216 bytes with its variable fields.
 Variable-length fields, after the fixed part in this order:
 
 - `facts` (0 or 40 bytes, part OBJFACTS): the object's facts, present exactly when fflags has OBJ_NEW
-- `path` (at most 4096 bytes): bpf_d_path(&file->f_path) without its NUL: the kernel's own path (mounts crossed, ' (deleted)' kept, the task's root). A path longer than PATH_MAX is the dentry name with header flag TRUNCATED; empty with PATH_MISSING or PATH_ERROR
+- `path` (at most 4096 bytes): bpf_d_path(&file->f_path) without its NUL: the kernel's own path (mounts crossed, ' (deleted)' kept, the task's root); with PATH_WALKED the walk's, which is the same string. A path longer than PATH_MAX is the dentry name with header flag TRUNCATED (with PATH_WALKED: its last components); empty with PATH_MISSING or PATH_ERROR
 
 ## OPEN_VERDICT (type 7, version 1, class OPEN)
 
@@ -797,3 +799,67 @@ Fixed part 384 bytes; at most 384 bytes with its variable fields.
 | 368 | `kprobe_missed` | u64 | runs the kernel skipped of the session and the two free programs (recursion_misses; run DEGRADED) |
 | 376 | `file_map_entries` | u32 | the open-file map's size (--file-map-entries) |
 | 380 | `obj_map_entries` | u32 | the object map's size (--obj-map-entries) |
+
+## FILE_STATS (type 40, version 2, class STATS)
+
+The file-identity programs' health, written with every STATS record (ADR-0015, STATE decision 19): the counters of bpf/include/p15_file.h since the run's start (version 2: the session return's walk and BACKING, ADR-0029), their books' drain side, the maps' fill and the kernel's skips. The books close as p15_file.h states; a lost OPEN, BACKING, CLOSE or session record, or a skipped session or free, makes the run DEGRADED.
+
+Fixed part 456 bytes; at most 456 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fentry_run` | u64 | the path fentry ran; cumulative |
+| 40 | `fentry_no_inode` | u64 | ... for a file without an inode (never expected: counted, nothing written); cumulative |
+| 48 | `open_emitted` | u64 | OPEN records the fentry submitted; cumulative |
+| 56 | `open_lost` | u64 | ... lost to a full bulk ring (run DEGRADED); cumulative |
+| 64 | `open_full_size` | u64 | ... written full size: no scratch slot was free (rule 6); cumulative |
+| 72 | `open_truncated` | u64 | ... whose path did not fit (dentry name, TRUNCATED); cumulative |
+| 80 | `open_path_error` | u64 | ... whose bpf_d_path failed otherwise (PATH_ERROR); cumulative |
+| 88 | `backing_emitted` | u64 | BACKING records submitted; cumulative |
+| 96 | `backing_lost` | u64 | BACKING records lost to a full bulk ring (run DEGRADED); cumulative |
+| 104 | `backing_user_unread` | u64 | BACKING without the overlay inode (user_obj 0, READ_FAILED); cumulative |
+| 112 | `session_entry` | u64 | the kprobe.session ran at entry; cumulative |
+| 120 | `session_no_inode` | u64 | ... for a file without an inode: no return run; cumulative |
+| 128 | `session_return` | u64 | the session's return run; cumulative |
+| 136 | `session_common` | u64 | ... with the OPEN written and verdict 0: nothing to write; cumulative |
+| 144 | `missing_emitted` | u64 | OPEN with PATH_MISSING (the fentry did not run); cumulative |
+| 152 | `missing_lost` | u64 | PATH_MISSING OPEN records lost to a full bulk ring (run DEGRADED); cumulative |
+| 160 | `verdict_emitted` | u64 | OPEN_VERDICT; cumulative |
+| 168 | `verdict_lost` | u64 | OPEN_VERDICT records lost to a full bulk ring (run DEGRADED); cumulative |
+| 176 | `session_no_cookie` | u64 | return run with an empty cookie (never expected); cumulative |
+| 184 | `session_no_entry` | u64 | return run without an open-file entry (its map was full); cumulative |
+| 192 | `free_run` | u64 | security_file_free ran (every struct file of the system); cumulative |
+| 200 | `close_emitted` | u64 | CLOSE records submitted; cumulative |
+| 208 | `close_lost` | u64 | CLOSE records lost to a full bulk ring (run DEGRADED); cumulative |
+| 216 | `free_unregistered` | u64 | a free of a file capture never registered (decision 19.5); cumulative |
+| 224 | `inode_free_run` | u64 | security_inode_free ran; cumulative |
+| 232 | `inode_free_hit` | u64 | ... and deleted an object entry; cumulative |
+| 240 | `file_map_full` | u64 | no open-file entry: the event is written with a fresh, unregistered id; cumulative |
+| 248 | `obj_map_full` | u64 | no object entry: the facts go inline, with a fresh id; cumulative |
+| 256 | `file_stale` | u64 | an entry whose stored inode differs from the live file's: replaced (rule 9); cumulative |
+| 264 | `obj_stale` | u64 | an entry whose dev/ino/gen differ from the live inode's: replaced; cumulative |
+| 272 | `file_race` | u64 | another program inserted the entry between lookup and insert; cumulative |
+| 280 | `obj_race` | u64 | another program inserted the object entry between lookup and insert; cumulative |
+| 288 | `facts_dup` | u64 | a second record carried an object's facts (decision 19.7: twice, never zero); cumulative |
+| 296 | `subvol_unknown` | u64 | facts of a btrfs object read without btrfs BTF (oflags SUBVOL_UNKNOWN); cumulative |
+| 304 | `kthread_open` | u64 | OPEN records written in a kernel thread (KTHREAD); cumulative |
+| 312 | `walked` | u64 | the session return's OPENs with the walked path (PATH_WALKED); with walk_unnamed, missing_emitted; cumulative |
+| 320 | `walk_raced` | u64 | ... of which PATH_RACED: the tree moved during both tries; cumulative |
+| 328 | `walk_truncated` | u64 | ... of which TRUNCATED: a bound of the walk cut the path; cumulative |
+| 336 | `walk_unnamed` | u64 | the session return's OPENs without a path (PATH_MISSING): an unknown d_dname, no fs, no scratch; cumulative |
+| 344 | `ret_backing` | u64 | session returns, with the fentry skipped, for an FMODE_BACKING file: BACKING written or lost; cumulative |
+| 352 | `ret_backing_emitted` | u64 | BACKING records the session return submitted; cumulative |
+| 360 | `ret_backing_lost` | u64 | ... lost to a full bulk ring (run DEGRADED); cumulative |
+| 368 | `ret_backing_verdict_emitted` | u64 | OPEN_VERDICT records after such a BACKING (a denial); cumulative |
+| 376 | `ret_backing_verdict_lost` | u64 | ... lost to a full bulk ring (run DEGRADED); cumulative |
+| 384 | `files_live` | u64 | open-file entries now (the FILES_LIVE gauge) |
+| 392 | `objs_live` | u64 | object entries now (the OBJS_LIVE gauge) |
+| 400 | `files_live_max` | u64 | the most open-file entries the drain saw at a poll, since the run's start |
+| 408 | `objs_live_max` | u64 | the most object entries the drain saw at a poll, since the run's start |
+| 416 | `file_drained` | u64 | file-identity records the drain copied into a batch, cumulative |
+| 424 | `file_invalid` | u64 | file-identity records refused by p15_rec_check, never written (run DEGRADED), cumulative |
+| 432 | `fentry_missed` | u64 | opens whose path fentry the kernel skipped (its recursion_misses): each has an OPEN with PATH_MISSING, so not a loss |
+| 440 | `kprobe_missed` | u64 | runs the kernel skipped of the session and the two free programs (recursion_misses; run DEGRADED) |
+| 448 | `file_map_entries` | u32 | the open-file map's size (--file-map-entries) |
+| 452 | `obj_map_entries` | u32 | the object map's size (--obj-map-entries) |

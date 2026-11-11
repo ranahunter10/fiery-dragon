@@ -33,5 +33,6 @@ struct p15_backing_v1 p15_probe_p15_backing_v1 __attribute__((used));
 struct p15_close_v1 p15_probe_p15_close_v1 __attribute__((used));
 struct p15_fd_v1 p15_probe_p15_fd_v1 __attribute__((used));
 struct p15_file_stats_v1 p15_probe_p15_file_stats_v1 __attribute__((used));
+struct p15_file_stats_v2 p15_probe_p15_file_stats_v2 __attribute__((used));
 
 char LICENSE[] __attribute__((section("license"), used)) = "Dual BSD/GPL";

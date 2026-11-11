@@ -8,11 +8,15 @@
  *   FENTRY_RUN     = OPEN_EMITTED + OPEN_LOST + BACKING_EMITTED + BACKING_LOST + FENTRY_NO_INODE
  *   SESSION_ENTRY  = SESSION_RETURN + SESSION_NO_INODE
  *   SESSION_RETURN = SESSION_COMMON + MISSING_EMITTED + MISSING_LOST + VERDICT_EMITTED + VERDICT_LOST
- *                    + SESSION_NO_COOKIE + SESSION_NO_ENTRY
+ *                    + RET_BACKING + SESSION_NO_COOKIE + SESSION_NO_ENTRY
+ *   MISSING_EMITTED = WALKED + WALK_UNNAMED     (the return's OPENs: walked, or without a path; ADR-0029)
+ *   RET_BACKING    = RET_BACKING_EMITTED + RET_BACKING_LOST
  *   FREE_RUN       = CLOSE_EMITTED + CLOSE_LOST + FREE_UNREGISTERED
+ * WALK_RACED and WALK_TRUNCATED are parts of WALKED, not book terms.
  *
  * and on the drain side, the records submitted
  *   OPEN_EMITTED + MISSING_EMITTED + VERDICT_EMITTED + BACKING_EMITTED + CLOSE_EMITTED
+ *   + RET_BACKING_EMITTED + RET_BACKING_VERDICT_EMITTED
  *   = drained + taken by the self-tests + invalid.
  * FILES_LIVE and OBJS_LIVE are gauges: +1 per insert, -1 (as u64) per delete; their sum over the
  * rows is the live count (u64 arithmetic wraps back to it).
@@ -35,7 +39,7 @@ enum p15_fc {
 	P15_FC_SESSION_NO_INODE,     /* ... for a file without an inode: no return run */
 	P15_FC_SESSION_RETURN,       /* the session's return run */
 	P15_FC_SESSION_COMMON,       /* ... with the OPEN written and verdict 0: nothing to write */
-	P15_FC_MISSING_EMITTED,      /* OPEN with PATH_MISSING (the fentry did not run) */
+	P15_FC_MISSING_EMITTED,      /* OPEN written by the session return (the fentry did not run): walked or without a path */
 	P15_FC_MISSING_LOST,
 	P15_FC_VERDICT_EMITTED,      /* OPEN_VERDICT */
 	P15_FC_VERDICT_LOST,
@@ -58,6 +62,15 @@ enum p15_fc {
 	P15_FC_KTHREAD_OPEN,         /* OPEN records written in a kernel thread (KTHREAD) */
 	P15_FC_FILES_LIVE,           /* gauge: open-file entries */
 	P15_FC_OBJS_LIVE,            /* gauge: object entries */
+	P15_FC_WALKED,               /* the return's OPENs with the walked path (PATH_WALKED, ADR-0029) */
+	P15_FC_WALK_RACED,           /* ... the tree moved during both tries (PATH_RACED) */
+	P15_FC_WALK_TRUNCATED,       /* ... a bound of the walk cut the path (TRUNCATED) */
+	P15_FC_WALK_UNNAMED,         /* the return's OPENs without a path (PATH_MISSING): unknown d_dname, no fs, no scratch */
+	P15_FC_RET_BACKING,          /* the return, the fentry skipped, for an FMODE_BACKING file */
+	P15_FC_RET_BACKING_EMITTED,  /* ... BACKING submitted */
+	P15_FC_RET_BACKING_LOST,
+	P15_FC_RET_BACKING_VERDICT_EMITTED,   /* OPEN_VERDICT after such a BACKING */
+	P15_FC_RET_BACKING_VERDICT_LOST,
 	P15_FC__N,
 };
 

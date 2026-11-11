@@ -141,7 +141,7 @@ static int prog_misses(int fd, uint64_t *out)
 	return 0;
 }
 
-/* The file programs' skips, absolute: the path fentry's (located: PATH_MISSING) and the kprobes' (lost). */
+/* The file programs' skips, absolute: the path fentry's (written by the session return) and the kprobes' (lost). */
 static int read_file_misses(const struct p15_run *r, uint64_t *fentry, uint64_t *kprobes)
 {
 	int rc;
@@ -351,12 +351,12 @@ int p15_spine_loss_changed(const uint64_t *prev_ctr, const uint64_t *now_ctr, co
 }
 
 /* The file-identity counters after a poll (ADR-0015): a lost record or a skipped kprobe makes the
- * run DEGRADED; a skipped fentry does not (its open is written as PATH_MISSING). The live gauges'
+ * run DEGRADED; a skipped fentry does not (the session return writes its open, walked: ADR-0029). The live gauges'
  * high-water marks are kept here. */
 static int after_poll_file(struct p15_drain *d)
 {
 	static const int lost[] = { P15_FC_OPEN_LOST, P15_FC_BACKING_LOST, P15_FC_MISSING_LOST, P15_FC_VERDICT_LOST,
-				    P15_FC_CLOSE_LOST };
+				    P15_FC_CLOSE_LOST, P15_FC_RET_BACKING_LOST, P15_FC_RET_BACKING_VERDICT_LOST };
 	uint64_t f[P15_CTR_MAX], fm, km, m;
 	int rc = read_map(&d->file_ctr, f);
 

@@ -174,38 +174,38 @@ again:
 	fd = -1;
 	ring_buffer__consume(rb);
 	if (no_path_fentry) {
-		/* every open is an OPEN with PATH_MISSING from the session return (ADR-0015 confirmation 1) */
-		const struct p15_open *any = NULL;
-
-		for (int i = 0; i < c.n && !any; i++)
-			if (open_rec(i) && open_rec(i)->path_len == 0)
-				any = open_rec(i);
-		wait_close(rb, any ? any->fid : 0);
-		a = NULL;
-		for (int i = 0; i < c.n; i++)
-			if ((q = open_rec(i)) && (q->fflags & P15_FF_OBJ_NEW) && facts_match(q, &st, &sf))
-				a = q;
-		b = a ? find_open(NULL, a->obj, 1) : NULL;
+		/* every open is written by the session return with the walked path (ADR-0029 confirmation 2) */
+		q = find_open(fifo, 0, 0);
+		wait_close(rb, q ? q->fid : 0);
+		a = find_open(f1, 0, 0);
+		b = find_open(f1, 0, 1);
+		q = find_open(fifo, 0, 0);
 		fprintf(log, "selftest file (no path fentry): %d own records, %d of other processes, %d invalid\n", c.n,
 			c.other, c.invalid);
 		failed += check(log, c.invalid == 0 && c.overflow == 0, "every record passes the checks");
-		failed += check(log, a && (a->fflags & P15_FF_PATH_MISSING) && a->path_len == 0 && a->verdict == 0,
-				"the create is an OPEN with PATH_MISSING, no path, verdict 0, and the facts of fstat");
-		failed += check(log, b && (b->fflags & P15_FF_PATH_MISSING) && !(b->fflags & P15_FF_OBJ_NEW) && b->fid != a->fid,
-				"the reopen too: the same object without its facts again, its own open-file id");
+		failed += check(log, a && (a->fflags & P15_FF_PATH_WALKED) && !(a->fflags & P15_FF_PATH_RACED) &&
+				     !(a->h.flags & P15_F_TRUNCATED) && a->verdict == 0 && (a->fflags & P15_FF_OBJ_NEW) &&
+				     facts_match(a, &st, &sf) && (a->f_flags & O_ACCMODE) == O_WRONLY,
+				"the create is an OPEN with PATH_WALKED and its whole path, verdict 0, the facts of fstat");
+		failed += check(log, a && b && (b->fflags & P15_FF_PATH_WALKED) && !(b->fflags & P15_FF_OBJ_NEW) &&
+				     b->obj == a->obj && b->fid != a->fid,
+				"the reopen too: walked, the same object without its facts again, its own open-file id");
+		failed += check(log, q && (q->fflags & P15_FF_PATH_WALKED) && find_close(q->fid) &&
+				     (find_close(q->fid)->fflags & P15_FF_NEVER_OPENED),
+				"the FIFO: walked, and its CLOSE is NEVER_OPENED");
 		wait_close(rb, a ? a->fid : 0);
 		failed += check(log, a && find_close(a->fid) && find_close(a->fid)->obj == a->obj,
 				"the create's CLOSE names its object: the return filled in what the session's entry left (E-0190)");
 		goto out;
 	}
 	/* The fentry is preemptible: when another task is preempted inside it on this CPU, the kernel
-	 * skips it for us (ADR-0020) and the session return writes our open with PATH_MISSING. That is
+	 * skips it for us (ADR-0020) and the session return writes our open, walked (ADR-0029). That is
 	 * the design working, not a failure: try again, up to SELFTEST_TRIES times. If every try was
 	 * skipped (a machine opening files flat out while p15d starts), the fallback record itself is
 	 * checked instead, so a busy host does not stop the daemon from starting. */
 	skipped = 0;
 	for (int i = 0; i < c.n; i++)
-		if (open_rec(i) && (open_rec(i)->fflags & P15_FF_PATH_MISSING))
+		if (open_rec(i) && (open_rec(i)->fflags & (P15_FF_PATH_MISSING | P15_FF_PATH_WALKED)))
 			skipped++;
 	if (skipped && try + 1 < SELFTEST_TRIES) {
 		fprintf(log, "selftest file: try %d: the kernel skipped the path fentry for %d of our opens; again\n", try, skipped);
@@ -221,12 +221,12 @@ again:
 	if (skipped) {
 		a = NULL;
 		for (int i = 0; i < c.n; i++)
-			if ((q = open_rec(i)) && (q->fflags & P15_FF_PATH_MISSING) && q->path_len == 0 && q->verdict == 0)
+			if ((q = open_rec(i)) && (q->fflags & P15_FF_PATH_WALKED) && q->verdict == 0)
 				a = q;
 		fprintf(log, "selftest file: the path fentry was skipped on all %d tries; checking the fallback record\n",
 			SELFTEST_TRIES);
 		failed += check(log, c.invalid == 0 && c.overflow == 0, "every record passes the checks");
-		failed += check(log, a != NULL, "a skipped open is written by the session return with PATH_MISSING, verdict 0");
+		failed += check(log, a != NULL, "a skipped open is written by the session return with PATH_WALKED, verdict 0");
 		goto out;
 	}
 	a = find_open(f1, 0, 0);

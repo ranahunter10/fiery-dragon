@@ -186,8 +186,14 @@ int main(void)
 	r.filec[P15_FC_SESSION_ENTRY] = 22;
 	r.filec[P15_FC_SESSION_NO_INODE] = 1;
 	r.filec[P15_FC_SESSION_RETURN] = 21;
-	r.filec[P15_FC_SESSION_COMMON] = 15;
+	r.filec[P15_FC_SESSION_COMMON] = 14;
 	r.filec[P15_FC_MISSING_EMITTED] = 2;
+	r.filec[P15_FC_WALKED] = 1;        /* ADR-0029: the return's OPENs = walked + without a path */
+	r.filec[P15_FC_WALK_RACED] = 1;    /* parts of WALKED, not book terms */
+	r.filec[P15_FC_WALK_UNNAMED] = 1;
+	r.filec[P15_FC_RET_BACKING] = 1;   /* an overlay's real file, fentry skipped: BACKING from the return */
+	r.filec[P15_FC_RET_BACKING_EMITTED] = 1;
+	r.filec[P15_FC_RET_BACKING_VERDICT_EMITTED] = 1;
 	r.filec[P15_FC_VERDICT_EMITTED] = 1;
 	r.filec[P15_FC_VERDICT_LOST] = 1;
 	r.filec[P15_FC_SESSION_NO_ENTRY] = 2;
@@ -195,7 +201,7 @@ int main(void)
 	r.filec[P15_FC_CLOSE_EMITTED] = 9;
 	r.filec[P15_FC_CLOSE_LOST] = 1;
 	r.filec[P15_FC_FREE_UNREGISTERED] = 20;
-	r.file_selftest_consumed = 6;      /* emitted: 16 + 2 + 1 + 2 + 9 = 30 = 22 drained + 6 self-test + 2 invalid */
+	r.file_selftest_consumed = 8;      /* emitted: 16 + 2 + 1 + 2 + 9 + 1 + 1 = 32 = 22 drained + 8 self-test + 2 invalid */
 	r.file_drained = 22;
 	r.file_invalid = 2;
 	r.net_written = 21;                /* the bulk ring's writer side: 22 drained = 21 written + 1 lost in the drain */
@@ -209,6 +215,11 @@ int main(void)
 	BREAKS(filec[P15_FC_SESSION_NO_INODE], 1, "session entries", "session entry side broken");
 	BREAKS(filec[P15_FC_SESSION_NO_COOKIE], 1, "session entries", "session return side broken");
 	BREAKS(filec[P15_FC_MISSING_LOST], 1, "session entries", "a lost PATH_MISSING open is on the session books");
+	BREAKS(filec[P15_FC_RET_BACKING], 1, "session entries", "the return's BACKING branch is on the session books");
+	BREAKS(filec[P15_FC_WALKED], 1, "walked", "the return's OPENs = walked + without a path");
+	BREAKS(filec[P15_FC_WALK_UNNAMED], 1, "walked", "... both terms");
+	BREAKS(filec[P15_FC_RET_BACKING_LOST], 1, "BACKING", "the return's BACKING written + lost");
+	BREAKS(filec[P15_FC_RET_BACKING_VERDICT_EMITTED], 1, "FILE: emitted", "the return's records are on the drain side");
 	BREAKS(filec[P15_FC_FREE_UNREGISTERED], 1, "frees", "free side broken");
 	BREAKS(file_selftest_consumed, 1, "FILE: emitted", "a record the self-test took, uncounted: broken");
 	BREAKS(file_invalid, 1, "FILE: emitted", "invalid records are on the drain side");

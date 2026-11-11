@@ -22,7 +22,7 @@ To write a new one:
 | [0008](0008-schema-single-source-generated-layouts.md) | One schema file generates every record layout; per-type versions; a 32-byte common header on the boot clock | accepted | 2026-10-25 |
 | [0009](0009-process-identity-tgid-leader-start-time.md) | Identify a process by (boot id, tgid, the thread-group leader's start_boottime) | accepted | 2026-10-25 |
 | [0012](0012-quantification-protocol.md) | Quantification protocol: host-independent metrics first; relative timing only, by paired rounds with an A/A control | accepted; timing rules superseded by 0018 | 2026-10-25 |
-| [0015](0015-file-identity.md) | File identity: capture ids for objects and open files with the kernel's facts, overlay BACKING, one OPEN record per open from a fentry, with a non-preemptible kprobe.session covering its skips, files open at start in the snapshot | accepted; rule 3 superseded in part by 0027 | 2026-11-10 |
+| [0015](0015-file-identity.md) | File identity: capture ids for objects and open files with the kernel's facts, overlay BACKING, one OPEN record per open from a fentry, with a non-preemptible kprobe.session covering its skips, files open at start in the snapshot | accepted; rule 3 superseded in part by 0027, rule 6 in part by 0029 | 2026-11-10 |
 | [0017](0017-spine-flood-resilience.md) | Spine flood resilience: exact-size records, a drain that never waits on disk, a raised drain priority, located loss, a measured headroom (supersedes ADR-0006 rules 1 and 4) | accepted | 2026-10-25 |
 | [0018](0018-measurement-protocol-v2.md) | Measurement protocol v2: dimensionless headlines, rates against a same-host ceiling, paired timing reported with its raw costs, one shared workload set (supersedes ADR-0012's timing rules) | accepted | 2026-10-25 |
 | [0019](0019-engineering-gates-daemon.md) | Engineering gates for the C daemon: typed boundaries, one error path, memory-safety checks, self-observability, module layout | accepted | 2026-10-25 |
@@ -35,6 +35,7 @@ To write a new one:
 | [0026](0026-counters-read-without-map-syscalls.md) | The BPF counters are an mmapable array, and p15d makes no map syscall once a program is attached (supersedes ADR-0006 rule 6 in part) | accepted | 2026-11-08 |
 | [0027](0027-anonymous-inodes-named-by-open-file.md) | On the anonymous-inode filesystem the graph node is the open file, not the object (supersedes ADR-0015 rule 3 in part) | accepted | 2026-11-10 |
 | [0028](0028-graph-v0-duckdb-raw-tables-and-star.md) | Graph v0: generated raw tables in DuckDB, a star built in SQL over them, and a PIDSMaker export that states what it leaves out | accepted (under STATE decision 22a) | 2026-11-11 |
+| [0029](0029-path-walked-when-the-fentry-is-skipped.md) | When the path fentry is skipped, the session's return walks the path (a sequence-checked dentry walk, `d_dname` names made as the kernel makes them), and an overlay's real file gets BACKING (supersedes ADR-0015 rule 6 in part) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
 
 ## Planned (from capture blueprint v1, §8.3)
 

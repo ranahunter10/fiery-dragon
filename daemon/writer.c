@@ -39,7 +39,8 @@ static uint64_t filec(struct p15_run *r, int slot)
 static int file_books(struct p15_run *r, char *why, size_t n)
 {
 #define A(slot) atomic_load(&r->filec[P15_FC_##slot])
-	uint64_t emitted = A(OPEN_EMITTED) + A(MISSING_EMITTED) + A(VERDICT_EMITTED) + A(BACKING_EMITTED) + A(CLOSE_EMITTED);
+	uint64_t emitted = A(OPEN_EMITTED) + A(MISSING_EMITTED) + A(VERDICT_EMITTED) + A(BACKING_EMITTED) + A(CLOSE_EMITTED) +
+			   A(RET_BACKING_EMITTED) + A(RET_BACKING_VERDICT_EMITTED);
 	uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_consumed + atomic_load(&r->file_invalid);
 
 	if (A(FENTRY_RUN) != A(OPEN_EMITTED) + A(OPEN_LOST) + A(BACKING_EMITTED) + A(BACKING_LOST) + A(FENTRY_NO_INODE)) {
@@ -49,9 +50,15 @@ static int file_books(struct p15_run *r, char *why, size_t n)
 	}
 	if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||
 	    A(SESSION_RETURN) != A(SESSION_COMMON) + A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED) +
-					 A(VERDICT_LOST) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {
+					 A(VERDICT_LOST) + A(RET_BACKING) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {
 		snprintf(why, n, "FILE: session entries %llu, returns %llu: not every run is accounted for",
 			 (unsigned long long)A(SESSION_ENTRY), (unsigned long long)A(SESSION_RETURN));
+		return -1;
+	}
+	if (A(MISSING_EMITTED) != A(WALKED) + A(WALK_UNNAMED) || A(RET_BACKING) != A(RET_BACKING_EMITTED) + A(RET_BACKING_LOST)) {
+		snprintf(why, n, "FILE: the session return's OPENs %llu != walked %llu + without a path %llu, or its BACKING "
+			 "branch %llu != written + lost", (unsigned long long)A(MISSING_EMITTED), (unsigned long long)A(WALKED),
+			 (unsigned long long)A(WALK_UNNAMED), (unsigned long long)A(RET_BACKING));
 		return -1;
 	}
 	if (A(FREE_RUN) != A(CLOSE_EMITTED) + A(CLOSE_LOST) + A(FREE_UNREGISTERED)) {
@@ -351,6 +358,15 @@ static void file_stats(struct p15_writer *w)
 	F(facts_dup, P15_FC_FACTS_DUP)
 	F(subvol_unknown, P15_FC_SUBVOL_UNKNOWN)
 	F(kthread_open, P15_FC_KTHREAD_OPEN)
+	F(walked, P15_FC_WALKED)
+	F(walk_raced, P15_FC_WALK_RACED)
+	F(walk_truncated, P15_FC_WALK_TRUNCATED)
+	F(walk_unnamed, P15_FC_WALK_UNNAMED)
+	F(ret_backing, P15_FC_RET_BACKING)
+	F(ret_backing_emitted, P15_FC_RET_BACKING_EMITTED)
+	F(ret_backing_lost, P15_FC_RET_BACKING_LOST)
+	F(ret_backing_verdict_emitted, P15_FC_RET_BACKING_VERDICT_EMITTED)
+	F(ret_backing_verdict_lost, P15_FC_RET_BACKING_VERDICT_LOST)
 #undef F
 	s.files_live = atomic_load(&r->filec[P15_FC_FILES_LIVE]);   /* gauges: absolute, not since the start */
 	s.objs_live = atomic_load(&r->filec[P15_FC_OBJS_LIVE]);

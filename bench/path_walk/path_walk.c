@@ -24,7 +24,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/eventfd.h>
 #include <sys/mount.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -49,14 +51,17 @@ struct pw_sample {   /* path_walk.bpf.c's */
 
 static struct path_walk_bpf *S;
 static struct ring_buffer *RB;
-static struct pw_sample last;
+/* A case's samples: every open the case causes (an overlay open opens its real file too, E-0196). */
+#define KEEP 4
+static struct pw_sample kept[KEEP];
 static int got;
 
 static int on_sample(void *ctx, void *data, size_t size)
 {
 	(void)ctx;
-	if (size >= sizeof(last)) {
-		memcpy(&last, data, sizeof(last));
+	if (size >= sizeof(kept[0])) {
+		if (got < KEEP)
+			memcpy(&kept[got], data, sizeof(kept[0]));
 		got++;
 	}
 	return 0;
@@ -76,7 +81,9 @@ static const char *verdict(const struct pw_sample *r)
 
 	if (eq)
 		return "equal";
-	if (r->walk_flags & (P15_DP_DNAME | P15_DP_TRUNCATED | P15_DP_RACED | P15_DP_NO_ROOT))
+	/* a name the walk wrote for a d_dname filesystem (SYNTH) must be equal: DNAME explains only no name */
+	if ((r->walk_flags & (P15_DP_TRUNCATED | P15_DP_RACED | P15_DP_NO_ROOT)) ||
+	    ((r->walk_flags & P15_DP_DNAME) && !(r->walk_flags & P15_DP_SYNTH)))
 		return "flagged";
 	if (r->dpath_rc <= 0)
 		return "dpath_failed";
@@ -85,30 +92,59 @@ static const char *verdict(const struct pw_sample *r)
 	return "MISMATCH";
 }
 
-/* Open path (flags) once with the samples on; print one case line. 0, or -1 if no sample came. */
+/* The rest of a case or sample line, after its prefix. */
+static void put_sample(const struct pw_sample *r, const char *v)
+{
+	printf(" verdict=%s flags=0x%x dpath_rc=%d dpath_len=%u walk_len=%u dpath=", v, r->walk_flags, r->dpath_rc,
+	       r->dpath_len, r->walk_len);
+	esc(r->dpath, r->dpath_len, stdout);
+	printf(" walk=");
+	esc(r->walk, r->walk_len, stdout);
+	printf("\n");
+}
+
+static int rank(const char *v)
+{
+	return !strcmp(v, "equal") ? 0 : !strcmp(v, "flagged") ? 1 : 2;
+}
+
+/* Open path (flags) once with the samples on. One case line: the first sample's strings, the worst
+ * verdict of all its samples, and how many; then one sample line per further sample (at most KEEP).
+ * An open the file's ->open refuses still has its sample (a socket: security_file_open ran first). */
 static int one(const char *name, const char *path, int oflags)
 {
-	int fd;
+	const char *worst = "equal";
+	int fd, err = 0;
 
+	ring_buffer__consume(RB);
 	got = 0;
 	S->bss->emit = 1;
 	fd = open(path, oflags | O_CLOEXEC);
-	if (fd < 0) {
-		printf("case %s open_failed errno=%d\n", name, errno);
-		return -1;
-	}
-	close(fd);
+	if (fd < 0)
+		err = errno;
+	else
+		close(fd);
 	ring_buffer__consume(RB);
+	S->bss->emit = 0;
 	if (!got) {
-		printf("case %s no_sample\n", name);
+		if (err)
+			printf("case %s open_failed errno=%d\n", name, err);
+		else
+			printf("case %s no_sample\n", name);
 		return -1;
 	}
-	printf("case %s verdict=%s flags=0x%x dpath_rc=%d dpath_len=%u walk_len=%u dpath=", name, verdict(&last),
-	       last.walk_flags, last.dpath_rc, last.dpath_len, last.walk_len);
-	esc(last.dpath, last.dpath_len, stdout);
-	printf(" walk=");
-	esc(last.walk, last.walk_len, stdout);
-	printf("\n");
+	for (int k = 0; k < got && k < KEEP; k++) {
+		const char *v = verdict(&kept[k]);
+
+		if (rank(v) > rank(worst))
+			worst = v;
+	}
+	printf("case %s samples=%d open_errno=%d", name, got, err);
+	put_sample(&kept[0], worst);
+	for (int k = 1; k < got && k < KEEP; k++) {
+		printf("sample %s %d", name, k);
+		put_sample(&kept[k], verdict(&kept[k]));
+	}
 	return 0;
 }
 
@@ -410,6 +446,24 @@ int main(int argc, char **argv)
 		rc |= one("pipe", q, O_RDONLY | O_NONBLOCK);
 		close(pfd[0]);
 		close(pfd[1]);
+	}
+	/* a socket: sock_no_open refuses the reopen with ENXIO, after security_file_open ran */
+	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+	if (fd >= 0) {
+		snprintf(q, sizeof(q), "/proc/self/fd/%d", fd);
+		rc |= one("socket", q, O_RDONLY);
+		close(fd);
+	} else {
+		printf("case socket open_failed errno=%d\n", errno);
+	}
+	/* an anonymous inode */
+	fd = eventfd(0, EFD_CLOEXEC);
+	if (fd >= 0) {
+		snprintf(q, sizeof(q), "/proc/self/fd/%d", fd);
+		rc |= one("eventfd", q, O_RDONLY);
+		close(fd);
+	} else {
+		printf("case eventfd open_failed errno=%d\n", errno);
 	}
 	fflush(stdout);
 	/* chroot, in a child: the root the walk stops at is the task's own (the bss is a shared mapping) */
