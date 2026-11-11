@@ -29,6 +29,11 @@ struct p15_writer {
 
 /* The thread function: arg is a struct p15_writer *. Returns NULL. */
 void *p15_writer_main(void *arg);
+/* The writer's wait when no batch comes (gate 3): until the next STATS (stats_due, boot ns) or the
+ * WAL's next rotation or fdatasync (wal_due_ns from now, p15w_due_ns), whichever is first, in ms,
+ * at least 1 and at most P15_WRITER_WAIT_MAX_MS (a batch wakes it at once through the queue). */
+#define P15_WRITER_WAIT_MAX_MS 500
+int p15_writer_wait_ms(uint64_t stats_due, uint64_t now, uint64_t wal_due_ns);
 
 /* The ADR-0006 rule 6 check at quiescence, from the run's counters. Records the result in the run
  * and makes a broken run INVALID. Returns P15_INV_CLOSED or P15_INV_BROKEN. */

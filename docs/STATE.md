@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "bpf: when the path fentry is skipped, the session return walks the path (ADR-0029)"
+**Last updated:** 2026-11-12 (UTC), PR "daemon: adaptive drain poll and a deadline-driven writer, with the idle-cost harness (gate 3)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -254,6 +254,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 30. **Gate 2's harness, taken under 29** (E-0194): `bench/path_walk` checks a bounded, sequence-checked dentry walk (`bpf/include/p15_dpath.h`) against `bpf_d_path` on the same opens (16 cases, a rename race) and times it in the fentry and in a kprobe.session. It fails on any path that differs without a flag. CI's runner is the first load; the VM run decides decision waiting 1 by ADR.
 
 31. **Gate 2 decided and built, taken under 22a and 29** (E-0196, E-0197): [ADR-0029](decisions/0029-path-walked-when-the-fentry-is-skipped.md), option (a). A skipped open's OPEN carries the walked path (PATH_WALKED); an overlay's real file gets BACKING from the return. Confirmed on the VM (E-0198, [evidence](evidence/vm/2026-11-12-path-walk-fallback/README.md)): 192,715 of 2,400,000 opens skipped under contention, all 192,715 walked with the right path, books ok. Next: gate 3, idle cost.
+
+32. **Gate 3 begins, taken under 22a and 29** (E-0199): idle cost is a price per wake-up times 100 wake-ups a second (the 10 ms drain timer of ADR-0020 rule 2). `--poll-max-ms` makes the drain's timeout adaptive (10 ms after work, doubling when idle) and the writer sleeps until its next deadline; `bench/idle_cost` measures the arms on the VM. The default stays 10 ms until those numbers pick one, by an ADR superseding ADR-0020 rule 2's timer.
 
 ## Decisions waiting
 

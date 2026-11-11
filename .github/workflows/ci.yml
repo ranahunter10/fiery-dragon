@@ -116,6 +116,11 @@ jobs:
           python3 bench/open_sections/summarize.py build/open_sections.txt > /dev/null
           sudo build/open_sections contend 6 20000 /var/tmp/p15-os > build/open_contend.txt || { cat build/open_contend.txt; exit 1; }
           python3 bench/open_sections/summarize.py build/open_contend.txt
+      - name: Idle-cost harness (gate 3) runs p15d in two poll settings and their runs end clean; not a measurement (runner kernel, not the target)
+        run: |
+          sudo "$(command -v python3)" bench/idle_cost/run.py --p15d build/p15d --work /var/tmp/p15-idle --rounds 1 --settle 2 --window 5 \
+               --arm max10=--poll-max-ms=10 --arm max200=--poll-max-ms=200 > build/idle_cost.txt || { cat build/idle_cost.txt; exit 1; }
+          python3 bench/idle_cost/summarize.py build/idle_cost.txt
       - name: Path-walk harness (gate 2) loads, and its walk matches bpf_d_path or says why in every case and the rename race; the times are not a measurement (runner kernel, not the target)
         run: |
           sudo build/path_walk /var/tmp/p15-pw 2 2000 > build/path_walk.txt || { cat build/path_walk.txt; exit 1; }

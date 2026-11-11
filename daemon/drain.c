@@ -478,6 +478,15 @@ static int take_all(struct p15_drain *d)
 	return m < 0 ? m : n + m;
 }
 
+int p15_poll_next(int cur_ms, int took, int queue_full, int max_ms)
+{
+	int next = cur_ms * 2;
+
+	if (took || queue_full || max_ms <= P15_POLL_MIN_MS)
+		return P15_POLL_MIN_MS;
+	return next > max_ms ? max_ms : next < P15_POLL_MIN_MS ? P15_POLL_MIN_MS : next;
+}
+
 int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 {
 	struct epoll_event ev[2];
@@ -493,6 +502,7 @@ int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 	note_poll_gap(d, p15_boot_ns());
 	if (n < 0)
 		return n;
+	d->last_taken = n;
 	n = after_poll(d);
 	if (d->queue_full_now)
 		usleep(1000);               /* the writer is behind: let it release batches (counted in q.full) */
