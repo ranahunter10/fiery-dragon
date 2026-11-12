@@ -84,6 +84,12 @@ Good examples:
   | OPEN | not yet known |
 
 - **Measurements record their conditions:** kernel, VM snapshot, host power mode, Hyper-V state, swap state, number of runs. A measurement repeated fewer than 3 times is labelled as such.
+- **The capture matrix before a capture PR merges** (STATE decision 46). A PR that changes `bpf/`, `daemon/`, `schema/` or the WAL reader runs `sudo tools/vm/measure_capture.sh` on the VM, on its own head and against main's last run.
+  - Its `summary.md` and step outputs go under `docs/evidence/vm/` with the PR.
+  - The PR states each figure that moved, in either direction.
+  - A step that fails, a book that does not close, or a soak that does not PASS blocks the merge, unless the PR's purpose is that change and says so.
+- **A default is swept before it is chosen.** A new or changed default of a capture parameter comes with a measured sweep of at least three values, kept with the decision that sets it.
+- **An estimate never decides.** A figure that is not measured is INF, and a design choice that rests on it waits for its harness.
 
 ## 6. Tests and gates
 

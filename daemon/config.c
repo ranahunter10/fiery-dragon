@@ -24,8 +24,8 @@ static const struct opt OPTS[] = {
 	{ "--rotate-s",            U32(rotate_s),       1,   3600,       60,   0 },
 	{ "--spine-ring-kb",       U32(spine_ring_kb),  4,   262144,     4096, 1 },
 	{ "--bulk-ring-kb",        U32(bulk_ring_kb),   4,   262144,     4096, 1 },
-	{ "--queue-batches",       U32(queue_batches),  4,   1024,       64,   0 },
-	{ "--batch-kb",            U32(batch_kb),       16,  4096,       256,  0 },
+	{ "--queue-batches",       U32(queue_batches),  4,   1024,       16,   0 },   /* STATE decision 46: 16 x 1 MiB, */
+	{ "--batch-kb",            U32(batch_kb),       16,  4096,       1024, 0 },   /* the same 16 MiB (E-0220, E-0223) */
 	{ "--test-drain-pause-ms", U32(drain_pause_ms), 0,   10000,      0,    0 },
 	{ "--file-map-entries",    U32(file_map_entries), 1024, 4194304, 65536,  0 },
 	{ "--obj-map-entries",     U32(obj_map_entries),  1024, 4194304, 131072, 0 },
