@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MIT
 """Tests for the open-cost driver and its report (bench/open_cost/run.py, summarize.py)."""
 
+import contextlib
+import io
 import os
 import shutil
 import stat
@@ -115,6 +117,23 @@ class Driver(unittest.TestCase):
         self.assertEqual(orders[1:4], [("none", "p15d", "none2"), ("p15d", "none2", "none"), ("none2", "none", "p15d")])
         self.assertEqual(orders[0], orders[3])
         self.assertTrue(all(sorted(o) == sorted(RUN.ARMS) for o in orders))
+
+    def test_without_the_reader_it_stops_before_any_arm(self):
+        import builtins
+        from unittest import mock
+        real = builtins.__import__
+
+        def no_wal(name, *args, **kw):
+            if name == "p15" and args and args[2] and "wal" in args[2]:
+                raise ImportError("No module named 'google_crc32c'")
+            return real(name, *args, **kw)
+        err = io.StringIO()
+        with mock.patch("builtins.__import__", no_wal), mock.patch.object(RUN, "make_files") as mk, \
+                contextlib.redirect_stderr(err):
+            code = RUN.main(["--p15d", "x", "--workload", "y", "--dir", str(self.d)])
+        self.assertEqual(code, 2)
+        mk.assert_not_called()
+        self.assertIn("P15_PYTHON", err.getvalue())
 
     def test_agent_cpu_sums_threads(self):
         for tid, ns in ((10, 500), (11, 70)):

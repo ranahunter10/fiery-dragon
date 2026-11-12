@@ -208,6 +208,12 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     if a.rounds < 1 or a.same < 1 or a.distinct < 1:
         ap.error("rounds, same and distinct must be at least 1")
+    try:                                   # the books need p15's reader: fail now, not after the first arms
+        from p15 import wal as _  # noqa: F401
+    except ImportError as e:
+        print(f"open_cost: p15's WAL reader cannot be imported ({e}); run with the project's Python, "
+              "e.g. make bench-open-cost P15_PYTHON=~/p15venv/bin/python", file=sys.stderr)
+        return 2
     work = a.work or a.dir / "work"
     work.mkdir(parents=True, exist_ok=True)
     make_files(a.dir, a.distinct)
