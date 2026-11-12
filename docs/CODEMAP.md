@@ -29,6 +29,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`filechurn.py`](../bench/census/workloads/filechurn.py) | create, append, read and delete files for a fixed time. | `write_bytes`, `read_all`, `churn` |
 | [`knownops.py`](../bench/census/workloads/knownops.py) | Perform exact, known numbers of operations and print what the census must see. | `IoVec`, `meta_ops`, `net_ops`, `cap_ops`, `run` |
 
+## bench/crc32c
+
+| File | Job | Public names |
+|---|---|---|
+| [`crc32c_bench.c`](../bench/crc32c/crc32c_bench.c) | What p15d's CRC32C costs per byte, by implementation (E-0215: the table version was a third of p15d's samples). |  |
+
 ## bench/hook_cost
 
 | File | Job | Public names |
@@ -186,8 +192,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
 | [`counters.c`](../daemon/counters.c) | (no header comment) | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum_rows`, `p15_counters_sum` |
 | [`counters.h`](../daemon/counters.h) | The BPF loss counters, read without a bpf() map call (ADR-0026). | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum`, `p15_counters_sum_rows` |
-| [`crc32c.c`](../daemon/crc32c.c) | Table-driven CRC32C, one byte per step. | `p15_crc32c` |
-| [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c` |
+| [`crc32c.c`](../daemon/crc32c.c) | CRC32C (Castagnoli). | `p15_crc32c_table`, `p15_crc32c`, `p15_crc32c_impl` |
+| [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c`, `p15_crc32c_table`, `p15_crc32c_impl` |
 | [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish` |
 | [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_free`, `p15_drain_room`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |

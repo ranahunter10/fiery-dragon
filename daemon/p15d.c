@@ -25,6 +25,7 @@
 #include <bpf/libbpf.h>
 
 #include "config.h"
+#include "crc32c.h"
 #include "drain.h"
 #include "exitcodes.h"
 #include "loader.h"
@@ -276,9 +277,10 @@ int main(int argc, char **argv)
 		return P15_EXIT_OSERR;
 	}	pthread_setname_np(wt, "p15d-writer");   /* per-thread CPU in /proc (bench/idle_cost) */
 
-	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s files=%s\n", run_dir, sched,
-		run.spine_ring_bytes, run.net ? "on" : "off (--no-net)",
-		run.files ? (run.cfg.test_no_path_fentry ? "on (TEST: no path fentry)" : "on") : "off (--no-files)");
+	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s files=%s crc32c=%s\n", run_dir,
+		sched, run.spine_ring_bytes, run.net ? "on" : "off (--no-net)",
+		run.files ? (run.cfg.test_no_path_fentry ? "on (TEST: no path fentry)" : "on") : "off (--no-files)",
+		p15_crc32c_impl());
 	if (run.cfg.duration_s)
 		end_ns = p15_mono_ns() + (uint64_t)run.cfg.duration_s * 1000000000ull;
 

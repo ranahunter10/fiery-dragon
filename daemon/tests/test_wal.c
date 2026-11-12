@@ -157,6 +157,29 @@ static void test_crc32c(void)
 	EXPECT(p15_crc32c(0, f, 32) == 0x62A8AB43, "RFC 3720: 32 0xFF bytes");
 	EXPECT(p15_crc32c(0, inc, 32) == 0x46DD794E, "RFC 3720: 0..31");
 	EXPECT(p15_crc32c(p15_crc32c(0, "1234", 4), "56789", 5) == 0xE3069283, "CRC32C in pieces");
+	EXPECT(p15_crc32c_table(0, "123456789", 9) == 0xE3069283, "CRC32C by the table: check value");
+	EXPECT(p15_crc32c_table(0, inc, 32) == 0x46DD794E, "CRC32C by the table: RFC 3720 0..31");
+
+	/* whichever implementation this CPU uses equals the table at every alignment, length and seed */
+	{
+		static unsigned char buf[600];
+		uint32_t x = 0x9E3779B9u;
+		int diff = 0;
+
+		for (size_t i = 0; i < sizeof(buf); i++) {
+			x ^= x << 13, x ^= x >> 17, x ^= x << 5;
+			buf[i] = (unsigned char)x;
+		}
+		for (size_t off = 0; off < 16; off++)
+			for (size_t len = 0; len <= 520; len += (len < 40 ? 1 : 13)) {
+				uint32_t seed = off * 2654435761u;
+
+				diff += p15_crc32c(seed, buf + off, len) != p15_crc32c_table(seed, buf + off, len);
+			}
+		EXPECT(diff == 0, "CRC32C: the CPU's implementation equals the table");
+	}
+	EXPECT(!strcmp(p15_crc32c_impl(), "sse4.2") || !strcmp(p15_crc32c_impl(), "table"), "CRC32C names its implementation");
+	printf("crc32c implementation: %s\n", p15_crc32c_impl());
 }
 
 /* Writes the reference segment used by several tests; returns the offset of its last batch. */

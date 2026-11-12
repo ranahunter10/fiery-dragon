@@ -13,4 +13,10 @@
  */
 uint32_t p15_crc32c(uint32_t crc, const void *data, size_t n);
 
+/* The same CRC by the table, one byte per step, whatever the CPU: the tests' reference. */
+uint32_t p15_crc32c_table(uint32_t crc, const void *data, size_t n);
+
+/* Which implementation p15_crc32c uses on this CPU: "sse4.2" or "table" (in p15d's start line). */
+const char *p15_crc32c_impl(void);
+
 #endif
