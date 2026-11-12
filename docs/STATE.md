@@ -287,6 +287,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 44. **The capture layer reviewed** (E-0222, [audit](audits/2026-11-12-capture-review.md)): sound for what it captures, incomplete without data flow (step 2b: PIDSMaker gets 4 of 10 edge types), not yet deployable (cost over budget, seven deployment measures missing). Root causes: the pipeline was built before it was measured as a whole. From now on every capture PR runs the standing matrix on the VM before it merges (`tools/vm/measure_capture.sh`). The plan runs in phases A to F, with function (2b) before more cost work. Criteria and thresholds: decision waiting 12.
 
+45. **The matrix's first runs** (E-0223, [evidence](evidence/vm/2026-11-12-matrix-defaults-vs-b1024/README.md)): with 1 MiB batches, p15d costs 201 ns per open+close against 420, the soak passes with nothing lost, and the calling program may pay less too (INF). The matrix's own it_p15d step was broken by the Python under sudo; fixed. Next in the matrix: how often the skip counters must be read.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).

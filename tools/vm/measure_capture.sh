@@ -115,6 +115,7 @@ step() {   # name, command...: run, keep its output, time it
 	sha256sum $B/p15d $B/p15w-inspect $B/open_cost $B/prim_cost $B/crc32c_bench
 } > "$OUT/manifest.txt"
 
+export P15_PYTHON="$PY"     # it_p15d.sh reads the WAL with it; sudo's python3 lacks google_crc32c
 step it_p15d daemon/tests/it_p15d.sh "$B"
 step crc32c sh -c "$B/crc32c_bench 4096 9 && $B/crc32c_bench 120 9"
 step prog_stats python3 bench/prim_cost/prog_stats.py --p15d "$B/p15d" "${EXTRA[@]}" --ops 220000 --rounds "$R_PS" \
@@ -166,8 +167,8 @@ step soak_report "$PY" bench/soak/summarize.py "$OUT/soak.txt"
 	grep -h -E "added per open\+close|p15d per open\+close|thread switches|lost to the ring|p15d idle" \
 		"$OUT/open_cost_report.txt" 2>/dev/null | sed 's/^ *-* */- open_cost: /'
 	grep -h -E "^ +[0-9.]+%" "$OUT/profile.txt" 2>/dev/null | head -8 | sed 's/^ */- profile: /'
-	grep -h -E "median|budget" "$OUT/idle_report.txt" 2>/dev/null | head -4 | sed 's/^ *-* */- idle: /'
-	grep -h -E "PASS|FAIL|recall|memory|WAL|graph" "$OUT/soak_report.txt" 2>/dev/null | head -14 | sed 's/^ *-* */- soak: /'
+	grep -h -E "^\| default|^- |ms/s" "$OUT/idle_report.txt" 2>/dev/null | grep -v "^| arm" | head -8 | sed 's/^/- idle: /'
+	grep -h -E "^\| [a-z]|PASS|FAIL|WAL:" "$OUT/soak_report.txt" 2>/dev/null | grep -v -E "^\| (step|graph check) " | head -30 | sed 's/^/- soak: /'
 } > "$OUT/summary.md"
 ( cd "$OUT" && find . -type f ! -name SHA256SUMS ! -path './perf/*' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS )
 chown -R "${SUDO_USER:-root}" "$OUT" 2>/dev/null
