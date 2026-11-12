@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "bench: open_cost counts p15d's thread switches"
+**Last updated:** 2026-11-12 (UTC), PR "bench: open_cost counts p15d's thread switches" (with E-0218's evidence)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -281,6 +281,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 41. **C1 measured and not taken; p15d profiled** (E-0215, [evidence](evidence/vm/2026-11-12-c1-and-p15d-profile/README.md)): the session alone costs the open 35 to 51 ns more in its bodies and the same end to end, so the two programs stay. p15d's samples: about a third the byte-at-a-time CRC32C, about a third switching between its threads. The next work is in p15d (decision waiting 10).
 
+42. **p15d's CRC32C by the CPU's instruction: p15d's CPU per open+close down 35 %** (E-0218, [evidence](evidence/vm/2026-11-12-crc32c-hw/README.md)): 455.1 ns against 699.4, and the agent overhead by eAudit's definition 28.6 % against 43.6 %. p15d's threads switch only 3.1 times per 1,000 open+close, so decision 41's "a third thread switching" was a misreading: the kernel samples are time with interrupts off, credited where they come back on, to be attributed from the call graphs.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -297,4 +299,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    2. Then a harness, `bench/open_variants`: C1 (the session alone, walking every path), C1b (kprobe.multi entry only), C2 (open-file ids paired in user space), built from `file.bpf.c` by -D flags, the shipped object unchanged.
    3. Then choose by a new ADR on its numbers. Profile p15d (C4) beside it.
    Results (decision 39, E-0213): item 1 gives 741.4 ns per open+close, so the budget is missed by 241 ns. 38.2 % of frees are unregistered. Capture adds 1,140.5 ns end to end, of which p15d's CPU is 699.4 ns per open+close, about as large as all the programs' bodies together.
-   Then (decision 41, E-0215): C1 is not cheaper. Recommendation now: (a) p15d's CRC32C by the SSE4.2 `crc32` instruction, with the table kept for CPUs without it and for the tests; (b) then the thread switching, by measuring the drain's and writer's wake-ups per batch; (c) C1b and C2 only after (a) and (b), re-measured end to end.
+   Then (decision 41, E-0215): C1 is not cheaper. Recommendation now: (a) p15d's CRC32C by the SSE4.2 `crc32` instruction, with the table kept for CPUs without it and for the tests; (b) then the thread switching, by measuring the drain's and writer's wake-ups per batch; (c) C1b and C2 only after (a) and (b), re-measured end to end. Then (decision 42): (a) done, −244 ns. (b) is withdrawn: switches are few. Next: attribute the kernel samples by their call graphs, then decide.
