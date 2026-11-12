@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "daemon: adaptive drain poll and a deadline-driven writer, with the idle-cost harness (gate 3)"
+**Last updated:** 2026-11-12 (UTC), PR "bench: the soak, real programs checked against the WAL and the graph (gate 4)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -256,6 +256,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 31. **Gate 2 decided and built, taken under 22a and 29** (E-0196, E-0197): [ADR-0029](decisions/0029-path-walked-when-the-fentry-is-skipped.md), option (a). A skipped open's OPEN carries the walked path (PATH_WALKED); an overlay's real file gets BACKING from the return. Confirmed on the VM (E-0198, [evidence](evidence/vm/2026-11-12-path-walk-fallback/README.md)): 192,715 of 2,400,000 opens skipped under contention, all 192,715 walked with the right path, books ok. Next: gate 3, idle cost.
 
 32. **Gate 3 begins, taken under 22a and 29** (E-0199): idle cost is a price per wake-up times 100 wake-ups a second (the 10 ms drain timer of ADR-0020 rule 2). `--poll-max-ms` makes the drain's timeout adaptive (10 ms after work, doubling when idle) and the writer sleeps until its next deadline; `bench/idle_cost` measures the arms on the VM. On the VM (E-0200, [evidence](evidence/vm/2026-11-12-idle-cost/README.md)): 10.4 ms/s at 10 ms, 1.14 ms/s at 200 ms, the smallest maximum under the budget in median and dearest round; [ADR-0030](decisions/0030-adaptive-drain-poll.md) makes 200 ms the default. Gate 3 met by the default; confirmed when the VM's it_p15d passes on it. Next: gate 4, a real-workload harness and a one-hour soak with the graph of that run.
+
+33. **Gate 4's harness, taken under 22a and 29** (E-0201): `bench/soak` runs real programs (compiler, git, tar, http, shell, memfd) under p15d and checks every operation they logged against the WAL (by time window) and the graph (the dropper chain, ISN pairing, memfd executions), with CPU, memory and WAL growth sampled each minute. CI runs 45 s on every PR. The VM's hour (E-0202, [evidence](evidence/vm/2026-11-12-soak-1h/README.md)): 38,363 of 38,363 operations in the WAL, nothing lost, END clean, dropper chains and memfd executions all in the graph; the pairing check had a bug (ports reused), fixed; the recheck passes, so **gate 4 is met** (E-0203). Memory flattens at 27.65 MiB. The graph took 782 s, of which 626 s was one slow insert, fixed (E-0203); the rest is Python reading and row building (about 95 s), gate 10's streaming builder.
 
 ## Decisions waiting
 

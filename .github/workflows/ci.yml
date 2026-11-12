@@ -116,6 +116,11 @@ jobs:
           python3 bench/open_sections/summarize.py build/open_sections.txt > /dev/null
           sudo build/open_sections contend 6 20000 /var/tmp/p15-os > build/open_contend.txt || { cat build/open_contend.txt; exit 1; }
           python3 bench/open_sections/summarize.py build/open_contend.txt
+      - name: Soak harness (gate 4), 45 s of real programs; every operation they logged must be in the WAL and the graph (runner kernel, not the target)
+        run: |
+          sudo "$(command -v python3)" bench/soak/soak.py --p15d build/p15d --work /var/tmp/p15-soak --duration 45 --sample 15 \
+               --settle 3 --clean > build/soak.txt || { cat build/soak.txt; exit 1; }
+          python3 bench/soak/summarize.py build/soak.txt || { cat build/soak.txt; exit 1; }
       - name: Idle-cost harness (gate 3) runs p15d in two poll settings and their runs end clean; not a measurement (runner kernel, not the target)
         run: |
           sudo "$(command -v python3)" bench/idle_cost/run.py --p15d build/p15d --work /var/tmp/p15-idle --rounds 1 --settle 2 --window 5 \

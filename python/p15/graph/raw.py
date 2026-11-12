@@ -20,7 +20,7 @@ from .. import records as R
 
 DDL = Path(__file__).resolve().parents[3] / "schema" / "generated" / "p15_records.sql"
 NP_TYPES = {"UTINYINT": "<u1", "USMALLINT": "<u2", "UINTEGER": "<u4", "UBIGINT": "<u8", "INTEGER": "<i4",
-            "BIGINT": "<i8"}
+            "BIGINT": "<i8", "BOOLEAN": "?"}
 HEADER_COLUMNS = ("version", "flags", "ts_ns", "tgid", "tid", "start_ns")
 FLUSH_ROWS = 50_000
 
@@ -45,6 +45,29 @@ def row(r: R.Record) -> dict:
         elif v is not None:           # an absent part is None: its columns stay NULL
             out[k] = v
     return out
+
+
+def column(vals: list, t: str):
+    """One column for DuckDB to scan: object for BLOB and VARCHAR (None is NULL), else a masked numpy
+    array of the type (None masked)."""
+    if t in ("BLOB", "VARCHAR"):
+        return np.array(vals + [None], dtype=object)[:-1]   # never a 2-D array of equal-length bytes
+    mask = [v is None for v in vals]
+    return np.ma.masked_array(np.array([0 if v is None else v for v in vals], dtype=NP_TYPES[t]), mask=mask)
+
+
+def insert_rows(con, table: str, cols: list[tuple[str, str]], rows: list[tuple]) -> None:
+    """INSERT rows (tuples in cols' order) into table in one statement over columns: DuckDB's
+    executemany runs one statement per row, about 11 ms each (55,247 rows: 626 s, E-0203)."""
+    if not rows:
+        return
+    data = {c: column([r[i] for r in rows], t) for i, (c, t) in enumerate(cols)}
+    con.register("p15_rows", data)
+    try:
+        con.execute(f"INSERT INTO {table} BY NAME SELECT " + ", ".join(f"{c}::{t} AS {c}" for c, t in cols) +
+                    " FROM p15_rows")
+    finally:
+        con.unregister("p15_rows")
 
 
 class Loader:
@@ -73,13 +96,7 @@ class Loader:
                 raise KeyError(f"{name}: no raw column for {sorted(extra)}")
         data, select = {}, []
         for c, t in cols:
-            vals = [rw.get(c) for rw in rows]
-            if t == "BLOB":
-                data[c] = np.array(vals + [None], dtype=object)[:-1]   # never a 2-D array of equal-length bytes
-            else:
-                mask = [v is None for v in vals]
-                data[c] = np.ma.masked_array(np.array([0 if v is None else v for v in vals], dtype=NP_TYPES[t]),
-                                             mask=mask)
+            data[c] = column([rw.get(c) for rw in rows], t)
             select.append(f"{c}::{t} AS {c}")
         self.con.register("p15_raw_chunk", data)
         try:
@@ -111,8 +128,9 @@ def load(con, run, rings: dict[int, list[R.Record]], errors: list) -> dict[str, 
             ld.add(r)
     counts = ld.finish()
     if errors:
-        con.executemany("INSERT INTO record_error VALUES (?, ?, ?)", [(g, s, e.why) for g, s, e in errors])
+        insert_rows(con, "record_error", [("ring", "UTINYINT"), ("seq", "UBIGINT"), ("why", "VARCHAR")],
+                    [(g, s, e.why) for g, s, e in errors])
     meta = [(i, k, v) for i, seg in enumerate(run.segments) for k, v in seg.meta.items()]
-    con.executemany("INSERT INTO run_meta VALUES (?, ?, ?)", meta)
+    insert_rows(con, "run_meta", [("seg", "UINTEGER"), ("key", "VARCHAR"), ("value", "VARCHAR")], meta)
     counts["record_error"] = len(errors)
     return counts

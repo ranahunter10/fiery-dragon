@@ -99,6 +99,39 @@ class Base(unittest.TestCase):
         return self.q(c, "SELECT file_node, rule FROM openfile WHERE fid = ?", fid)[0]
 
 
+class Profile(Base):
+    def test_statement_by_statement_is_the_same_graph(self):
+        st = B.statements(B.SQL.read_text())
+        self.assertEqual("\n".join(st).split(), B.SQL.read_text().split())   # nothing dropped or added
+        self.assertGreater(len(st), 20)
+        with self.assertRaisesRegex(ValueError, "ends inside a statement"):
+            B.statements("SELECT 1;\nSELECT 2 -- no end;")
+        bulk = [opn(T0 + 1, A, 1, 10, b"/a", facts(ino=1, dev=DEV, gen=1, mode=REG, fs_magic=EXT4)),
+                opn(T0 + 2, A, 2, 11, b"/b", facts(ino=2, dev=DEV, gen=1, mode=REG, fs_magic=EXT4))]
+        run_of(self.d / "one", bulk=bulk)
+        whole = B.build(self.d / "one", self.d / "whole.duckdb")
+        prof: list = []
+        parts = B.build(self.d / "one", self.d / "parts.duckdb", prof)
+        self.assertEqual(parts.counts, whole.counts)
+        names = [w for w, _ in prof]
+        self.assertEqual(names[:3], ["read the WAL, the process tree", "raw tables", "proc_src"])
+        self.assertEqual(len(names), 3 + len(st))
+        self.assertTrue(all(sec >= 0 for _, sec in prof))
+
+
+class InsertRows(unittest.TestCase):
+    def test_columns_with_nulls_booleans_and_text(self):
+        from p15.graph import raw
+        c = duckdb.connect()
+        c.execute("CREATE TABLE t (a UINTEGER, b UBIGINT, c INTEGER, d VARCHAR, e BOOLEAN)")
+        cols = [("a", "UINTEGER"), ("b", "UBIGINT"), ("c", "INTEGER"), ("d", "VARCHAR"), ("e", "BOOLEAN")]
+        raw.insert_rows(c, "t", cols, [(1, 2**63, -1, "x y", True), (None, None, None, None, None), (3, 0, 7, "", False)])
+        raw.insert_rows(c, "t", cols, [])
+        self.assertEqual(c.execute("SELECT * FROM t ORDER BY a NULLS LAST").fetchall(),
+                         [(1, 2**63, -1, "x y", True), (3, 0, 7, "", False), (None, None, None, None, None)])
+        c.close()
+
+
 class RawTables(Base):
     def test_every_layout_fits_its_table(self):
         """A row built from a record of each (type, version) has only columns of its raw table, and
