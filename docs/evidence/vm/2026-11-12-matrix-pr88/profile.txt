@@ -1,0 +1,49 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 92  of event 'task-clock:ppp'
+# Event count (approx.): 46023000
+#
+# Overhead  Shared Object      Symbol                         
+# ........  .................  ...............................
+#
+    22.83%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+     8.70%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     7.61%  p15d               [.] after_poll
+     7.61%  p15d               [.] tiles
+     4.35%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+     4.35%  [kernel.kallsyms]  [k] fdget
+     4.35%  p15d               [.] on_bulk
+     4.35%  p15d               [.] p15_rec_check
+     3.26%  [kernel.kallsyms]  [k] __x64_sys_epoll_wait
+     3.26%  [kernel.kallsyms]  [k] vbg_req_perform
+     2.17%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+     2.17%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+     2.17%  libc.so.6          [.] 0x0000000000197970
+     2.17%  libc.so.6          [.] 0x0000000000197aa1
+     1.09%  [kernel.kallsyms]  [k] bpf_map_poll
+     1.09%  [kernel.kallsyms]  [k] bpf_obj_get_info_by_fd
+     1.09%  [kernel.kallsyms]  [k] bpf_prog_get_stats
+     1.09%  [kernel.kallsyms]  [k] crc32c
+     1.09%  [kernel.kallsyms]  [k] do_syscall_64
+     1.09%  [kernel.kallsyms]  [k] do_user_addr_fault
+     1.09%  [kernel.kallsyms]  [k] ep_item_poll.isra.0
+     1.09%  [kernel.kallsyms]  [k] ep_poll
+     1.09%  [kernel.kallsyms]  [k] get_page_from_freelist
+     1.09%  [kernel.kallsyms]  [k] rep_movs_alternative
+     1.09%  [kernel.kallsyms]  [k] sched_balance_domains
+     1.09%  libc.so.6          [.] 0x0000000000197974
+     1.09%  p15d               [.] crc_hw
+     1.09%  p15d               [.] drain_queue
+     1.09%  p15d               [.] main
+     1.09%  p15d               [.] memcpy@plt
+     1.09%  p15d               [.] p15_counters_sum_rows
+     1.09%  p15d               [.] ring_buffer__epoll_fd
+     1.09%  p15d               [.] ringbuf_process_ring
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
