@@ -13,6 +13,7 @@ Three steps, each its own module or file:
 from __future__ import annotations
 
 import socket
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -94,23 +95,60 @@ def proc_rows(tree: P.Tree, first: dict[P.Key, int]) -> list[tuple]:
     return out
 
 
-def build(run_dir: Path, out: Path) -> Result:
-    """Build OUT.duckdb from RUN_DIR. Refuses to overwrite: a graph file is evidence of one run."""
+def statements(sql: str) -> list[str]:
+    """graph.sql cut into its statements: a statement ends at a line whose code (before a -- comment)
+    ends with ';'. graph.sql keeps every ';' at the end of a line for this."""
+    out, cur = [], []
+    for line in sql.splitlines():
+        cur.append(line)
+        if line.split("--", 1)[0].rstrip().endswith(";"):
+            out.append("\n".join(cur))
+            cur = []
+    if any(x.split("--", 1)[0].strip() for x in cur):
+        raise ValueError("graph.sql ends inside a statement")
+    return out
+
+
+def label(stmt: str) -> str:
+    """A statement's first line of code, for the profile."""
+    return next((x.strip() for x in stmt.splitlines() if x.strip() and not x.strip().startswith("--")), "?")[:70]
+
+
+def build(run_dir: Path, out: Path, profile: list | None = None) -> Result:
+    """Build OUT.duckdb from RUN_DIR. Refuses to overwrite: a graph file is evidence of one run. With a
+    list as profile, appends (phase, seconds) for every phase and every statement of graph.sql."""
     if out.exists():
         raise FileExistsError(f"{out} exists: a graph file is written once")
+    clock = time.monotonic()
+
+    def lap(what: str) -> None:
+        nonlocal clock
+        if profile is not None:
+            now = time.monotonic()
+            profile.append((what, now - clock))
+            clock = now
+
     run, rings, errors, tree, first = read(run_dir)
+    lap("read the WAL, the process tree")
     con = duckdb.connect(str(out))
     done = False
     try:
         con.create_function("p15_text", text, ["BLOB"], "VARCHAR")
         con.create_function("p15_addr", addr, ["BLOB", "USMALLINT"], "VARCHAR")
         raw_rows = raw.load(con, run, rings, errors)
+        lap("raw tables")
         con.execute(PROC_SRC_DDL)
         rows = proc_rows(tree, first)
         if rows:
             con.executemany("INSERT INTO proc_src VALUES (" + ", ".join("?" * 15) + ")", rows)
         con.executemany("INSERT INTO tree_count VALUES (?, ?)", sorted(tree.counts.items()))
-        con.execute(SQL.read_text())
+        lap("proc_src")
+        if profile is None:
+            con.execute(SQL.read_text())
+        else:
+            for stmt in statements(SQL.read_text()):
+                con.execute(stmt)
+                lap("sql: " + label(stmt))
         counts = dict(con.execute("SELECT name, n FROM graph_count").fetchall())
         done = True
     finally:

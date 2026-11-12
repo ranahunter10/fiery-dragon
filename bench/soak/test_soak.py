@@ -77,8 +77,11 @@ class Truth(unittest.TestCase):
     def test_graph_wants(self):
         w = C.graph_wants(C.Truth(STEPS))
         self.assertEqual(w["dropper_chain"], (["/w/c0/prog0"], 1))
-        self.assertEqual(w["sock_pairs"], ([5000], 2))
+        self.assertEqual(w["sock_pairs"], ([(5000, 300, 400)], 2))
         self.assertEqual(w["memfd_exec"], (["p15-soak-memfd-2"], 1))
+        two = STEPS + [{"step": "http", "i": 4, "t0": 900, "t1": 990, "ok": True,
+                        "expect": {"accept": {"5000": 8}, "connect": {"5000": 8}}}]   # a port reused (E-0202)
+        self.assertEqual(C.graph_wants(C.Truth(two))["sock_pairs"], ([(5000, 300, 400), (5000, 900, 990)], 10))
 
 
 class Prom(unittest.TestCase):
@@ -100,7 +103,7 @@ def soak_text(found=78, end="end exit=0 end=1 state=0 invariant=1 records=100 re
     for k in range(3):
         L.append(f"sample t={60 * (k + 1)} cpu_ms_per_s={20 + k} drain_ms_per_s={10 + k} writer_ms_per_s=1 "
                  f"rss_kb={13000 if k < 2 else rss_last} wal_bytes={1048576 * (k + 1)} state=0 spine_drained={100 * k} "
-                 f"spine_skipped=0 net_written=5 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.200")
+                 f"spine_skipped=0 bulk_written=5 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.200")
     L += ["workload exit=0", end, f"truth step=archive steps=30 expected=78 found={found}",
           "truth step=memfd steps=3 expected=3 found=3"]
     L += [f"step_failed git-{k} " for k in range(failed)]
@@ -118,6 +121,7 @@ class Report(unittest.TestCase):
         self.assertIn("| archive | 30 | 78 | 78 | 100.00% |", out)
         self.assertIn("| dropper_chain | 4 | 4 |", out)
         self.assertIn("WAL: 3.0 MiB, 17.1 KiB/s.", out)
+        self.assertIn("bulk-ring records written (NET and file identity): 5;", out)
         self.assertIn("node_proc 516", out)
         self.assertIn("- PASS", out)
 

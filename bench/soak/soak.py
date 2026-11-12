@@ -18,6 +18,8 @@ goes, then every operation the workload logged checked against the WAL and the g
    then "graph_truth" lines: the dropper chain of every compiled program, the http connections
    paired by ISN, and every memfd execution.
 The WAL is kept (WORK/wal) unless --clean; the graph file is WORK/graph.duckdb.
+--recheck runs step 5's graph checks again on WORK's log and graph file and prints only their
+"graph_truth" lines (a check fixed after a long run, E-0202): splice them in place of the old ones.
 """
 from __future__ import annotations
 
@@ -109,7 +111,7 @@ def emit(line: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--p15d", type=Path, required=True)
+    ap.add_argument("--p15d", type=Path, help="required unless --recheck")
     ap.add_argument("--work", type=Path, required=True)
     ap.add_argument("--duration", type=float, default=3600)
     ap.add_argument("--sample", type=float, default=60)
@@ -117,8 +119,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pause", type=float, default=1.0, help="the workload's pause between steps")
     ap.add_argument("--p15d-arg", action="append", default=[], help="an extra p15d option (repeat)")
     ap.add_argument("--clean", action="store_true", help="delete the WAL after the checks")
+    ap.add_argument("--recheck", action="store_true", help="only the graph checks, on WORK's existing files")
     a = ap.parse_args(argv)
     work = a.work.resolve()
+    if a.recheck:
+        db, log = work / "graph.duckdb", work / "truth.jsonl"
+        if not (db.exists() and log.exists()):
+            emit(f"soak_error --recheck needs {db} and {log}")
+            return 1
+        for name, (got, want) in C.graph_check(db, C.Truth.load(log)).items():
+            emit(f"graph_truth {name} found={got} expected={want}")
+        return 0
+    if a.p15d is None:
+        ap.error("--p15d is required")
     shutil.rmtree(work, ignore_errors=True)
     (work / "wal").mkdir(parents=True)
     textfile, log, truth_log = work / "p15d.prom", work / "p15d.log", work / "truth.jsonl"
@@ -151,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
                      f"rss_kb={rss_kb(p.pid)} wal_bytes={du(work / 'wal')} state={int(m['p15_run_state'])} "
                      f"spine_drained={int(m['p15_spine_events_total:drained'])} "
                      f"spine_skipped={int(m['p15_spine_events_total:kernel_skipped'])} "
-                     f"net_written={int(m['p15_net_events_total:written'])} "
+                     f"bulk_written={int(m['p15_net_events_total:written'])} "
                      f"net_skipped={int(m['p15_net_events_total:kernel_skipped'])} "
                      f"queue_full={int(m['p15_queue_full_total'])} gaps={int(m['p15_gap_records_total'])} "
                      f"poll_gap_max_s={m['p15_poll_gap_max_seconds']:.3f}")

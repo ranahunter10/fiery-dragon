@@ -424,6 +424,8 @@ M = [
  (SKC, '            a0 = r.var["argv"].split(b"\\0", 1)[0].decode(errors="replace")', '            a0 = r.var["argv"].decode(errors="replace")'),
  (SKC, '        self.steps = sorted((s for s in steps if s.get("ok")), key=lambda s: s["t0"])', '        self.steps = sorted(steps, key=lambda s: s["t0"])'),
  (SKC, """            progs += [p for p in w["exec"] if p.endswith(f"/prog{s['i']}")]""", """            progs += list(w["exec"])"""),
+ (SKC, '            pairs += n', '            pairs = n'),
+ (SKC, '            windows.append((int(port), int(s["t0"]), int(s["t1"])))', '            windows.append((int(port), 0, int(s["t1"])))'),
  (SKS, '        if t["found"] != t["expected"]:\n', '        if False:\n'),
  (SKS, '        if not (e["exit"] == 0 and e["end"] == 1 and e["state"] == 0 and e["invariant"] == 1):\n',
   '        if not (e["exit"] == 0 and e["end"] == 1):\n'),

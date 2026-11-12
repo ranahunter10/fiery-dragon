@@ -1,0 +1,68 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && sudo chown -R "$USER" build; git fetch origin && git checkout -B bench/soak origin/bench/soak
+[sudo: authenticate] Password:
+remote: Enumerating objects: 46, done.
+remote: Counting objects: 100% (46/46), done.
+remote: Compressing objects: 100% (21/21), done.
+remote: Total 46 (delta 24), reused 46 (delta 24), pack-reused 0 (from 0)
+Unpacking objects: 100% (46/46), 49.07 KiB | 948.00 KiB/s, done.
+From https://github.com/ranahunter10/fiery-dragon
+   bd58c3f..a694811  daemon/idle-cost -> origin/daemon/idle-cost
+ * [new branch]      bench/soak       -> origin/bench/soak
+branch 'bench/soak' set up to track 'origin/bench/soak'.
+Switched to a new branch 'bench/soak'
+ashu@p15-dev:~/fiery-dragon$ make -j3 build/p15d build/p15w-inspect && git log --oneline -1
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15w_inspect.c daemon/records.c daemon/wal.c daemon/crc32c.c -o build/p15w-inspect
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"0f8a67d8d04b"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+0f8a67d (HEAD -> bench/soak, origin/bench/soak) bench: the soak, real programs checked against the WAL and the graph (gate 4)
+ashu@p15-dev:~/fiery-dragon$ sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 daemon/tests/it_p15d.sh build 2>&1 | tee ~/it-v4.txt | grep -E "FAIL|it_p15d:"
+it_p15d: PASS (0 failed checks)
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/soak/soak.py --p15d build/p15d --work /var/tmp/p15-soak --duration 3600 > build/soak.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ python3 bench/soak/summarize.py build/soak.txt
+# soak: p15d under real programs (gate 4)
+
+Planned 60.0 min of workload, sampled every 60 s; p15d options: -; 3 CPUs.
+End: exit 0, state 0, invariant 1; 1,919,817 records read in 30 s.
+
+| over the run | median | max | first | last |
+|---|---|---|---|---|
+| p15d CPU, ms/s | 4.32 | 5.36 | 4.75 | 2.00 |
+| drain thread, ms/s | 2.50 | 3.29 | | |
+| writer thread, ms/s | 1.81 | 2.28 | | |
+| resident memory, MiB | 26.6 | 27.0 | 23.8 | 27.0 |
+| longest poll gap, s | 0.201 | 0.219 | | |
+
+WAL: 184.0 MiB, 51.4 KiB/s. Spine records drained: 234,944; NET records written: 1,620,034; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+
+| step | steps | items expected | found | recall |
+|---|---|---|---|---|
+| archive | 451 | 11,726 | 11,726 | 100.00% |
+| compile | 452 | 12,656 | 12,656 | 100.00% |
+| git | 451 | 5,863 | 5,863 | 100.00% |
+| http | 451 | 1,353 | 1,353 | 100.00% |
+| memfd | 451 | 451 | 451 | 100.00% |
+| pyfiles | 451 | 5,412 | 5,412 | 100.00% |
+| shell | 451 | 902 | 902 | 100.00% |
+
+File identity: 805,932 OPEN from the path program, 3 from the session return (3 walked, 0 raced, 0 without a path); fentry skips 3; lost: OPEN 0, CLOSE 0; most open files 603, objects 843.
+
+Graph: built in 782 s, 147.5 MiB; edge_ACCEPT 3,608, edge_BIND 451, edge_CLONE 55,108, edge_CONNECT 3,627, edge_EXECUTE 55,101, edge_HELD 729, edge_LISTEN 451, edge_OPEN 805,939, edge_without_node 0, node_file 90,981, node_proc 55,247, node_sock 7,686.
+
+| graph check | found | expected |
+|---|---|---|
+| dropper_chain | 452 | 452 |
+| sock_pairs | 3,608 | 3,552 |
+| memfd_exec | 451 | 451 |
+
+## Verdict
+
+- FAIL: graph check sock_pairs: 3608 of 3552
+
+ashu@p15-dev:~/fiery-dragon$ sha256sum build/soak.txt ~/it-v4.txt && du -sh /var/tmp/p15-soak/wal /var/tmp/p15-soak/graph.duckdb
+d00529b4da3ac0cee49dddd82fdc3447551be8fb25fcdf8e42bd3fbc47a5c25e  build/soak.txt
+a384e966206e59821b1317a96fe0a81dcf8156b42d02dcc754e49ef79fbda278  /home/ashu/it-v4.txt
+du: cannot read directory '/var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2': Permission denied
+8.0K    /var/tmp/p15-soak/wal
+148M    /var/tmp/p15-soak/graph.duckdb
+ashu@p15-dev:~/fiery-dragon$

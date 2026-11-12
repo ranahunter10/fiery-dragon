@@ -118,7 +118,8 @@ def report(text: str) -> tuple[str, int]:
                 f"| longest poll gap, s | {statistics.median(x['poll_gap_max_s'] for x in s):.3f} | "
                 f"{max(x['poll_gap_max_s'] for x in s):.3f} | | |", "",
                 f"WAL: {s[-1]['wal_bytes'] / 2**20:.1f} MiB, {wal_rate / 1024:.1f} KiB/s. Spine records drained: "
-                f"{int(s[-1]['spine_drained']):,}; NET records written: {int(s[-1]['net_written']):,}; kernel skips: spine "
+                f"{int(s[-1]['spine_drained']):,}; bulk-ring records written (NET and file identity): "
+                f"{int(s[-1].get('bulk_written', s[-1].get('net_written', 0))):,}; kernel skips: spine "
                 f"{int(s[-1]['spine_skipped'])}, NET {int(s[-1]['net_skipped'])}; queue full {int(s[-1]['queue_full'])}; "
                 f"GAP records {int(s[-1]['gaps'])}.", ""]
         if span_h >= 0.25 and rss[-1] > rss[0] * 1.5 and rss[-1] - rss[0] > 10 * 1024:

@@ -20,9 +20,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("run_dir", type=Path)
     ap.add_argument("out", type=Path, help="the DuckDB file to write (must not exist)")
     ap.add_argument("--pidsmaker", type=Path, metavar="DIR", help="also write PIDSMaker's four tables as CSV into DIR")
+    ap.add_argument("--profile", action="store_true", help="time each phase and each statement of graph.sql")
     a = ap.parse_args(argv)
+    prof: list | None = [] if a.profile else None
     try:
-        res = B.build(a.run_dir, a.out)
+        res = B.build(a.run_dir, a.out, prof)
     except (W.RunError, W.HeaderError, R.RecordError, OSError) as e:     # OSError: unreadable, missing, or OUT exists
         print(f"p15.graph: {e}", file=sys.stderr)
         return 2
@@ -33,6 +35,8 @@ def main(argv: list[str] | None = None) -> int:
     print("tree: " + ", ".join(f"{k} {v}" for k, v in sorted(res.tree_counts.items()) if v))
     for s in res.stops:
         print(f"stop: {s}")
+    for what, sec in sorted(prof or [], key=lambda x: -x[1])[:25]:
+        print(f"profile {sec:9.3f} s  {what}")
     bad = [k for k in MUST_BE_ZERO if res.counts.get(k, 0)]
     if res.raw_rows["record_error"]:
         bad.append("record_error")

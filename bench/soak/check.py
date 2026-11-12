@@ -95,8 +95,13 @@ GRAPH_QUERIES = {
         WHERE f.path = ANY(?)
           AND EXISTS (SELECT 1 FROM edge e WHERE e.src = f.node_id AND e.op = 'OPEN' AND e.access IN ('w', 'rw'))
           AND EXISTS (SELECT 1 FROM edge e WHERE e.src = f.node_id AND e.op = 'EXECUTE')""",
-    # an http client's socket paired with the server's, by the TCP ISN (ADR-0022)
-    "sock_pairs": "SELECT count(*) FROM sock_pair p JOIN sock s ON s.node_id = p.server_node WHERE s.lport = ANY(?)",
+    # an http client's socket paired with the server's, by the TCP ISN (ADR-0022), counted per step:
+    # the server's accepted socket on the step's port, accepted inside the step's window (a port is
+    # reused over an hour, E-0202). {windows} is a VALUES list of (port, t0, t1) integers.
+    "sock_pairs": """
+        SELECT count(DISTINCT p.server_node) FROM sock_pair p JOIN sock s ON s.node_id = p.server_node
+        JOIN edge e ON e.src = s.node_id AND e.op = 'ACCEPT'
+        JOIN (VALUES {windows}) w(port, t0, t1) ON s.lport = w.port AND e.ts_ns BETWEEN w.t0 AND w.t1""",
     # a process whose argv[0] is a memfd marker, with its EXECUTE edge
     "memfd_exec": """
         SELECT count(DISTINCT p.node_id) FROM proc p JOIN edge e ON e.dst = p.node_id AND e.op = 'EXECUTE'
@@ -105,15 +110,17 @@ GRAPH_QUERIES = {
 
 
 def graph_wants(truth: Truth) -> dict:
-    """What the graph must hold: the compiled programs, the http ports (M pairs each), the memfd markers."""
-    progs, ports, markers = [], {}, []
+    """What the graph must hold: the compiled programs, each http step's pairs (its port and window),
+    the memfd markers."""
+    progs, windows, pairs, markers = [], [], 0, []
     for s, w in zip(truth.steps, truth.wanted):
         if s["step"] == "compile":
             progs += [p for p in w["exec"] if p.endswith(f"/prog{s['i']}")]
-        ports.update(w["accept"])
+        for port, n in w["accept"].items():
+            windows.append((int(port), int(s["t0"]), int(s["t1"])))
+            pairs += n
         markers += list(w["argv0"])
-    return {"dropper_chain": (progs, len(progs)), "sock_pairs": (list(ports), sum(ports.values())),
-            "memfd_exec": (markers, len(markers))}
+    return {"dropper_chain": (progs, len(progs)), "sock_pairs": (windows, pairs), "memfd_exec": (markers, len(markers))}
 
 
 def graph_check(db_path: Path, truth: Truth) -> dict:
@@ -122,7 +129,13 @@ def graph_check(db_path: Path, truth: Truth) -> dict:
     out = {}
     try:
         for name, (vals, want) in graph_wants(truth).items():
-            got = con.execute(GRAPH_QUERIES[name], [vals]).fetchone()[0] if vals else 0
+            if not vals:
+                got = 0
+            elif name == "sock_pairs":   # integers only, written into the query
+                q = GRAPH_QUERIES[name].format(windows=", ".join(f"({int(a)}, {int(b)}, {int(c)})" for a, b, c in vals))
+                got = con.execute(q).fetchone()[0]
+            else:
+                got = con.execute(GRAPH_QUERIES[name], [vals]).fetchone()[0]
             out[name] = (got, want)
     finally:
         con.close()
