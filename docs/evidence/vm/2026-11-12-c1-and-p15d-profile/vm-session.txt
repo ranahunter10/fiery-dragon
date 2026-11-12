@@ -1,0 +1,247 @@
+PS C:\Users\Ashish> ssh p15
+Welcome to Ubuntu 26.04.1 LTS (GNU/Linux 7.0.0-38-generic x86_64)
+
+ * Documentation:  https://docs.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Thu Nov 12 05:01:59 AM UTC 2026
+
+  System load:             1.12
+  Usage of /:              17.2% of 61.66GB
+  Memory usage:            3%
+  Swap usage:              0%
+  Processes:               135
+  Users logged in:         0
+  IPv4 address for enp0s3: 10.0.2.15
+  IPv6 address for enp0s3: fd17:625c:f037:2:a00:27ff:fe61:25d8
+
+
+Expanded Security Maintenance for Applications is not enabled.
+
+22 updates can be applied immediately.
+To see these additional updates run: apt list --upgradable
+
+1 additional security update can be applied with ESM Apps.
+Learn more about enabling ESM Apps service at https://ubuntu.com/esm
+
+
+3 updates could not be installed automatically. For more details,
+see /var/log/unattended-upgrades/unattended-upgrades.log
+
+Last login: Wed Nov 11 10:35:51 2026 from 10.0.2.2
+ashu@p15-dev:~$ cd ~/fiery-dragon && git fetch -q origin && git checkout -q bench/open-cost-perf && git log --oneline -1
+9361172 (HEAD -> bench/open-cost-perf, origin/bench/open-cost-perf) docs: measure C1 with the existing harnesses
+ashu@p15-dev:~/fiery-dragon$ make build/p15d build/open_cost build/prim_cost
+make: 'build/open_cost' is up to date.
+make: 'build/prim_cost' is up to date.
+ashu@p15-dev:~/fiery-dragon$ perf --version
+perf version 7.0.14
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 3 --perf /var/tmp/p15-perf > build/oc_perf.txt; echo "rc=$?"
+[sudo: authenticate] Password:
+rc=0
+ashu@p15-dev:~/fiery-dragon$ sudo perf report -i /var/tmp/p15-perf/perf-0.data --no-children -g none --sort dso,sym --stdio --percent-limit 0.5 > build/p15d_profile.txt; head -70 build/p15d_profile.txt
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 132  of event 'task-clock:ppp'
+# Event count (approx.): 66033000
+#
+# Overhead  Shared Object      Symbol
+# ........  .................  ...............................
+#
+    32.58%  p15d               [.] p15_crc32c
+    16.67%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+    16.67%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+     9.09%  p15d               [.] on_bulk
+     6.82%  p15d               [.] tiles
+     3.79%  [kernel.kallsyms]  [k] kernel_init_pages
+     3.03%  p15d               [.] p15_rec_check
+     1.52%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     1.52%  [kernel.kallsyms]  [k] handle_softirqs
+     0.76%  [kernel.kallsyms]  [k] __rcu_read_unlock
+     0.76%  [kernel.kallsyms]  [k] __refill_objects_node
+     0.76%  [kernel.kallsyms]  [k] bpf_prog_get_stats
+     0.76%  [kernel.kallsyms]  [k] do_user_addr_fault
+     0.76%  [kernel.kallsyms]  [k] ext4_da_get_block_prep
+     0.76%  [kernel.kallsyms]  [k] vbg_req_perform
+     0.76%  libc.so.6          [.] 0x00000000000a03aa
+     0.76%  libc.so.6          [.] 0x00000000000ac802
+     0.76%  libc.so.6          [.] 0x0000000000197a97
+     0.76%  libc.so.6          [.] 0x0000000000197aa6
+     0.76%  p15d               [.] put
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
+ashu@p15-dev:~/fiery-dragon$ sudo python3 bench/prim_cost/prog_stats.py --p15d build/p15d --p15d-arg=--test-no-path-fentry --ops 220000 --rounds 7 --ref-nullsys-ns 89.1 -- build/open_cost /var/tmp/p15-open-cost 200000 20000 > build/ps_c1_d3.txt; head -20 build/ps_c1_d3.txt
+# Per-program cost while `build/open_cost /var/tmp/p15-open-cost 200000 20000` ran, 7 rounds (bpf_stats on: not an overhead measurement)
+
+Host speed: a null syscall cost 97.3 ns (median of 7 rounds; 93.5 to 100.4).
+
+| program | type | rounds | runs | ns per run (median) | cheapest to dearest round | runs per op | ns per op (median) |
+|---|---|---|---|---|---|---|---|
+| file_open_session | kprobe | 7 | 3,080,622 | 270.1 | 249.8 to 304.8 | 2.000 | 540.4 |
+| file_free | kprobe | 7 | 1,540,891 | 224.0 | 197.2 to 272.6 | 1.001 | 224.1 |
+| file_fd_iter | tracing | 3 | 1,906 | 387.4 | 375.5 to 489.0 | 0.003 | 1.1 |
+| snap_task | tracing | 3 | 501 | 1302.7 | 1204.7 to 1365.0 | 0.001 | 1.0 |
+| spine_exec | tracepoint | 7 | 14 | 3463.0 | 2909.5 to 4487.5 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 7 | 56 | 795.0 | 691.8 to 13951.9 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 7 | 14 | 1920.0 | 1438.0 to 2517.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 7 | 14 | 1713.5 | 1378.0 to 1832.5 | 0.000 | 0.0 |
+| spine_fork | tracing | 7 | 14 | 1622.0 | 1312.5 to 1878.5 | 0.000 | 0.0 |
+| **all** | | 7 | 4,624,032 | | | 3.003 | 760.2 |
+
+## Round 0
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 20 --p15d-arg=--test-no-path-fentry > build/oc_c1_d3.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ ~/p15venv/bin/python bench/open_cost/summarize.py build/oc_c1_d3.txt > build/oc_c1_d3.md; tail -32 build/oc_c1_d3.md
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,400.4 ns | 1,332.3 ns to 1,434.6 ns |
+| none2 | 1,411.2 ns | 1,334.4 ns to 1,493.9 ns |
+| p15d | 2,865.0 ns | 2,684.8 ns to 3,018.9 ns |
+
+- **p15d against none:** overhead +106.31 %, 95 % interval +97.87 % to +124.85 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,471.2 ns (95 % interval 1,356.1 ns to 1,888.7 ns), 14.95 null syscalls; ratio of medians 2.0459; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,400.2 ns | 1,332.1 ns to 1,434.5 ns |
+| none2 | 1,411.1 ns | 1,334.3 ns to 1,493.7 ns |
+| p15d | 2,947.3 ns | 2,815.3 ns to 3,180.4 ns |
+
+- **p15d against none:** overhead +116.54 %, 95 % interval +102.95 % to +136.61 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,614.4 ns (95 % interval 1,421.3 ns to 2,048.6 ns), 16.41 null syscalls; ratio of medians 2.1049; effect p = 1.91e-06
+
+## What the capture wrote and what it cost p15d
+
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- records per open+close: 2.000; bytes per open+close in the WAL: 171.6 (OPEN 115.6, CLOSE 56.0)
+- opens carrying the object's facts: 9.1%
+- opens by other processes during the traced arms: 1,142
+- p15d idle: 1.03 ms of CPU per second (mean; median 0.90)
+- p15d per open+close of the workload: 693.2 ns of CPU in the window (mean), 688.9 ns after the idle rate is taken off (median 665.8 ns)
+- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without capture): mean 61.7%, median 60.8%, range 50.7% to 71.9%
+- agent overhead of the whole workload, as eAudit defines it (all of p15d's CPU in the window / the workload's CPU time without capture, null syscalls included): mean 44.1%, median 43.4%
+
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-oc/a/b/c/d/e/f --rounds 20 > build/oc_base_d10.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-oc/a/b/c/d/e/f --rounds 20 --p15d-arg=--test-no-path-fentry > build/oc_c1_d10.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ for v in base_d10 c1_d10; do ~/p15venv/bin/python bench/open_cost/summarize.py build/oc_$v.txt > build/oc_$v.md; tail -32 build/oc_$v.md; done
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,570.4 ns | 1,478.0 ns to 1,763.9 ns |
+| none2 | 1,537.6 ns | 1,496.6 ns to 1,645.3 ns |
+| p15d | 3,142.2 ns | 3,071.6 ns to 3,301.9 ns |
+
+- **p15d against none:** overhead +106.14 %, 95 % interval +99.65 % to +114.33 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,656.8 ns (95 % interval 1,585.6 ns to 1,839.6 ns), 16.51 null syscalls; ratio of medians 2.0009; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,571.4 ns | 1,477.8 ns to 1,769.8 ns |
+| none2 | 1,537.4 ns | 1,496.5 ns to 1,645.1 ns |
+| p15d | 3,265.3 ns | 3,113.0 ns to 3,669.4 ns |
+
+- **p15d against none:** overhead +111.35 %, 95 % interval +104.08 % to +121.01 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,772.7 ns (95 % interval 1,635.1 ns to 1,990.1 ns), 17.67 null syscalls; ratio of medians 2.0780; effect p = 1.91e-06
+
+## What the capture wrote and what it cost p15d
+
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- records per open+close: 2.000; bytes per open+close in the WAL: 172.4 (OPEN 116.4, CLOSE 56.0)
+- opens carrying the object's facts: 9.1%
+- opens by other processes during the traced arms: 338
+- p15d idle: 1.00 ms of CPU per second (mean; median 1.02)
+- p15d per open+close of the workload: 758.6 ns of CPU in the window (mean), 753.7 ns after the idle rate is taken off (median 750.3 ns)
+- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without capture): mean 59.4%, median 57.9%, range 42.5% to 75.0%
+- agent overhead of the whole workload, as eAudit defines it (all of p15d's CPU in the window / the workload's CPU time without capture, null syscalls included): mean 43.9%, median 41.7%
+
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,554.3 ns | 1,514.6 ns to 1,598.5 ns |
+| none2 | 1,532.1 ns | 1,463.3 ns to 1,638.1 ns |
+| p15d | 3,164.5 ns | 3,032.9 ns to 3,523.1 ns |
+
+- **p15d against none:** overhead +105.18 %, 95 % interval +92.56 % to +126.72 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,657.0 ns (95 % interval 1,469.0 ns to 1,960.6 ns), 16.71 null syscalls; ratio of medians 2.0359; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,554.2 ns | 1,514.4 ns to 1,598.5 ns |
+| none2 | 1,531.9 ns | 1,463.1 ns to 1,638.0 ns |
+| p15d | 3,381.4 ns | 3,173.0 ns to 3,660.4 ns |
+
+- **p15d against none:** overhead +119.11 %, 95 % interval +104.07 % to +141.47 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,875.6 ns (95 % interval 1,643.1 ns to 2,217.6 ns), 18.92 null syscalls; ratio of medians 2.1757; effect p = 1.91e-06
+
+## What the capture wrote and what it cost p15d
+
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- records per open+close: 2.000; bytes per open+close in the WAL: 172.4 (OPEN 116.4, CLOSE 56.0)
+- opens carrying the object's facts: 9.1%
+- opens by other processes during the traced arms: 313
+- p15d idle: 1.09 ms of CPU per second (mean; median 1.10)
+- p15d per open+close of the workload: 701.7 ns of CPU in the window (mean), 695.6 ns after the idle rate is taken off (median 689.3 ns)
+- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without capture): mean 54.6%, median 53.8%, range 44.2% to 69.3%
+- agent overhead of the whole workload, as eAudit defines it (all of p15d's CPU in the window / the workload's CPU time without capture, null syscalls included): mean 40.7%, median 40.1%
+
+ashu@p15-dev:~/fiery-dragon$ sudo python3 bench/prim_cost/prog_stats.py --p15d build/p15d --ops 220000 --rounds 7 --ref-nullsys-ns 89.1 -- build/open_cost /var/tmp/p15-oc/a/b/c/d/e/f 200000 20000 > build/ps_base_d10.txt; head -20 build/ps_base_d10.txt
+# Per-program cost while `build/open_cost /var/tmp/p15-oc/a/b/c/d/e/f 200000 20000` ran, 7 rounds (bpf_stats on: not an overhead measurement)
+
+Host speed: a null syscall cost 96.2 ns (median of 7 rounds; 85.4 to 104.3).
+
+| program | type | rounds | runs | ns per run (median) | cheapest to dearest round | runs per op | ns per op (median) |
+|---|---|---|---|---|---|---|---|
+| file_open_path | tracing | 7 | 1,540,311 | 359.0 | 348.1 to 371.9 | 1.000 | 359.1 |
+| file_free | kprobe | 7 | 1,540,891 | 220.9 | 208.6 to 229.5 | 1.001 | 221.0 |
+| file_open_session | kprobe | 7 | 3,080,622 | 88.4 | 84.0 to 91.9 | 2.000 | 176.9 |
+| file_fd_iter | tracing | 3 | 1,908 | 642.0 | 617.3 to 786.0 | 0.003 | 1.9 |
+| snap_task | tracing | 3 | 505 | 1571.5 | 1532.8 to 1737.9 | 0.001 | 1.2 |
+| spine_exec | tracepoint | 7 | 14 | 3630.5 | 2762.5 to 4187.5 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 7 | 56 | 767.2 | 513.5 to 1099.1 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 7 | 15 | 2015.0 | 1523.0 to 2514.7 | 0.000 | 0.0 |
+| spine_fork | tracing | 7 | 14 | 1609.0 | 992.5 to 1839.0 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 7 | 14 | 1532.5 | 1236.5 to 3256.0 | 0.000 | 0.0 |
+| **all** | | 7 | 6,164,350 | | | 4.003 | 754.3 |
+
+## Round 0
+
+ashu@p15-dev:~/fiery-dragon$ sudo python3 bench/prim_cost/prog_stats.py --p15d build/p15d --p15d-arg=--test-no-path-fentry --ops 220000 --rounds 7 --ref-nullsys-ns 89.1 -- build/open_cost /var/tmp/p15-oc/a/b/c/d/e/f 200000 20000 > build/ps_c1_d10.txt; head -20 build/ps_c1_d10.txt
+# Per-program cost while `build/open_cost /var/tmp/p15-oc/a/b/c/d/e/f 200000 20000` ran, 7 rounds (bpf_stats on: not an overhead measurement)
+
+Host speed: a null syscall cost 87.7 ns (median of 7 rounds; 86.1 to 91.8).
+
+| program | type | rounds | runs | ns per run (median) | cheapest to dearest round | runs per op | ns per op (median) |
+|---|---|---|---|---|---|---|---|
+| file_open_session | kprobe | 7 | 3,080,622 | 285.7 | 279.2 to 288.8 | 2.000 | 571.5 |
+| file_free | kprobe | 7 | 1,540,896 | 178.5 | 167.9 to 184.3 | 1.001 | 178.6 |
+| file_fd_iter | tracing | 3 | 1,906 | 390.6 | 372.7 to 397.5 | 0.003 | 1.1 |
+| snap_task | tracing | 3 | 492 | 987.4 | 986.3 to 1183.1 | 0.001 | 0.7 |
+| spine_exec | tracepoint | 7 | 14 | 3464.0 | 2966.5 to 3758.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 7 | 65 | 546.0 | 476.8 to 13119.1 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 7 | 17 | 1666.5 | 1256.5 to 2879.6 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 7 | 14 | 1353.5 | 1170.0 to 1762.5 | 0.000 | 0.0 |
+| spine_fork | tracing | 7 | 14 | 1172.5 | 1043.5 to 1446.5 | 0.000 | 0.0 |
+| net_connect_dgram | tracing | 4 | 5 | 2032.5 | 1623.0 to 2370.0 | 0.000 | 0.0 |
+| **all** | | 7 | 4,624,045 | | | 3.003 | 749.5 |
+
+## Round 0
+
+ashu@p15-dev:~/fiery-dragon$

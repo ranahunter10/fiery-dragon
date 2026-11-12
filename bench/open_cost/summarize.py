@@ -162,6 +162,9 @@ def report(text: str) -> tuple[str, int]:
         return "\n".join(out), 1
     if not rows:
         raise ParseError("no timed rounds")
+    if " perf=" in f" {config}":
+        out += ["## A profiling run (--perf): perf sampled p15d, so no timing is reported", ""]
+        return "\n".join(out + capture_section(rows, caps)), 1
     null_ns = P.median(per_op(rows, "none", "nullsys", "cpu_ns"))
     out += [f"{len(rows)} rounds. Null syscall (getppid) without capture, median: {_ns(null_ns)}; with p15d: "
             f"{_ns(P.median(per_op(rows, 'p15d', 'nullsys', 'cpu_ns')))}.", ""]

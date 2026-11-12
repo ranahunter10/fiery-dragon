@@ -65,6 +65,8 @@ Results (2026-11-12, [first](../evidence/vm/2026-11-12-graph3-and-costs/README.m
 - Item 1: the shipped programs cost 741.4 ns per open+close, median of 7 rounds, the kernel statistics' own cost included (path 306.7, free 229.5, session 182.9).
 - Item 2: capture adds 1,140.5 ns to an open+close of a known file, against E-0176's 1,396.3, on a host about 20 % slower that day. p15d costs 699.4 ns per open+close above idle, against 552.1, and its idle rate is 1.83 ms per second.
 - Item 3: 38.2 % of frees are of files capture never opened.
+- C1, measured with p15d's `--test-no-path-fentry` ([evidence](../evidence/vm/2026-11-12-c1-and-p15d-profile/README.md)), **is not cheaper.** The open's bodies cost 35 to 51 ns more, and the whole pipeline is the same to 0.2 ns at a 10-component path. §4's estimate for it is falsified: most of the fentry's body (header, facts, objects, ring copy) must be done by whichever program writes the OPEN.
+- C4, the p15d profile: **the byte-at-a-time CRC32C is about a third of p15d's samples, and switching between its threads about another third.**
 
 1. **The shipped object's bodies**, unprofiled: `bench/prim_cost/prog_stats.py` on today's main (commands in the session). This tells whether the 500 ns budget (E-0193) is missed by 400 ns or by less.
 2. **The whole pipeline end to end**, `bench/open_cost` on today's main: v2 of the open path, the walk fallback and the adaptive poll, all since E-0176.

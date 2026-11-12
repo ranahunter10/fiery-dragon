@@ -22,6 +22,11 @@ window and over the workload.
 
 The workload pins itself to one CPU; p15d's threads are left where the scheduler puts them, as in
 real use. Output: "config", "row" and "capture" lines on stdout; summarize.py makes the report.
+
+With --perf DIR, each traced arm also samples p15d with `perf record` (DWARF call graphs) over the
+workload's window only, into DIR/perf-ROUND.data, for `perf report`. Sampling costs p15d CPU, so
+a run with --perf profiles where p15d's time goes and is not an overhead measurement: its config
+line says perf=DIR and summarize.py refuses to time it.
 """
 
 from __future__ import annotations
@@ -147,6 +152,34 @@ def wait_started(log: Path, proc: subprocess.Popen, timeout_s: float) -> None:
     raise RunError(f"p15d did not start in {timeout_s} s")
 
 
+def perf_start(a, pid: int, rnd: int) -> subprocess.Popen | None:
+    """`perf record` on p15d's threads (DWARF call graphs: p15d and libbpf keep no frame pointers),
+    or None without --perf. Raises RunError if perf exits at once (not installed, not allowed)."""
+    if getattr(a, "perf", None) is None:
+        return None
+    a.perf.mkdir(parents=True, exist_ok=True)
+    out = a.perf / f"perf-{rnd}.data"
+    cmd = [getattr(a, "perf_bin", "perf"), "record", "-q", "-F", "1999", "--call-graph", "dwarf,16384",
+           "-p", str(pid), "-o", str(out)]
+    pr = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    time.sleep(0.3)                           # perf attaches before the workload starts
+    if pr.poll() is not None:
+        raise RunError(f"perf exited {pr.returncode}: {pr.stderr.read().decode(errors='replace')[-300:]}")
+    return pr
+
+
+def perf_stop(pr: subprocess.Popen | None) -> None:
+    """Stop `perf record` (SIGINT writes its file) and wait for it."""
+    if pr is None:
+        return
+    pr.send_signal(signal.SIGINT)
+    try:
+        pr.wait(STOP_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        pr.kill()
+        pr.wait()
+
+
 def traced_arm(a, work: Path, rnd: int) -> tuple[list[str], str]:
     """Start p15d, run the workload under it, stop it, read its WAL. Returns the workload's rows
     and the capture line."""
@@ -161,9 +194,13 @@ def traced_arm(a, work: Path, rnd: int) -> tuple[list[str], str]:
         c0, t0 = agent_cpu_ns(p.pid), time.monotonic_ns()
         time.sleep(a.idle)
         c1, t1 = agent_cpu_ns(p.pid), time.monotonic_ns()
-        pid, rows = workload(a.workload, a.dir, a.same, a.distinct, a.cpu)
-        time.sleep(0.2)                      # the drain's last poll of what the workload wrote
-        c2, t2 = agent_cpu_ns(p.pid), time.monotonic_ns()
+        prof = perf_start(a, p.pid, rnd)
+        try:
+            pid, rows = workload(a.workload, a.dir, a.same, a.distinct, a.cpu)
+            time.sleep(0.2)                      # the drain's last poll of what the workload wrote
+            c2, t2 = agent_cpu_ns(p.pid), time.monotonic_ns()
+        finally:
+            perf_stop(prof)
     finally:
         if p.poll() is None:
             p.send_signal(signal.SIGTERM)
@@ -205,6 +242,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--idle", type=float, default=1.0)
     ap.add_argument("--keep", action="store_true", help="keep every WAL and log")
     ap.add_argument("--p15d-arg", action="append", default=[], help="an extra p15d argument (repeatable)")
+    ap.add_argument("--perf", type=Path, metavar="DIR", help="profile p15d with perf record into DIR (not a timing run)")
+    ap.add_argument("--perf-bin", default="perf", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     if a.rounds < 1 or a.same < 1 or a.distinct < 1:
         ap.error("rounds, same and distinct must be at least 1")
@@ -218,7 +257,8 @@ def main(argv: list[str] | None = None) -> int:
     work.mkdir(parents=True, exist_ok=True)
     make_files(a.dir, a.distinct)
     print(f"config kernel={os.uname().release} cpus={os.cpu_count()} rounds={a.rounds} same={a.same} "
-          f"distinct={a.distinct} settle={a.settle} idle={a.idle} p15d_args={' '.join(a.p15d_arg) or '-'}", flush=True)
+          f"distinct={a.distinct} settle={a.settle} idle={a.idle} p15d_args={' '.join(a.p15d_arg) or '-'}"
+          + (f" perf={a.perf}" if a.perf else ""), flush=True)
     failed = 0
     for rnd in range(-1, a.rounds):
         for arm in rotation(rnd):

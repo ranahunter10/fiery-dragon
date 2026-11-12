@@ -21,6 +21,13 @@ sudo make bench-open-cost ROUNDS=20          # raw lines in build/open_cost.txt,
 ```
 `DIR=` moves the files (default `/var/tmp/p15-open-cost`; it must be a real filesystem), `SAME=` and `DISTINCT=` change the counts, `P15D_ARGS='--p15d-arg=--no-net'` passes options to p15d.
 
+**Where p15d's time goes** (`--perf DIR`): each traced arm also runs `perf record` with DWARF call graphs on p15d's threads over the workload's window only. p15d and libbpf are built `-O2 -g` without frame pointers, hence DWARF. Sampling costs p15d CPU, so such a run is a profile, not a timing: its config line says `perf=DIR`, and `summarize.py` reports its books and refuses its timings.
+```
+sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost \
+     --dir /var/tmp/p15-open-cost --rounds 3 --perf /var/tmp/p15-perf > build/open_cost_perf.txt
+sudo perf report -i /var/tmp/p15-perf/perf-0.data --no-children --sort comm,dso,sym --stdio --percent-limit 0.5 > build/p15d_profile.txt
+```
+
 **Limits.**
 - An open+close with nothing between them is the cheapest thing a program does with a file, so the relative overhead here is an upper bound for programs that also read, compute or wait. The added ns per open+close is the number that transfers.
 - One thread. Contention between cores on the maps and the ring is not measured here; that is step 2b's ceiling gate.
