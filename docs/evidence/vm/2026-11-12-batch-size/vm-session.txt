@@ -1,0 +1,35 @@
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 20 > build/oc_b256.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 20 --p15d-arg=--batch-kb --p15d-arg=1024 --p15d-arg=--queue-batches --p15d-arg=16 > build/oc_b1024.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 20 --p15d-arg=--batch-kb --p15d-arg=4096 --p15d-arg=--queue-batches --p15d-arg=4 > build/oc_b4096.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ for b in b256 b1024 b4096; do echo "== $b"; ~/p15venv/bin/python bench/open_cost/summarize.py build/oc_$b.txt > build/oc_$b.md; grep -E "added per open+close|p15d per open\+close|thread switches|lost to the ring" build/oc_$b.md; done
+== b256
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- p15d per open+close of the workload: 418.0 ns of CPU in the window (mean), 413.0 ns after the idle rate is taken off (median 293.0 ns)
+- p15d's thread switches: 3.4 per 1,000 open+close in the window (median), 8.9 per second idle (median)
+== b1024
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- p15d per open+close of the workload: 208.4 ns of CPU in the window (mean), 203.6 ns after the idle rate is taken off (median 198.6 ns)
+- p15d's thread switches: 0.4 per 1,000 open+close in the window (median), 9.2 per second idle (median)
+== b4096
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- p15d per open+close of the workload: 193.0 ns of CPU in the window (mean), 186.6 ns after the idle rate is taken off (median 170.8 ns)
+- p15d's thread switches: 0.4 per 1,000 open+close in the window (median), 9.7 per second idle (median)
+ashu@p15-dev:~/fiery-dragon$ for b in b256 b1024 b4096; do echo "== $b"; grep "added per open+close" build/oc_$b.md; done
+== b256
+  - added per open+close 1,034.8 ns (95 % interval 1,001.3 ns to 1,081.2 ns), 12.05 null syscalls; ratio of medians 2.2417; effect p = 1.91e-06
+  - added per open+close 1,129.9 ns (95 % interval 1,102.3 ns to 1,164.6 ns), 13.16 null syscalls; ratio of medians 2.3614; effect p = 1.91e-06
+  - added per open+close 1,390.5 ns (95 % interval 1,318.9 ns to 1,482.6 ns), 16.19 null syscalls; ratio of medians 2.1910; effect p = 1.91e-06
+  - added per open+close 1,426.8 ns (95 % interval 1,374.5 ns to 1,507.3 ns), 16.61 null syscalls; ratio of medians 2.2200; effect p = 1.91e-06
+== b1024
+  - added per open+close 1,018.3 ns (95 % interval 984.9 ns to 1,054.8 ns), 11.94 null syscalls; ratio of medians 2.2040; effect p = 1.91e-06
+  - added per open+close 1,089.5 ns (95 % interval 1,044.4 ns to 1,129.9 ns), 12.77 null syscalls; ratio of medians 2.2860; effect p = 1.91e-06
+  - added per open+close 1,314.4 ns (95 % interval 1,269.7 ns to 1,354.7 ns), 15.41 null syscalls; ratio of medians 2.1175; effect p = 1.91e-06
+  - added per open+close 1,354.8 ns (95 % interval 1,312.5 ns to 1,405.0 ns), 15.88 null syscalls; ratio of medians 2.1724; effect p = 1.91e-06
+== b4096
+  - added per open+close 1,060.8 ns (95 % interval 1,017.9 ns to 1,214.4 ns), 12.37 null syscalls; ratio of medians 2.2396; effect p = 1.91e-06
+  - added per open+close 1,106.1 ns (95 % interval 1,072.9 ns to 1,279.5 ns), 12.89 null syscalls; ratio of medians 2.3007; effect p = 1.91e-06
+  - added per open+close 1,315.7 ns (95 % interval 1,287.8 ns to 1,355.5 ns), 15.34 null syscalls; ratio of medians 2.1313; effect p = 1.91e-06
+  - added per open+close 1,362.6 ns (95 % interval 1,329.1 ns to 1,404.0 ns), 15.88 null syscalls; ratio of medians 2.1756; effect p = 1.91e-06

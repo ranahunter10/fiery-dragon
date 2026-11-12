@@ -1,0 +1,87 @@
+ashu@p15-dev:~$ cd ~/fiery-dragon && git fetch -q origin && git checkout -q bench/open-cost-switches && git log --oneline -1
+34284f0 (HEAD -> bench/open-cost-switches, origin/bench/open-cost-switches) bench: open_cost counts p15d's thread switches
+ashu@p15-dev:~/fiery-dragon$ make build/p15d build/crc32c_bench build/open_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"34284f084cc7"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/crc32c/crc32c_bench.c daemon/crc32c.c -o build/crc32c_bench
+make: 'build/open_cost' is up to date.
+ashu@p15-dev:~/fiery-dragon$ build/crc32c_bench 4096 9; build/crc32c_bench 120 9
+crc32c size=4096 rounds=9 bytes_per_round=67108864 impl=sse4.2
+table   1.9772 ns per byte (median; 1.9571 to 2.0084)
+sse4.2  0.0916 ns per byte (median; 0.0907 to 0.0926)
+speed-up 21.6x; same crc: yes
+crc32c size=120 rounds=9 bytes_per_round=67108800 impl=sse4.2
+table   2.0293 ns per byte (median; 1.9981 to 2.8507)
+sse4.2  0.1008 ns per byte (median; 0.0992 to 0.1220)
+speed-up 20.1x; same crc: yes
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 20 > build/oc_crc.txt; echo "rc=$?"
+[sudo: authenticate] Password:
+rc=0
+ashu@p15-dev:~/fiery-dragon$ ~/p15venv/bin/python bench/open_cost/summarize.py build/oc_crc.txt > build/oc_crc.md; grep -A8 "## same: .*primary" build/oc_crc.md; tail -14 build/oc_crc.md
+## same: one file opened again and again (steady state); thread CPU time, primary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 987.0 ns | 914.8 ns to 1,171.3 ns |
+| none2 | 1,089.8 ns | 937.3 ns to 1,356.3 ns |
+| p15d | 2,038.8 ns | 1,916.1 ns to 2,858.0 ns |
+
+- **p15d against none:** overhead +113.40 %, 95 % interval +101.13 % to +153.89 %, Wilcoxon p = 1.91e-06
+  - notes: drift: the ratio of medians and e^HL differ by more than the A/A interval's width
+
+## What the capture wrote and what it cost p15d
+
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- records per open+close: 2.000; bytes per open+close in the WAL: 171.6 (OPEN 115.6, CLOSE 56.0)
+- opens carrying the object's facts: 9.1%
+- opens by other processes during the traced arms: 511
+- p15d idle: 1.12 ms of CPU per second (mean; median 1.01)
+- p15d per open+close of the workload: 460.0 ns of CPU in the window (mean), 455.1 ns after the idle rate is taken off (median 417.3 ns)
+- p15d's thread switches: 3.1 per 1,000 open+close in the window (median), 8.7 per second idle (median)
+- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without capture): mean 42.0%, median 40.4%, range 15.6% to 83.9%
+- agent overhead of the whole workload, as eAudit defines it (all of p15d's CPU in the window / the workload's CPU time without capture, null syscalls included): mean 29.8%, median 28.6%
+
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost --dir /var/tmp/p15-open-cost --rounds 3 --perf /var/tmp/p15-perf2 > build/oc_perf2.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ sudo perf report -i /var/tmp/p15-perf2/perf-0.data --no-children -g none --sort dso,sym --stdio --percent-limit 0.5 2>/dev/null | head -40
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 107  of event 'task-clock:ppp'
+# Event count (approx.): 53526750
+#
+# Overhead  Shared Object      Symbol
+# ........  .................  ....................................
+#
+    30.84%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+    10.28%  p15d               [.] tiles
+     9.35%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+     7.48%  p15d               [.] on_bulk
+     6.54%  p15d               [.] crc_hw
+     5.61%  p15d               [.] p15_rec_check
+     4.67%  [kernel.kallsyms]  [k] kernel_init_pages
+     2.80%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     1.87%  [kernel.kallsyms]  [k] __refill_objects_node
+     1.87%  [kernel.kallsyms]  [k] block_commit_write
+     1.87%  p15d               [.] ringbuf_process_ring
+     0.93%  [kernel.kallsyms]  [k] __memcg_slab_post_alloc_hook
+     0.93%  [kernel.kallsyms]  [k] __rmqueue_pcplist
+     0.93%  [kernel.kallsyms]  [k] alloc_buffer_head
+     0.93%  [kernel.kallsyms]  [k] begin_current_label_crit_section
+     0.93%  [kernel.kallsyms]  [k] bpf_map_poll
+     0.93%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+     0.93%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+     0.93%  [kernel.kallsyms]  [k] do_user_addr_fault
+     0.93%  [kernel.kallsyms]  [k] down_write
+     0.93%  [kernel.kallsyms]  [k] fput
+     0.93%  [kernel.kallsyms]  [k] rep_movs_alternative
+     0.93%  [kernel.kallsyms]  [k] up_write
+     0.93%  libc.so.6          [.] clock_gettime
+     0.93%  libc.so.6          [.] 0x000000000019799f
+     0.93%  libc.so.6          [.] 0x0000000000197aac
+     0.93%  libc.so.6          [.] 0x0000000000197acd
+     0.93%  p15d               [.] after_poll
+     0.93%  p15d               [.] p15_drain_poll
+ashu@p15-dev:~/fiery-dragon$
