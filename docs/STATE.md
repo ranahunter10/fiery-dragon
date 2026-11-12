@@ -269,6 +269,14 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 38. **The open path's cost against the published tools** (E-0210, [note](research/2026-11-12-open-cost-against-the-tools.md)): of the 897 ns profiled, the open-file map costs about 178 ns and two programs sit on one function. No tool keeps a map entry per open file: Falco, Tracee and Tetragon keep identity in user space. The largest gap against a published number is user space, p15d's 552 ns per open+close against eAudit's median 48 ns per syscall. Kept on purpose: the kernel's object and path at the LSM point, the fallback, the books. No design change is taken here: decision waiting 10.
 
+39. **First VM numbers for decisions 36 to 38** (E-0211, E-0212, [evidence](evidence/vm/2026-11-12-graph3-and-costs/README.md)):
+    - ADR-0031 confirmed on the hour's graph: no exec image without its edge, and p15d is named `p15d`.
+    - Tracking takes under 0.5 s either way, whole command.
+    - The shipped programs cost 785.4 ns per open+close unprofiled (one round of seven so far).
+    - 38.2 % of file frees are of files capture never opened.
+    - Reads and writes run at about 317 per second under the soak's workload.
+    - The graph build summed to 107.8 s; its WAL read is to be timed back to back against main.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -284,3 +292,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    1. Measure the shipped object unprofiled (`bench/prim_cost/prog_stats.py`) and the whole pipeline (`bench/open_cost`) on today's main, and read `free_unregistered` from the soak's FILE_STATS. These say how far the 500 ns budget is missed and how large C2's extra CLOSEs would be.
    2. Then a harness, `bench/open_variants`: C1 (the session alone, walking every path), C1b (kprobe.multi entry only), C2 (open-file ids paired in user space), built from `file.bpf.c` by -D flags, the shipped object unchanged.
    3. Then choose by a new ADR on its numbers. Profile p15d (C4) beside it.
+   First results (decision 39): item 1 gives 785.4 ns per open+close in one round (the other six rounds are still to be sent), and 38.2 % of frees are unregistered. `bench/open_cost` is still to run, with `P15_PYTHON=~/p15venv/bin/python`.
