@@ -12,9 +12,9 @@ Evidence for E-0202. VM `p15-dev-2604`, 7.0.0-38-generic, PR #75 at `0f8a67d`, p
 
 - Built in 782 s (147.5 MiB): 55,247 process nodes, 90,981 file nodes, 7,686 socket nodes; 805,939 OPEN edges, 55,101 EXECUTE, 55,108 CLONE, 3,627 CONNECT, 3,608 ACCEPT. Its must-be-zero books are 0.
 - **The dropper chain of every compiled program: 452 of 452** (one file node opened for writing by the linker and executed into the next process). **Every memfd execution: 451 of 451.**
-- Connections paired by ISN: 3,608, which is exactly the 451 http steps times 8. The report said FAIL ("3,608 of 3,552") because the check was wrong, not the graph: it kept one expectation per port, and 7 ports were reused over the hour. The check now counts per step, on the step's port and inside its window (E-0202). A recheck on the same files is in the next VM run.
+- Connections paired by ISN: 3,608, which is exactly the 451 http steps times 8. The report said FAIL ("3,608 of 3,552") because the check was wrong, not the graph: it kept one expectation per port, and 7 ports were reused over the hour. The check now counts per step, on the step's port and inside its window (E-0202). Rechecked on the same files: 3,608 of 3,608 (E-0203).
 
 ## What the hour raises
 
 - 782 s to build the graph of one hour is too slow to keep up for long. `python -m p15.graph --profile` now times each phase and statement; its first run is on this WAL.
-- Memory grew 3.2 MiB over the hour (13 %). That is under the report's rule (half again and 10 MiB) but needs the samples' trend and a longer run to call a leak or not.
+- Memory grew 3.2 MiB over the hour (13 %), slowing every ten minutes and flat over the last fifteen (E-0203): a working set filling, not a leak at this rate.

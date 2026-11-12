@@ -27,13 +27,12 @@ from . import raw
 
 SQL = Path(__file__).with_name("graph.sql")
 
-PROC_SRC_DDL = """
-CREATE TABLE proc_src (
-    tgid UINTEGER, start_ns UBIGINT, parent_tgid UINTEGER, parent_start_ns UBIGINT, first_ns UBIGINT,
-    fork_ns UBIGINT, exit_ns UBIGINT, exit_code INTEGER, exe_path VARCHAR, cmd VARCHAR, comm VARCHAR,
-    origin VARCHAR, kthread BOOLEAN, in_gap BOOLEAN, n_images UINTEGER);
-CREATE TABLE tree_count (name VARCHAR, n BIGINT);
-"""
+PROC_SRC_COLS = [("tgid", "UINTEGER"), ("start_ns", "UBIGINT"), ("parent_tgid", "UINTEGER"),
+                 ("parent_start_ns", "UBIGINT"), ("first_ns", "UBIGINT"), ("fork_ns", "UBIGINT"), ("exit_ns", "UBIGINT"),
+                 ("exit_code", "INTEGER"), ("exe_path", "VARCHAR"), ("cmd", "VARCHAR"), ("comm", "VARCHAR"),
+                 ("origin", "VARCHAR"), ("kthread", "BOOLEAN"), ("in_gap", "BOOLEAN"), ("n_images", "UINTEGER")]
+PROC_SRC_DDL = ("CREATE TABLE proc_src (" + ", ".join(f"{c} {t}" for c, t in PROC_SRC_COLS) + ");\n"
+                "CREATE TABLE tree_count (name VARCHAR, n BIGINT);\n")
 
 
 def text(b: bytes) -> str:
@@ -138,10 +137,8 @@ def build(run_dir: Path, out: Path, profile: list | None = None) -> Result:
         raw_rows = raw.load(con, run, rings, errors)
         lap("raw tables")
         con.execute(PROC_SRC_DDL)
-        rows = proc_rows(tree, first)
-        if rows:
-            con.executemany("INSERT INTO proc_src VALUES (" + ", ".join("?" * 15) + ")", rows)
-        con.executemany("INSERT INTO tree_count VALUES (?, ?)", sorted(tree.counts.items()))
+        raw.insert_rows(con, "proc_src", PROC_SRC_COLS, proc_rows(tree, first))
+        raw.insert_rows(con, "tree_count", [("name", "VARCHAR"), ("n", "BIGINT")], sorted(tree.counts.items()))
         lap("proc_src")
         if profile is None:
             con.execute(SQL.read_text())

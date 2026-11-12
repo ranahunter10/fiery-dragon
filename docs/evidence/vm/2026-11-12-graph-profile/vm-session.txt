@@ -1,0 +1,138 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && git pull --ff-only && git log --oneline -1
+remote: Enumerating objects: 30, done.
+remote: Counting objects: 100% (30/30), done.
+remote: Compressing objects: 100% (11/11), done.
+remote: Total 30 (delta 19), reused 30 (delta 19), pack-reused 0 (from 0)
+Unpacking objects: 100% (30/30), 11.45 KiB | 229.00 KiB/s, done.
+From https://github.com/ranahunter10/fiery-dragon
+   0f8a67d..f9297f1  bench/soak -> origin/bench/soak
+Updating 0f8a67d..f9297f1
+Fast-forward
+ bench/soak/check.py                                | 29 +++++++++++++++++++++--------
+ bench/soak/soak.py                                 | 17 +++++++++++++++--
+ bench/soak/summarize.py                            |  3 ++-
+ bench/soak/test_soak.py                            |  8 ++++++--
+ docs/CODEMAP.md                                    |  4 ++--
+ docs/STATE.md                                      |  2 +-
+ docs/evidence/vm/2026-11-12-soak-1h/README.md      | 20 ++++++++++++++++++++
+ docs/evidence/vm/2026-11-12-soak-1h/SHA256SUMS     |  2 ++
+ docs/evidence/vm/2026-11-12-soak-1h/soak.md        | 38 ++++++++++++++++++++++++++++++++++++++
+ docs/evidence/vm/2026-11-12-soak-1h/vm-session.txt | 68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ docs/journal/engineering-log.csv                   |  1 +
+ python/p15/graph/__main__.py                       |  6 +++++-
+ python/p15/graph/build.py                          | 44 +++++++++++++++++++++++++++++++++++++++++---
+ python/tests/test_graph.py                         | 20 ++++++++++++++++++++
+ tools/ci/mutate_py.py                              |  2 ++
+ 15 files changed, 244 insertions(+), 20 deletions(-)
+ create mode 100644 docs/evidence/vm/2026-11-12-soak-1h/README.md
+ create mode 100644 docs/evidence/vm/2026-11-12-soak-1h/SHA256SUMS
+ create mode 100644 docs/evidence/vm/2026-11-12-soak-1h/soak.md
+ create mode 100644 docs/evidence/vm/2026-11-12-soak-1h/vm-session.txt
+f9297f1 (HEAD -> bench/soak, origin/bench/soak) bench: the soak's pairing check counts per step; graph --profile (E-0202)
+ashu@p15-dev:~/fiery-dragon$ grep -v '^graph_truth' build/soak.txt > build/soak2.txt
+ashu@p15-dev:~/fiery-dragon$ sudo ~/p15venv/bin/python bench/soak/soak.py --work /var/tmp/p15-soak --recheck >> build/soak2.txt
+[sudo: authenticate] Password:
+ashu@p15-dev:~/fiery-dragon$ python3 bench/soak/summarize.py build/soak2.txt | tail -12
+Graph: built in 782 s, 147.5 MiB; edge_ACCEPT 3,608, edge_BIND 451, edge_CLONE 55,108, edge_CONNECT 3,627, edge_EXECUTE 55,101, edge_HELD 729, edge_LISTEN 451, edge_OPEN 805,939, edge_without_node 0, node_file 90,981, node_proc 55,247, node_sock 7,686.
+
+| graph check | found | expected |
+|---|---|---|
+| dropper_chain | 452 | 452 |
+| sock_pairs | 3,608 | 3,608 |
+| memfd_exec | 451 | 451 |
+
+## Verdict
+
+- PASS
+
+ashu@p15-dev:~/fiery-dragon$ grep '^sample' build/soak.txt | awk '{print $2, $3, $6}'
+t=60 cpu_ms_per_s=4.754 rss_kb=24380
+t=120 cpu_ms_per_s=4.020 rss_kb=24976
+t=180 cpu_ms_per_s=4.448 rss_kb=25204
+t=240 cpu_ms_per_s=4.291 rss_kb=25360
+t=300 cpu_ms_per_s=4.437 rss_kb=25460
+t=360 cpu_ms_per_s=4.273 rss_kb=25632
+t=420 cpu_ms_per_s=4.194 rss_kb=25808
+t=480 cpu_ms_per_s=4.466 rss_kb=26072
+t=540 cpu_ms_per_s=4.050 rss_kb=26172
+t=600 cpu_ms_per_s=4.547 rss_kb=26240
+t=660 cpu_ms_per_s=4.333 rss_kb=26308
+t=720 cpu_ms_per_s=4.348 rss_kb=26392
+t=780 cpu_ms_per_s=4.105 rss_kb=26392
+t=840 cpu_ms_per_s=4.206 rss_kb=26468
+t=900 cpu_ms_per_s=4.116 rss_kb=26544
+t=960 cpu_ms_per_s=4.268 rss_kb=26544
+t=1020 cpu_ms_per_s=4.152 rss_kb=26656
+t=1080 cpu_ms_per_s=5.021 rss_kb=26688
+t=1140 cpu_ms_per_s=4.188 rss_kb=26740
+t=1200 cpu_ms_per_s=4.420 rss_kb=26804
+t=1260 cpu_ms_per_s=4.546 rss_kb=26844
+t=1320 cpu_ms_per_s=4.484 rss_kb=26844
+t=1380 cpu_ms_per_s=4.309 rss_kb=26876
+t=1440 cpu_ms_per_s=5.175 rss_kb=26928
+t=1500 cpu_ms_per_s=4.316 rss_kb=26980
+t=1560 cpu_ms_per_s=4.200 rss_kb=27012
+t=1620 cpu_ms_per_s=4.333 rss_kb=27032
+t=1680 cpu_ms_per_s=4.248 rss_kb=27052
+t=1740 cpu_ms_per_s=4.379 rss_kb=27124
+t=1800 cpu_ms_per_s=4.209 rss_kb=27180
+t=1860 cpu_ms_per_s=4.518 rss_kb=27204
+t=1920 cpu_ms_per_s=4.440 rss_kb=27272
+t=1980 cpu_ms_per_s=4.308 rss_kb=27280
+t=2040 cpu_ms_per_s=4.121 rss_kb=27288
+t=2100 cpu_ms_per_s=4.977 rss_kb=27296
+t=2160 cpu_ms_per_s=4.366 rss_kb=27340
+t=2220 cpu_ms_per_s=4.182 rss_kb=27396
+t=2280 cpu_ms_per_s=4.514 rss_kb=27400
+t=2340 cpu_ms_per_s=4.089 rss_kb=27424
+t=2400 cpu_ms_per_s=4.216 rss_kb=27432
+t=2460 cpu_ms_per_s=4.025 rss_kb=27456
+t=2520 cpu_ms_per_s=4.479 rss_kb=27456
+t=2580 cpu_ms_per_s=5.005 rss_kb=27456
+t=2640 cpu_ms_per_s=5.261 rss_kb=27456
+t=2700 cpu_ms_per_s=4.163 rss_kb=27484
+t=2760 cpu_ms_per_s=4.363 rss_kb=27508
+t=2820 cpu_ms_per_s=4.198 rss_kb=27532
+t=2880 cpu_ms_per_s=4.677 rss_kb=27572
+t=2940 cpu_ms_per_s=4.233 rss_kb=27572
+t=3000 cpu_ms_per_s=4.339 rss_kb=27588
+t=3060 cpu_ms_per_s=4.524 rss_kb=27620
+t=3120 cpu_ms_per_s=5.359 rss_kb=27624
+t=3180 cpu_ms_per_s=4.197 rss_kb=27628
+t=3240 cpu_ms_per_s=4.299 rss_kb=27628
+t=3300 cpu_ms_per_s=4.385 rss_kb=27628
+t=3360 cpu_ms_per_s=4.267 rss_kb=27648
+t=3420 cpu_ms_per_s=4.195 rss_kb=27648
+t=3480 cpu_ms_per_s=4.686 rss_kb=27648
+t=3540 cpu_ms_per_s=4.100 rss_kb=27648
+t=3600 cpu_ms_per_s=4.573 rss_kb=27652
+t=3660 cpu_ms_per_s=2.000 rss_kb=27652
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python ~/p15venv/bin/python -m p15.graph /var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2 /var/tmp/p15-prof.duckdb --profile 2>&1 | grep -E "^profile|INVALID|p15.graph"
+profile   626.434 s  proc_src
+profile    57.676 s  raw tables
+profile    36.743 s  read the WAL, the process tree
+profile     2.745 s  sql: CREATE TABLE openfile AS
+profile     0.927 s  sql: CREATE TABLE edge AS
+profile     0.885 s  sql: CREATE TABLE fid_row AS
+profile     0.700 s  sql: CREATE TABLE edge_src AS
+profile     0.425 s  sql: CREATE TABLE proc AS
+profile     0.409 s  sql: UPDATE openfile SET file_node = n.node_id FROM node n WHERE n.key = op
+profile     0.315 s  sql: CREATE TABLE file_src AS
+profile     0.259 s  sql: CREATE TABLE file AS
+profile     0.209 s  sql: CREATE TABLE node AS
+profile     0.186 s  sql: CREATE TABLE obj_facts AS
+profile     0.138 s  sql: CREATE TABLE fact_row AS
+profile     0.116 s  sql: INSERT INTO graph_count
+profile     0.079 s  sql: CREATE TABLE exec_file AS
+profile     0.056 s  sql: CREATE TABLE sock_src AS
+profile     0.045 s  sql: CREATE TABLE exec_name AS
+profile     0.029 s  sql: CREATE TABLE sock AS
+profile     0.024 s  sql: CREATE TABLE sock_pair AS
+profile     0.017 s  sql: CREATE TABLE clock AS
+profile     0.016 s  sql: CREATE TABLE file_backing AS
+profile     0.014 s  sql: ALTER TABLE openfile ADD COLUMN file_node BIGINT;
+profile     0.011 s  sql: CREATE MACRO fs_trusted(fs_magic, oflags) AS
+profile     0.011 s  sql: CREATE MACRO m_ext4()  AS 61267;          -- 0xEF53
+ashu@p15-dev:~/fiery-dragon$ sha256sum build/soak2.txt
+4cb80c6dc5398245df1d1ce8e46841f175280c1af468d9497e565563fcbaa52c  build/soak2.txt
+ashu@p15-dev:~/fiery-dragon$
