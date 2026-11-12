@@ -1,6 +1,6 @@
 # Step 2b read-hook harness on CI's runner kernel (2026-11-12)
 
-Evidence for E-0229. This is not the target kernel. The target run is the maintainer's, on the VM.
+Evidence for E-0232. This is not the target kernel. The target run is the maintainer's, on the VM.
 
 | File | What | Where it ran |
 |---|---|---|
