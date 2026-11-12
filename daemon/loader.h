@@ -32,6 +32,8 @@ struct p15_loader {
 	struct net_bpf *net;        /* NULL with --no-net */
 	struct file_bpf *file;      /* NULL with --no-files; owns the bulk ring when loaded (decision 19.4) */
 	struct bpf_link *fd_iter_link; /* the snapshot's FD pass (ADR-0015 rule 7); NULL with --no-files */
+	struct bpf_link *flow_links[6]; /* the flow programs (ADR-0005): attached after the self-tests so their I/O is not in the books */
+	int n_flow_links;
 	int selftest_failed;       /* failed checks, or -errno if it could not run */
 	int net_selftest_failed;
 	int file_selftest_failed;
@@ -46,6 +48,8 @@ struct p15_loader {
 	int file_fentry_fd;         /* the path fentry: its skips are written by the session return (ADR-0029), not lost */
 	int file_kprobe_fd[3];      /* the session and the two frees: their skips are losses */
 	int n_file_kprobe;
+	int flow_prog_fd[6];        /* the flow programs (ADR-0005): vfs_read/write/readv/writev and the two sock tracepoints */
+	int n_flow_prog;
 	int ncpu;                   /* possible CPUs: the counter maps' row count (ADR-0026) */
 };
 
@@ -59,5 +63,6 @@ int p15_loader_counters_fd(const struct p15_loader *l);
 int p15_loader_bulk_rb_fd(const struct p15_loader *l);     /* -1 with --no-net and --no-files */
 int p15_loader_bulk_counters_fd(const struct p15_loader *l);  /* NET's counters; -1 with --no-net */
 int p15_loader_file_counters_fd(const struct p15_loader *l);  /* -1 with --no-files */
+int p15_loader_flow_counters_fd(const struct p15_loader *l);  /* data flow (ADR-0005); -1 with --no-files */
 
 #endif

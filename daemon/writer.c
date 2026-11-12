@@ -10,6 +10,7 @@
 #include "drain.h"
 #include "exitcodes.h"
 #include "p15_file.h"
+#include "p15_flow.h"
 #include "p15_records.h"
 #include "writer.h"
 
@@ -33,6 +34,50 @@ static uint64_t bpfc(struct p15_run *r, int type, int kind)
 static uint64_t filec(struct p15_run *r, int slot)
 {
 	return atomic_load(&r->filec[slot]) - r->filec_base[slot];
+}
+
+/* A data-flow counter since the run's start. */
+static uint64_t flowc(struct p15_run *r, int slot)
+{
+	return atomic_load(&r->flowc[slot]) - r->flowc_base[slot];
+}
+
+/* bpf/include/p15_flow.h's books (B1 to B5), on absolute counters. Returns 0 if closed. */
+static int flow_books(struct p15_run *r, char *why, size_t n)
+{
+#define L(slot) atomic_load(&r->flowc[P15_FLC_##slot])
+	uint64_t emitted = L(READ_EMITTED) + L(WRITE_EMITTED) + L(SEND_EMITTED) + L(RECV_EMITTED);
+	uint64_t taken = atomic_load(&r->flow_drained) + r->flow_selftest_consumed + atomic_load(&r->flow_invalid);
+
+	if (L(SESS_ENTRY) != L(SESS_RETURN) + L(V_EXCL_SELF) + L(V_EXCL_KTHREAD)) {
+		snprintf(why, n, "FLOW: vfs entries %llu != returns + excluded self + excluded kthread",
+			 (unsigned long long)L(SESS_ENTRY));
+		return -1;
+	}
+	if (L(SESS_RETURN) != L(V_EMPTY) + L(V_FAILED) + L(V_ATTEMPT)) {
+		snprintf(why, n, "FLOW: vfs returns %llu != empty + failed + emit attempts", (unsigned long long)L(SESS_RETURN));
+		return -1;
+	}
+	if (L(SOCK_SEEN) != L(S_EXCL_SELF) + L(S_EXCL_KTHREAD) + L(S_NO_FILE) + L(S_EMPTY) + L(S_FAILED) + L(S_ATTEMPT)) {
+		snprintf(why, n, "FLOW: sock events %llu != excluded + no-file + empty + failed + emit attempts",
+			 (unsigned long long)L(SOCK_SEEN));
+		return -1;
+	}
+	if (L(V_ATTEMPT) + L(S_ATTEMPT) != emitted + L(FLOW_LOST)) {
+		snprintf(why, n, "FLOW: emit attempts %llu != FLOW records written %llu + lost %llu",
+			 (unsigned long long)(L(V_ATTEMPT) + L(S_ATTEMPT)), (unsigned long long)emitted,
+			 (unsigned long long)L(FLOW_LOST));
+		return -1;
+	}
+	if (emitted + L(FILE_EMITTED) != taken) {
+		snprintf(why, n, "FLOW: written %llu (FLOW) + %llu (FILE) != drained %llu + %llu by the self-test + invalid %llu",
+			 (unsigned long long)emitted, (unsigned long long)L(FILE_EMITTED),
+			 (unsigned long long)atomic_load(&r->flow_drained), (unsigned long long)r->flow_selftest_consumed,
+			 (unsigned long long)atomic_load(&r->flow_invalid));
+		return -1;
+	}
+#undef L
+	return 0;
 }
 
 /* bpf/include/p15_file.h's books, on absolute counters (ADR-0006 rule 6). Returns 0 if closed. */
@@ -137,7 +182,8 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 			return P15_INV_BROKEN;
 		}
 		if (em != nd + r->net_selftest_consumed + atomic_load(&r->net_invalid) ||
-		    nd + atomic_load(&r->file_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
+		    nd + atomic_load(&r->file_drained) + atomic_load(&r->flow_drained) !=
+			    atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
 			snprintf(why, n, "NET: emitted %llu, drained %llu + %llu by the self-test, invalid %llu, written %llu, drain_lost %llu",
 				 (unsigned long long)em, (unsigned long long)nd, (unsigned long long)r->net_selftest_consumed,
 				 (unsigned long long)atomic_load(&r->net_invalid),
@@ -147,14 +193,18 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		}
 	}
 	if (r->files) {
-		if (file_books(r, why, n))
+		if (file_books(r, why, n) || flow_books(r, why, n))
 			return P15_INV_BROKEN;
-		if (!r->net && atomic_load(&r->file_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
-			snprintf(why, n, "bulk ring: drained %llu != written %llu + drain_lost %llu",
-				 (unsigned long long)atomic_load(&r->file_drained),
-				 (unsigned long long)atomic_load(&r->net_written),
-				 (unsigned long long)atomic_load(&r->net_drain_lost));
-			return P15_INV_BROKEN;
+		/* every bulk-ring record (NET, file identity and data flow) counts in net_written */
+		if (!r->net) {
+			uint64_t bulk = atomic_load(&r->file_drained) + atomic_load(&r->flow_drained);
+
+			if (bulk != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
+				snprintf(why, n, "bulk ring: drained %llu != written %llu + drain_lost %llu",
+					 (unsigned long long)bulk, (unsigned long long)atomic_load(&r->net_written),
+					 (unsigned long long)atomic_load(&r->net_drain_lost));
+				return P15_INV_BROKEN;
+			}
 		}
 	}
 	snprintf(why, n, "closed");
@@ -381,6 +431,47 @@ static void file_stats(struct p15_writer *w)
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 }
 
+/* FLOW_STATS (ADR-0005, schema/records.toml): the data-flow counters since the run's start, their
+ * drain side, and the kernel's skips. One field per bpf/include/p15_flow.h slot. */
+static void flow_stats(struct p15_writer *w)
+{
+	struct p15_run *r = w->run;
+	struct p15_flow_stats s;
+
+	memset(&s, 0, sizeof(s));
+	p15_daemon_hdr(r, &s, P15_T_FLOW_STATS, P15_FLOW_STATS_VERSION, sizeof(s));
+#define F(field, slot) s.field = flowc(r, slot);
+	F(sess_entry, P15_FLC_SESS_ENTRY)
+	F(sess_return, P15_FLC_SESS_RETURN)
+	F(v_excl_self, P15_FLC_V_EXCL_SELF)
+	F(v_excl_kthread, P15_FLC_V_EXCL_KTHREAD)
+	F(v_empty, P15_FLC_V_EMPTY)
+	F(v_failed, P15_FLC_V_FAILED)
+	F(v_attempt, P15_FLC_V_ATTEMPT)
+	F(sock_seen, P15_FLC_SOCK_SEEN)
+	F(s_excl_self, P15_FLC_S_EXCL_SELF)
+	F(s_excl_kthread, P15_FLC_S_EXCL_KTHREAD)
+	F(s_no_file, P15_FLC_S_NO_FILE)
+	F(s_empty, P15_FLC_S_EMPTY)
+	F(s_failed, P15_FLC_S_FAILED)
+	F(s_attempt, P15_FLC_S_ATTEMPT)
+	F(read_emitted, P15_FLC_READ_EMITTED)
+	F(write_emitted, P15_FLC_WRITE_EMITTED)
+	F(send_emitted, P15_FLC_SEND_EMITTED)
+	F(recv_emitted, P15_FLC_RECV_EMITTED)
+	F(flow_lost, P15_FLC_FLOW_LOST)
+	F(start_unknown, P15_FLC_START_UNKNOWN)
+	F(unregistered, P15_FLC_UNREGISTERED)
+	F(file_emitted, P15_FLC_FILE_EMITTED)
+	F(file_lost, P15_FLC_FILE_LOST)
+	F(file_map_full, P15_FLC_FILE_MAP_FULL)
+#undef F
+	s.flow_drained = atomic_load(&r->flow_drained);
+	s.flow_invalid = atomic_load(&r->flow_invalid);
+	s.flow_missed = atomic_load(&r->flow_missed) - r->flow_missed_base;
+	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
+}
+
 static void stats(struct p15_writer *w, uint64_t now)
 {
 	struct p15_stats s;
@@ -389,8 +480,10 @@ static void stats(struct p15_writer *w, uint64_t now)
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 	if (w->run->net)
 		net_stats(w);
-	if (w->run->files)
+	if (w->run->files) {
 		file_stats(w);
+		flow_stats(w);
+	}
 	textfile(w, &s);
 	w->prev_stats_ns = now;
 	if (++w->stats_written % 10 == 0)

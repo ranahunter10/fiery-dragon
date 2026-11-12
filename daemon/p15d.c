@@ -181,6 +181,9 @@ int main(int argc, char **argv)
 	for (int i = 0; i < ld.n_file_kprobe; i++)
 		run.file_kprobe_fd[i] = ld.file_kprobe_fd[i];
 	run.n_file_kprobe = ld.n_file_kprobe;
+	for (int i = 0; i < ld.n_flow_prog; i++)
+		run.flow_prog_fd[i] = ld.flow_prog_fd[i];
+	run.n_flow_prog = ld.n_flow_prog;
 	sched = raise_priority(run.cfg.realtime);
 
 	/* the run directory: <wal-dir>/<UTC time>-<boot id prefix> (ADR-0007 rule 1) */
@@ -262,7 +265,8 @@ int main(int argc, char **argv)
 	}
 	if (p15q_init(&run.q, run.cfg.queue_batches, run.cfg.batch_kb * 1024u) ||
 	    p15_drain_init(&d, &run, p15_loader_spine_rb_fd(&ld), p15_loader_counters_fd(&ld), p15_loader_bulk_rb_fd(&ld),
-			   p15_loader_bulk_counters_fd(&ld), p15_loader_file_counters_fd(&ld))) {
+			   p15_loader_bulk_counters_fd(&ld), p15_loader_file_counters_fd(&ld),
+			   p15_loader_flow_counters_fd(&ld))) {
 		logline("error", "oserr", "cannot allocate the queue or the drain");
 		return P15_EXIT_OSERR;
 	}

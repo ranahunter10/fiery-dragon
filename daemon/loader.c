@@ -14,6 +14,7 @@
 #include "file.skel.h"
 #include "net.skel.h"
 #include "p15_file.h"
+#include "p15_flow.h"
 #include "selftest_file.h"
 #include "selftest_net.h"
 #include "spine.skel.h"
@@ -49,10 +50,12 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 		return P15_EXIT_CONFIG;
 	}
 	l->file->rodata->file_wake_bytes = o->bulk_ring_bytes / 4;   /* ADR-0020 rule 2 */
-	if (p15_counters_configure(l->file->maps.file_counters, &l->file->rodata->file_counters_ncpu, l->ncpu)) {
+	if (p15_counters_configure(l->file->maps.file_counters, &l->file->rodata->file_counters_ncpu, l->ncpu) ||
+	    p15_counters_configure(l->file->maps.flow_counters, &l->file->rodata->flow_counters_ncpu, l->ncpu)) {
 		snprintf(err, errlen, "file: cannot size the counters for %d possible CPUs (ADR-0026)", l->ncpu);
 		return P15_EXIT_LOAD;
 	}
+	l->file->rodata->flow_self_tgid = (__u32)getpid();   /* decision 47.1: p15d's own transfers are excluded */
 	if (o->test_no_path_fentry)
 		bpf_program__set_autoattach(l->file->progs.file_open_path, false);
 	bpf_program__set_autoattach(l->file->progs.file_fd_iter, false);   /* the snapshot's FD pass: below */
@@ -61,9 +64,23 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 			 "file identity)", strerror(errno));
 		return P15_EXIT_LOAD;
 	}
-	if (p15_counters_verify(l->file->maps.file_counters, l->ncpu)) {
-		snprintf(err, errlen, "file: the loaded counter map is not the mmapable array asked for (ADR-0026)");
+	if (p15_counters_verify(l->file->maps.file_counters, l->ncpu) ||
+	    p15_counters_verify(l->file->maps.flow_counters, l->ncpu)) {
+		snprintf(err, errlen, "file: a loaded counter map is not the mmapable array asked for (ADR-0026)");
 		return P15_EXIT_INTERNAL;
+	}
+	/* The flow programs (ADR-0005) do not autoattach: they are attached after every self-test, so
+	 * the file self-test's own reads and writes do not emit FLOW records the books must account
+	 * for. Their fds, valid after load, are collected now for the skip counters. */
+	{
+		struct bpf_program *const flow[] = {
+			l->file->progs.flow_read, l->file->progs.flow_write, l->file->progs.flow_readv,
+			l->file->progs.flow_writev, l->file->progs.flow_send, l->file->progs.flow_recv,
+		};
+		for (size_t i = 0; i < sizeof(flow) / sizeof(flow[0]); i++) {
+			bpf_program__set_autoattach(flow[i], false);
+			l->flow_prog_fd[l->n_flow_prog++] = bpf_program__fd(flow[i]);
+		}
 	}
 	/* The FD pass's iterator link (ADR-0015 rule 7): made now, used by every snapshot. A link, not
 	 * an attach to an event: nothing runs until the snapshot creates an iterator from it. */
@@ -173,6 +190,8 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 		bpf_object__for_each_program(p, l->file->obj) {
 			if (p == l->file->progs.file_open_path || p == l->file->progs.file_fd_iter)
 				continue;   /* the fentry's skips are located, not lost; the iterator runs on demand */
+			if (!bpf_program__autoattach(p))
+				continue;   /* the flow programs: attached after the self-tests, their skips in flow_prog_fd */
 			if (l->n_file_kprobe >= (int)(sizeof(l->file_kprobe_fd) / sizeof(l->file_kprobe_fd[0]))) {
 				snprintf(err, errlen, "more file programs than file_kprobe_fd holds");
 				return P15_EXIT_INTERNAL;
@@ -255,6 +274,25 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 	 * .data map is mapped: this is a store, not a system call (ADR-0026). */
 	if (l->file)
 		l->file->data->facts_epoch++;
+	/* Now the flow programs (ADR-0005): the self-tests are done, so from here a transfer is a real
+	 * one the books account for. Attached last so a verifier or attach failure is reported before
+	 * p15d claims the capture is up. */
+	if (l->file) {
+		struct bpf_program *const flow[] = {
+			l->file->progs.flow_read, l->file->progs.flow_write, l->file->progs.flow_readv,
+			l->file->progs.flow_writev, l->file->progs.flow_send, l->file->progs.flow_recv,
+		};
+		for (size_t i = 0; i < sizeof(flow) / sizeof(flow[0]); i++) {
+			struct bpf_link *lk = bpf_program__attach(flow[i]);
+
+			if (!lk) {
+				snprintf(err, errlen, "file: flow program %s attach failed: %s",
+					 bpf_program__name(flow[i]), strerror(errno));
+				return P15_EXIT_LOAD;
+			}
+			l->flow_links[l->n_flow_links++] = lk;
+		}
+	}
 	return 0;
 }
 
@@ -264,6 +302,9 @@ void p15_loader_detach(struct p15_loader *l)
 		spine_bpf__detach(l->spine);
 	if (l->net)
 		net_bpf__detach(l->net);
+	for (int i = 0; i < l->n_flow_links; i++)
+		bpf_link__destroy(l->flow_links[i]);   /* the flow programs were attached by hand (ADR-0005) */
+	l->n_flow_links = 0;
 	if (l->file)
 		file_bpf__detach(l->file);
 }
@@ -287,4 +328,5 @@ int p15_loader_bulk_rb_fd(const struct p15_loader *l)
 	return l->file ? bpf_map__fd(l->file->maps.bulk_rb) : l->net ? bpf_map__fd(l->net->maps.bulk_rb) : -1;
 }
 int p15_loader_file_counters_fd(const struct p15_loader *l) { return l->file ? bpf_map__fd(l->file->maps.file_counters) : -1; }
+int p15_loader_flow_counters_fd(const struct p15_loader *l) { return l->file ? bpf_map__fd(l->file->maps.flow_counters) : -1; }
 int p15_loader_bulk_counters_fd(const struct p15_loader *l) { return l->net ? bpf_map__fd(l->net->maps.bulk_counters) : -1; }

@@ -70,6 +70,18 @@ struct p15_run {
 	_Atomic uint64_t fentry_missed, file_kprobe_missed;
 	uint64_t fentry_missed_base, file_kprobe_missed_base;
 
+	/* data flow (ADR-0005, bpf/include/p15_flow.h): counters by named slot, in their own map, and
+	 * FLOW and FILE records on the bulk ring counted apart from file identity so the books (B1-B5)
+	 * stay separable. The six flow programs' skips are losses (run DEGRADED). */
+	_Atomic uint64_t flowc[P15_CTR_MAX];
+	uint64_t flowc_base[P15_CTR_MAX];
+	uint64_t flow_selftest_consumed;         /* FLOW and FILE records the self-tests took from the bulk ring */
+	_Atomic uint64_t flow_drained, flow_invalid;
+	int flow_prog_fd[6];                     /* vfs_read/write/readv/writev and the two sock tracepoints */
+	int n_flow_prog;
+	_Atomic uint64_t flow_missed;
+	uint64_t flow_missed_base;
+
 	/* events the kernel skipped before our programs ran (ADR-0020 rule 3): bpf_prog_info.recursion_misses
 	 * of each attached program, read by the drain; *_base is the read after the self-tests */
 	int miss_fd[P15_SPINE_TYPES];            /* by record type 1..4; 0 = none */
