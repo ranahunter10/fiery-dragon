@@ -1,0 +1,212 @@
+ashu@p15-dev:~/bt$ cd ~/fiery-dragon && git fetch -q origin && git checkout -q docs/open-cost-research && git log --oneline -1
+2c70830 (HEAD -> docs/open-cost-research, origin/docs/open-cost-research) docs: why an open+close costs what it does, against the published tools
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python ~/p15venv/bin/python -m p15.graph /var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2 /var/tmp/p15-soak/graph3.duckdb --profile > build/graph3.txt 2>&1; echo "rc=$?"
+[sudo: authenticate] Password:
+rc=0
+ashu@p15-dev:~/fiery-dragon$ grep -E "image_|thread_rename|edge_proc_end|^profile" build/graph3.txt
+  edge_proc_end_without_image  11
+  image_exec                   55101
+  image_exec_without_edge      0
+  image_fork                   55097
+  image_snapshot               34
+  thread_rename                3628
+tree: exec 55101, exit_process 55116, exit_thread 5431, fork_process 55108, fork_thread 5432, from_snapshot 139, image_exec 55101, image_fork 55097, image_none 116, image_snapshot 34, pre_existing 139, rename 55128, rename_thread 3628
+profile    67.678 s  read the WAL, the process tree
+profile    26.499 s  raw tables
+profile     4.052 s  sql: CREATE TABLE openfile AS
+profile     1.498 s  proc_src
+profile     1.428 s  sql: CREATE TABLE fid_row AS
+profile     1.043 s  sql: CREATE TABLE edge_src AS
+profile     0.897 s  sql: CREATE TABLE edge AS
+profile     0.880 s  sql: CREATE TABLE edge_plain AS
+profile     0.709 s  sql: CREATE TABLE file AS
+profile     0.518 s  sql: UPDATE openfile SET file_node = n.node_id FROM node n WHERE n.key = op
+profile     0.466 s  sql: CREATE TABLE proc_image AS
+profile     0.400 s  sql: CREATE TABLE exec_name AS
+profile     0.328 s  sql: CREATE TABLE file_src AS
+profile     0.268 s  sql: CREATE TABLE proc AS
+profile     0.194 s  sql: CREATE TABLE node AS
+profile     0.134 s  sql: CREATE TABLE exec_file AS
+profile     0.128 s  sql: DROP TABLE fid_row;
+profile     0.118 s  sql: INSERT INTO graph_count
+profile     0.111 s  sql: CREATE TABLE fact_row AS
+profile     0.104 s  sql: CREATE TABLE obj_facts AS
+profile     0.097 s  sql: DROP TABLE fact_row;
+profile     0.086 s  sql: CREATE TABLE sock_src AS
+profile     0.056 s  sql: UPDATE proc_image SET exe_node = x.src
+profile     0.044 s  sql: CREATE TABLE thread_name AS
+profile     0.030 s  sql: CREATE TABLE clock AS
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python ~/p15venv/bin/python -c "import duckdb; c=duckdb.connect('/var/tmp/p15-soak/graph3.duckdb', read_only=True); print(c.execute('SELECT node_id, tgid, comm FROM proc WHERE tgid = 60801 OR node_id = 139').fetchall()); print(c.execute('SELECT count(*) FROM thread_name').fetchall())"
+[(1, 60801, 'p15d'), (139, 60800, 'python')]
+[(3628,)]
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python /usr/bin/time -f "%e s %M KB" ~/p15venv/bin/python -m p15.graph.track /var/tmp/p15-soak/graph3.duckdb --back 139 --top 5
+backward from node 139 at 48343876214647: 82 nodes, file 74, proc 8
+        48343876214647        139  proc 60800 python (/home/ashu/p15venv/bin/python bench/soak/soak.py --p15d build/p15d --work /var/tmp/p15-soak --duration 3600)
+        48340790411069      55724  file /proc/60801/task/60804/schedstat
+        48340790391258      55707  file /proc/60801/task/60804/comm
+        48340790357451      55723  file /proc/60801/task/60801/schedstat
+        48340790307514      55722  file /proc/60801/task/60801/comm
+  ... 77 more (--top)
+0.48 s 204188 KB
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python /usr/bin/time -f "%e s %M KB" ~/p15venv/bin/python -m p15.graph.track /var/tmp/p15-soak/graph3.duckdb --forward 139 --top 5
+forward from node 139 at 44670650922313: 62734 nodes, proc 55067, sock 7667
+        44670650922313        139  proc 60800 python (/home/ashu/p15venv/bin/python bench/soak/soak.py --p15d build/p15d --work /var/tmp/p15-soak --duration 3600)
+        44680734159555        140  proc 60805 python (/home/ashu/p15venv/bin/python /home/ashu/fiery-dragon/bench/soak/workload.py --work /var/tmp/p15-soak/w --duration 3600.0 --log /var/tmp/p15-soak/truth.jsonl --pause 1.0)
+        44680786761038        141  proc 60806 cc (/usr/bin/cc -O1 -c /var/tmp/p15-soak/w/compile-0/m0.c -o /var/tmp/p15-soak/w/compile-0/m0.o)
+        44680790171275        142  proc 60807 cc1 (/usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -imultiarch x86_64-linux-gnu /var/tmp/p15-soak/w/compile-0/m0.c -D_FORTIFY_SOURCE=3 -quiet -dumpdir /var/tmp/p15-soak/w/compile-0/ -dumpbase m0.c -dumpbase-ext .c -mtune=generic -march=x86-64 -O1 -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccnMTFcs.s)
+        44680803686276        143  proc 60808 x86_64-linux-gn (/usr/bin/x86_64-linux-gnu-as --64 -o /var/tmp/p15-soak/w/compile-0/m0.o /tmp/ccnMTFcs.s)
+  ... 62729 more (--top)
+0.39 s 227144 KB
+ashu@p15-dev:~/fiery-dragon$ mkdir -p ~/bt && cat > ~/bt/file_stats.py <<'EOF'
+import sys
+from p15 import wal as W
+run = W.read_run(__import__("pathlib").Path(sys.argv[1]))
+errors, last, n = [], None, 0
+for r in run.ring_records(2, errors):
+    if r.name == "FILE_STATS":
+        last, n = r, n + 1
+print("file_stats records", n, "read errors", len(errors))
+if last is not None:
+    print("last at ts_ns", last.h["ts_ns"])
+    for k, v in last.f.items():
+        print(f"  {k} {v}")
+EOF
+cd ~/bt && echo "811dad3f9d3ee3617ac798b29942db2c1fdf8f340c62b1da9b6960c886949176  file_stats.py" | sha256sum -c
+file_stats.py: OK
+ashu@p15-dev:~/bt$ cd ~/fiery-dragon && sudo env PYTHONPATH=python ~/p15venv/bin/python ~/bt/file_stats.py /var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2 | tee ~/bt/file_stats.txt
+file_stats records 3650 read errors 0
+last at ts_ns 48344014683438
+  fentry_run 805932
+  fentry_no_inode 0
+  open_emitted 805932
+  open_lost 0
+  open_full_size 0
+  open_truncated 0
+  open_path_error 0
+  backing_emitted 0
+  backing_lost 0
+  backing_user_unread 0
+  session_entry 805935
+  session_no_inode 0
+  session_return 805935
+  session_common 805932
+  missing_emitted 3
+  missing_lost 0
+  verdict_emitted 0
+  verdict_lost 0
+  session_no_cookie 0
+  session_no_entry 0
+  free_run 1303887
+  close_emitted 806012
+  close_lost 0
+  free_unregistered 497875
+  inode_free_run 124258
+  inode_free_hit 89963
+  file_map_full 0
+  obj_map_full 0
+  file_stale 0
+  obj_stale 0
+  file_race 0
+  obj_race 0
+  facts_dup 0
+  subvol_unknown 0
+  kthread_open 0
+  walked 3
+  walk_raced 0
+  walk_truncated 0
+  walk_unnamed 0
+  ret_backing 0
+  ret_backing_emitted 0
+  ret_backing_lost 0
+  ret_backing_verdict_emitted 0
+  ret_backing_verdict_lost 0
+  files_live 503
+  objs_live 791
+  files_live_max 603
+  objs_live_max 843
+  file_drained 1611955
+  file_invalid 0
+  fentry_missed 3
+  kprobe_missed 0
+  file_map_entries 65536
+  obj_map_entries 131072
+ashu@p15-dev:~/fiery-dragon$ make build/prim_cost build/open_cost build/p15d
+make: 'build/open_cost' is up to date.
+make: 'build/p15d' is up to date.
+ashu@p15-dev:~/fiery-dragon$ sudo python3 bench/prim_cost/prog_stats.py --p15d build/p15d --ops 220000 --rounds 7 --ref-nullsys-ns 89.1 -- build/open_cost /var/tmp/p15-open-cost 200000 20000 > build/prog_stats.txt; tail -20 build/prog_stats.txt
+## Round 6
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,047 | 70.81 | 321.8 | 1.000 | 321.9 |
+| file_free | kprobe | 220,132 | 56.62 | 257.2 | 1.001 | 257.4 |
+| file_open_session | kprobe | 440,094 | 45.33 | 103.0 | 2.000 | 206.0 |
+| spine_exec | tracepoint | 2 | 0.01 | 3793.5 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 2391.5 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 8 | 0.00 | 567.2 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1412.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1246.0 | 0.000 | 0.0 |
+| **all** | | 880,289 | 172.78 | | 4.001 | 785.4 |
+
+workload pid=122237 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=91169362 wall_ns=91723529
+row event=same n=200000 cpu_ns=506196256 wall_ns=533011425
+row event=distinct n=20000 cpu_ns=59730515 wall_ns=63244452
+
+p15d exit 0; its log and WAL: /tmp/p15-prog-stats-3qvvl89k
+ashu@p15-dev:~/fiery-dragon$ sudo make bench-open-cost ROUNDS=20
+python3 bench/open_cost/run.py --p15d build/p15d --workload build/open_cost \
+        --dir /var/tmp/p15-open-cost --rounds 20 --same 200000 \
+        --distinct 20000  | tee build/open_cost.txt
+config kernel=7.0.0-38-generic cpus=3 rounds=20 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=-
+row round=-1 arm=none2 event=nullsys n=1000000 cpu_ns=90084506 wall_ns=90077653
+row round=-1 arm=none2 event=same n=200000 cpu_ns=182716032 wall_ns=182719148
+row round=-1 arm=none2 event=distinct n=20000 cpu_ns=23947258 wall_ns=23944244
+row round=-1 arm=none event=nullsys n=1000000 cpu_ns=89781511 wall_ns=89776105
+row round=-1 arm=none event=same n=200000 cpu_ns=185880142 wall_ns=185884943
+row round=-1 arm=none event=distinct n=20000 cpu_ns=23211458 wall_ns=23208288
+Traceback (most recent call last):
+  File "/home/ashu/fiery-dragon/bench/open_cost/run.py", line 236, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/ashu/fiery-dragon/bench/open_cost/run.py", line 221, in main
+    rows, cap = traced_arm(a, work, rnd)
+                ~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ashu/fiery-dragon/bench/open_cost/run.py", line 179, in traced_arm
+    b = capture_books(runs[0], pid, a.dir, a.same + a.distinct)
+  File "/home/ashu/fiery-dragon/bench/open_cost/run.py", line 99, in capture_books
+    from p15 import wal as W
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+python3 bench/open_cost/summarize.py build/open_cost.txt | tee build/open_cost.md
+summarize: no timed rounds
+ashu@p15-dev:~/fiery-dragon$ sudo bpftrace -e 'kprobe:vfs_read,kprobe:vfs_write,kprobe:vfs_readv,kprobe:vfs_writev,tracepoint:sock:sock_send_length,tracepoint:sock:sock_recv_length { @n[probe] = count(); @c[probe, comm] = count(); } END { print(@n); print(@c, 20); clear(@n); clear(@c); }' -c "/usr/bin/python3 bench/soak/workload.py --work /var/tmp/p15-rates --duration 300 --log /var/tmp/p15-rates.log" > build/rates.txt 2>&1; tail -40 build/rates.txt
+Attached 7 probes
+@n[tracepoint:sock:sock_send_length]: 1166
+@n[tracepoint:sock:sock_recv_length]: 1684
+@n[kprobe:vfs_write]: 14054
+@n[kprobe:vfs_read]: 78128
+@c[kprobe:vfs_read, upowerd]: 720
+@c[kprobe:vfs_read, grep]: 736
+@c[kprobe:vfs_read, uniq]: 740
+@c[kprobe:vfs_write, tar]: 745
+@c[kprobe:vfs_read, ls]: 999
+@c[tracepoint:sock:sock_recv_length, curl]: 1003
+@c[kprobe:vfs_read, sort]: 1110
+@c[kprobe:vfs_read, sha256sum]: 1480
+@c[kprobe:vfs_read, cc]: 1596
+@c[kprobe:vfs_read, tar]: 1633
+@c[kprobe:vfs_write, git]: 1813
+@c[kprobe:vfs_write, python3]: 2234
+@c[kprobe:vfs_write, ld]: 2470
+@c[kprobe:vfs_write, x86_64-linux-gn]: 3862
+@c[kprobe:vfs_read, git]: 5513
+@c[kprobe:vfs_read, cc1]: 7258
+@c[kprobe:vfs_read, x86_64-linux-gn]: 7814
+@c[kprobe:vfs_read, python3]: 11293
+@c[kprobe:vfs_read, curl]: 13616
+@c[kprobe:vfs_read, ld]: 14364
+
+
+ashu@p15-dev:~/fiery-dragon$
