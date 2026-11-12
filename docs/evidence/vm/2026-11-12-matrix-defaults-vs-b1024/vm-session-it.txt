@@ -1,0 +1,10 @@
+ashu@p15-dev:~$ cd ~/fiery-dragon && git pull -q && git log --oneline -1
+1c3221a (HEAD -> audit/capture-review, origin/audit/capture-review) audit: the matrix's first runs; its it_p15d step gets the right Python
+ashu@p15-dev:~/fiery-dragon$ sudo env P15_PYTHON=/home/ashu/p15venv/bin/python daemon/tests/it_p15d.sh build 2>&1 | tail -5
+[sudo: authenticate] Password:
+  ok   FILE_STATS counts walked opens, never more than the WAL holds
+  ok   every CLOSE of those opens names the OPEN's object, not 0
+case 4: a bad flag [t+125s]
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)
+ashu@p15-dev:~/fiery-dragon$

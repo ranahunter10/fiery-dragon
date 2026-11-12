@@ -4,7 +4,7 @@ VM `p15-dev-2604`, kernel 7.0.0-38, 3 vCPUs. Branch `audit/capture-review` at b4
 
 ## 1. it_p15d "FAIL": the matrix's fault, not p15d's
 
-In both runs `it_p15d` reported 43 failed checks. Every error is `ModuleNotFoundError: No module named 'google_crc32c'`. `it_p15d.sh` reads the WAL with `$P15_PYTHON`, which defaults to `python3`, and under sudo that is the system Python (`daemon/tests/it_p15d.sh` L14). The script did not export the Python it had found. **Fixed in this PR** (`export P15_PYTHON="$PY"` before the step). The functional cases are still to be rerun; nothing here says they fail.
+In both runs `it_p15d` reported 43 failed checks. Every error is `ModuleNotFoundError: No module named 'google_crc32c'`. `it_p15d.sh` reads the WAL with `$P15_PYTHON`, which defaults to `python3`, and under sudo that is the system Python (`daemon/tests/it_p15d.sh` L14). The script did not export the Python it had found. **Fixed in this PR** (`export P15_PYTHON="$PY"` before the step). Rerun with the right Python at 1c3221a: **`it_p15d: PASS (0 failed checks)`** (`vm-session-it.txt`).
 
 The summary's `idle` and `soak` lines kept only the table headers (the greps missed the rows). Also fixed: the rows are kept now. The `soak` PASS lines are the soak's own verdict (recall 100 % for every step kind, graph checks complete, books 0).
 
@@ -42,4 +42,4 @@ What it shows:
 
 **The drain's per-poll reading of each program's skip counter** (`BPF_OBJ_GET_INFO_BY_FD` per program, E-0199) now shows as about a quarter of p15d's samples: 24.5 % in those four lines. That cost is per poll, not per record, and the rest of p15d has shrunk, so it shows. **Next to measure**, before any change: how often the counters must be read. Today they are read after every poll (E-0199); how fast a skip must be noticed is ADR-0020's to say.
 
-`SHA256SUMS` covers `vm-session.txt`.
+`SHA256SUMS` covers `vm-session.txt` and `vm-session-it.txt`.
