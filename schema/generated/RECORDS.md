@@ -36,6 +36,32 @@ Common header of every record, 32 bytes (ADR-0008).
 - bit 6 `KTHREAD`: the record was written in a kernel thread (PF_KTHREAD): its header names that thread, not the file's user (ADR-0015 rule 8)
 - bit 7 `PATH_WALKED`: OPEN written by the kprobe.session return because the path fentry did not run: the path is the bounded dentry walk's (bpf/include/p15_dpath.h, ADR-0029), equal to bpf_d_path's in every case the harness checks; with TRUNCATED, its last components, not rooted
 - bit 8 `PATH_RACED`: with PATH_WALKED: a rename or mount changed the tree during both tries of the walk, so the path may join two states of it; kept, not trusted (ADR-0029 rule 3)
+- bit 9 `UNREGISTERED`: FLOW: no open-file entry could be made (its map was full, ADR-0015 rule 9): fid is fresh and names this record only; obj is the object's id, with its facts here when OBJ_NEW (ADR-0005 rule 8)
+- bit 10 `PEEK`: FLOW of kind RECV: the receive had MSG_PEEK, so the data stayed queued (ADR-0005 rule 2); part of the aggregate's key
+- bit 11 `VECTORED`: FLOW of kind READ or WRITE: the transfer was vfs_readv or vfs_writev; part of the aggregate's key
+- bit 12 `START_UNKNOWN`: FLOW of kind READ or WRITE: the first event's start time was not kept, so first_ts is that event's end (counted in FLOW_STATS)
+
+**FLOW_KIND** (values of `FLOW.kind`): the transfer's direction and hook family (ADR-0005 rule 2)
+
+- 1 `READ`: vfs_read, vfs_readv: object -> process
+- 2 `WRITE`: vfs_write, vfs_writev: process -> object
+- 3 `RECV`: sock:sock_recv_length: socket -> process
+- 4 `SEND`: sock:sock_send_length: process -> socket
+
+**FLOW_REASON** (values of `FLOW.reason`): why the aggregate was written (ADR-0005 rule 7)
+
+- 1 `SINGLE`: folding is off (ADR-0005 rule 13; step 2b): one transfer, count 1
+- 2 `OBJ_FLOW`: the object had a flow that blocks the fold (rule 5)
+- 3 `PROC_FLOW`: the process had a flow that blocks the fold (rule 5)
+- 4 `OTHER_KEY`: another process, thread, kind or flags on the same open file (rule 4)
+- 5 `EXEC`: the owner exec'd (rule 7)
+- 6 `EXIT`: the owner exited (rule 7)
+- 7 `SWEEP`: the once-a-second sweep on the fdatasync tick (rule 9)
+- 8 `SEGMENT`: the sweep before a segment rotation (rule 9)
+- 9 `END`: the final sweep at an orderly stop (rule 9)
+- 10 `RACE`: the aggregate was busy or taken: the event is written alone (rule 10)
+- 11 `MAP_FULL`: no open-file entry: the event is written alone, UNREGISTERED (rule 8)
+- 12 `MARK_LOST`: a mark the check needed was missing (rule 5)
 
 ## Part OBJFACTS (40 bytes)
 
@@ -716,6 +742,32 @@ Fixed part 56 bytes; at most 56 bytes with its variable fields.
 | 48 | `fflags` | u32 | P15_FF_* (NEVER_OPENED, KTHREAD) |
 | 52 | `f_mode` | u32 | file->f_mode at the free |
 
+## FILE (type 11, version 1, class OPEN)
+
+An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id, before the FLOW that found it, by the program that found it. The header names that task.
+
+Fixed part 80 bytes; at most 184 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id it registers (ADR-0015 rule 1) |
+| 40 | `obj` | u64 | the object id of the file's inode |
+| 48 | `fflags` | u32 | P15_FF_OBJ_NEW or 0 |
+| 52 | `f_flags` | u32 | file->f_flags |
+| 56 | `f_mode` | u32 | file->f_mode |
+| 60 | `seen` | u32 | where the open file was first seen, as OBJFACTS.seen: 3 first I/O (step 2b), 4 mmap (2d), 5 network (2e) |
+| 64 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 68 | `name_full` | u32 | full length of name in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 72 | `facts_len` | u16 | bytes of facts present in this record *(generated)* |
+| 74 | `name_len` | u16 | bytes of name present in this record *(generated)* |
+| 76 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `facts` (0 or 40 bytes, part OBJFACTS): the object's facts, present exactly when fflags has OBJ_NEW
+- `name` (at most 63 bytes): file->f_path.dentry->d_name, without its NUL: 'memfd:<name>', an anonymous inode's '[eventfd]', a socket's protocol ('TCP', 'UNIX'), empty for a pipe; the reader builds pipe:[ino] and socket:[ino] from the facts. A longer name is cut at 63 bytes with header flag TRUNCATED, and name_full holds its length
+
 ## FD (type 39, version 1, class MARKER)
 
 One open descriptor of a thread-group leader in a process snapshot (ADR-0015 rule 7): the files already open when capture began, standard streams included, and again in every segment's opening snapshot. The header names the descriptor's process (ADR-0009). It carries the object's facts always (decision 19.2), so a segment can be read alone.
@@ -863,3 +915,29 @@ Fixed part 456 bytes; at most 456 bytes with its variable fields.
 | 440 | `kprobe_missed` | u64 | runs the kernel skipped of the session and the two free programs (recursion_misses; run DEGRADED) |
 | 448 | `file_map_entries` | u32 | the open-file map's size (--file-map-entries) |
 | 452 | `obj_map_entries` | u32 | the object map's size (--obj-map-entries) |
+
+## FLOW (type 10, version 1, class FLOW)
+
+Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here.
+
+Fixed part 96 bytes; at most 136 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id (ADR-0015 rule 1); with UNREGISTERED, a fresh id of this record only |
+| 40 | `obj` | u64 | the object id of the file's inode |
+| 48 | `first_ts` | u64 | start of the first event, CLOCK_BOOTTIME ns; with START_UNKNOWN its end; a socket event is an instant (ADR-0005 rule 5) |
+| 56 | `last_ts` | u64 | end of the last event, CLOCK_BOOTTIME ns |
+| 64 | `bytes` | u64 | bytes moved, the sum of the events' returns (each at least 1: failed and empty transfers are counted, not recorded) |
+| 72 | `count` | u32 | events in the aggregate, at least 1; 1 with reason SINGLE |
+| 76 | `fflags` | u32 | P15_FF_* (OBJ_NEW, UNREGISTERED, PEEK, VECTORED, START_UNKNOWN) |
+| 80 | `kind` | u16 | P15_FLOW_KIND_* |
+| 82 | `reason` | u16 | P15_FLOW_REASON_*: why it was written |
+| 84 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 88 | `facts_len` | u16 | bytes of facts present in this record *(generated)* |
+| 90 | `_pad` | char[6] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `facts` (0 or 40 bytes, part OBJFACTS): the object's facts, present exactly when fflags has OBJ_NEW, which only an UNREGISTERED FLOW carries (ADR-0015 rule 2)

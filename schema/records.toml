@@ -646,6 +646,26 @@ name = "PATH_RACED"
 bit = 8
 doc = "with PATH_WALKED: a rename or mount changed the tree during both tries of the walk, so the path may join two states of it; kept, not trusted (ADR-0029 rule 3)"
 
+[[fflag]]
+name = "UNREGISTERED"
+bit = 9
+doc = "FLOW: no open-file entry could be made (its map was full, ADR-0015 rule 9): fid is fresh and names this record only; obj is the object's id, with its facts here when OBJ_NEW (ADR-0005 rule 8)"
+
+[[fflag]]
+name = "PEEK"
+bit = 10
+doc = "FLOW of kind RECV: the receive had MSG_PEEK, so the data stayed queued (ADR-0005 rule 2); part of the aggregate's key"
+
+[[fflag]]
+name = "VECTORED"
+bit = 11
+doc = "FLOW of kind READ or WRITE: the transfer was vfs_readv or vfs_writev; part of the aggregate's key"
+
+[[fflag]]
+name = "START_UNKNOWN"
+bit = 12
+doc = "FLOW of kind READ or WRITE: the first event's start time was not kept, so first_ts is that event's end (counted in FLOW_STATS)"
+
 [[part]]
 name = "OBJFACTS"
 doc = "An object's facts (ADR-0015 rule 2): what the kernel says about one in-memory inode when capture first names it. The reader decides the graph node from them (rule 3, ADR-0027)."
@@ -723,6 +743,25 @@ fields = [
   { name = "obj",      c = "u64", doc = "its object id; 0 when no program of the open computed it (the path program skipped and the session's return missed, both counted)" },
   { name = "fflags",   c = "u32", doc = "P15_FF_* (NEVER_OPENED, KTHREAD)" },
   { name = "f_mode",   c = "u32", doc = "file->f_mode at the free" },
+]
+
+[[record]]
+name = "FILE"
+type = 11
+version = 1
+class = "OPEN"
+doc = "An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id, before the FLOW that found it, by the program that found it. The header names that task."
+fields = [
+  { name = "fid",      c = "u64", doc = "the open-file id it registers (ADR-0015 rule 1)" },
+  { name = "obj",      c = "u64", doc = "the object id of the file's inode" },
+  { name = "fflags",   c = "u32", doc = "P15_FF_OBJ_NEW or 0" },
+  { name = "f_flags",  c = "u32", doc = "file->f_flags" },
+  { name = "f_mode",   c = "u32", doc = "file->f_mode" },
+  { name = "seen",     c = "u32", doc = "where the open file was first seen, as OBJFACTS.seen: 3 first I/O (step 2b), 4 mmap (2d), 5 network (2e)" },
+]
+var = [
+  { name = "facts", part = "OBJFACTS", doc = "the object's facts, present exactly when fflags has OBJ_NEW" },
+  { name = "name",  max = 63, doc = "file->f_path.dentry->d_name, without its NUL: 'memfd:<name>', an anonymous inode's '[eventfd]', a socket's protocol ('TCP', 'UNIX'), empty for a pipe; the reader builds pipe:[ino] and socket:[ino] from the facts. A longer name is cut at 63 bytes with header flag TRUNCATED, and name_full holds its length" },
 ]
 
 # ---- the snapshot's FD pass (ADR-0015 rule 7): written by the iter/task_file program into p15d's
@@ -864,4 +903,56 @@ fields = [
   { name = "kprobe_missed",   c = "u64", doc = "runs the kernel skipped of the session and the two free programs (recursion_misses; run DEGRADED)" },
   { name = "file_map_entries", c = "u32", doc = "the open-file map's size (--file-map-entries)" },
   { name = "obj_map_entries",  c = "u32", doc = "the object map's size (--obj-map-entries)" },
+]
+
+# ---- data flow (ADR-0005; STATE decision 18): FLOW class, on the bulk ring, counted loss ----
+[[enum]]
+name = "FLOW_KIND"
+field = "FLOW.kind"
+doc = "the transfer's direction and hook family (ADR-0005 rule 2)"
+values = [
+  { name = "READ",  value = 1, doc = "vfs_read, vfs_readv: object -> process" },
+  { name = "WRITE", value = 2, doc = "vfs_write, vfs_writev: process -> object" },
+  { name = "RECV",  value = 3, doc = "sock:sock_recv_length: socket -> process" },
+  { name = "SEND",  value = 4, doc = "sock:sock_send_length: process -> socket" },
+]
+
+[[enum]]
+name = "FLOW_REASON"
+field = "FLOW.reason"
+doc = "why the aggregate was written (ADR-0005 rule 7)"
+values = [
+  { name = "SINGLE",    value = 1,  doc = "folding is off (ADR-0005 rule 13; step 2b): one transfer, count 1" },
+  { name = "OBJ_FLOW",  value = 2,  doc = "the object had a flow that blocks the fold (rule 5)" },
+  { name = "PROC_FLOW", value = 3,  doc = "the process had a flow that blocks the fold (rule 5)" },
+  { name = "OTHER_KEY", value = 4,  doc = "another process, thread, kind or flags on the same open file (rule 4)" },
+  { name = "EXEC",      value = 5,  doc = "the owner exec'd (rule 7)" },
+  { name = "EXIT",      value = 6,  doc = "the owner exited (rule 7)" },
+  { name = "SWEEP",     value = 7,  doc = "the once-a-second sweep on the fdatasync tick (rule 9)" },
+  { name = "SEGMENT",   value = 8,  doc = "the sweep before a segment rotation (rule 9)" },
+  { name = "END",       value = 9,  doc = "the final sweep at an orderly stop (rule 9)" },
+  { name = "RACE",      value = 10, doc = "the aggregate was busy or taken: the event is written alone (rule 10)" },
+  { name = "MAP_FULL",  value = 11, doc = "no open-file entry: the event is written alone, UNREGISTERED (rule 8)" },
+  { name = "MARK_LOST", value = 12, doc = "a mark the check needed was missing (rule 5)" },
+]
+
+[[record]]
+name = "FLOW"
+type = 10
+version = 1
+class = "FLOW"
+doc = "Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here."
+fields = [
+  { name = "fid",      c = "u64", doc = "the open-file id (ADR-0015 rule 1); with UNREGISTERED, a fresh id of this record only" },
+  { name = "obj",      c = "u64", doc = "the object id of the file's inode" },
+  { name = "first_ts", c = "u64", doc = "start of the first event, CLOCK_BOOTTIME ns; with START_UNKNOWN its end; a socket event is an instant (ADR-0005 rule 5)" },
+  { name = "last_ts",  c = "u64", doc = "end of the last event, CLOCK_BOOTTIME ns" },
+  { name = "bytes",    c = "u64", doc = "bytes moved, the sum of the events' returns (each at least 1: failed and empty transfers are counted, not recorded)" },
+  { name = "count",    c = "u32", doc = "events in the aggregate, at least 1; 1 with reason SINGLE" },
+  { name = "fflags",   c = "u32", doc = "P15_FF_* (OBJ_NEW, UNREGISTERED, PEEK, VECTORED, START_UNKNOWN)" },
+  { name = "kind",     c = "u16", doc = "P15_FLOW_KIND_*" },
+  { name = "reason",   c = "u16", doc = "P15_FLOW_REASON_*: why it was written" },
+]
+var = [
+  { name = "facts", part = "OBJFACTS", doc = "the object's facts, present exactly when fflags has OBJ_NEW, which only an UNREGISTERED FLOW carries (ADR-0015 rule 2)" },
 ]

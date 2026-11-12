@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "0603d28802aa51b208a2948eee61ec8f5491f8a1fc3fd02080bd6243854d3c18"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "fb2f57700dbd9205da294f1bec00c8c62596ae0c7f5f44a0ab1226e9ebb1813d"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -26,6 +26,28 @@ FF_NEVER_OPENED = 1 << 5
 FF_KTHREAD = 1 << 6
 FF_PATH_WALKED = 1 << 7
 FF_PATH_RACED = 1 << 8
+FF_UNREGISTERED = 1 << 9
+FF_PEEK = 1 << 10
+FF_VECTORED = 1 << 11
+FF_START_UNKNOWN = 1 << 12
+FLOW_KIND = {1: 'READ', 2: 'WRITE', 3: 'RECV', 4: 'SEND'}   # FLOW.kind
+FLOW_KIND_READ = 1
+FLOW_KIND_WRITE = 2
+FLOW_KIND_RECV = 3
+FLOW_KIND_SEND = 4
+FLOW_REASON = {1: 'SINGLE', 2: 'OBJ_FLOW', 3: 'PROC_FLOW', 4: 'OTHER_KEY', 5: 'EXEC', 6: 'EXIT', 7: 'SWEEP', 8: 'SEGMENT', 9: 'END', 10: 'RACE', 11: 'MAP_FULL', 12: 'MARK_LOST'}   # FLOW.reason
+FLOW_REASON_SINGLE = 1
+FLOW_REASON_OBJ_FLOW = 2
+FLOW_REASON_PROC_FLOW = 3
+FLOW_REASON_OTHER_KEY = 4
+FLOW_REASON_EXEC = 5
+FLOW_REASON_EXIT = 6
+FLOW_REASON_SWEEP = 7
+FLOW_REASON_SEGMENT = 8
+FLOW_REASON_END = 9
+FLOW_REASON_RACE = 10
+FLOW_REASON_MAP_FULL = 11
+FLOW_REASON_MARK_LOST = 12
 
 HEADER_DTYPE = np.dtype({'names': ['type', 'version', 'len', 'flags', 'ts_ns', 'tgid', 'tid', 'start_ns'], 'formats': ['<u2', '<u2', '<u2', '<u2', '<u8', '<u4', '<u4', '<u8'], 'offsets': [0, 2, 4, 6, 8, 16, 20, 24], 'itemsize': 32})
 
@@ -56,6 +78,8 @@ TYPES = {
     'OPEN_VERDICT': 7,
     'BACKING': 8,
     'CLOSE': 9,
+    'FLOW': 10,
+    'FILE': 11,
     'CLOCK_SYNC': 32,
     'STATS': 33,
     'GAP': 34,
@@ -140,6 +164,9 @@ RECORDS = {
     (9, 1): Layout('CLOSE', 9, 1, 'OPEN',
         np.dtype({'names': ['h', 'fid', 'obj', 'fflags', 'f_mode'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 52], 'itemsize': 56}),
         56, 56, ()),
+    (11, 1): Layout('FILE', 11, 1, 'OPEN',
+        np.dtype({'names': ['h', 'fid', 'obj', 'fflags', 'f_flags', 'f_mode', 'seen', 'facts_full', 'name_full', 'facts_len', 'name_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 72, 74, 76], 'itemsize': 80}),
+        80, 184, (('facts', 40), ('name', 63)), (('facts', 'OBJFACTS'),)),
     (39, 1): Layout('FD', 39, 1, 'MARKER',
         np.dtype({'names': ['h', 'fid', 'obj', 'pos', 'fd', 'fflags', 'f_flags', 'f_mode', 'path_err', 'snap_id', 'facts_full', 'path_full', 'facts_len', 'path_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<i4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 56, 60, 64, 68, 72, 76, 80, 84, 88, 90, 92], 'itemsize': 96}),
         96, 4232, (('facts', 40), ('path', 4096)), (('facts', 'OBJFACTS'),)),
@@ -149,6 +176,9 @@ RECORDS = {
     (40, 2): Layout('FILE_STATS', 40, 2, 'STATS',
         np.dtype({'names': ['h', 'fentry_run', 'fentry_no_inode', 'open_emitted', 'open_lost', 'open_full_size', 'open_truncated', 'open_path_error', 'backing_emitted', 'backing_lost', 'backing_user_unread', 'session_entry', 'session_no_inode', 'session_return', 'session_common', 'missing_emitted', 'missing_lost', 'verdict_emitted', 'verdict_lost', 'session_no_cookie', 'session_no_entry', 'free_run', 'close_emitted', 'close_lost', 'free_unregistered', 'inode_free_run', 'inode_free_hit', 'file_map_full', 'obj_map_full', 'file_stale', 'obj_stale', 'file_race', 'obj_race', 'facts_dup', 'subvol_unknown', 'kthread_open', 'walked', 'walk_raced', 'walk_truncated', 'walk_unnamed', 'ret_backing', 'ret_backing_emitted', 'ret_backing_lost', 'ret_backing_verdict_emitted', 'ret_backing_verdict_lost', 'files_live', 'objs_live', 'files_live_max', 'objs_live_max', 'file_drained', 'file_invalid', 'fentry_missed', 'kprobe_missed', 'file_map_entries', 'obj_map_entries'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 384, 392, 400, 408, 416, 424, 432, 440, 448, 452], 'itemsize': 456}),
         456, 456, ()),
+    (10, 1): Layout('FLOW', 10, 1, 'FLOW',
+        np.dtype({'names': ['h', 'fid', 'obj', 'first_ts', 'last_ts', 'bytes', 'count', 'fflags', 'kind', 'reason', 'facts_full', 'facts_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u2', '<u2', '<u4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 76, 80, 82, 84, 88, 90], 'itemsize': 96}),
+        96, 136, (('facts', 40),), (('facts', 'OBJFACTS'),)),
 }
 
 # The raw DuckDB tables of p15_records.sql: record name -> ((column, DuckDB type), ...), in order.
@@ -589,6 +619,36 @@ SQL_COLUMNS = {
         ('fflags', 'UINTEGER'),
         ('f_mode', 'UINTEGER'),
     ),
+    'FILE': (
+        ('ring', 'UTINYINT'),
+        ('seq', 'UBIGINT'),
+        ('version', 'USMALLINT'),
+        ('flags', 'USMALLINT'),
+        ('ts_ns', 'UBIGINT'),
+        ('tgid', 'UINTEGER'),
+        ('tid', 'UINTEGER'),
+        ('start_ns', 'UBIGINT'),
+        ('fid', 'UBIGINT'),
+        ('obj', 'UBIGINT'),
+        ('fflags', 'UINTEGER'),
+        ('f_flags', 'UINTEGER'),
+        ('f_mode', 'UINTEGER'),
+        ('seen', 'UINTEGER'),
+        ('facts_full', 'UINTEGER'),
+        ('name_full', 'UINTEGER'),
+        ('facts_len', 'USMALLINT'),
+        ('name_len', 'USMALLINT'),
+        ('facts_ino', 'UBIGINT'),
+        ('facts_subvol', 'UBIGINT'),
+        ('facts_dev', 'UINTEGER'),
+        ('facts_gen', 'UINTEGER'),
+        ('facts_mode', 'UINTEGER'),
+        ('facts_fs_magic', 'UINTEGER'),
+        ('facts_nlink', 'UINTEGER'),
+        ('facts_seen', 'USMALLINT'),
+        ('facts_oflags', 'USMALLINT'),
+        ('name', 'BLOB'),
+    ),
     'FD': (
         ('ring', 'UTINYINT'),
         ('seq', 'UBIGINT'),
@@ -685,5 +745,35 @@ SQL_COLUMNS = {
         ('kprobe_missed', 'UBIGINT'),
         ('file_map_entries', 'UINTEGER'),
         ('obj_map_entries', 'UINTEGER'),
+    ),
+    'FLOW': (
+        ('ring', 'UTINYINT'),
+        ('seq', 'UBIGINT'),
+        ('version', 'USMALLINT'),
+        ('flags', 'USMALLINT'),
+        ('ts_ns', 'UBIGINT'),
+        ('tgid', 'UINTEGER'),
+        ('tid', 'UINTEGER'),
+        ('start_ns', 'UBIGINT'),
+        ('fid', 'UBIGINT'),
+        ('obj', 'UBIGINT'),
+        ('first_ts', 'UBIGINT'),
+        ('last_ts', 'UBIGINT'),
+        ('bytes', 'UBIGINT'),
+        ('count', 'UINTEGER'),
+        ('fflags', 'UINTEGER'),
+        ('kind', 'USMALLINT'),
+        ('reason', 'USMALLINT'),
+        ('facts_full', 'UINTEGER'),
+        ('facts_len', 'USMALLINT'),
+        ('facts_ino', 'UBIGINT'),
+        ('facts_subvol', 'UBIGINT'),
+        ('facts_dev', 'UINTEGER'),
+        ('facts_gen', 'UINTEGER'),
+        ('facts_mode', 'UINTEGER'),
+        ('facts_fs_magic', 'UINTEGER'),
+        ('facts_nlink', 'UINTEGER'),
+        ('facts_seen', 'USMALLINT'),
+        ('facts_oflags', 'USMALLINT'),
     ),
 }

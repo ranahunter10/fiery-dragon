@@ -111,6 +111,17 @@ class Schema:
     records: list[Record]
     parts: list[Part] = field(default_factory=list)
     fflags: list[tuple[str, int, str]] = field(default_factory=list)   # record-field flags (u32), [[fflag]]
+    enums: list["Enum"] = field(default_factory=list)                  # named field values, [[enum]]
+
+
+@dataclass(frozen=True)
+class Enum:
+    """[[enum]]: the values one field may hold (ADR-0008 rule 2), so C and Python share them.
+    `field` names the records' field that holds them, e.g. "FLOW.kind"."""
+    name: str
+    field: str
+    doc: str
+    values: tuple[tuple[str, int, str], ...]
 
 
 def _pad8(n: int) -> int:
@@ -164,6 +175,20 @@ def load(path: Path = SCHEMA) -> Schema:
         fflags.append((fl["name"], fl["bit"], fl.get("doc", "")))
     if len({b for _, b, _ in fflags}) != len(fflags) or len({n for n, _, _ in fflags}) != len(fflags):
         raise SchemaError("fflags: two record-field flags share a bit or a name")
+    enums = []
+    for en in data.get("enum", []):
+        ename, vals = en.get("name", ""), en.get("values", [])
+        if not RECORD_NAME_RE.match(ename) or any(e.name == ename for e in enums) or not vals:
+            raise SchemaError(f"enum {ename!r}: bad or duplicate name, or no values")
+        out = []
+        for v in vals:
+            if not RECORD_NAME_RE.match(v.get("name", "")) or not isinstance(v.get("value"), int) or v["value"] <= 0:
+                raise SchemaError(f"enum {ename}: value {v!r} needs an upper-case name and an integer > 0 "
+                                  f"(0 is never a valid value, so a zeroed field is caught)")
+            out.append((v["name"], v["value"], v.get("doc", "")))
+        if len({n for n, _, _ in out}) != len(out) or len({x for _, x, _ in out}) != len(out):
+            raise SchemaError(f"enum {ename}: two values share a name or a number")
+        enums.append(Enum(ename, en.get("field", ""), en.get("doc", ""), tuple(out)))
     parts: dict[str, Part] = {}
     for pt in data.get("part", []):
         pname = pt.get("name")
@@ -225,7 +250,11 @@ def load(path: Path = SCHEMA) -> Schema:
         if rec.max_size > MAX_RECORD:
             raise SchemaError(f"{where}: maximum size {rec.max_size} exceeds the u16 len field")
         records.append(rec)
-    return Schema(header, data["header"].get("doc", ""), flags, records, list(parts.values()), fflags)
+    for en in enums:
+        rname, _, fname = en.field.partition(".")
+        if not any(r.name == rname and any(f.name == fname for f in r.fields) for r in records):
+            raise SchemaError(f"enum {en.name}: field {en.field!r} is no record's field")
+    return Schema(header, data["header"].get("doc", ""), flags, records, list(parts.values()), fflags, enums)
 
 
 # ---------------------------------------------------------------- layout identity (the lock)
@@ -287,6 +316,12 @@ def emit_c(s: Schema) -> str:
         L.append("/* Record-field flags (the u32 fflags field of the records that have one) */")
         for name, bit, doc in s.fflags:
             L.append(f"#define P15_FF_{name} (1u << {bit})   /* {doc} */")
+        L.append("")
+    for en in s.enums:
+        L.append(f"/* {en.name} ({en.field}): {en.doc} */")
+        for n, v, d in en.values:
+            L.append(f"#define P15_{en.name}_{n} {v}   /* {d} */")
+        L.append(f"#define P15_{en.name}_MAX {max(v for _, v, _ in en.values)}")
         L.append("")
     L.append("enum p15_type {")
     for r in sorted({(r.type, r.name) for r in s.records}):
@@ -356,6 +391,9 @@ def emit_py(s: Schema) -> str:
         L.append(f"F_{name} = 1 << {bit}")
     for name, bit, _ in s.fflags:
         L.append(f"FF_{name} = 1 << {bit}")
+    for en in s.enums:
+        L.append(f"{en.name} = {{{', '.join(f'{v}: {n!r}' for n, v, _ in en.values)}}}   # {en.field}")
+        L += [f"{en.name}_{n} = {v}" for n, v, _ in en.values]
     L += ["", f"HEADER_DTYPE = {_np_dtype_expr(s.header, HEADER_SIZE, False)}", "", "",
           "class Layout(NamedTuple):", "    name: str", "    type: int", "    version: int", "    cls: str",
           "    dtype: np.dtype", "    fixed_size: int", "    max_size: int",
@@ -395,6 +433,9 @@ def emit_md(s: Schema) -> str:
     if s.fflags:
         L += ["", "**Record-field flags** (`fflags`, u32, in the records that have the field):", ""]
         L += [f"- bit {b} `{n}`: {d}" for n, b, d in s.fflags]
+    for en in s.enums:
+        L += ["", f"**{en.name}** (values of `{en.field}`): {en.doc}", ""]
+        L += [f"- {v} `{n}`: {d}" for n, v, d in en.values]
     for pt in s.parts:
         L += ["", f"## Part {pt.name} ({pt.size} bytes)", "", pt.doc, "",
               "A variable field that names this part is absent (length 0) or this struct, whole.", "",

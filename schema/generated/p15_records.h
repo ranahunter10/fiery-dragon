@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "0603d28802aa51b208a2948eee61ec8f5491f8a1fc3fd02080bd6243854d3c18"
+#define P15_SCHEMA_HASH "fb2f57700dbd9205da294f1bec00c8c62596ae0c7f5f44a0ab1226e9ebb1813d"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -30,6 +30,32 @@
 #define P15_FF_KTHREAD (1u << 6)   /* the record was written in a kernel thread (PF_KTHREAD): its header names that thread, not the file's user (ADR-0015 rule 8) */
 #define P15_FF_PATH_WALKED (1u << 7)   /* OPEN written by the kprobe.session return because the path fentry did not run: the path is the bounded dentry walk's (bpf/include/p15_dpath.h, ADR-0029), equal to bpf_d_path's in every case the harness checks; with TRUNCATED, its last components, not rooted */
 #define P15_FF_PATH_RACED (1u << 8)   /* with PATH_WALKED: a rename or mount changed the tree during both tries of the walk, so the path may join two states of it; kept, not trusted (ADR-0029 rule 3) */
+#define P15_FF_UNREGISTERED (1u << 9)   /* FLOW: no open-file entry could be made (its map was full, ADR-0015 rule 9): fid is fresh and names this record only; obj is the object's id, with its facts here when OBJ_NEW (ADR-0005 rule 8) */
+#define P15_FF_PEEK (1u << 10)   /* FLOW of kind RECV: the receive had MSG_PEEK, so the data stayed queued (ADR-0005 rule 2); part of the aggregate's key */
+#define P15_FF_VECTORED (1u << 11)   /* FLOW of kind READ or WRITE: the transfer was vfs_readv or vfs_writev; part of the aggregate's key */
+#define P15_FF_START_UNKNOWN (1u << 12)   /* FLOW of kind READ or WRITE: the first event's start time was not kept, so first_ts is that event's end (counted in FLOW_STATS) */
+
+/* FLOW_KIND (FLOW.kind): the transfer's direction and hook family (ADR-0005 rule 2) */
+#define P15_FLOW_KIND_READ 1   /* vfs_read, vfs_readv: object -> process */
+#define P15_FLOW_KIND_WRITE 2   /* vfs_write, vfs_writev: process -> object */
+#define P15_FLOW_KIND_RECV 3   /* sock:sock_recv_length: socket -> process */
+#define P15_FLOW_KIND_SEND 4   /* sock:sock_send_length: process -> socket */
+#define P15_FLOW_KIND_MAX 4
+
+/* FLOW_REASON (FLOW.reason): why the aggregate was written (ADR-0005 rule 7) */
+#define P15_FLOW_REASON_SINGLE 1   /* folding is off (ADR-0005 rule 13; step 2b): one transfer, count 1 */
+#define P15_FLOW_REASON_OBJ_FLOW 2   /* the object had a flow that blocks the fold (rule 5) */
+#define P15_FLOW_REASON_PROC_FLOW 3   /* the process had a flow that blocks the fold (rule 5) */
+#define P15_FLOW_REASON_OTHER_KEY 4   /* another process, thread, kind or flags on the same open file (rule 4) */
+#define P15_FLOW_REASON_EXEC 5   /* the owner exec'd (rule 7) */
+#define P15_FLOW_REASON_EXIT 6   /* the owner exited (rule 7) */
+#define P15_FLOW_REASON_SWEEP 7   /* the once-a-second sweep on the fdatasync tick (rule 9) */
+#define P15_FLOW_REASON_SEGMENT 8   /* the sweep before a segment rotation (rule 9) */
+#define P15_FLOW_REASON_END 9   /* the final sweep at an orderly stop (rule 9) */
+#define P15_FLOW_REASON_RACE 10   /* the aggregate was busy or taken: the event is written alone (rule 10) */
+#define P15_FLOW_REASON_MAP_FULL 11   /* no open-file entry: the event is written alone, UNREGISTERED (rule 8) */
+#define P15_FLOW_REASON_MARK_LOST 12   /* a mark the check needed was missing (rule 5) */
+#define P15_FLOW_REASON_MAX 12
 
 enum p15_type {
 	P15_T_FORK = 1,
@@ -41,6 +67,8 @@ enum p15_type {
 	P15_T_OPEN_VERDICT = 7,
 	P15_T_BACKING = 8,
 	P15_T_CLOSE = 9,
+	P15_T_FLOW = 10,
+	P15_T_FILE = 11,
 	P15_T_CLOCK_SYNC = 32,
 	P15_T_STATS = 33,
 	P15_T_GAP = 34,
@@ -1093,6 +1121,39 @@ P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, f_mode) == 52, "p15_close_v1.f_mode
 
 #define P15_CLOSE_V1_MAX_SIZE 56
 
+/* FILE v1 (OPEN): An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id, before the FLOW that found it, by the program that found it. The header names that task. */
+struct p15_file_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u32 fflags;
+	__u32 f_flags;
+	__u32 f_mode;
+	__u32 seen;
+	__u32 facts_full;   /* generated */
+	__u32 name_full;   /* generated */
+	__u16 facts_len;   /* generated */
+	__u16 name_len;   /* generated */
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_file_v1) == 80, "p15_file_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, h) == 0, "p15_file_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, fid) == 32, "p15_file_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, obj) == 40, "p15_file_v1.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, fflags) == 48, "p15_file_v1.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, f_flags) == 52, "p15_file_v1.f_flags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, f_mode) == 56, "p15_file_v1.f_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, seen) == 60, "p15_file_v1.seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, facts_full) == 64, "p15_file_v1.facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, name_full) == 68, "p15_file_v1.name_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, facts_len) == 72, "p15_file_v1.facts_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, name_len) == 74, "p15_file_v1.name_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, _pad) == 76, "p15_file_v1._pad offset");
+
+#define P15_FILE_V1_MAX_SIZE 184
+#define P15_FILE_V1_FACTS_MAX 40
+#define P15_FILE_V1_NAME_MAX 63
+
 /* FD v1 (MARKER): One open descriptor of a thread-group leader in a process snapshot (ADR-0015 rule 7): the files already open when capture began, standard streams included, and again in every segment's opening snapshot. The header names the descriptor's process (ADR-0009). It carries the object's facts always (decision 19.2), so a segment can be read alone. */
 struct p15_fd_v1 {
 	struct p15_hdr h;
@@ -1348,6 +1409,40 @@ P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v2, obj_map_entries) == 452, "p15_
 
 #define P15_FILE_STATS_V2_MAX_SIZE 456
 
+/* FLOW v1 (FLOW): Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here. */
+struct p15_flow_v1 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u64 first_ts;
+	__u64 last_ts;
+	__u64 bytes;
+	__u32 count;
+	__u32 fflags;
+	__u16 kind;
+	__u16 reason;
+	__u32 facts_full;   /* generated */
+	__u16 facts_len;   /* generated */
+	char _pad[6];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_flow_v1) == 96, "p15_flow_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, h) == 0, "p15_flow_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, fid) == 32, "p15_flow_v1.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, obj) == 40, "p15_flow_v1.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, first_ts) == 48, "p15_flow_v1.first_ts offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, last_ts) == 56, "p15_flow_v1.last_ts offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, bytes) == 64, "p15_flow_v1.bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, count) == 72, "p15_flow_v1.count offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, fflags) == 76, "p15_flow_v1.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, kind) == 80, "p15_flow_v1.kind offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, reason) == 82, "p15_flow_v1.reason offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, facts_full) == 84, "p15_flow_v1.facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, facts_len) == 88, "p15_flow_v1.facts_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, _pad) == 90, "p15_flow_v1._pad offset");
+
+#define P15_FLOW_V1_MAX_SIZE 136
+#define P15_FLOW_V1_FACTS_MAX 40
+
 /* The current version of each record type: what the BPF programs emit. */
 #define P15_FORK_VERSION 1
 #define p15_fork p15_fork_v1
@@ -1407,6 +1502,11 @@ P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v2, obj_map_entries) == 452, "p15_
 #define P15_CLOSE_VERSION 1
 #define p15_close p15_close_v1
 #define P15_CLOSE_MAX_SIZE P15_CLOSE_V1_MAX_SIZE
+#define P15_FILE_VERSION 1
+#define p15_file p15_file_v1
+#define P15_FILE_MAX_SIZE P15_FILE_V1_MAX_SIZE
+#define P15_FILE_FACTS_MAX P15_FILE_V1_FACTS_MAX
+#define P15_FILE_NAME_MAX P15_FILE_V1_NAME_MAX
 #define P15_FD_VERSION 1
 #define p15_fd p15_fd_v1
 #define P15_FD_MAX_SIZE P15_FD_V1_MAX_SIZE
@@ -1415,6 +1515,10 @@ P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v2, obj_map_entries) == 452, "p15_
 #define P15_FILE_STATS_VERSION 2
 #define p15_file_stats p15_file_stats_v2
 #define P15_FILE_STATS_MAX_SIZE P15_FILE_STATS_V2_MAX_SIZE
+#define P15_FLOW_VERSION 1
+#define p15_flow p15_flow_v1
+#define P15_FLOW_MAX_SIZE P15_FLOW_V1_MAX_SIZE
+#define P15_FLOW_FACTS_MAX P15_FLOW_V1_FACTS_MAX
 
 /* The largest record any (type, version) can be: a batch with this much free takes any record
  * (the drain makes room before it reads a ring, daemon/drain.c). */

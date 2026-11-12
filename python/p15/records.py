@@ -56,9 +56,16 @@ _FFLAGS_OK = {
     "BACKING": gen.FF_OBJ_NEW | gen.FF_USER_OBJ_NEW | gen.FF_KTHREAD,
     "CLOSE": gen.FF_NEVER_OPENED | gen.FF_KTHREAD,
     "FD": gen.FF_PATH_ERROR,
+    "FILE": gen.FF_OBJ_NEW,
+    "FLOW": gen.FF_OBJ_NEW | gen.FF_UNREGISTERED | gen.FF_PEEK | gen.FF_VECTORED | gen.FF_START_UNKNOWN,
 }
 _PART_FLAG = {("OPEN", "facts"): gen.FF_OBJ_NEW, ("BACKING", "facts"): gen.FF_OBJ_NEW,
-              ("BACKING", "user_facts"): gen.FF_USER_OBJ_NEW}
+              ("BACKING", "user_facts"): gen.FF_USER_OBJ_NEW, ("FILE", "facts"): gen.FF_OBJ_NEW,
+              ("FLOW", "facts"): gen.FF_OBJ_NEW}
+_VFS_KINDS = (gen.FLOW_KIND_READ, gen.FLOW_KIND_WRITE)
+# the records whose padding p15_rec_check also requires to be zero (records.c check_pad): every
+# record since FLOW and FILE; the older ones are not checked (decision waiting, STATE)
+_PAD_ZERO = ("FILE", "FLOW")
 
 
 class RecordError(ValueError):
@@ -147,6 +154,13 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
             raise RecordError("OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)", off)
         if lay.name == "OPEN_VERDICT" and f["verdict"] >= 0:
             raise RecordError("OPEN_VERDICT: the verdict is not a denial", off)
+        if lay.name == "FILE" and f["seen"] not in (3, 4, 5):
+            raise RecordError("FILE: unknown 'seen'", off)
+        if lay.name == "FILE" and (bool(h["flags"] & F_TRUNCATED) != (f["name_full"] != f["name_len"]) or
+                                   f["name_full"] < f["name_len"]):
+            raise RecordError("FILE: name_full differs from name_len without TRUNCATED, or the reverse", off)
+        if lay.name == "FLOW":
+            _flow_check(f, off)
     var = {}
     if lay.var:
         used = 0
@@ -174,9 +188,30 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
             p += vl
         if any(bytes(buf[p:off + n])):
             raise RecordError("non-zero bytes after the variable fields", off)
+        if lay.name in _PAD_ZERO and "_pad" in lay.dtype.names:
+            dt, o = lay.dtype.fields["_pad"][:2]
+            if any(bytes(buf[off + o:off + o + dt.itemsize])):
+                raise RecordError(f"{lay.name}: non-zero padding", off)
     elif n != lay.fixed_size:
         raise RecordError("len differs from the fixed size", off)
     return Record(ring, seq, lay.name, h, f, var)
+
+
+def _flow_check(f: dict, off: int) -> None:
+    """FLOW's own rules (ADR-0005 rules 2, 7, 8; schema/records.toml), as records.c check_flow."""
+    ff, kind = f["fflags"], f["kind"]
+    if kind not in gen.FLOW_KIND or f["reason"] not in gen.FLOW_REASON:
+        raise RecordError("FLOW: unknown kind or reason", off)
+    if f["count"] < 1 or f["bytes"] < f["count"] or (f["reason"] == gen.FLOW_REASON_SINGLE and f["count"] != 1):
+        raise RecordError("FLOW: count 0, fewer bytes than events, or a SINGLE of count other than 1", off)
+    if (ff & gen.FF_PEEK and kind != gen.FLOW_KIND_RECV) or \
+            (ff & (gen.FF_VECTORED | gen.FF_START_UNKNOWN) and kind not in _VFS_KINDS):
+        raise RecordError("FLOW: PEEK on a kind other than RECV, or VECTORED/START_UNKNOWN on a socket kind", off)
+    if ff & gen.FF_OBJ_NEW and not ff & gen.FF_UNREGISTERED:
+        raise RecordError("FLOW: facts on a registered open file (they travel in OPEN, FILE or FD)", off)
+    if bool(ff & gen.FF_UNREGISTERED) != (f["reason"] == gen.FLOW_REASON_MAP_FULL) and \
+            f["reason"] != gen.FLOW_REASON_SINGLE:
+        raise RecordError("FLOW: UNREGISTERED without reason MAP_FULL, or MAP_FULL without UNREGISTERED", off)
 
 
 def _part(buf, p: int, vl: int, pname: str, rname: str, vname: str, f: dict, off: int) -> dict | None:

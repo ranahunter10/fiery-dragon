@@ -191,6 +191,10 @@ class Decoding(unittest.TestCase):
                     extra = {"verdict": -13}                                      # only a denial is a verdict
                 if name == "FD":
                     extra = {"var": {"facts": facts()}}                           # FD always carries its facts
+                if name == "FILE":
+                    extra = {"seen": 3}                                           # first I/O
+                if name == "FLOW":
+                    extra = {"kind": 1, "reason": 1, "count": 1, "bytes": 1}      # zero is no kind, reason or count
                 r = dec(rec(name, h_ts_ns=123, **extra))
                 self.assertEqual((r.name, r.h["type"], r.h["ts_ns"]), (name, t, 123))
                 self.assertIsInstance(r.h["ts_ns"], int)
@@ -203,6 +207,90 @@ class Decoding(unittest.TestCase):
         self.assertEqual(R.endpoint(n6, "l"), "[::1]:80")
         with self.assertRaises(R.RecordError):
             R.endpoint(dec(rec("NET", family=1)), "l")
+
+
+def flow(**kw) -> bytes:
+    """A valid unfolded FLOW (step 2b): one READ of 4 bytes, unless given."""
+    f = {"fid": 5, "obj": 2, "first_ts": 100, "last_ts": 150, "bytes": 4, "count": 1,
+         "kind": R.gen.FLOW_KIND_READ, "reason": R.gen.FLOW_REASON_SINGLE}
+    f.update(kw)
+    return rec("FLOW", **f)
+
+
+class DataFlow(unittest.TestCase):
+    """FLOW and FILE (ADR-0005 rules 2, 7, 8; ADR-0015 rules 2, 5, 9): the same refusals as
+    records.c check_flow and check_file."""
+
+    def why(self, b: bytes, words: str):
+        with self.assertRaises(R.RecordError) as cm:
+            dec(b)
+        self.assertEqual(cm.exception.why, words)
+
+    def test_layouts(self):
+        """Sizes stated in the PR (96 and 80 bytes with their metadata; FLOW is 88 without the facts field)."""
+        self.assertEqual((R.gen.RECORDS[(10, 1)].fixed_size, R.gen.RECORDS[(11, 1)].fixed_size), (96, 80))
+        self.assertEqual((R.TYPES["FLOW"], R.TYPES["FILE"]), (10, 11))
+        self.assertEqual(R.gen.FLOW_KIND, {1: "READ", 2: "WRITE", 3: "RECV", 4: "SEND"})
+        self.assertEqual(max(R.gen.FLOW_REASON), 12)
+
+    def test_flow_accepted(self):
+        r = dec(flow())
+        self.assertEqual((r.name, r.f["fid"], r.f["bytes"], r.var["facts"]), ("FLOW", 5, 4, None))
+        dec(flow(kind=R.gen.FLOW_KIND_RECV, fflags=R.gen.FF_PEEK, first_ts=7, last_ts=7))
+        dec(flow(kind=R.gen.FLOW_KIND_WRITE, fflags=R.gen.FF_VECTORED | R.gen.FF_START_UNKNOWN))
+        u = dec(flow(fflags=R.gen.FF_UNREGISTERED | R.gen.FF_OBJ_NEW, var={"facts": facts(seen=3)}))
+        self.assertEqual(u.var["facts"]["seen"], 3)
+        dec(flow(fflags=R.gen.FF_UNREGISTERED, reason=R.gen.FLOW_REASON_MAP_FULL))
+        dec(flow(count=3, bytes=3, reason=R.gen.FLOW_REASON_SWEEP))
+
+    def test_flow_refusals(self):
+        g = R.gen
+        self.why(flow(kind=0), "FLOW: unknown kind or reason")
+        self.why(flow(kind=5), "FLOW: unknown kind or reason")
+        self.why(flow(reason=0), "FLOW: unknown kind or reason")
+        self.why(flow(reason=13), "FLOW: unknown kind or reason")
+        why = "FLOW: count 0, fewer bytes than events, or a SINGLE of count other than 1"
+        self.why(flow(count=0), why)
+        self.why(flow(count=0, reason=g.FLOW_REASON_SWEEP), why)      # only the count rule refuses this one
+        self.why(flow(count=2, bytes=1, reason=g.FLOW_REASON_SWEEP), why)
+        self.why(flow(count=2, bytes=8), why)
+        why = "FLOW: PEEK on a kind other than RECV, or VECTORED/START_UNKNOWN on a socket kind"
+        self.why(flow(fflags=g.FF_PEEK), why)
+        self.why(flow(kind=g.FLOW_KIND_SEND, fflags=g.FF_VECTORED), why)
+        self.why(flow(kind=g.FLOW_KIND_RECV, fflags=g.FF_START_UNKNOWN), why)
+        self.why(flow(fflags=g.FF_OBJ_NEW, var={"facts": facts(seen=3)}),
+                 "FLOW: facts on a registered open file (they travel in OPEN, FILE or FD)")
+        why = "FLOW: UNREGISTERED without reason MAP_FULL, or MAP_FULL without UNREGISTERED"
+        self.why(flow(reason=g.FLOW_REASON_MAP_FULL), why)
+        self.why(flow(fflags=g.FF_UNREGISTERED, reason=g.FLOW_REASON_RACE), why)
+        self.why(flow(fflags=g.FF_UNREGISTERED | g.FF_OBJ_NEW), "FLOW: facts present without its flag, or its flag without it")
+        self.why(flow(fflags=g.FF_KTHREAD), "FLOW: fflags bits this record never carries")
+        bad = bytearray(flow())
+        bad[90] = 1                                     # _pad, after facts_len (offsets 88-89)
+        self.why(bytes(bad), "FLOW: non-zero padding")
+        self.why(flow(length=104), "len larger than its fields need")
+
+    def test_file(self):
+        g = R.gen
+        r = dec(rec("FILE", fid=9, obj=3, fflags=g.FF_OBJ_NEW, seen=3,
+                    var={"facts": facts(seen=3, fs_magic=0x50495045), "name": b""}))
+        self.assertEqual((r.f["fid"], r.var["facts"]["fs_magic"], r.var["name"]), (9, 0x50495045, b""))
+        self.assertEqual(dec(rec("FILE", seen=3, var={"name": b"memfd:x"})).var["name"], b"memfd:x")
+        self.why(rec("FILE", seen=2), "FILE: unknown 'seen'")
+        self.why(rec("FILE", seen=3, fflags=g.FF_KTHREAD), "FILE: fflags bits this record never carries")
+        self.why(rec("FILE", seen=3, var={"facts": facts()}), "FILE: facts present without its flag, or its flag without it")
+        why = "FILE: name_full differs from name_len without TRUNCATED, or the reverse"
+        self.why(rec("FILE", seen=3, var={"name": b"x" * 63}, name_len=63, name_full=70), why)
+        self.why(rec("FILE", seen=3, var={"name": b"x"}, h_flags=R.F_TRUNCATED), why)
+        dec(rec("FILE", seen=3, var={"name": b"x" * 63}, name_len=63, name_full=70, h_flags=R.F_TRUNCATED))
+        self.why(rec("FILE", seen=3, name_len=64, name_full=64, length=80 + 72), "variable field beyond len")
+        self.why(rec("FILE", seen=3, var={"name": b"ab"}, length=96), "len larger than its fields need")
+        tail = bytearray(rec("FILE", seen=3, var={"name": b"ab"}))
+        tail[83] = 1                                    # in the padding after the name
+        self.why(bytes(tail), "non-zero bytes after the variable fields")
+        bad = bytearray(rec("FILE", seen=3))
+        bad[76] = 1                                     # _pad, after name_len (offsets 74-75)
+        self.why(bytes(bad), "FILE: non-zero padding")
 
 
 class Helpers(unittest.TestCase):

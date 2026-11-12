@@ -1,0 +1,117 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 92  of event 'task-clock:ppp'
+# Event count (approx.): 46023000
+#
+# Overhead  Command      Shared Object      Symbol                         
+# ........  ...........  .................  ...............................
+#
+    21.74%  p15d-writer  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+            |
+            ---0x7f1b833375cb
+               0x7f1b832a3df9
+               p15_writer_main
+               |          
+               |--20.65%--p15q_wait
+               |          poll (inlined)
+               |          __poll
+               |          0x7f1b832a039b
+               |          0x7f1b832ac802
+               |          entry_SYSCALL_64_after_hwframe
+               |          do_syscall_64
+               |          x64_sys_call
+               |          __x64_sys_poll
+               |          do_sys_poll
+               |          do_poll.constprop.0
+               |          poll_schedule_timeout.constprop.0
+               |          schedule_hrtimeout_range
+               |          schedule_hrtimeout_range_clock
+               |          schedule
+               |          __schedule
+               |          finish_task_switch.isra.0
+               |          
+                --1.09%--p15w_tick
+                          timed_sync
+                          fdatasync
+                          0x7f1b832a039b
+                          0x7f1b832ac802
+                          entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_fdatasync
+                          do_fsync
+                          ext4_sync_file
+                          file_write_and_wait_range
+                          __filemap_fdatawait_range
+                          folio_wait_writeback
+                          folio_wait_bit
+                          folio_wait_bit_common
+                          io_schedule
+                          schedule
+                          __schedule
+                          finish_task_switch.isra.0
+
+     7.61%  p15d         p15d               [.] after_poll
+            |
+            ---_start
+               __libc_start_main
+               0x7f1b8322a600
+               main
+               p15_drain_poll
+               after_poll
+               |          
+                --4.35%--after_poll_file (inlined)
+
+     7.61%  p15d-writer  p15d               [.] tiles
+            |
+            ---0x7f1b833375cb
+               0x7f1b832a3df9
+               p15_writer_main
+               drain_queue
+               append (inlined)
+               p15w_append
+               tiles
+
+     6.52%  p15d-writer  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+            |
+            ---0x7f1b833375cb
+               0x7f1b832a3df9
+               p15_writer_main
+               p15w_tick
+               timed_sync
+               fdatasync
+               0x7f1b832a039b
+               0x7f1b832ac802
+               entry_SYSCALL_64_after_hwframe
+               do_syscall_64
+               x64_sys_call
+               __x64_sys_fdatasync
+               do_fsync
+               ext4_sync_file
+               file_write_and_wait_range
+               filemap_writeback
+               do_writepages
+               ext4_writepages
+               ext4_do_writepages
+               blk_finish_plug
+               __blk_flush_plug
+               blk_mq_flush_plug_list
+               blk_mq_dispatch_list
+               blk_mq_run_hw_queue
+               blk_mq_sched_dispatch_requests
+               __blk_mq_sched_dispatch_requests
+               __blk_mq_do_dispatch_sched
+               blk_mq_dispatch_rq_list
+               scsi_queue_rq
+               scsi_dispatch_cmd
+               ata_scsi_queuecmd
+               _raw_spin_unlock_irqrestore
+
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "daemon: 1 MiB batches by default; the matrix becomes the merge rule (decision 46)"
+**Last updated:** 2026-11-12 (UTC), PR "schema: FLOW and FILE records, and enums the generator shares with C and Python" (step 2b part 1)
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -133,6 +133,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     2. slice B code, in five PRs (N2, E-0139), each with schema records, BPF programs, loader wiring, daemon checks and formatters, the Python decoder and report, load-time self-test checks, an `it_p15d.sh` case and mutation sweep entries:
        1. 🔧 2a identity: OPEN, OPEN_VERDICT, FD (the snapshot's pass), BACKING, CLOSE (FILE moves to 2b, decision 19.5); kprobe.session + fentry on `security_file_open`, kprobe.multi on `security_file_free` and `security_inode_free`. ✅ dry run on the VM (PR #61, E-0146); ✅ part 1, the records and ADR-0027 (PR #62, E-0148); ✅ part 2, `bpf/progs/file.bpf.c` with the loader, `p15_rec_check`, the self-test, FILE_STATS and `it_p15d.sh` case 8 (PR #63; on the VM every case passes and the p15d sweep kills 42/42, E-0156 to E-0159); ✅ part 3: the snapshot's FD pass (`iter/task_file` in `file.bpf.c`), SNAP_DONE v2 with its books, a facts epoch per segment, `it_p15d.sh` case 9 (PR #64; on the VM every case passes and the p15d sweep kills 45/45, E-0160, E-0161). **Step 2a done.**
        2. 2b transfers, unfolded, and FILE: read/write/readv/writev (kprobe.session) and the socket tracepoints, one FLOW per call, the books and FLOW_STATS; **gate:** the pipeline's zero-loss ceiling on the VM (N3) and skips under contention (decision 17);
+          🔧 part 1, the records: FLOW (type 10) and FILE (type 11), their checks in `p15_rec_check` and the Python decoder, `[[enum]]` in the generator (PR #88, E-0226; its matrix passed on the VM, E-0234); the design checks for the programs ([note](research/2026-11-12-step-2b-design-checks.md), E-0227). Next: part 2, the dry run on the VM (the note's §4), then part 3, the programs with FLOW_STATS, the self-test and an `it_p15d.sh` case, then part 4, the ceiling and contention gate.
        3. 2c folding (ADR-0005 rules 4-12) and `python/p15/cpr.py`; its default from 2b's number (N7);
        4. 2d splice, sendfile, copy_file_range, tee, vmsplice (the system call for the pipe-to-user side), mmap at map time, rename/unlink/link/truncate;
        5. 2e io_uring completions (with the overflow and skip counts) and NET v3 with the socket's object id;
@@ -320,3 +321,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    3. U2 only if the soak still shows switches after U1.
    4. U5 (smaller records) by an ADR after U3's numbers.
 12. ~~**The capture layer's acceptance criteria and plan**~~ Accepted: decision 46.
+13. **Where FLOW's start time comes from** (E-0227, [design checks](research/2026-11-12-step-2b-design-checks.md) §2). A kprobe.session's cookie is 8 bytes (SRC), so on `vfs_read` it cannot keep both the file and the entry time. Recommendation: option A. The cookie keeps the file pointer, and task storage keeps {file, entry time}; a failed creation or a nested transfer is flagged `START_UNKNOWN` and counted. Measured in the 2b dry run against end time only (option D), whose use would need an ADR superseding ADR-0005 rule 8.
+14. **FLOW's size** (E-0226). 96 bytes as ADR-0005 rule 8 asks, against 88 if the rare unregistered transfer went as a FILE before its FLOW (an ADR superseding rule 8). Recommendation: keep 96 and let step 2b's ceiling decide, with bytes per second reported beside records per second.
+15. **Padding of the records before FLOW and FILE is not checked** by `p15_rec_check` or the reader (E-0226). A program that builds a record in reused memory could carry old bytes in `_pad`. Recommendation: check every type's padding, after a matrix run on the VM shows that no program writes non-zero padding today.
+16. **The socket tracepoints' edges in 2b** (E-0227, design checks §3). Recommendation: a send or receive on a socket without a file (kernel code using a kernel socket from a user task) is counted `no_file` and not written (ADR-0005 rule 11). Sends inside splice and sendfile are written as SEND until step 2d's SPLICE records exist; then they follow rule 11's `inside_splice`.

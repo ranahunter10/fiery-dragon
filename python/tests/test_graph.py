@@ -147,6 +147,10 @@ class RawTables(Base):
                 extra["fflags"] = FF.FF_OBJ_NEW | FF.FF_USER_OBJ_NEW
             if lay.name == "OPEN_VERDICT":
                 extra["verdict"] = -13
+            if lay.name == "FILE":
+                extra = {"fflags": FF.FF_OBJ_NEW, "seen": 3}
+            if lay.name == "FLOW":
+                extra = {"fflags": FF.FF_OBJ_NEW | FF.FF_UNREGISTERED, "kind": 1, "reason": 1, "count": 1, "bytes": 1}
             r = R.decode(memoryview(rec(lay.name, var=var, version=v, **extra)), 0, 0, 0)
             cols = [c for c, _ in R.gen.SQL_COLUMNS[lay.name]]
             self.assertLessEqual(set(RAW.row(r)), set(cols), (lay.name, v))

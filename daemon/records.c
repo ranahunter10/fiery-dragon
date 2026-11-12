@@ -27,6 +27,8 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_CLOSE:  return version == 1 ? sizeof(struct p15_close_v1) : 0;
 	case P15_T_FD:     return version == 1 ? sizeof(struct p15_fd_v1) : 0;
 	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : version == 2 ? sizeof(struct p15_file_stats_v2) : 0;
+	case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;
+	case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;
 	}
 	return 0;
 }
@@ -185,12 +187,98 @@ static int check_file(const void *data, size_t fixed, const char **why)
 			return -EINVAL;
 		return check_tail(data, fixed, (size_t)r->facts_len + r->path_len, 0, why);
 	}
+	case P15_T_FILE: {
+		const struct p15_file_v1 *r = data;
+		static const __u8 zero[sizeof(r->_pad)];
+
+		if (r->fflags & ~P15_FF_OBJ_NEW) {
+			*why = "FILE: fflags bits this record never carries";
+			return -EINVAL;
+		}
+		if (r->seen < 3 || r->seen > 5) {
+			*why = "FILE: unknown 'seen'";
+			return -EINVAL;
+		}
+		if (!!(h->flags & P15_F_TRUNCATED) != (r->name_full != r->name_len) || r->name_full < r->name_len) {
+			*why = "FILE: name_full differs from name_len without TRUNCATED, or the reverse";
+			return -EINVAL;
+		}
+		if (r->facts_len > P15_PART_OBJFACTS_SIZE || r->name_len > P15_FILE_V1_NAME_MAX ||
+		    fixed + r->facts_len + r->name_len > h->len) {
+			*why = "variable field beyond len";
+			return -EINVAL;
+		}
+		if (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,
+			       "FILE: facts is neither absent nor a whole OBJFACTS",
+			       "FILE: facts present without its flag, or its flag without it", why))
+			return -EINVAL;
+		if (check_tail(data, fixed, (size_t)r->facts_len + r->name_len, 0, why))
+			return -EINVAL;
+		if (memcmp(r->_pad, zero, sizeof(zero))) {
+			*why = "FILE: non-zero padding";
+			return -EINVAL;
+		}
+		return 0;
+	}
 	default:
 		*why = "not a file-identity record";
 		return -EINVAL;
 	}
 	if (h->len != fixed) {
 		*why = "len differs from the fixed size";
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/* FLOW (ADR-0005 rules 2, 7, 8): the same rules and wording as python/p15/records.py _flow_check.
+ * Called after the common header checks. */
+static int check_flow(const void *data, size_t fixed, const char **why)
+{
+	const struct p15_flow_v1 *r = data;
+	const struct p15_hdr *h = data;
+	static const __u8 zero[sizeof(r->_pad)];
+	const __u32 ok = P15_FF_OBJ_NEW | P15_FF_UNREGISTERED | P15_FF_PEEK | P15_FF_VECTORED | P15_FF_START_UNKNOWN;
+	const int vfs = r->kind == P15_FLOW_KIND_READ || r->kind == P15_FLOW_KIND_WRITE;
+
+	if (r->fflags & ~ok) {
+		*why = "FLOW: fflags bits this record never carries";
+		return -EINVAL;
+	}
+	if (r->kind < 1 || r->kind > P15_FLOW_KIND_MAX || r->reason < 1 || r->reason > P15_FLOW_REASON_MAX) {
+		*why = "FLOW: unknown kind or reason";
+		return -EINVAL;
+	}
+	if (r->count < 1 || r->bytes < r->count || (r->reason == P15_FLOW_REASON_SINGLE && r->count != 1)) {
+		*why = "FLOW: count 0, fewer bytes than events, or a SINGLE of count other than 1";
+		return -EINVAL;
+	}
+	if (((r->fflags & P15_FF_PEEK) && r->kind != P15_FLOW_KIND_RECV) ||
+	    ((r->fflags & (P15_FF_VECTORED | P15_FF_START_UNKNOWN)) && !vfs)) {
+		*why = "FLOW: PEEK on a kind other than RECV, or VECTORED/START_UNKNOWN on a socket kind";
+		return -EINVAL;
+	}
+	if ((r->fflags & P15_FF_OBJ_NEW) && !(r->fflags & P15_FF_UNREGISTERED)) {
+		*why = "FLOW: facts on a registered open file (they travel in OPEN, FILE or FD)";
+		return -EINVAL;
+	}
+	if (r->reason != P15_FLOW_REASON_SINGLE &&
+	    !!(r->fflags & P15_FF_UNREGISTERED) != (r->reason == P15_FLOW_REASON_MAP_FULL)) {
+		*why = "FLOW: UNREGISTERED without reason MAP_FULL, or MAP_FULL without UNREGISTERED";
+		return -EINVAL;
+	}
+	if (r->facts_len > P15_PART_OBJFACTS_SIZE || fixed + r->facts_len > h->len) {
+		*why = "variable field beyond len";
+		return -EINVAL;
+	}
+	if (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,
+		       "FLOW: facts is neither absent nor a whole OBJFACTS",
+		       "FLOW: facts present without its flag, or its flag without it", why))
+		return -EINVAL;
+	if (check_tail(data, fixed, r->facts_len, 0, why))
+		return -EINVAL;
+	if (memcmp(r->_pad, zero, sizeof(zero))) {
+		*why = "FLOW: non-zero padding";
 		return -EINVAL;
 	}
 	return 0;
@@ -255,8 +343,11 @@ int p15_rec_check(const void *data, size_t size, const char **why)
 		*why = "SNAP_DONE: fd_pass is neither 0 nor 1";
 		return -EINVAL;
 	}
-	if (p15_is_file_type(h->type) || h->type == P15_T_FD) {
+	if (p15_is_file_type(h->type) || h->type == P15_T_FD || h->type == P15_T_FILE) {
 		if (check_file(data, fixed, why))
+			return -EINVAL;
+	} else if (h->type == P15_T_FLOW) {
+		if (check_flow(data, fixed, why))
 			return -EINVAL;
 	} else if (h->type == P15_T_EXEC) {
 		size_t tail;
@@ -386,6 +477,8 @@ const char *p15_type_name(__u16 type)
 	case P15_T_CLOSE:      return "CLOSE";
 	case P15_T_FD:         return "FD";
 	case P15_T_FILE_STATS: return "FILE_STATS";
+	case P15_T_FILE:       return "FILE";
+	case P15_T_FLOW:       return "FLOW";
 	}
 	return "?";
 }
@@ -640,6 +733,23 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 		return k + snprintf(buf + k, n - k, " snap=%u fd=%u fid=%llu obj=%llu pos=%llu fflags=0x%x path=\"%s\"(%u)",
 				    r->snap_id, r->fd, (unsigned long long)r->fid, (unsigned long long)r->obj,
 				    (unsigned long long)r->pos, r->fflags, a, r->path_len);
+	}
+	case P15_T_FILE: {
+		const struct p15_file_v1 *r = data;
+
+		printable(a, sizeof(a), (const __u8 *)(r + 1) + r->facts_len, r->name_len);
+		return k + snprintf(buf + k, n - k, " fid=%llu obj=%llu fflags=0x%x f_flags=0%o f_mode=0x%x seen=%u name=\"%s\"(%u/%u)",
+				    (unsigned long long)r->fid, (unsigned long long)r->obj, r->fflags, r->f_flags, r->f_mode,
+				    r->seen, a, r->name_len, r->name_full);
+	}
+	case P15_T_FLOW: {
+		const struct p15_flow_v1 *r = data;
+		static const char *const kinds[] = { "?", "READ", "WRITE", "RECV", "SEND" };
+
+		return k + snprintf(buf + k, n - k, " %s fid=%llu obj=%llu first=%llu last=%llu bytes=%llu count=%u fflags=0x%x reason=%u",
+				    kinds[r->kind <= P15_FLOW_KIND_MAX ? r->kind : 0], (unsigned long long)r->fid,
+				    (unsigned long long)r->obj, (unsigned long long)r->first_ts,
+				    (unsigned long long)r->last_ts, (unsigned long long)r->bytes, r->count, r->fflags, r->reason);
 	}
 	case P15_T_FILE_STATS: {
 		const struct p15_file_stats_v1 *r = data;
