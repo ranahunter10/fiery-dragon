@@ -1,0 +1,25 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && git pull --ff-only && git log --oneline -1
+Updating f9297f1..1adfb17
+Fast-forward
+ docs/CODEMAP.md                                          |   4 ++--
+ docs/STATE.md                                            |   2 +-
+ docs/evidence/vm/2026-11-12-graph-profile/README.md      |  24 +++++++++++++++++++
+ docs/evidence/vm/2026-11-12-graph-profile/SHA256SUMS     |   1 +
+ docs/evidence/vm/2026-11-12-graph-profile/vm-session.txt | 138 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ docs/evidence/vm/2026-11-12-soak-1h/README.md            |   4 ++--
+ docs/journal/engineering-log.csv                         |   1 +
+ python/p15/graph/build.py                                |  19 +++++++--------
+ python/p15/graph/raw.py                                  |  38 ++++++++++++++++++++++--------
+ python/tests/test_graph.py                               |  13 ++++++++++
+ 10 files changed, 218 insertions(+), 26 deletions(-)
+1adfb17 (HEAD -> bench/soak, origin/bench/soak) graph: load process rows as columns, not one INSERT per row (E-0203)
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python ~/p15venv/bin/python -m p15.graph /var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2 /var/tmp/p15-prof2.duckdb --profile > build/graph2.txt 2>&1; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ grep -E "^profile" build/graph2.txt | head -5
+profile    42.170 s  read the WAL, the process tree
+profile    24.623 s  raw tables
+profile     3.442 s  sql: CREATE TABLE openfile AS
+profile     1.222 s  sql: CREATE TABLE edge AS
+profile     1.066 s  sql: CREATE TABLE edge_src AS
+ashu@p15-dev:~/fiery-dragon$ diff <(grep '^graph_out  ' build/soak.txt | sed 's/^graph_out //') <(grep '^  ' build/graph2.txt) && echo SAME
+SAME

@@ -2,13 +2,15 @@
 # SPDX-License-Identifier: MIT
 """Summarize a soak (bench/soak/soak.py): gate 4 of STATE decision 28.
 
-    python3 bench/soak/summarize.py soak.txt
+    python3 bench/soak/summarize.py soak.txt [--strict-graph-time]
 
 PASS needs all of: p15d exited 0 with END state 0 (RUNNING) and its invariant closed, the WAL read
 without an error or a torn stop; every item the workload logged found in the WAL (100 % per step
 kind); the graph built (exit 0, its must-be-zero books 0) and every graph check complete (each
 compiled program a written-then-executed file node, each http connection paired, each memfd
-execution present); at most 10 % of the workload's steps failed. Also reported, not judged: CPU,
+execution present); at most 10 % of the workload's steps failed. The graph's build time per hour of
+workload is reported against its target, GRAPH_S_PER_HOUR (STATE decision 34); it fails the run only
+with --strict-graph-time (the default once gate 10's streaming builder lands). Also reported, not judged: CPU,
 memory and WAL growth over the run, event rates, the walk's counters, the graph's books.
 """
 from __future__ import annotations
@@ -20,6 +22,7 @@ from pathlib import Path
 
 KV = re.compile(r"(\w+)=(\S+)")
 MUST_BE_ZERO = ("edge_without_node", "obj_facts_conflict", "fid_two_objs")
+GRAPH_S_PER_HOUR = 60.0     # STATE decision 34: an hour's graph in under a minute
 
 
 class ParseError(Exception):
@@ -83,7 +86,7 @@ def graph_books(lines: list[str]) -> dict[str, int]:
     return out
 
 
-def report(text: str) -> tuple[str, int]:
+def report(text: str, strict_graph_time: bool = False) -> tuple[str, int]:
     d = parse(text)
     fails, notes = list(d["errors"]), []
     out = ["# soak: p15d under real programs (gate 4)", ""]
@@ -161,6 +164,12 @@ def report(text: str) -> tuple[str, int]:
         for k in MUST_BE_ZERO:
             if books.get(k, 0):
                 fails.append(f"graph book {k} = {books[k]} (must be 0)")
+        per_h = g["build_s"] / max(float(c["duration"]) / 3600, 1e-9)
+        over = per_h >= GRAPH_S_PER_HOUR
+        out.append(f"Graph build: {per_h:.0f} s per hour of workload, target under {GRAPH_S_PER_HOUR:.0f} s: "
+                   f"{'over' if over else 'met'}" + ("" if strict_graph_time or not over else " (not judged before gate 10)") + ".")
+        if over and strict_graph_time:
+            fails.append(f"the graph build took {per_h:.0f} s per hour of workload (target under {GRAPH_S_PER_HOUR:.0f})")
         out += [f"Graph: built in {int(g['build_s'])} s, {g['bytes'] / 2**20:.1f} MiB; " +
                 ", ".join(f"{k} {v:,}" for k, v in sorted(books.items()) if k.startswith(("node_", "edge_"))) + ".", ""]
         out += ["| graph check | found | expected |", "|---|---|---|"]
@@ -176,11 +185,14 @@ def report(text: str) -> tuple[str, int]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
+    args = argv[1:]
+    strict = "--strict-graph-time" in args
+    args = [x for x in args if x != "--strict-graph-time"]
+    if len(args) != 1:
         print(__doc__, file=sys.stderr)
         return 2
     try:
-        text, rc = report(Path(argv[1]).read_text())
+        text, rc = report(Path(args[0]).read_text(), strict)
     except (ParseError, ValueError, KeyError) as e:
         print(f"summarize: {e}", file=sys.stderr)
         return 1

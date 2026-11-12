@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "bench: the soak, real programs checked against the WAL and the graph (gate 4)"
+**Last updated:** 2026-11-12 (UTC), PR "bench: the soak reports the graph build against its target (decision 34)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -258,6 +258,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 32. **Gate 3 begins, taken under 22a and 29** (E-0199): idle cost is a price per wake-up times 100 wake-ups a second (the 10 ms drain timer of ADR-0020 rule 2). `--poll-max-ms` makes the drain's timeout adaptive (10 ms after work, doubling when idle) and the writer sleeps until its next deadline; `bench/idle_cost` measures the arms on the VM. On the VM (E-0200, [evidence](evidence/vm/2026-11-12-idle-cost/README.md)): 10.4 ms/s at 10 ms, 1.14 ms/s at 200 ms, the smallest maximum under the budget in median and dearest round; [ADR-0030](decisions/0030-adaptive-drain-poll.md) makes 200 ms the default. Gate 3 met by the default; confirmed when the VM's it_p15d passes on it. Next: gate 4, a real-workload harness and a one-hour soak with the graph of that run.
 
 33. **Gate 4's harness, taken under 22a and 29** (E-0201): `bench/soak` runs real programs (compiler, git, tar, http, shell, memfd) under p15d and checks every operation they logged against the WAL (by time window) and the graph (the dropper chain, ISN pairing, memfd executions), with CPU, memory and WAL growth sampled each minute. CI runs 45 s on every PR. The VM's hour (E-0202, [evidence](evidence/vm/2026-11-12-soak-1h/README.md)): 38,363 of 38,363 operations in the WAL, nothing lost, END clean, dropper chains and memfd executions all in the graph; the pairing check had a bug (ports reused), fixed; the recheck passes, so **gate 4 is met** (E-0203). Memory flattens at 27.65 MiB. The graph took 782 s, of which 626 s was one slow insert, fixed (E-0203); the rest is Python reading and row building (about 95 s), gate 10's streaming builder.
+
+34. **The graph's build-time target, taken under 22a** (E-0204): an hour's graph in under 60 s. The soak reports it; `--strict-graph-time` makes it fail the run, the default once gate 10's streaming builder lands. The hour now builds in about 80 s (782 before; the same books). Gates 1 to 4 are merged (#72 to #75). Next: gate 5, reads and writes (step 2b) at their ceiling.
 
 ## Decisions waiting
 

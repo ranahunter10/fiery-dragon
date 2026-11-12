@@ -142,6 +142,19 @@ class Report(unittest.TestCase):
             self.assertEqual(rc, 1, why)
             self.assertIn(why, out)
 
+    def test_graph_time(self):
+        out, rc = S.report(soak_text(graph="graph rc=0 build_s=80 bytes=1048576"))
+        self.assertEqual(rc, 0)
+        self.assertIn("Graph build: 80 s per hour of workload, target under 60 s: over (not judged before gate 10).", out)
+        out, rc = S.report(soak_text(graph="graph rc=0 build_s=80 bytes=1048576"), strict_graph_time=True)
+        self.assertEqual(rc, 1)
+        self.assertIn("FAIL: the graph build took 80 s per hour of workload (target under 60)", out)
+        out, rc = S.report(soak_text(graph="graph rc=0 build_s=59 bytes=1048576"), strict_graph_time=True)
+        self.assertEqual(rc, 0)
+        self.assertIn("target under 60 s: met.", out)
+        half = soak_text(graph="graph rc=0 build_s=40 bytes=1048576").replace("duration=3600", "duration=1800")
+        self.assertIn("80 s per hour of workload", S.report(half)[0])
+
     def test_notes(self):
         out, rc = S.report(soak_text(failed=0, rss_last=40000))
         self.assertEqual(rc, 0)
