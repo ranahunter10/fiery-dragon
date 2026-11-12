@@ -1,6 +1,6 @@
 # flow_cost on the VM (2026-11-12)
 
-Evidence for E-0233 and decision waiting 13. Run by the maintainer on the VM (7.0.0-38-generic, 3 CPUs) at commit `3cd568f` (#89's head): `sudo make bench-flow-cost ROUNDS=20`, so 20 paired rounds × 200,000 one-byte reads of `/dev/zero` per arm. The reads ran on CPU 2 and the drain on CPU 0.
+Evidence for E-0237 and decision waiting 13. Run by the maintainer on the VM (7.0.0-38-generic, 3 CPUs) at commit `3cd568f` (#89's head): `sudo make bench-flow-cost ROUNDS=20`, so 20 paired rounds × 200,000 one-byte reads of `/dev/zero` per arm. The reads ran on CPU 2 and the drain on CPU 0.
 
 | File | What |
 |---|---|
