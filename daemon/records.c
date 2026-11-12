@@ -14,7 +14,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_EXIT:   return version == 1 ? sizeof(struct p15_exit_v1) : 0;
 	case P15_T_RENAME: return version == 1 ? sizeof(struct p15_rename_v1) : 0;
 	case P15_T_CLOCK_SYNC: return version == 1 ? sizeof(struct p15_clock_sync_v1) : 0;
-	case P15_T_STATS:  return version == 1 ? sizeof(struct p15_stats_v1) : version == 2 ? sizeof(struct p15_stats_v2) : 0;
+	case P15_T_STATS:  return version >= 1 ? sizeof(struct p15_stats_v1) : version == 2 ? sizeof(struct p15_stats_v2) : 0;
 	case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : version == 2 ? sizeof(struct p15_gap_v2) : 0;
 	case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : version == 2 ? sizeof(struct p15_end_v2) : 0;
 	case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : version == 2 ? sizeof(struct p15_proc_v2) : 0;
@@ -29,6 +29,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : version == 2 ? sizeof(struct p15_file_stats_v2) : 0;
 	case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;
 	case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;
+	case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stats_v1) : 0;
 	}
 	return 0;
 }
@@ -477,6 +478,7 @@ const char *p15_type_name(__u16 type)
 	case P15_T_CLOSE:      return "CLOSE";
 	case P15_T_FD:         return "FD";
 	case P15_T_FILE_STATS: return "FILE_STATS";
+	case P15_T_FLOW_STATS: return "FLOW_STATS";
 	case P15_T_FILE:       return "FILE";
 	case P15_T_FLOW:       return "FLOW";
 	}
