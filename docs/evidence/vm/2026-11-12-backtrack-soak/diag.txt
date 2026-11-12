@@ -1,0 +1,16 @@
+duckdb 2.0.0
+edges into nodes, by node kind and op:
+   ('proc', 'ACCEPT', 3608)
+   ('proc', 'CLONE', 55108)
+   ('proc', 'EXECUTE', 55101)
+   ('proc', 'HELD', 729)
+   ('proc', 'OPEN', 805939)
+   ('sock', 'BIND', 451)
+   ('sock', 'CONNECT', 3627)
+   ('sock', 'LISTEN', 451)
+run 1's start: (60801, 'p15d-writer', 'started before the capture (parent and program from the opening snapshot)', 139, None)
+  its in-edges by op: [('HELD', 188), ('OPEN', 3715)]
+run 2's start: (60805, 'python', 'forked in the run', 139, 44680734159555)
+run 2 round 0: 0.113 s, reached [('file', 34239), ('proc', 2)]
+run 2 round 1: 0.100 s, reached [('file', 34239), ('proc', 2)]
+run 2 round 2: 0.076 s, reached [('file', 34239), ('proc', 2)]
