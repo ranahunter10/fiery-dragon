@@ -1,0 +1,55 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 97  of event 'task-clock:ppp'
+# Event count (approx.): 48524250
+#
+# Overhead  Shared Object      Symbol                         
+# ........  .................  ...............................
+#
+    25.77%  p15d               [.] tiles
+     9.28%  p15d               [.] on_bulk
+     8.25%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+     6.19%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     4.12%  p15d               [.] after_poll
+     4.12%  p15d               [.] p15_rec_check
+     2.06%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+     2.06%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+     2.06%  [kernel.kallsyms]  [k] do_syscall_64
+     2.06%  [kernel.kallsyms]  [k] handle_softirqs
+     2.06%  [kernel.kallsyms]  [k] mpage_process_page_bufs
+     2.06%  p15d               [.] put
+     2.06%  p15d               [.] ringbuf_process_ring
+     2.06%  p15d               [.] take
+     1.03%  [kernel.kallsyms]  [k] __sys_bpf
+     1.03%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+     1.03%  [kernel.kallsyms]  [k] apparmor_capable
+     1.03%  [kernel.kallsyms]  [k] bpf_obj_get_info_by_fd
+     1.03%  [kernel.kallsyms]  [k] bpf_prog_get_stats
+     1.03%  [kernel.kallsyms]  [k] check_zeroed_user
+     1.03%  [kernel.kallsyms]  [k] ep_item_poll.isra.0
+     1.03%  [kernel.kallsyms]  [k] fdget
+     1.03%  [kernel.kallsyms]  [k] fdget_pos
+     1.03%  [kernel.kallsyms]  [k] fput
+     1.03%  [kernel.kallsyms]  [k] map_id_range_up
+     1.03%  [kernel.kallsyms]  [k] mutex_lock
+     1.03%  [kernel.kallsyms]  [k] sched_balance_domains
+     1.03%  [kernel.kallsyms]  [k] security_bpf
+     1.03%  [kernel.kallsyms]  [k] select_estimate_accuracy
+     1.03%  [kernel.kallsyms]  [k] x64_sys_call
+     1.03%  libc.so.6          [.] syscall
+     1.03%  libc.so.6          [.] 0x00000000000a039c
+     1.03%  libc.so.6          [.] 0x000000000019799f
+     1.03%  libc.so.6          [.] 0x0000000000197aa1
+     1.03%  p15d               [.] bpf_prog_get_info_by_fd
+     1.03%  p15d               [.] crc_hw
+     1.03%  p15d               [.] p15_drain_poll
+     1.03%  p15d               [.] p15q_acquire
+     1.03%  p15d               [.] ring_buffer__epoll_fd
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

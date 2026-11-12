@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "audit: the capture layer reviewed, measured and planned to done (decision 44)"
+**Last updated:** 2026-11-12 (UTC), PR "daemon: 1 MiB batches by default; the matrix becomes the merge rule (decision 46)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -289,6 +289,14 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 45. **The matrix's first runs** (E-0223, [evidence](evidence/vm/2026-11-12-matrix-defaults-vs-b1024/README.md)): with 1 MiB batches, p15d costs 201 ns per open+close against 420, the soak passes with nothing lost, and the calling program may pay less too (INF). The matrix's own it_p15d step was broken by the Python under sudo; fixed. Next in the matrix: how often the skip counters must be read.
 
+46. **Decisions waiting 11.1 and 12 accepted** (maintainer 2026-11-12, "recommended decisions are accepted"; E-0224, E-0225):
+    1. **1 MiB batches by default:** `--batch-kb 1024 --queue-batches 16`, the same 16 MiB as before. The sweep: 256, 1024 and 4096 KiB (E-0220), and the matrix with and without it (E-0223).
+    2. **The capture layer's acceptance criteria** (audit §5), with their thresholds: zero-loss ceiling at least 10 times the soak's record rate (F5); overhead under 5 % on ordinary workloads (P1); bodies under 500 ns per open+close (P2); p15d under 100 ns per record (P3); tamper window under 1 s (S1); an hour's graph under 60 s (G1, decision 34).
+    3. **The matrix is the merge rule for capture PRs** (CONTRIBUTING.md §5), with sweeps before defaults and estimates that never decide.
+    4. **The order:** step 2b next (Phase B), then 2c, 2d and 2e, the deployment evidence, graph v1, then the export. No further open-path work before 2b.
+    5. #82 to #86 merged.
+    6. **#87's own matrix passed** on the VM (all 12 steps, soak PASS, books closed; E-0230, [evidence](evidence/vm/2026-11-12-matrix-pr87/README.md)): the first PR merged under rule 3.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -307,11 +315,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    Results (decision 39, E-0213): item 1 gives 741.4 ns per open+close, so the budget is missed by 241 ns. 38.2 % of frees are unregistered. Capture adds 1,140.5 ns end to end, of which p15d's CPU is 699.4 ns per open+close, about as large as all the programs' bodies together.
    Then (decision 41, E-0215): C1 is not cheaper. Recommendation now: (a) p15d's CRC32C by the SSE4.2 `crc32` instruction, with the table kept for CPUs without it and for the tests; (b) then the thread switching, by measuring the drain's and writer's wake-ups per batch; (c) C1b and C2 only after (a) and (b), re-measured end to end. Then (decision 42): (a) done, −244 ns. (b) is withdrawn: switches are few. Next: attribute the kernel samples by their call graphs, then decide. Then (E-0219): the kernel samples are the drain's eventfd kick of the writer at each published batch, about 200 µs each on this VM (INF). Next: `--batch-kb` 1024 and 4096 measured with no code; then one wake per poll by code, if the wakes prove to be the cost.
 11. **User-space pipeline** (decision 43). Recommendation, in this order:
-   1. U1: make `--batch-kb 1024` and `--queue-batches 16` the defaults (the same 16 MiB). Measured: 413 to 204 ns per open+close (E-0220). Records still reach the writer at every poll.
+   1. ~~U1~~ done by decision 46.
    2. U3, with U4: a drain reader that stores the ring's consumer position once per take, not per record, with its counters added once per take. Built as a p15d option and measured against libbpf's reader on `prog_stats` and `open_cost`, because it may lower the BPF programs' cost as well as p15d's.
    3. U2 only if the soak still shows switches after U1.
    4. U5 (smaller records) by an ADR after U3's numbers.
-12. **The capture layer's acceptance criteria and plan** (decision 44, [audit §5-6](audits/2026-11-12-capture-review.md)). Recommendation:
-   1. Accept the criteria F1-F5, P1-P3, R1-R2, S1 and G1. Set the proposed thresholds or change them: ceiling at least 10 times the soak's rate; overhead under 5 % on ordinary workloads; p15d under 100 ns per record; tamper window under 1 s.
-   2. Make the matrix the merge rule for capture PRs (CONTRIBUTING.md, by its own PR).
-   3. Order: Phase A (the matrix on today's main with and without U1, then the network and fork contention measurements), then **Phase B, step 2b**, before any further open-path work.
+12. ~~**The capture layer's acceptance criteria and plan**~~ Accepted: decision 46.

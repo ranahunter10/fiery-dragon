@@ -35,7 +35,7 @@ int main(void)
 	EXPECT(parse(&c, err, 0) != 0 && strstr(err, "--wal-dir"), "--wal-dir is required");
 	EXPECT(parse(&c, err, 2, "--wal-dir", "/tmp/x") == 0, "minimal");
 	EXPECT(c.stats_ms == 1000 && c.sync_ms == 1000 && c.rotate_mb == 64 && c.rotate_s == 60 &&
-	       c.spine_ring_kb == 4096 && c.queue_batches == 64 && c.batch_kb == 256 && c.realtime == 1 &&
+	       c.spine_ring_kb == 4096 && c.queue_batches == 16 && c.batch_kb == 1024 && c.realtime == 1 &&
 	       c.duration_s == 0 && !c.textfile && c.net == 1 && c.poll_max_ms == 200, "defaults (ADR-0006, ADR-0007, ADR-0017)");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--poll-max-ms", "9") != 0 &&
 	       parse(&c, err, 4, "--wal-dir", "/tmp/x", "--poll-max-ms", "1001") != 0 &&
