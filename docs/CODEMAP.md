@@ -35,6 +35,15 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`crc32c_bench.c`](../bench/crc32c/crc32c_bench.c) | What p15d's CRC32C costs per byte, by implementation (E-0215: the table version was a third of p15d's samples). |  |
 
+## bench/flow_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`flow_cost.bpf.c`](../bench/flow_cost/flow_cost.bpf.c) | what step 2b's read hook costs per call on vfs_read with each way of keeping FLOW's start time (step 2b design checks §2 and §4, decision waiting 13). | `kprobe.session/vfs_read` |
+| [`flow_cost.c`](../bench/flow_cost/flow_cost.c) | what step 2b's read hook costs per vfs_read call with each way of keeping FLOW's start time, paired by round (step 2b design checks §2 and §4; decision waiting 13; ADR-0018 rule... |  |
+| [`summarize.py`](../bench/flow_cost/summarize.py) | Summarize flow_cost output (bench/flow_cost/flow_cost.c) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `series`, `report` |
+| [`test_summarize.py`](../bench/flow_cost/test_summarize.py) | Tests for bench/flow_cost/summarize.py on synthetic flow_cost output with a known answer. | `synth`, `added`, `Report` |
+
 ## bench/hook_cost
 
 | File | Job | Public names |

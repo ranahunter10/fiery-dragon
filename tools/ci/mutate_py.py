@@ -39,6 +39,7 @@ _TO = "bench/open_cost/test_open_cost.py"
 PCS, PCP = "bench/prim_cost/summarize.py", "bench/prim_cost/prog_stats.py"
 _TPC = "bench/prim_cost/test_prim_cost.py"
 OSS = "bench/open_sections/summarize.py"
+FCS = "bench/flow_cost/summarize.py"
 PWS, _TPW = "bench/path_walk/summarize.py", "bench/path_walk/test_path_walk.py"
 ICS, ICR, _TIC = "bench/idle_cost/summarize.py", "bench/idle_cost/run.py", "bench/idle_cost/test_idle_cost.py"
 SKC, SKS, SKP, _TSK = ("bench/soak/check.py", "bench/soak/summarize.py", "bench/soak/soak.py",
@@ -580,6 +581,21 @@ M = [
  (GTRACK, "SELECT e.dst, min(CASE WHEN e.ts_ns IS NULL THEN ft.thr ELSE e.ts_ns END)", "SELECT e.dst, min(CASE WHEN e.ts_ns IS NULL THEN ft.thr ELSE ft.thr END)"),
  (GTRACK, "WHERE key = ? OR CAST(node_id AS VARCHAR) = ?", "WHERE key = ? OR key = ?"),
  (GTRACK, "        if len(order) > a.top:\n", "        if False:\n"),
+ # bench/flow_cost (step 2b design checks §4, decision waiting 13)
+ (FCS, 'if hits != (0 if arm in UNTRACED else n):', 'if False:'),
+ (FCS, '            if lost:\n', '            if False:\n'),
+ (FCS, '            if refused:\n', '            if False:\n'),
+ (FCS, 'if drained != (n if arm in RECORDS else 0):', 'if drained != n and arm in RECORDS:'),
+ (FCS, 'if drained != (n if arm in RECORDS else 0):', 'if False:'),
+ (FCS, 'skips[arm][0] += int(rmiss)', 'skips[arm][0] += 0'),
+ (FCS, 'elif rnd >= 0:', 'elif rnd >= -1:'),
+ (FCS, 'if m[7] != "ok" or m[1] != m[2] or any(int(x) for x in m.groups()[2:6]):', 'if m[7] != "ok":'),
+ (FCS, 'if m[7] != "ok" or m[1] != m[2] or any(int(x) for x in m.groups()[2:6]):', 'if m[1] != m[2] or any(int(x) for x in m.groups()[2:6]):'),
+ (FCS, '    if not checks:\n', '    if False:\n'),
+ (FCS, 'missing = [a for a in ALL_ARMS if a not in rows[r]]', 'missing = []'),
+ (FCS, 'for metric in (() if bad else ("cpu_ns", "wall_ns")):', 'for metric in ("cpu_ns", "wall_ns"):'),
+ (FCS, 'QUESTIONS = (("ts", "session"), ("ts_rec", "end_rec"), ("end_rec", "session"))', 'QUESTIONS = (("ts", "session"), ("end_rec", "ts_rec"), ("end_rec", "session"))'),
+ (FCS, 'return "\\n".join(out), 1 if bad else 0', 'return "\\n".join(out), 0'),
 ]
 
 

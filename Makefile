@@ -17,6 +17,7 @@
 #   make mutate-py        mutation sweep of the Python gates and harnesses (checkers, summarizers)
 #   make bench-hook-cost  classic tracepoint vs tp_btf hook path, paired (root; ADR-0020 conf. 5)
 #   make bench-rw-hook-cost  fentry/fexit/kprobe.multi/pair/kprobe.session on vfs_read, paired (root; N5)
+#   make bench-flow-cost     step 2b's read hook with each way of keeping FLOW's start time, paired (root)
 #   make mutate-spine     mutation sweep of the spine's EXEC program through the self-test (root)
 #   make CC=clang OUT=build-clang test-c   the same build and tests with clang (-Werror clean)
 #   make clean
@@ -55,7 +56,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe $(OUT)/sliceb_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
+         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/flow_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
@@ -66,7 +67,7 @@ GIT_COMMIT := $(shell git describe --always --dirty --abbrev=12 2>/dev/null || e
 BPFTOOL_TAG := $(shell git -C third_party/bpftool describe --tags 2>/dev/null || echo unknown)
 
 .PHONY: probe-recursion probe-sliceb it-pyreader codemap all check smoke smoke-net test-c-tsan it-p15d mutate-p15d clean submodules deps schema schema-check layout-check test-c test-c-asan mutate-wal \
-        exit-check hardening-check must-check-test mutate-py bench-hook-cost bench-rw-hook-cost mutate-spine mutate-records
+        exit-check hardening-check must-check-test mutate-py bench-hook-cost bench-rw-hook-cost bench-flow-cost mutate-spine mutate-records
 .SECONDARY:              # keep the .bpf.o objects (veristat and inspection)
 all: $(SMOKE) $(SPINE)
 
@@ -305,6 +306,19 @@ bench-rw-hook-cost: $(OUT)/rw_hook_cost
 	$(OUT)/rw_hook_cost $(or $(ROUNDS),20) $(or $(READS),200000) $(or $(OPENS),2000) $(if $(NOTRAMP),--no-trampoline) $(if $(NOSESSION),--no-session) \
 		| tee $(OUT)/rw_hook_cost.txt
 	python3 bench/rw_hook_cost/summarize.py $(OUT)/rw_hook_cost.txt
+
+# Step 2b design checks §4 (decision waiting 13): the read hook with FLOW's start time kept in task
+# storage (option A) or not kept (option D), with and without the record, paired (bench/flow_cost/).
+$(OUT)/flow_cost.bpf.o: bench/flow_cost/flow_cost.bpf.c bpf/vmlinux/vmlinux.h schema/generated/p15_records.h $(LIBBPF_A) | $(OUT)
+	$(CLANG) $(BPF_CFLAGS) -c $< -o $@
+
+$(OUT)/flow_cost: bench/flow_cost/flow_cost.c $(OUT)/flow_cost.skel.h $(LIBBPF_A)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/flow_cost/flow_cost.c $(LDLIBS) -lpthread -o $@
+
+# root, two CPUs or more. Raw lines: $(OUT)/flow_cost.txt.
+bench-flow-cost: $(OUT)/flow_cost
+	$(OUT)/flow_cost $(or $(ROUNDS),20) $(or $(READS),200000) $(or $(CHECKS),20000) | tee $(OUT)/flow_cost.txt
+	python3 bench/flow_cost/summarize.py $(OUT)/flow_cost.txt
 
 # Decision 22a.4: what capture adds to an open and a close, p15d on against off, paired
 # (bench/open_cost/). root. The files live under DIR (a real filesystem: /tmp is a tmpfs on the VM).
