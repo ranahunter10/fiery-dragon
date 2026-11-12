@@ -1,0 +1,108 @@
+flow_cost: libbpf v1.7, reads on CPU 3, drain on CPU 0, 2 rounds, 20000 reads per arm, 6 arms, FLOW 96 bytes
+check reads=2000 flows=2000 outside=0 refused=0 ts_lost=0 create_failed=0 ok
+row round=-1 event=read arm=none n=2001 cpu_ns=545934 wall_ns=544920 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=none2 n=2001 cpu_ns=555619 wall_ns=555035 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=session n=2001 cpu_ns=1009285 wall_ns=1008097 hits=2001 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=ts n=2001 cpu_ns=1182353 wall_ns=1181358 hits=2001 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=end_rec n=2001 cpu_ns=1395662 wall_ns=1394789 hits=2001 lost=0 drained=2001 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=ts_rec n=2001 cpu_ns=1561589 wall_ns=1560640 hits=2001 lost=0 drained=2001 refused=0 rmiss=0 lmiss=0
+nullsys round=0 calls=1000000 total_ns=154114667
+row round=0 event=read arm=none n=20000 cpu_ns=5480042 wall_ns=5478687 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=none2 n=20000 cpu_ns=5527432 wall_ns=5526899 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=session n=20000 cpu_ns=10441890 wall_ns=10441246 hits=20000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=ts n=20000 cpu_ns=12022578 wall_ns=12021614 hits=20000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=end_rec n=20000 cpu_ns=14615024 wall_ns=14613746 hits=20000 lost=0 drained=20000 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=ts_rec n=20000 cpu_ns=14984904 wall_ns=14983813 hits=20000 lost=0 drained=20000 refused=0 rmiss=0 lmiss=0
+nullsys round=1 calls=1000000 total_ns=145456655
+row round=1 event=read arm=none2 n=20000 cpu_ns=5431088 wall_ns=5430183 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=session n=20000 cpu_ns=10066140 wall_ns=10065490 hits=20000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=ts n=20000 cpu_ns=11906204 wall_ns=11905490 hits=20000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=end_rec n=20000 cpu_ns=13909992 wall_ns=13909276 hits=20000 lost=0 drained=20000 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=ts_rec n=20000 cpu_ns=15316879 wall_ns=15315943 hits=20000 lost=0 drained=20000 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=none n=20000 cpu_ns=5571698 wall_ns=5574560 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+flow_cost: ok
+python3 bench/flow_cost/summarize.py build/flow_cost.txt
+# flow_cost: step 2b's read hook and FLOW's start time (decision waiting 13)
+
+Null syscall (getppid), median over rounds: 149.8 ns.
+
+## cpu time per read (primary; 2 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 276.3 ns | too few rounds |
+| none2 | 274.0 ns | too few rounds |
+| session | 512.7 ns | too few rounds |
+| ts | 598.2 ns | too few rounds |
+| end_rec | 713.1 ns | too few rounds |
+| ts_rec | 757.5 ns | too few rounds |
+
+- **session against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 236.4 ns, 1.58 null syscalls; ratio of medians 1.8556; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 321.9 ns, 2.15 null syscalls; ratio of medians 2.1652; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **end_rec against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 436.8 ns, 2.92 null syscalls; ratio of medians 2.5810; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts_rec against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 481.3 ns, 3.21 null syscalls; ratio of medians 2.7418; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts against session:** not resolved on this host (A/A interval: n too small)
+  - added per read 85.5 ns, 0.57 null syscalls; ratio of medians 1.1668; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts_rec against end_rec:** not resolved on this host (A/A interval: n too small)
+  - added per read 44.4 ns, 0.30 null syscalls; ratio of medians 1.0623; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **end_rec against session:** not resolved on this host (A/A interval: n too small)
+  - added per read 200.4 ns, 1.34 null syscalls; ratio of medians 1.3909; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+
+## wall time per read (secondary; 2 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 276.3 ns | too few rounds |
+| none2 | 273.9 ns | too few rounds |
+| session | 512.7 ns | too few rounds |
+| ts | 598.2 ns | too few rounds |
+| end_rec | 713.1 ns | too few rounds |
+| ts_rec | 757.5 ns | too few rounds |
+
+- **session against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 236.3 ns, 1.58 null syscalls; ratio of medians 1.8553; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 321.8 ns, 2.15 null syscalls; ratio of medians 2.1647; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **end_rec against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 436.7 ns, 2.92 null syscalls; ratio of medians 2.5805; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts_rec against none:** not resolved on this host (A/A interval: n too small)
+  - added per read 481.2 ns, 3.21 null syscalls; ratio of medians 2.7413; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts against session:** not resolved on this host (A/A interval: n too small)
+  - added per read 85.5 ns, 0.57 null syscalls; ratio of medians 1.1668; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **ts_rec against end_rec:** not resolved on this host (A/A interval: n too small)
+  - added per read 44.4 ns, 0.30 null syscalls; ratio of medians 1.0623; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+- **end_rec against session:** not resolved on this host (A/A interval: n too small)
+  - added per read 200.4 ns, 1.34 null syscalls; ratio of medians 1.3909; effect p = 0.5
+  - notes: too few rounds for an A/A interval at this confidence
+
+## Kernel skip counters, all rounds
+
+| arm | recursion_misses | kprobe_multi.missed |
+|---|---|---|
+| none | 0 | 0 |
+| none2 | 0 | 0 |
+| session | 0 | 0 |
+| ts | 0 | 0 |
+| end_rec | 0 | 0 |
+| ts_rec | 0 | 0 |
+
+## Option A's start times against each read's bracket
+
+- 2000 reads, 2000 FLOWs, 0 outside their read, 0 lost, 0 creations failed: ok

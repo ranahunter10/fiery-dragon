@@ -101,6 +101,8 @@ jobs:
           retention-days: 30
       - name: Recursion-miss probe (E-0089; which hook and wake-up design the kernel skips least; runner kernel, not the target)
         run: sudo make probe-recursion ROUNDS=3 EXECS=2000
+      - name: Step 2b read-hook cost harness loads and its books close (flow_cost; runner kernel, a smoke test, not a measurement)
+        run: sudo make bench-flow-cost ROUNDS=2 READS=20000 CHECKS=2000
       - name: Network-intent probe (fexit hooks of ADR-0004; runner kernel, not the target)
         run: uname -r && sudo make smoke-net
       - name: Step 2a dry run (ADR-0015 identity mechanisms, with an overlay mount; runner kernel, not the target)

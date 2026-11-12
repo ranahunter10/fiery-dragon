@@ -1,0 +1,78 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && git log --oneline -1 && grep -E "^flow_cost:|^check " build/flow_cost.txt && python3 bench/flow_cost/summarize.py build/flow_cost.txt
+3cd568f (HEAD -> bench/flow-cost, origin/bench/flow-cost) evidence: flow_cost loads and its books close on CI's 7.0 runner
+flow_cost: libbpf v1.7, reads on CPU 2, drain on CPU 0, 20 rounds, 200000 reads per arm, 6 arms, FLOW 96 bytes
+check reads=20000 flows=20000 outside=0 refused=0 ts_lost=0 create_failed=0 ok
+flow_cost: ok
+# flow_cost: step 2b's read hook and FLOW's start time (decision waiting 13)
+
+Null syscall (getppid), median over rounds: 146.9 ns.
+
+## cpu time per read (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 289.8 ns | 228.1 ns to 313.6 ns |
+| none2 | 298.1 ns | 220.0 ns to 330.2 ns |
+| session | 570.7 ns | 491.0 ns to 597.8 ns |
+| ts | 618.9 ns | 526.8 ns to 683.0 ns |
+| end_rec | 688.1 ns | 638.3 ns to 744.4 ns |
+| ts_rec | 683.2 ns | 618.1 ns to 735.9 ns |
+
+- **session against none:** overhead +106.57 %, 95 % interval +82.34 % to +133.73 %, Wilcoxon p = 1.91e-06
+  - added per read 281.0 ns (95 % interval 237.5 ns to 318.5 ns), 1.91 null syscalls; ratio of medians 1.9695; effect p = 1.91e-06
+- **ts against none:** overhead +119.72 %, 95 % interval +95.49 % to +145.36 %, Wilcoxon p = 1.91e-06
+  - added per read 320.4 ns (95 % interval 272.3 ns to 377.9 ns), 2.18 null syscalls; ratio of medians 2.1358; effect p = 1.91e-06
+- **end_rec against none:** overhead +146.98 %, 95 % interval +118.47 % to +176.77 %, Wilcoxon p = 1.91e-06
+  - added per read 405.7 ns (95 % interval 336.5 ns to 442.0 ns), 2.76 null syscalls; ratio of medians 2.3748; effect p = 1.91e-06
+- **ts_rec against none:** overhead +159.53 %, 95 % interval +132.35 % to +198.62 %, Wilcoxon p = 1.91e-06
+  - added per read 426.4 ns (95 % interval 364.1 ns to 484.3 ns), 2.90 null syscalls; ratio of medians 2.3578; effect p = 1.91e-06
+  - notes: drift: the ratio of medians and e^HL differ by more than the A/A interval's width
+- **ts against session:** not resolved on this host (A/A interval -8.89 % to +10.13 %)
+  - added per read 54.0 ns (95 % interval -6.2 ns to 104.3 ns), 0.37 null syscalls; ratio of medians 1.0844; effect p = 0.133
+- **ts_rec against end_rec:** not resolved on this host (A/A interval -8.89 % to +10.13 %)
+  - added per read 19.6 ns (95 % interval -55.9 ns to 99.3 ns), 0.13 null syscalls; ratio of medians 0.9929; effect p = 0.546
+- **end_rec against session:** overhead +19.40 %, 95 % interval +9.40 % to +34.34 %, Wilcoxon p = 0.000851
+  - added per read 113.9 ns (95 % interval 61.2 ns to 179.7 ns), 0.78 null syscalls; ratio of medians 1.2058; effect p = 0.000851
+
+## wall time per read (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 289.8 ns | 228.3 ns to 313.7 ns |
+| none2 | 298.1 ns | 220.0 ns to 330.2 ns |
+| session | 570.7 ns | 491.0 ns to 597.8 ns |
+| ts | 618.9 ns | 526.7 ns to 683.0 ns |
+| end_rec | 688.1 ns | 638.3 ns to 744.4 ns |
+| ts_rec | 683.2 ns | 618.1 ns to 735.8 ns |
+
+- **session against none:** overhead +106.57 %, 95 % interval +82.34 % to +133.77 %, Wilcoxon p = 1.91e-06
+  - added per read 281.0 ns (95 % interval 237.6 ns to 318.6 ns), 1.91 null syscalls; ratio of medians 1.9693; effect p = 1.91e-06
+- **ts against none:** overhead +119.67 %, 95 % interval +95.47 % to +145.33 %, Wilcoxon p = 1.91e-06
+  - added per read 320.4 ns (95 % interval 272.3 ns to 377.9 ns), 2.18 null syscalls; ratio of medians 2.1355; effect p = 1.91e-06
+- **end_rec against none:** overhead +146.95 %, 95 % interval +118.04 % to +176.72 %, Wilcoxon p = 1.91e-06
+  - added per read 405.7 ns (95 % interval 336.4 ns to 442.0 ns), 2.76 null syscalls; ratio of medians 2.3745; effect p = 1.91e-06
+- **ts_rec against none:** overhead +159.53 %, 95 % interval +132.35 % to +198.64 %, Wilcoxon p = 1.91e-06
+  - added per read 425.9 ns (95 % interval 363.9 ns to 483.4 ns), 2.90 null syscalls; ratio of medians 2.3576; effect p = 1.91e-06
+  - notes: drift: the ratio of medians and e^HL differ by more than the A/A interval's width
+- **ts against session:** not resolved on this host (A/A interval -9.19 % to +9.62 %)
+  - added per read 53.6 ns (95 % interval -7.9 ns to 104.3 ns), 0.37 null syscalls; ratio of medians 1.0844; effect p = 0.133
+- **ts_rec against end_rec:** not resolved on this host (A/A interval -9.19 % to +9.62 %)
+  - added per read 19.6 ns (95 % interval -55.9 ns to 99.3 ns), 0.13 null syscalls; ratio of medians 0.9929; effect p = 0.546
+- **end_rec against session:** overhead +19.16 %, 95 % interval +9.37 % to +34.33 %, Wilcoxon p = 0.000851
+  - added per read 113.8 ns (95 % interval 61.1 ns to 179.7 ns), 0.77 null syscalls; ratio of medians 1.2058; effect p = 0.000851
+
+## Kernel skip counters, all rounds
+
+| arm | recursion_misses | kprobe_multi.missed |
+|---|---|---|
+| none | 0 | 0 |
+| none2 | 0 | 0 |
+| session | 0 | 0 |
+| ts | 0 | 0 |
+| end_rec | 0 | 0 |
+| ts_rec | 0 | 0 |
+
+## Option A's start times against each read's bracket
+
+- 20000 reads, 20000 FLOWs, 0 outside their read, 0 lost, 0 creations failed: ok
+
