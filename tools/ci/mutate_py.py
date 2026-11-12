@@ -38,11 +38,12 @@ _TO = "bench/open_cost/test_open_cost.py"
 PCS, PCP = "bench/prim_cost/summarize.py", "bench/prim_cost/prog_stats.py"
 _TPC = "bench/prim_cost/test_prim_cost.py"
 OSS = "bench/open_sections/summarize.py"
+PWS, _TPW = "bench/path_walk/summarize.py", "bench/path_walk/test_path_walk.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
-         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC}
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -411,6 +412,30 @@ M = [
  (PCP, "{min(e['per_run']):.1f} to", "{max(e['per_run']):.1f} to"),
  (PCP, "{P.median(total) / ops:.1f}", "{sum(total) / ops:.1f}"),
  (PCP, "{e['runs'] / (ops * len(e['ns'])):.3f}", "{e['runs'] / ops:.3f}"),
+ # ---- path_walk: the walk against bpf_d_path (gate 2): a wrong path without a flag must fail the run ----
+ (PWS, '        if r["verdict"] == "MISMATCH":\n', '        if False:\n'),
+ (PWS, '        elif r["verdict"] not in ("equal", "flagged"):\n', '        elif False:\n'),
+ (PWS, '    if race["mismatch"]:\n', '    if False:\n'),
+ (PWS, '    if race["samples"] - race["moved"] <= 0:\n', '    if race["samples"] <= 0:\n'),
+ (PWS, '    if len(ends) != 1:\n', '    if not ends:\n'),
+ (PWS, '            ends.append((int(m[1]), int(m[2], 16)))', '            ends.append((int(m[1]), 0))'),
+ (PWS, '        fails.append("no timing rounds")', '        pass'),
+ (PWS, '            if rnd < 0:\n                continue\n', ''),
+ (PWS, '            if fr != n or kr != n:\n', '            if fr != n:\n'),
+ (PWS, '            if fr != n or kr != n:\n', '            if kr != n:\n'),
+ (PWS, '            if n is None:\n                raise', '            if False:\n                raise'),
+ (PWS, '            if not m or n is not None:\n', '            if not m:\n'),
+ (PWS, '            n = int(m[2])\n', '            n = int(m[1])\n'),
+ (PWS, '    if missing:\n', '    if False:\n'),
+ (PWS, '    if len(races) != 1:\n', '    if not races:\n'),
+ (PWS, '            if name in cases:\n', '            if False:\n'),
+ (PWS, '            raise ParseError(f"unknown line: {line}")', '            pass'),
+ (PWS, '        elif r["verdict"] != exp:\n', '        elif False:\n'),
+ (PWS, 'EXPECT = {"deep70": "flagged", "pipe": "flagged"}', 'EXPECT = {"pipe": "flagged"}'),
+ (PWS, '(64, "NO_SEQ"), (128, "NO_ROOT"), (256, "RETRIED"))', '(64, "NO_SEQ"), (128, "NO_ROOT"), (256, "RETRIED"), (1, "X"))'),
+ (PWS, '(1, "TRUNCATED"), (2, "RACED")', '(2, "TRUNCATED"), (1, "RACED")'),
+ (PWS, '            med = [statistics.median(col) for col in zip(*rows)]', '            med = [statistics.mean(col) for col in zip(*rows)]'),
+ (PWS, "    return \"\\n\".join(out + [\"\"]), 1 if fails else 0", "    return \"\\n\".join(out + [\"\"]), 0"),
  # ---- open_sections: the section report and the skip count under contention (decisions waiting 1-2) ----
  (OSS, "            if rows[r][s][0] != cfg[\"n\"]:\n", "            if False:\n"),
  (OSS, 'WHOLE = ("open_all", "sess_entry", "sess_return", "free_all")', 'WHOLE = ("open_all",)'),
