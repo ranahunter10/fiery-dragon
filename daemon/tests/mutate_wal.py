@@ -29,6 +29,10 @@ M = [
  ("wal.c", "if (!w->in_open && w->seg_batches > 0", "if (w->seg_batches > 0"),
  ("wal.c", "if (w->seg_batches > 0 && t - w->opened_ns >= w->o.max_ns)", "if (t - w->opened_ns >= w->o.max_ns)"),
  ("wal.c", "if (w->dirty && t - w->last_sync_ns >= w->o.sync_ns)", "if (t - w->last_sync_ns >= w->o.sync_ns)"),
+ # gate 3: when the writer's next WAL deadline is
+ ("wal.c", "\tif (w->seg_batches > 0)\n\t\tdue =", "\tif (1)\n\t\tdue ="),
+ ("wal.c", "\tif (w->dirty) {\n\t\tuint64_t s =", "\tif (1) {\n\t\tuint64_t s ="),
+ ("wal.c", "\t\tif (s < due)\n\t\t\tdue = s;", "\t\tdue = s;"),
  ("wal.c", "w->last_sync_ns = t;\n\t\tw->dirty = 0;", "w->dirty = 0;"),
  ("wal.c", "s->torn = (off + P15W_BATCH_HDR_LEN + plen == n);", "s->torn = 1;"),
  ("wal.c", "if (all_zero(h, rem))", "if (0)"),

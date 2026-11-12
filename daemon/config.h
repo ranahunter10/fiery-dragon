@@ -41,6 +41,8 @@ struct p15_config {
 				      * closing snapshot */
 	uint32_t writer_batch_ms;    /* --test-writer-batch-ms: TEST ONLY, the writer sleeps this long after each
 				      * batch, so the queue fills (E-0173) */
+	uint32_t poll_max_ms;        /* --poll-max-ms: the drain's longest poll timeout, 10..1000, default 200; 10 ms
+				      * after a poll that took records, doubled after each empty one (ADR-0030) */
 };
 
 /* Fill c from argv. Returns 0, or -EINVAL with a one-line reason in err (exit USAGE/CONFIG). */

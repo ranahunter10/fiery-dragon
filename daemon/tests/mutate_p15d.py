@@ -69,6 +69,14 @@ M = [
     ("writer.c", "if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||", "if (", UNIT),
     ("writer.c", "A(RET_BACKING) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {", "A(RET_BACKING) + A(SESSION_NO_ENTRY)) {", UNIT),
     ("writer.c", "A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED)", "A(MISSING_EMITTED) + A(VERDICT_EMITTED)", UNIT),
+    # gate 3: the drain's adaptive poll and the writer's wait until its next deadline
+    ("drain.c", "\tif (took || queue_full || max_ms <= P15_POLL_MIN_MS)", "\tif (took || (queue_full && 0) || max_ms <= P15_POLL_MIN_MS)", UNIT),
+    ("drain.c", "\tif (took || queue_full || max_ms <= P15_POLL_MIN_MS)", "\tif ((took && 0) || queue_full || max_ms <= P15_POLL_MIN_MS)", UNIT),
+    ("drain.c", "\tint next = cur_ms * 2;", "\tint next = cur_ms + P15_POLL_MIN_MS;", UNIT),
+    ("drain.c", "return next > max_ms ? max_ms : next < P15_POLL_MIN_MS ? P15_POLL_MIN_MS : next;", "return next;", UNIT),
+    ("writer.c", "\tif (wal_due_ns < ns)\n\t\tns = wal_due_ns;", "\tif (wal_due_ns < ns && 0)\n\t\tns = wal_due_ns;", UNIT),
+    ("writer.c", "\tns = (ns + 999999) / 1000000;", "\tns = ns / 1000000;", UNIT),
+    ("writer.c", "return ns < 1 ? 1 : ns > P15_WRITER_WAIT_MAX_MS ? P15_WRITER_WAIT_MAX_MS : (int)ns;", "return (int)ns;", UNIT),
     # ADR-0029: the return's walk and BACKING on the books
     ("writer.c", "A(VERDICT_LOST) + A(RET_BACKING) + A(SESSION_NO_COOKIE)", "A(VERDICT_LOST) + A(SESSION_NO_COOKIE)", UNIT),
     ("writer.c", "if (A(MISSING_EMITTED) != A(WALKED) + A(WALK_UNNAMED) ||", "if (A(MISSING_EMITTED) != A(WALKED) ||", UNIT),

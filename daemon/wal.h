@@ -78,6 +78,10 @@ P15_MUST_CHECK int p15w_append(struct p15w *w, unsigned ring, uint32_t count, co
 /* Rotate by age and fdatasync by interval, if due. Call it from the drain loop. */
 P15_MUST_CHECK int p15w_tick(struct p15w *w);
 
+/* How long until p15w_tick has something to do (a rotation by age, or the fdatasync of written
+ * data), in ns; UINT64_MAX when nothing is pending, 0 when it is due or the clock failed. */
+uint64_t p15w_due_ns(struct p15w *w);
+
 /* fdatasync and close. Returns the first error the writer saw, or 0. Frees w. */
 P15_MUST_CHECK int p15w_close(struct p15w *w);
 

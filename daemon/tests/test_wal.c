@@ -390,6 +390,7 @@ static void test_rotation_by_time_and_sync(void)
 	const struct p15w_stats *st = p15w_stats(w);
 
 	fake_ns = t0 + 500000000ull;
+	EXPECT(p15w_due_ns(w) == 500000000ull, "due: the header's sync in 0.5 s (gate 3: the writer sleeps until then)");
 	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 0, "no sync before the interval");
 	fake_ns = t0 + 1000000000ull;
@@ -398,16 +399,23 @@ static void test_rotation_by_time_and_sync(void)
 	fake_ns = t0 + 3000000000ull;
 	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 1, "no sync when nothing was written");
+	EXPECT(p15w_due_ns(w) == UINT64_MAX, "due: nothing pending (an empty segment does not rotate)");
 	put(w, P15W_RING_SPINE, 1, 32, 1);
+	EXPECT(p15w_due_ns(w) == 0, "due: written data whose interval has passed: now");
 	fake_ns = t0 + 3500000000ull;
 	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 2, "sync after a write, interval passed");
 	put(w, P15W_RING_SPINE, 1, 32, 2);
 	fake_ns = t0 + 4000000000ull;
+	EXPECT(p15w_due_ns(w) == 500000000ull, "due: the sync 1 s after the last, before the rotation at 10 s");
 	EXPECT(p15w_tick(w) == 0, "tick");
 	EXPECT(st->fsyncs == 2, "the interval counts from the last sync");
 	fake_ns = t0 + 9999999999ull;
+	EXPECT(p15w_due_ns(w) == 0, "due: the sync is overdue");
 	EXPECT(p15w_tick(w) == 0, "tick");
+	EXPECT(p15w_due_ns(w) == 1, "due: the rotation by age in 1 ns");
+	put(w, P15W_RING_SPINE, 1, 32, 3);
+	EXPECT(p15w_due_ns(w) == 1, "due: the earlier of the rotation (1 ns) and the new data's sync (1 s)");
 	EXPECT(st->segments == 1, "no rotation before the age");
 	EXPECT(st->fsyncs == 3, "the write at +4 s is synced by that tick");
 	fake_ns = t0 + 10000000000ull;

@@ -38,6 +38,14 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/hook_cost/summarize.py) | Summarize hook_cost output (bench/hook_cost/hook_cost.c) as the ADR-0018 rule 2 report. | `ParseError`, `parse`, `series`, `comparison`, `report` |
 | [`test_summarize.py`](../bench/hook_cost/test_summarize.py) | Tests for summarize.py on synthetic hook_cost output with a known answer. | `synth`, `overhead`, `SummarizeTest` |
 
+## bench/idle_cost
+
+| File | Job | Public names |
+|---|---|---|
+| [`run.py`](../bench/idle_cost/run.py) | Drive the idle-cost measurement (gate 3 of STATE decision 28): p15d's own CPU per second on a host that asks nothing of it, under several settings, compared at the same backgrou... | `RunError`, `arm_args`, `rotation`, `threads_cpu`, `boot_ns`, `window_books`, `wait_started`, `one` |
+| [`summarize.py`](../bench/idle_cost/summarize.py) | Summarize an idle-cost run (bench/idle_cost/run.py): gate 3 of STATE decision 28. | `ParseError`, `parse`, `ms_per_s`, `report` |
+| [`test_idle_cost.py`](../bench/idle_cost/test_idle_cost.py) | Tests for the idle-cost harness (bench/idle_cost/run.py, summarize.py). | `run_line`, `thread`, `good`, `Summary`, `Harness` |
+
 ## bench/open_cost
 
 | File | Job | Public names |
@@ -170,8 +178,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`counters.h`](../daemon/counters.h) | The BPF loss counters, read without a bpf() map call (ADR-0026). | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum`, `p15_counters_sum_rows` |
 | [`crc32c.c`](../daemon/crc32c.c) | Table-driven CRC32C, one byte per step. | `p15_crc32c` |
 | [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c` |
-| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_drain_poll`, `p15_drain_finish` |
-| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_free`, `p15_drain_room`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
+| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish` |
+| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_free`, `p15_drain_room`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
 | [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd` |
 | [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd`, `p15_loader_file_counters_fd` |
@@ -193,10 +201,10 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_set_fd`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
 | [`snapshot.h`](../daemon/snapshot.h) | The process snapshot (ADR-0007 rule 3, ADR-0023). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_fd_books_fill`, `p15_snap_books_close`, `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_set_fd`, `p15_snapshot_take`, `p15_snapshot_on_open` |
 | [`snapshot_frame.c`](../daemon/snapshot_frame.c) | Framing and checking a process snapshot's output (ADR-0007 rule 3). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_fd_books_fill`, `p15_snap_books_close` |
-| [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_take_fsync_max`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf`, `p15w_recover` |
-| [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush` (+3) |
-| [`writer.c`](../daemon/writer.c) | The WAL writer thread (ADR-0017 layer 2, ADR-0019 G4.1). | `p15_invariant_check`, `p15_writer_main` |
-| [`writer.h`](../daemon/writer.h) | The WAL writer thread (ADR-0017 layer 2): the only code that touches the disk. | `p15_writer_main`, `p15_invariant_check` |
+| [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_due_ns`, `p15w_close`, `p15w_take_fsync_max`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf` (+1) |
+| [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_due_ns`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add` (+4) |
+| [`writer.c`](../daemon/writer.c) | The WAL writer thread (ADR-0017 layer 2, ADR-0019 G4.1). | `p15_invariant_check`, `p15_writer_wait_ms`, `p15_writer_main` |
+| [`writer.h`](../daemon/writer.h) | The WAL writer thread (ADR-0017 layer 2): the only code that touches the disk. | `p15_writer_main`, `p15_writer_wait_ms`, `p15_invariant_check` |
 
 ## daemon/tests
 

@@ -39,11 +39,12 @@ PCS, PCP = "bench/prim_cost/summarize.py", "bench/prim_cost/prog_stats.py"
 _TPC = "bench/prim_cost/test_prim_cost.py"
 OSS = "bench/open_sections/summarize.py"
 PWS, _TPW = "bench/path_walk/summarize.py", "bench/path_walk/test_path_walk.py"
+ICS, ICR, _TIC = "bench/idle_cost/summarize.py", "bench/idle_cost/run.py", "bench/idle_cost/test_idle_cost.py"
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
-         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW}
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW, ICS: _TIC, ICR: _TIC}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -412,6 +413,25 @@ M = [
  (PCP, "{min(e['per_run']):.1f} to", "{max(e['per_run']):.1f} to"),
  (PCP, "{P.median(total) / ops:.1f}", "{sum(total) / ops:.1f}"),
  (PCP, "{e['runs'] / (ops * len(e['ns'])):.3f}", "{e['runs'] / ops:.3f}"),
+ # ---- idle_cost: p15d's CPU on an idle host (gate 3) ----
+ (ICS, "'yes' if med[arm] < budget and max(cpu) < budget else 'no'", "'yes' if med[arm] < budget else 'no'"),
+ (ICS, '    if d["bad"]:\n', '    if False:\n'),
+ (ICS, '            if m[12] != "ok":\n', '            if False:\n'),
+ (ICS, '        if sorted(runs[arm]) != list(range(cfg["rounds"])):\n', '        if False:\n'),
+ (ICS, '            if rnd in runs[arm]:\n', '            if False:\n'),
+ (ICS, '            if cfg is not None:\n', '            if False:\n'),
+ (ICS, '    if extra:\n', '    if False:\n'),
+ (ICS, '            raise ParseError(f"unknown line: {line}")', '            pass'),
+ (ICS, '        ratio = med[cfg["arms"][0]] / med[arm]', '        ratio = med[arm] / med[cfg["arms"][0]]'),
+ (ICS, "threads[m[1]][int(m[2])][m[3]] = threads[m[1]][int(m[2])].get(m[3], 0) + int(m[4])",
+  "threads[m[1]][int(m[2])][m[3]] = int(m[4])"),
+ (ICS, "        load = statistics.median((r[\"spine\"] + r[\"bulk\"]) / (r[\"window\"] / 1e9) for r in rs)",
+  "        load = statistics.median((r[\"spine\"]) / (r[\"window\"] / 1e9) for r in rs)"),
+ (ICS, '        bad.append(f"the harness stopped: {line[10:]}")', '        pass'),
+ (ICR, '    if not name or not name.isidentifier():\n', '    if not name:\n'),
+ (ICR, '        out += o.split("=", 1)', '        out += [o]'),
+ (ICR, '    return names[k:] + names[:k]', '    return names'),
+ (ICR, '        except (FileNotFoundError, ProcessLookupError):\n            continue', '        except ProcessLookupError:\n            continue'),
  # ---- path_walk: the walk against bpf_d_path (gate 2): a wrong path without a flag must fail the run ----
  (PWS, '        if r["verdict"] == "MISMATCH":\n', '        if False:\n'),
  (PWS, '        elif r["verdict"] not in ("equal", "flagged"):\n', '        elif False:\n'),

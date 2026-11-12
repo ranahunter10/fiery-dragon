@@ -35,6 +35,7 @@ struct p15_drain {
 	uint64_t prev_file[P15_CTR_MAX], prev_file_kprobe_missed;
 	uint64_t prev_read_ns, last_poll_ns;
 	int queue_full_now;              /* the last poll left records in a ring for want of a batch */
+	int last_taken;                  /* records the last poll took from the rings */
 };
 
 /* bulk_rb_fd is -1 without network capture and file identity; bulk_ctr_fd (NET) and file_ctr_fd are -1
@@ -45,6 +46,12 @@ void p15_drain_free(struct p15_drain *d);
 /* The records of `ring` (P15W_RING_*) that are certain to fit in its batch now; 0 when no batch is
  * free. Publishes a batch it cannot use. For p15_drain_poll and the tests. */
 uint32_t p15_drain_room(struct p15_drain *d, unsigned ring);
+/* The drain's poll timeouts (gate 3): records wake the drain only at a ring's high-water mark (ADR-0020
+ * rule 2), so the timeout bounds how long a record waits. After a poll that took records, or left some
+ * for want of a batch, the next waits P15_POLL_MIN_MS; after an empty one, twice the last, up to max_ms
+ * (--poll-max-ms, default 200: ADR-0030). */
+#define P15_POLL_MIN_MS 10
+int p15_poll_next(int cur_ms, int took, int queue_full, int max_ms);
 /* One poll of up to timeout_ms, then publish, then the counter read and GAP check. 0 or -errno. */
 P15_MUST_CHECK int p15_drain_poll(struct p15_drain *d, int timeout_ms);
 /* After the programs are detached: empty the rings, publish, final counter read. 0 or -errno. */

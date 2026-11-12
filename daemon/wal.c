@@ -366,6 +366,23 @@ int p15w_tick(struct p15w *w)
 	return 0;
 }
 
+uint64_t p15w_due_ns(struct p15w *w)
+{
+	uint64_t t, due = UINT64_MAX;
+
+	if (w->failed || now(w, CLOCK_MONOTONIC, &t))
+		return 0;
+	if (w->seg_batches > 0)
+		due = w->opened_ns + w->o.max_ns > t ? w->opened_ns + w->o.max_ns - t : 0;
+	if (w->dirty) {
+		uint64_t s = w->last_sync_ns + w->o.sync_ns > t ? w->last_sync_ns + w->o.sync_ns - t : 0;
+
+		if (s < due)
+			due = s;
+	}
+	return due;
+}
+
 int p15w_close(struct p15w *w)
 {
 	int rc;

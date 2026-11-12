@@ -41,6 +41,35 @@ static void books(uint64_t seen, uint64_t emitted, uint64_t reserve_failed, uint
 	r.spine_selftest_consumed = 90 * (P15_SPINE_TYPES - 1);   /* the emitted base: taken by the self-test */
 }
 
+/* Gate 3: the drain's adaptive poll timeout */
+static void test_poll_next(void)
+{
+	int t = P15_POLL_MIN_MS, seen[8], k = 0;
+
+	EXPECT(p15_poll_next(P15_POLL_MIN_MS, 0, 0, 10) == 10, "max 10 ms: the timer of ADR-0020, unchanged");
+	EXPECT(p15_poll_next(80, 3, 0, 200) == P15_POLL_MIN_MS, "a poll that took records: back to the minimum");
+	EXPECT(p15_poll_next(80, 0, 1, 200) == P15_POLL_MIN_MS, "records left for want of a batch: the minimum");
+	for (k = 0; k < 8; k++) {
+		t = p15_poll_next(t, 0, 0, 200);
+		seen[k] = t;
+	}
+	EXPECT(seen[0] == 20 && seen[1] == 40 && seen[2] == 80 && seen[3] == 160 && seen[4] == 200 && seen[7] == 200,
+	       "empty polls double the timeout up to the maximum: 20 40 80 160 200 200");
+	EXPECT(p15_poll_next(1000, 0, 0, 1000) == 1000 && p15_poll_next(0, 0, 0, 100) == P15_POLL_MIN_MS,
+	       "bounded on both sides");
+}
+
+/* Gate 3: the writer waits until its next deadline, not on a 100 ms timer */
+static void test_writer_wait(void)
+{
+	EXPECT(p15_writer_wait_ms(2000000000ull, 1000000000ull, UINT64_MAX) == P15_WRITER_WAIT_MAX_MS,
+	       "STATS in 1 s, nothing to sync: the longest wait");
+	EXPECT(p15_writer_wait_ms(1300000000ull, 1000000000ull, UINT64_MAX) == 300, "STATS in 300 ms: 300 ms");
+	EXPECT(p15_writer_wait_ms(2000000000ull, 1000000000ull, 40500000ull) == 41, "a sync due in 40.5 ms: 41 ms, rounded up");
+	EXPECT(p15_writer_wait_ms(900000000ull, 1000000000ull, UINT64_MAX) == 1, "STATS overdue: 1 ms, not 0");
+	EXPECT(p15_writer_wait_ms(2000000000ull, 1000000000ull, 0) == 1, "the WAL due now: 1 ms");
+}
+
 /* ADR-0020 rule 3: a change in any spine type's ring loss, build loss or kernel skip calls for a GAP */
 static void test_loss_changed(void)
 {
@@ -113,6 +142,8 @@ static void test_drain_room(void)
 int main(void)
 {
 	test_loss_changed();
+	test_poll_next();
+	test_writer_wait();
 	test_drain_room();
 	char why[200];
 

@@ -453,6 +453,16 @@ static void closing_snapshot(struct p15_writer *w)
 	atomic_store(&w->run->closing_req, P15_CLOSING_DONE);
 }
 
+int p15_writer_wait_ms(uint64_t stats_due, uint64_t now, uint64_t wal_due_ns)
+{
+	uint64_t ns = stats_due > now ? stats_due - now : 0;
+
+	if (wal_due_ns < ns)
+		ns = wal_due_ns;
+	ns = (ns + 999999) / 1000000;   /* up: never wake before the deadline and spin */
+	return ns < 1 ? 1 : ns > P15_WRITER_WAIT_MAX_MS ? P15_WRITER_WAIT_MAX_MS : (int)ns;
+}
+
 void *p15_writer_main(void *arg)
 {
 	struct p15_writer *w = arg;
@@ -465,7 +475,7 @@ void *p15_writer_main(void *arg)
 		uint64_t now;
 
 		atomic_fetch_add(&r->writer_beats, 1);   /* the stop's watchdog (E-0162) */
-		if (p15q_wait(&r->q, 100))
+		if (p15q_wait(&r->q, p15_writer_wait_ms(w->prev_stats_ns + stats_ns, p15_boot_ns(), p15w_due_ns(w->wal))))
 			p15_fail(r, P15_EXIT_OSERR, "writer: wait on the queue failed");
 		drain_queue(w);
 		if (atomic_load(&r->closing_req) == P15_CLOSING_ASKED)

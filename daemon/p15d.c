@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 	const char *sched;
 	size_t nm = 0;
 	uint64_t end_ns = 0;
-	int rc, code;
+	int rc, code, poll_ms;
 
 	if (p15_config_parse(&run.cfg, argc, argv, err, sizeof(err))) {
 		logline("error", "usage", err);
@@ -274,16 +274,19 @@ int main(int argc, char **argv)
 	if (pthread_create(&wt, NULL, p15_writer_main, &w)) {
 		logline("error", "oserr", "cannot start the writer thread");
 		return P15_EXIT_OSERR;
-	}
+	}	pthread_setname_np(wt, "p15d-writer");   /* per-thread CPU in /proc (bench/idle_cost) */
+
 	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s files=%s\n", run_dir, sched,
 		run.spine_ring_bytes, run.net ? "on" : "off (--no-net)",
 		run.files ? (run.cfg.test_no_path_fentry ? "on (TEST: no path fentry)" : "on") : "off (--no-files)");
 	if (run.cfg.duration_s)
 		end_ns = p15_mono_ns() + (uint64_t)run.cfg.duration_s * 1000000000ull;
 
+	poll_ms = P15_POLL_MIN_MS;
 	while (!atomic_load(&run.stop) && (!end_ns || p15_mono_ns() < end_ns)) {
-		if (p15_drain_poll(&d, 10))   /* ADR-0020 rule 2: records don't wake the drain below the high-water mark */
+		if (p15_drain_poll(&d, poll_ms))   /* ADR-0020 rule 2, ADR-0030: high-water wake-ups, an adaptive timer */
 			p15_fail(&run, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
+		poll_ms = p15_poll_next(poll_ms, d.last_taken, d.queue_full_now, (int)run.cfg.poll_max_ms);
 		if (run.cfg.drain_pause_ms)
 			usleep(run.cfg.drain_pause_ms * 1000u);   /* TEST ONLY: config.test_drain_pause_ms in the header */
 	}
