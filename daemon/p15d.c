@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 	{
 		struct p15_loader_opts lo = {
 			.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,
-			.files = run.files, .test_no_path_fentry = run.cfg.test_no_path_fentry,
+			.files = run.files, .flow = run.cfg.flow, .test_no_path_fentry = run.cfg.test_no_path_fentry,
 			.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,
 		};
 

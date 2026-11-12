@@ -23,6 +23,7 @@ struct p15_loader_opts {
 	uint32_t spine_ring_bytes, bulk_ring_bytes;
 	int net;                     /* the network-intent programs (ADR-0004) */
 	int files;                   /* the file-identity programs (ADR-0015) */
+	int flow;                    /* attach the data-flow programs (ADR-0005); needs files */
 	int test_no_path_fentry;     /* TEST ONLY: leave the path fentry unattached (ADR-0015 confirmation 1) */
 	uint32_t file_map_entries, obj_map_entries;
 };

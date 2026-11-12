@@ -276,8 +276,10 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 		l->file->data->facts_epoch++;
 	/* Now the flow programs (ADR-0005): the self-tests are done, so from here a transfer is a real
 	 * one the books account for. Attached last so a verifier or attach failure is reported before
-	 * p15d claims the capture is up. */
-	if (l->file) {
+	 * p15d claims the capture is up. Opt-in with --flow until step 2b part 3 is complete (the
+	 * self-test and the VM dry run); the programs still load with the object, so the verifier
+	 * checks them whether or not they attach. */
+	if (l->file && o->flow) {
 		struct bpf_program *const flow[] = {
 			l->file->progs.flow_read, l->file->progs.flow_write, l->file->progs.flow_readv,
 			l->file->progs.flow_writev, l->file->progs.flow_send, l->file->progs.flow_recv,

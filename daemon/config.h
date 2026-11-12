@@ -29,6 +29,7 @@ struct p15_config {
 	int realtime;                /* --no-rt clears it: the drain asks for SCHED_FIFO 1 (ADR-0017 layer 3) */
 	int net;                     /* --no-net clears it: load the ADR-0004 network-intent programs */
 	int files;                   /* --no-files clears it: load the ADR-0015 file-identity programs */
+	int flow;                    /* --flow sets it: attach the ADR-0005 data-flow programs (needs files); default off until step 2b part 3 is complete */
 	uint32_t file_map_entries;   /* --file-map-entries: open-file map size (decision 19.6, E-0142) */
 	uint32_t obj_map_entries;    /* --obj-map-entries: object map size */
 	int test_no_path_fentry;     /* --test-no-path-fentry: TEST ONLY, leave the path fentry unattached */
