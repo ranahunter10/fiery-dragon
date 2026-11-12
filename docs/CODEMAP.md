@@ -329,4 +329,5 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`measure_capture.sh`](../tools/vm/measure_capture.sh) | The standing measurement matrix of the capture layer (audit 2026-11-12, §4 and §6 Phase A). | `need`, `step` |
 | [`sliceb_attach_check.sh`](../tools/vm/sliceb_attach_check.sh) | Slice B attach-point check (ADR-0005, ADR-0015; design checks O1-O3, O5 in docs/research/2026-11-09-slice-b-design-checks.md). |  |

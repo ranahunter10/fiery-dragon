@@ -1,0 +1,174 @@
+ashu@p15-dev:~$ tmux new -s measure
+[exited]
+ashu@p15-dev:~$ cat /var/tmp/p15-measure/defaults-2/summary.md /var/tmp/p15-measure/b1024/summary.md
+# Capture measurement matrix, 20261112T133257Z
+
+    stamp 20261112T133257Z
+    commit b45a795f674677d652c14e19dc62fd1e3259a2e3 clean
+    kernel 7.0.0-38-generic cpus 3
+    python /home/ashu/p15venv/bin/python
+    p15d_options (defaults)
+    quick 0 soak_seconds 600
+    f883465290b3e3b7e16db03041b0acc398d734b1cb748c357ef785ac4c81e4c5  build/p15d
+    bae6b6206cd154a7a1479f0215e9f0f9f002b5c8d41a7ee6ea06300d37dc7da8  build/p15w-inspect
+    48e7727bbf4cf27e0b20a7e4825d99c08b696c765facd25d190651a60e044f25  build/open_cost
+    b02fa35cead785d9c98b8c67b9dbb96545a0d35d1cb9a055aa59fc150b5c7c6a  build/prim_cost
+    afa8c259570b390133a745798b7d8561405484fd52f0b2626889c2d5dcdce7dd  build/crc32c_bench
+
+## Steps
+
+- it_p15d rc=1 seconds=128.8
+- crc32c rc=0 seconds=2.7
+- prog_stats rc=0 seconds=8.8
+- open_cost rc=0 seconds=257.6
+- open_cost_report rc=0 seconds=0.0
+- profile_run rc=0 seconds=48.8
+- profile rc=0 seconds=0.3
+- profile_callers rc=0 seconds=0.3
+- idle rc=0 seconds=151.1
+- idle_report rc=0 seconds=0.0
+- soak rc=0 seconds=689.0
+- soak_report rc=0 seconds=0.0
+
+## Figures (each from its step's own report)
+
+- it_p15d:   FAIL FILE_STATS counts walked opens, never more than the WAL holds
+- it_p15d:   FAIL every CLOSE of those opens names the OPEN's object, not 0
+- it_p15d: it_p15d: FAIL (43 failed checks)
+- crc32c: table   2.1421 ns per byte (median; 2.0363 to 3.0910)
+- crc32c: sse4.2  0.0935 ns per byte (median; 0.0911 to 0.1013)
+- crc32c: speed-up 22.9x; same crc: yes
+- crc32c: table   2.0308 ns per byte (median; 1.9988 to 2.2130)
+- crc32c: sse4.2  0.1011 ns per byte (median; 0.0987 to 0.1177)
+- crc32c: speed-up 20.1x; same crc: yes
+- prog_stats: | file_open_path | tracing | 7 | 1,540,348 | 280.9 | 270.3 to 295.8 | 1.000 | 281.0 |
+- prog_stats: | file_free | kprobe | 7 | 1,541,444 | 211.4 | 190.6 to 214.9 | 1.001 | 211.5 |
+- prog_stats: | file_open_session | kprobe | 7 | 3,080,696 | 86.0 | 84.9 to 90.1 | 2.000 | 172.1 |
+- prog_stats: | file_fd_iter | tracing | 3 | 2,185 | 394.0 | 368.8 to 615.9 | 0.003 | 1.3 |
+- prog_stats: | file_inode_free | kprobe | 7 | 56 | 619.1 | 563.1 to 745.0 | 0.000 | 0.0 |
+- open_cost: added per open+close 1,043.3 ns (95 % interval 990.6 ns to 1,100.2 ns), 12.17 null syscalls; ratio of medians 2.1904; effect p = 1.91e-06
+- open_cost: added per open+close 1,106.3 ns (95 % interval 1,068.1 ns to 1,183.6 ns), 12.90 null syscalls; ratio of medians 2.2579; effect p = 1.91e-06
+- open_cost: added per open+close 1,375.0 ns (95 % interval 1,304.7 ns to 1,485.0 ns), 16.04 null syscalls; ratio of medians 2.1775; effect p = 1.91e-06
+- open_cost: added per open+close 1,405.0 ns (95 % interval 1,348.4 ns to 1,567.3 ns), 16.39 null syscalls; ratio of medians 2.1990; effect p = 1.91e-06
+- open_cost: opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- open_cost: p15d idle: 1.26 ms of CPU per second (mean; median 1.27)
+- open_cost: p15d per open+close of the workload: 425.4 ns of CPU in the window (mean), 420.4 ns after the idle rate is taken off (median 355.8 ns)
+- open_cost: p15d's thread switches: 2.7 per 1,000 open+close in the window (median), 9.3 per second idle (median)
+- profile: 26.56%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+- profile: 17.19%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+- profile: 8.59%  p15d               [.] crc_hw
+- profile: 6.25%  p15d               [.] on_bulk
+- profile: 4.69%  p15d               [.] tiles
+- profile: 3.12%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+- profile: 3.12%  p15d               [.] p15_rec_check
+- profile: 2.34%  [kernel.kallsyms]  [k] do_user_addr_fault
+- idle: | arm | CPU ms/s, median | cheapest .. dearest round | polls/s | load, records/s (spine + bulk) | first arm / this | under the budget |
+- idle: Per thread, median ms/s over rounds:
+- soak: | resident memory, MiB | 24.9 | 25.7 | 23.5 | 25.7 |
+- soak: WAL: 27.4 MiB, 42.1 KiB/s. Spine records drained: 33,836; bulk-ring records written (NET and file identity): 233,982; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+- soak: | step | steps | items expected | found | recall |
+- soak: | graph check | found | expected |
+- soak: PASS
+# Capture measurement matrix, 20261112T141905Z
+
+    stamp 20261112T141905Z
+    commit b45a795f674677d652c14e19dc62fd1e3259a2e3 clean
+    kernel 7.0.0-38-generic cpus 3
+    python /home/ashu/p15venv/bin/python
+    p15d_options --batch-kb 1024 --queue-batches 16
+    quick 0 soak_seconds 600
+    f883465290b3e3b7e16db03041b0acc398d734b1cb748c357ef785ac4c81e4c5  build/p15d
+    bae6b6206cd154a7a1479f0215e9f0f9f002b5c8d41a7ee6ea06300d37dc7da8  build/p15w-inspect
+    48e7727bbf4cf27e0b20a7e4825d99c08b696c765facd25d190651a60e044f25  build/open_cost
+    b02fa35cead785d9c98b8c67b9dbb96545a0d35d1cb9a055aa59fc150b5c7c6a  build/prim_cost
+    afa8c259570b390133a745798b7d8561405484fd52f0b2626889c2d5dcdce7dd  build/crc32c_bench
+
+## Steps
+
+- it_p15d rc=1 seconds=119.2
+- crc32c rc=0 seconds=2.5
+- prog_stats rc=0 seconds=7.8
+- open_cost rc=0 seconds=257.5
+- open_cost_report rc=0 seconds=0.0
+- profile_run rc=0 seconds=53.3
+- profile rc=0 seconds=0.3
+- profile_callers rc=0 seconds=0.3
+- idle rc=0 seconds=149.8
+- idle_report rc=0 seconds=0.0
+- soak rc=0 seconds=629.3
+- soak_report rc=0 seconds=0.0
+
+## Figures (each from its step's own report)
+
+- it_p15d:   FAIL FILE_STATS counts walked opens, never more than the WAL holds
+- it_p15d:   FAIL every CLOSE of those opens names the OPEN's object, not 0
+- it_p15d: it_p15d: FAIL (43 failed checks)
+- crc32c: table   1.9595 ns per byte (median; 1.9545 to 2.0102)
+- crc32c: sse4.2  0.0911 ns per byte (median; 0.0904 to 0.0967)
+- crc32c: speed-up 21.5x; same crc: yes
+- crc32c: table   1.9800 ns per byte (median; 1.9641 to 2.0144)
+- crc32c: sse4.2  0.0996 ns per byte (median; 0.0981 to 0.1024)
+- crc32c: speed-up 19.9x; same crc: yes
+- prog_stats: | file_open_path | tracing | 7 | 1,540,332 | 263.6 | 253.3 to 288.9 | 1.000 | 263.6 |
+- prog_stats: | file_free | kprobe | 7 | 1,540,933 | 175.7 | 170.0 to 183.5 | 1.001 | 175.8 |
+- prog_stats: | file_open_session | kprobe | 7 | 3,080,664 | 83.7 | 82.0 to 86.0 | 2.000 | 167.4 |
+- prog_stats: | file_fd_iter | tracing | 3 | 2,185 | 416.7 | 360.5 to 426.1 | 0.003 | 1.4 |
+- prog_stats: | file_inode_free | kprobe | 7 | 56 | 548.5 | 462.6 to 629.4 | 0.000 | 0.0 |
+- open_cost: added per open+close 996.9 ns (95 % interval 955.2 ns to 1,031.5 ns), 11.55 null syscalls; ratio of medians 2.1917; effect p = 1.91e-06
+- open_cost: added per open+close 1,068.6 ns (95 % interval 1,011.0 ns to 1,106.3 ns), 12.38 null syscalls; ratio of medians 2.2696; effect p = 1.91e-06
+- open_cost: added per open+close 1,251.9 ns (95 % interval 1,216.0 ns to 1,286.9 ns), 14.51 null syscalls; ratio of medians 2.0812; effect p = 1.91e-06
+- open_cost: added per open+close 1,285.3 ns (95 % interval 1,252.0 ns to 1,313.0 ns), 14.90 null syscalls; ratio of medians 2.1150; effect p = 1.91e-06
+- open_cost: opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- open_cost: p15d idle: 1.28 ms of CPU per second (mean; median 1.10)
+- open_cost: p15d per open+close of the workload: 206.4 ns of CPU in the window (mean), 201.2 ns after the idle rate is taken off (median 201.8 ns)
+- open_cost: p15d's thread switches: 0.4 per 1,000 open+close in the window (median), 9.1 per second idle (median)
+- profile: 18.89%  p15d               [.] tiles
+- profile: 15.56%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+- profile: 7.78%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+- profile: 6.67%  [kernel.kallsyms]  [k] fdget
+- profile: 6.67%  p15d               [.] after_poll
+- profile: 5.56%  p15d               [.] on_bulk
+- profile: 3.33%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+- profile: 3.33%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+- idle: | arm | CPU ms/s, median | cheapest .. dearest round | polls/s | load, records/s (spine + bulk) | first arm / this | under the budget |
+- idle: Per thread, median ms/s over rounds:
+- soak: | resident memory, MiB | 23.6 | 23.8 | 23.1 | 23.8 |
+- soak: WAL: 26.7 MiB, 45.4 KiB/s. Spine records drained: 33,331; bulk-ring records written (NET and file identity): 230,178; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+- soak: | step | steps | items expected | found | recall |
+- soak: | graph check | found | expected |
+- soak: PASS
+ashu@p15-dev:~$ for d in defaults-2 b1024; do grep ' rc=[1-9]' /var/tmp/p15-measure/$d/steps.txt | while read -r s _; do echo "== $d/$s"; tail -15 /var/tmp/p15-measure/$d/$s.err; done; done; echo "no failed steps (if nothing above)"
+== defaults-2/it_p15d
+ModuleNotFoundError: No module named 'google_crc32c'
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    import sys; from pathlib import Path; from p15 import wal
+                                          ^^^^^^^^^^^^^^^^^^^
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    import sys; from pathlib import Path; from p15 import wal
+                                          ^^^^^^^^^^^^^^^^^^^
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+== b1024/it_p15d
+ModuleNotFoundError: No module named 'google_crc32c'
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    import sys; from pathlib import Path; from p15 import wal
+                                          ^^^^^^^^^^^^^^^^^^^
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+    import sys; from pathlib import Path; from p15 import wal
+                                          ^^^^^^^^^^^^^^^^^^^
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+no failed steps (if nothing above)
+ashu@p15-dev:~$

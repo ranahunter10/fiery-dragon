@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "docs: the tools' user-space pipelines against p15d's (decision 43)"
+**Last updated:** 2026-11-12 (UTC), PR "audit: the capture layer reviewed, measured and planned to done (decision 44)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -285,6 +285,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 43. **The tools' user-space pipelines studied** (E-0220, E-0221, [note](research/2026-11-12-userspace-pipelines.md)): 1 MiB batches cut p15d's CPU per open+close from 413 to 204 ns (E-0220), and today's two fixes together from 699 to 204. Against Falco, Tetragon, Tracee and eAudit: p15d matches the best on kernel wake-ups and batching. It keeps on purpose its writer thread, back-pressure, record checks and checksums. Its remaining levers are the ring reader (libbpf stores the consumer position per record) and record size. No design change is taken here: decision waiting 11.
 
+44. **The capture layer reviewed** (E-0222, [audit](audits/2026-11-12-capture-review.md)): sound for what it captures, incomplete without data flow (step 2b: PIDSMaker gets 4 of 10 edge types), not yet deployable (cost over budget, seven deployment measures missing). Root causes: the pipeline was built before it was measured as a whole. From now on every capture PR runs the standing matrix on the VM before it merges (`tools/vm/measure_capture.sh`). The plan runs in phases A to F, with function (2b) before more cost work. Criteria and thresholds: decision waiting 12.
+
+45. **The matrix's first runs** (E-0223, [evidence](evidence/vm/2026-11-12-matrix-defaults-vs-b1024/README.md)): with 1 MiB batches, p15d costs 201 ns per open+close against 420, the soak passes with nothing lost, and the calling program may pay less too (INF). The matrix's own it_p15d step was broken by the Python under sudo; fixed. Next in the matrix: how often the skip counters must be read.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -307,3 +311,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    2. U3, with U4: a drain reader that stores the ring's consumer position once per take, not per record, with its counters added once per take. Built as a p15d option and measured against libbpf's reader on `prog_stats` and `open_cost`, because it may lower the BPF programs' cost as well as p15d's.
    3. U2 only if the soak still shows switches after U1.
    4. U5 (smaller records) by an ADR after U3's numbers.
+12. **The capture layer's acceptance criteria and plan** (decision 44, [audit §5-6](audits/2026-11-12-capture-review.md)). Recommendation:
+   1. Accept the criteria F1-F5, P1-P3, R1-R2, S1 and G1. Set the proposed thresholds or change them: ceiling at least 10 times the soak's rate; overhead under 5 % on ordinary workloads; p15d under 100 ns per record; tamper window under 1 s.
+   2. Make the matrix the merge rule for capture PRs (CONTRIBUTING.md, by its own PR).
+   3. Order: Phase A (the matrix on today's main with and without U1, then the network and fork contention measurements), then **Phase B, step 2b**, before any further open-path work.
