@@ -277,7 +277,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - Reads and writes run at about 317 per second under the soak's workload.
     - The graph build summed to 107.8 s. Its WAL read took 37.0 s on main and 45.6 s on the branch, one build each; the branch adds only one comparison per RENAME there, so this is most likely the host (INF, E-0213).
 
-40. **The recommended order taken** (maintainer 2026-11-12, "do recommended"; E-0214): #79, #80 and #81 merged. Then p15d's profile first (C4, `bench/open_cost --perf`, #82), and the kernel-side variants' harness (`bench/open_variants`, C1 first) after it.
+40. **The recommended order taken** (maintainer 2026-11-12, "do recommended"; E-0214): #79, #80 and #81 merged. Then p15d's profile first (C4, `bench/open_cost --perf`, #82), and the kernel-side variants after it. **C1 needs no new code:** p15d's `--test-no-path-fentry` (ADR-0015 confirmation 1) leaves the fentry unattached, so the session's return writes every OPEN by the walk (`daemon/loader.c` L56, `bpf/progs/file.bpf.c` L719). It is measured with the existing `prog_stats.py` and `open_cost`, at a 3-component path and a 10-component one, because the walk's cost grows with depth (E-0196). C1b and C2 need code, written after these numbers.
 
 ## Decisions waiting
 
