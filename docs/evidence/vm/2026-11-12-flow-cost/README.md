@@ -4,9 +4,10 @@ Evidence for E-0233 and decision waiting 13. Run by the maintainer on the VM (7.
 
 | File | What |
 |---|---|
-| `vm-session.txt` | the terminal as pasted: the commit, the harness's first and last lines, the `check` line, and `summarize.py`'s whole report |
+| `flow_cost.txt` | the harness's raw output (`build/flow_cost.txt`, copied from the VM by `scp`): the check line, every `row` and `nullsys` line, `flow_cost: ok` |
+| `vm-session.txt` | the terminal as pasted (Windows line endings): the commit, the harness's first and last lines, the `check` line, and `summarize.py`'s whole report |
 
-The raw `row` lines (`build/flow_cost.txt`) are not here yet. Every figure below is the report's, and the report is computed from those rows.
+`python3 bench/flow_cost/summarize.py flow_cost.txt` reproduces the report in `vm-session.txt` line for line (line endings aside). The untraced read alone ranged from 159 to 360 ns per read across the 20 rounds, a measure of this host's noise; the pairing by round is what removes it.
 
 What it shows (MEAS, VM; thread CPU time per read, the primary metric):
 
