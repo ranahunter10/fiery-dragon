@@ -1,0 +1,332 @@
+ashu@p15-dev:~/fiery-dragon$ head -40 build/prog_stats.txt
+# Per-program cost while `build/open_cost /var/tmp/p15-open-cost 200000 20000` ran, 7 rounds (bpf_stats on: not an overhead measurement)
+
+Host speed: a null syscall cost 92.4 ns (median of 7 rounds; 88.0 to 95.8).
+
+| program | type | rounds | runs | ns per run (median) | cheapest to dearest round | runs per op | ns per op (median) |
+|---|---|---|---|---|---|---|---|
+| file_open_path | tracing | 7 | 1,540,348 | 306.6 | 285.5 to 377.5 | 1.000 | 306.7 |
+| file_free | kprobe | 7 | 1,541,470 | 229.3 | 214.9 to 267.0 | 1.001 | 229.5 |
+| file_open_session | kprobe | 7 | 3,080,696 | 91.4 | 88.3 to 103.0 | 2.000 | 182.9 |
+| file_fd_iter | tracing | 3 | 2,148 | 627.2 | 366.1 to 1151.7 | 0.003 | 2.0 |
+| snap_task | tracing | 3 | 525 | 1415.9 | 1088.5 to 1820.1 | 0.001 | 1.1 |
+| spine_exec | tracepoint | 7 | 14 | 4464.0 | 3793.5 to 32065.5 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 7 | 56 | 639.2 | 527.8 to 679.2 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 7 | 14 | 2116.0 | 1846.5 to 2391.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 7 | 14 | 1688.5 | 1412.0 to 1799.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 7 | 14 | 1364.5 | 1202.5 to 8631.5 | 0.000 | 0.0 |
+| **all** | | 7 | 6,165,299 | | | 4.003 | 741.4 |
+
+## Round 0
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,047 | 83.07 | 377.5 | 1.000 | 377.6 |
+| file_free | kprobe | 220,132 | 47.74 | 216.9 | 1.001 | 217.0 |
+| file_open_session | kprobe | 440,094 | 40.25 | 91.5 | 2.000 | 182.9 |
+| spine_exec | tracepoint | 2 | 0.01 | 4464.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 8 | 0.01 | 639.2 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 2070.5 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 2032.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1712.0 | 0.000 | 0.0 |
+| **all** | | 880,289 | 171.08 | | 4.001 | 777.7 |
+
+workload pid=122219 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=87967641 wall_ns=88004273
+row event=same n=200000 cpu_ns=428059778 wall_ns=517224990
+row event=distinct n=20000 cpu_ns=441007670 wall_ns=452706293
+
+## Round 1
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+ashu@p15-dev:~/fiery-dragon$ sudo make bench-open-cost ROUNDS=20 P15_PYTHON=/home/ashu/p15venv/bin/python
+[sudo: authenticate] Password:
+/home/ashu/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost \
+        --dir /var/tmp/p15-open-cost --rounds 20 --same 200000 \
+        --distinct 20000  | tee build/open_cost.txt
+config kernel=7.0.0-38-generic cpus=3 rounds=20 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=-
+row round=-1 arm=none2 event=nullsys n=1000000 cpu_ns=87165902 wall_ns=94430112
+row round=-1 arm=none2 event=same n=200000 cpu_ns=176749056 wall_ns=191481229
+row round=-1 arm=none2 event=distinct n=20000 cpu_ns=24397390 wall_ns=26427865
+row round=-1 arm=none event=nullsys n=1000000 cpu_ns=87976919 wall_ns=95311487
+row round=-1 arm=none event=same n=200000 cpu_ns=191026636 wall_ns=206947947
+row round=-1 arm=none event=distinct n=20000 cpu_ns=28075266 wall_ns=30411727
+capture round=-1 pid=127421 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=16 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1803562 idle_wall_ns=1001263758 agent_cpu_ns=138425678 agent_wall_ns=852082640 ok
+row round=-1 arm=p15d event=nullsys n=1000000 cpu_ns=99176817 wall_ns=107434006
+row round=-1 arm=p15d event=same n=200000 cpu_ns=403622000 wall_ns=469721070
+row round=-1 arm=p15d event=distinct n=20000 cpu_ns=61297624 wall_ns=69650242
+row round=0 arm=none event=nullsys n=1000000 cpu_ns=107910027 wall_ns=116925159
+row round=0 arm=none event=same n=200000 cpu_ns=224323321 wall_ns=243022189
+row round=0 arm=none event=distinct n=20000 cpu_ns=36324146 wall_ns=39349116
+capture round=0 pid=127429 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2473820 idle_wall_ns=1000671245 agent_cpu_ns=180876708 agent_wall_ns=1051508353 ok
+row round=0 arm=p15d event=nullsys n=1000000 cpu_ns=118180903 wall_ns=128020727
+row round=0 arm=p15d event=same n=200000 cpu_ns=559943668 wall_ns=627321053
+row round=0 arm=p15d event=distinct n=20000 cpu_ns=77656884 wall_ns=87701940
+row round=0 arm=none2 event=nullsys n=1000000 cpu_ns=135607027 wall_ns=148017187
+row round=0 arm=none2 event=same n=200000 cpu_ns=230957263 wall_ns=250898645
+row round=0 arm=none2 event=distinct n=20000 cpu_ns=41487578 wall_ns=44941453
+capture round=1 pid=127435 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=15 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1449997 idle_wall_ns=1000842746 agent_cpu_ns=133814509 agent_wall_ns=869701329 ok
+row round=1 arm=p15d event=nullsys n=1000000 cpu_ns=92026520 wall_ns=99699068
+row round=1 arm=p15d event=same n=200000 cpu_ns=425172224 wall_ns=489841061
+row round=1 arm=p15d event=distinct n=20000 cpu_ns=66092874 wall_ns=75352139
+row round=1 arm=none2 event=nullsys n=1000000 cpu_ns=112340025 wall_ns=121695035
+row round=1 arm=none2 event=same n=200000 cpu_ns=230630406 wall_ns=249853058
+row round=1 arm=none2 event=distinct n=20000 cpu_ns=29444897 wall_ns=31895311
+row round=1 arm=none event=nullsys n=1000000 cpu_ns=108922448 wall_ns=117992841
+row round=1 arm=none event=same n=200000 cpu_ns=197916176 wall_ns=214411790
+row round=1 arm=none event=distinct n=20000 cpu_ns=27277863 wall_ns=29546937
+row round=2 arm=none2 event=nullsys n=1000000 cpu_ns=96852910 wall_ns=104938692
+row round=2 arm=none2 event=same n=200000 cpu_ns=210143011 wall_ns=227658921
+row round=2 arm=none2 event=distinct n=20000 cpu_ns=28797410 wall_ns=31193313
+row round=2 arm=none event=nullsys n=1000000 cpu_ns=104790268 wall_ns=113533685
+row round=2 arm=none event=same n=200000 cpu_ns=198321486 wall_ns=214850674
+row round=2 arm=none event=distinct n=20000 cpu_ns=25431370 wall_ns=27547136
+capture round=2 pid=127444 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=32 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2415666 idle_wall_ns=1001333258 agent_cpu_ns=170334128 agent_wall_ns=1015903605 ok
+row round=2 arm=p15d event=nullsys n=1000000 cpu_ns=119412306 wall_ns=131220902
+row round=2 arm=p15d event=same n=200000 cpu_ns=535539896 wall_ns=583394195
+row round=2 arm=p15d event=distinct n=20000 cpu_ns=85539572 wall_ns=92668707
+row round=3 arm=none event=nullsys n=1000000 cpu_ns=96609349 wall_ns=104663689
+row round=3 arm=none event=same n=200000 cpu_ns=188793466 wall_ns=205217954
+row round=3 arm=none event=distinct n=20000 cpu_ns=25229820 wall_ns=27330458
+capture round=3 pid=127452 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=184 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2098812 idle_wall_ns=1001081045 agent_cpu_ns=138310727 agent_wall_ns=795146900 ok
+row round=3 arm=p15d event=nullsys n=1000000 cpu_ns=93243294 wall_ns=101243134
+row round=3 arm=p15d event=same n=200000 cpu_ns=392506710 wall_ns=428055635
+row round=3 arm=p15d event=distinct n=20000 cpu_ns=52682318 wall_ns=60605698
+row round=3 arm=none2 event=nullsys n=1000000 cpu_ns=100705454 wall_ns=109090232
+row round=3 arm=none2 event=same n=200000 cpu_ns=203805381 wall_ns=220784072
+row round=3 arm=none2 event=distinct n=20000 cpu_ns=32207201 wall_ns=34886929
+capture round=4 pid=127464 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1795140 idle_wall_ns=1000347156 agent_cpu_ns=137755359 agent_wall_ns=828642151 ok
+row round=4 arm=p15d event=nullsys n=1000000 cpu_ns=87233563 wall_ns=94497069
+row round=4 arm=p15d event=same n=200000 cpu_ns=399208338 wall_ns=467160004
+row round=4 arm=p15d event=distinct n=20000 cpu_ns=54175391 wall_ns=62194971
+row round=4 arm=none2 event=nullsys n=1000000 cpu_ns=103583998 wall_ns=112218118
+row round=4 arm=none2 event=same n=200000 cpu_ns=207528152 wall_ns=224826928
+row round=4 arm=none2 event=distinct n=20000 cpu_ns=28774112 wall_ns=31168608
+row round=4 arm=none event=nullsys n=1000000 cpu_ns=103947178 wall_ns=112603310
+row round=4 arm=none event=same n=200000 cpu_ns=199398926 wall_ns=216019629
+row round=4 arm=none event=distinct n=20000 cpu_ns=25557890 wall_ns=27684338
+row round=5 arm=none2 event=nullsys n=1000000 cpu_ns=102108454 wall_ns=110623540
+row round=5 arm=none2 event=same n=200000 cpu_ns=197941535 wall_ns=214438091
+row round=5 arm=none2 event=distinct n=20000 cpu_ns=25718426 wall_ns=27858460
+row round=5 arm=none event=nullsys n=1000000 cpu_ns=105159413 wall_ns=113920119
+row round=5 arm=none event=same n=200000 cpu_ns=204854396 wall_ns=221928508
+row round=5 arm=none event=distinct n=20000 cpu_ns=26915270 wall_ns=29154360
+capture round=5 pid=127477 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=126 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2318124 idle_wall_ns=1000873507 agent_cpu_ns=123338365 agent_wall_ns=899956663 ok
+row round=5 arm=p15d event=nullsys n=1000000 cpu_ns=88219405 wall_ns=95614881
+row round=5 arm=p15d event=same n=200000 cpu_ns=403803820 wall_ns=527113369
+row round=5 arm=p15d event=distinct n=20000 cpu_ns=54930495 wall_ns=71300408
+row round=6 arm=none event=nullsys n=1000000 cpu_ns=101776102 wall_ns=111256410
+row round=6 arm=none event=same n=200000 cpu_ns=193581881 wall_ns=209716766
+row round=6 arm=none event=distinct n=20000 cpu_ns=26270065 wall_ns=28455306
+capture round=6 pid=127484 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=15 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1595952 idle_wall_ns=1082397336 agent_cpu_ns=147874063 agent_wall_ns=854394602 ok
+row round=6 arm=p15d event=nullsys n=1000000 cpu_ns=96645024 wall_ns=104812423
+row round=6 arm=p15d event=same n=200000 cpu_ns=444505171 wall_ns=481718424
+row round=6 arm=p15d event=distinct n=20000 cpu_ns=57464842 wall_ns=62251550
+row round=6 arm=none2 event=nullsys n=1000000 cpu_ns=99357891 wall_ns=107632154
+row round=6 arm=none2 event=same n=200000 cpu_ns=195883619 wall_ns=212212416
+row round=6 arm=none2 event=distinct n=20000 cpu_ns=24417927 wall_ns=26449414
+capture round=7 pid=127490 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=37 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2281086 idle_wall_ns=1000804367 agent_cpu_ns=139541915 agent_wall_ns=839033970 ok
+row round=7 arm=p15d event=nullsys n=1000000 cpu_ns=90511088 wall_ns=98108303
+row round=7 arm=p15d event=same n=200000 cpu_ns=405349158 wall_ns=472828016
+row round=7 arm=p15d event=distinct n=20000 cpu_ns=54744933 wall_ns=63132144
+row round=7 arm=none2 event=nullsys n=1000000 cpu_ns=102358475 wall_ns=110892527
+row round=7 arm=none2 event=same n=200000 cpu_ns=191460162 wall_ns=207416833
+row round=7 arm=none2 event=distinct n=20000 cpu_ns=25212311 wall_ns=27309844
+row round=7 arm=none event=nullsys n=1000000 cpu_ns=97388554 wall_ns=105525544
+row round=7 arm=none event=same n=200000 cpu_ns=186243245 wall_ns=201767151
+row round=7 arm=none event=distinct n=20000 cpu_ns=25065310 wall_ns=27150997
+row round=8 arm=none2 event=nullsys n=1000000 cpu_ns=97741266 wall_ns=105901385
+row round=8 arm=none2 event=same n=200000 cpu_ns=190238964 wall_ns=207147307
+row round=8 arm=none2 event=distinct n=20000 cpu_ns=27121518 wall_ns=29459558
+row round=8 arm=none event=nullsys n=1000000 cpu_ns=95923181 wall_ns=104542468
+row round=8 arm=none event=same n=200000 cpu_ns=200803040 wall_ns=219358100
+row round=8 arm=none event=distinct n=20000 cpu_ns=26407529 wall_ns=28605020
+capture round=8 pid=127499 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=16 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1620365 idle_wall_ns=1003481850 agent_cpu_ns=141365845 agent_wall_ns=827584562 ok
+row round=8 arm=p15d event=nullsys n=1000000 cpu_ns=91610845 wall_ns=99238514
+row round=8 arm=p15d event=same n=200000 cpu_ns=425046285 wall_ns=461383542
+row round=8 arm=p15d event=distinct n=20000 cpu_ns=57087994 wall_ns=61843796
+row round=9 arm=none event=nullsys n=1000000 cpu_ns=349520461 wall_ns=378649420
+row round=9 arm=none event=same n=200000 cpu_ns=313957078 wall_ns=340128098
+row round=9 arm=none event=distinct n=20000 cpu_ns=32461655 wall_ns=35162983
+capture round=9 pid=127505 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1686147 idle_wall_ns=1000921416 agent_cpu_ns=139435916 agent_wall_ns=855840979 ok
+row round=9 arm=p15d event=nullsys n=1000000 cpu_ns=93664028 wall_ns=101794796
+row round=9 arm=p15d event=same n=200000 cpu_ns=418448453 wall_ns=486734132
+row round=9 arm=p15d event=distinct n=20000 cpu_ns=53961992 wall_ns=61137058
+row round=9 arm=none2 event=nullsys n=1000000 cpu_ns=91310578 wall_ns=100891159
+row round=9 arm=none2 event=same n=200000 cpu_ns=193199622 wall_ns=209303049
+row round=9 arm=none2 event=distinct n=20000 cpu_ns=24860332 wall_ns=26928833
+capture round=10 pid=127511 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1587286 idle_wall_ns=1000361060 agent_cpu_ns=126519892 agent_wall_ns=915486376 ok
+row round=10 arm=p15d event=nullsys n=1000000 cpu_ns=91592477 wall_ns=99217904
+row round=10 arm=p15d event=same n=200000 cpu_ns=409561207 wall_ns=538562799
+row round=10 arm=p15d event=distinct n=20000 cpu_ns=53123755 wall_ns=68939473
+row round=10 arm=none2 event=nullsys n=1000000 cpu_ns=112867720 wall_ns=123002508
+row round=10 arm=none2 event=same n=200000 cpu_ns=220584782 wall_ns=239745153
+row round=10 arm=none2 event=distinct n=20000 cpu_ns=30716154 wall_ns=33272803
+row round=10 arm=none event=nullsys n=1000000 cpu_ns=109529434 wall_ns=118667442
+row round=10 arm=none event=same n=200000 cpu_ns=218149457 wall_ns=236332655
+row round=10 arm=none event=distinct n=20000 cpu_ns=27407243 wall_ns=29687037
+row round=11 arm=none2 event=nullsys n=1000000 cpu_ns=109311626 wall_ns=118414897
+row round=11 arm=none2 event=same n=200000 cpu_ns=205745076 wall_ns=222893848
+row round=11 arm=none2 event=distinct n=20000 cpu_ns=27038248 wall_ns=29288152
+row round=11 arm=none event=nullsys n=1000000 cpu_ns=106913540 wall_ns=115845850
+row round=11 arm=none event=same n=200000 cpu_ns=229067855 wall_ns=249486553
+row round=11 arm=none event=distinct n=20000 cpu_ns=30616835 wall_ns=33165360
+capture round=11 pid=127522 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2133631 idle_wall_ns=1001767627 agent_cpu_ns=183212373 agent_wall_ns=1065634027 ok
+row round=11 arm=p15d event=nullsys n=1000000 cpu_ns=110187803 wall_ns=120111539
+row round=11 arm=p15d event=same n=200000 cpu_ns=565390230 wall_ns=651559082
+row round=11 arm=p15d event=distinct n=20000 cpu_ns=74304009 wall_ns=85346803
+row round=12 arm=none event=nullsys n=1000000 cpu_ns=132198986 wall_ns=143267467
+row round=12 arm=none event=same n=200000 cpu_ns=261749164 wall_ns=286053596
+row round=12 arm=none event=distinct n=20000 cpu_ns=28464535 wall_ns=30833969
+capture round=12 pid=127535 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1875755 idle_wall_ns=1000545053 agent_cpu_ns=150346101 agent_wall_ns=944736080 ok
+row round=12 arm=p15d event=nullsys n=1000000 cpu_ns=95072441 wall_ns=103399826
+row round=12 arm=p15d event=same n=200000 cpu_ns=483504379 wall_ns=558863502
+row round=12 arm=p15d event=distinct n=20000 cpu_ns=68474960 wall_ns=77188308
+row round=12 arm=none2 event=nullsys n=1000000 cpu_ns=152985580 wall_ns=172750765
+row round=12 arm=none2 event=same n=200000 cpu_ns=290936974 wall_ns=316807963
+row round=12 arm=none2 event=distinct n=20000 cpu_ns=36863740 wall_ns=39931052
+capture round=13 pid=127542 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=15 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1494275 idle_wall_ns=1000625045 agent_cpu_ns=152961553 agent_wall_ns=905770015 ok
+row round=13 arm=p15d event=nullsys n=1000000 cpu_ns=93450280 wall_ns=102105440
+row round=13 arm=p15d event=same n=200000 cpu_ns=454228608 wall_ns=525903697
+row round=13 arm=p15d event=distinct n=20000 cpu_ns=61654832 wall_ns=70871960
+row round=13 arm=none2 event=nullsys n=1000000 cpu_ns=110146468 wall_ns=120391339
+row round=13 arm=none2 event=same n=200000 cpu_ns=203868787 wall_ns=220861181
+row round=13 arm=none2 event=distinct n=20000 cpu_ns=27218029 wall_ns=29482505
+row round=13 arm=none event=nullsys n=1000000 cpu_ns=107404862 wall_ns=116362873
+row round=13 arm=none event=same n=200000 cpu_ns=207973542 wall_ns=226070314
+row round=13 arm=none event=distinct n=20000 cpu_ns=27473111 wall_ns=29759761
+row round=14 arm=none2 event=nullsys n=1000000 cpu_ns=103969476 wall_ns=113560159
+row round=14 arm=none2 event=same n=200000 cpu_ns=200861035 wall_ns=217603705
+row round=14 arm=none2 event=distinct n=20000 cpu_ns=28699536 wall_ns=31087786
+row round=14 arm=none event=nullsys n=1000000 cpu_ns=102874130 wall_ns=111593605
+row round=14 arm=none event=same n=200000 cpu_ns=218761687 wall_ns=236997501
+row round=14 arm=none event=distinct n=20000 cpu_ns=31693967 wall_ns=34331867
+capture round=14 pid=127551 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=15 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1302418 idle_wall_ns=1001957148 agent_cpu_ns=153395098 agent_wall_ns=927132876 ok
+row round=14 arm=p15d event=nullsys n=1000000 cpu_ns=90628241 wall_ns=98543626
+row round=14 arm=p15d event=same n=200000 cpu_ns=468610816 wall_ns=545244566
+row round=14 arm=p15d event=distinct n=20000 cpu_ns=67497966 wall_ns=76870986
+row round=15 arm=none event=nullsys n=1000000 cpu_ns=126054547 wall_ns=137569814
+row round=15 arm=none event=same n=200000 cpu_ns=315654067 wall_ns=341978426
+row round=15 arm=none event=distinct n=20000 cpu_ns=49904598 wall_ns=54060561
+capture round=15 pid=127557 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=21 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1823290 idle_wall_ns=1000477554 agent_cpu_ns=170994995 agent_wall_ns=1147802873 ok
+row round=15 arm=p15d event=nullsys n=1000000 cpu_ns=100204059 wall_ns=108600352
+row round=15 arm=p15d event=same n=200000 cpu_ns=555856692 wall_ns=726614551
+row round=15 arm=p15d event=distinct n=20000 cpu_ns=72640964 wall_ns=92885470
+row round=15 arm=none2 event=nullsys n=1000000 cpu_ns=111662051 wall_ns=122145285
+row round=15 arm=none2 event=same n=200000 cpu_ns=263252979 wall_ns=285197944
+row round=15 arm=none2 event=distinct n=20000 cpu_ns=30890030 wall_ns=33460299
+capture round=16 pid=127564 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=41 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1402652 idle_wall_ns=1000482948 agent_cpu_ns=292088978 agent_wall_ns=1299965954 ok
+row round=16 arm=p15d event=nullsys n=1000000 cpu_ns=156550639 wall_ns=173438968
+row round=16 arm=p15d event=same n=200000 cpu_ns=698300564 wall_ns=803120296
+row round=16 arm=p15d event=distinct n=20000 cpu_ns=105027548 wall_ns=117191122
+row round=16 arm=none2 event=nullsys n=1000000 cpu_ns=103237082 wall_ns=111829863
+row round=16 arm=none2 event=same n=200000 cpu_ns=224055059 wall_ns=242731252
+row round=16 arm=none2 event=distinct n=20000 cpu_ns=30995002 wall_ns=33574620
+row round=16 arm=none event=nullsys n=1000000 cpu_ns=106739684 wall_ns=116154708
+row round=16 arm=none event=same n=200000 cpu_ns=214332536 wall_ns=232197184
+row round=16 arm=none event=distinct n=20000 cpu_ns=27825718 wall_ns=30140923
+row round=17 arm=none2 event=nullsys n=1000000 cpu_ns=99895080 wall_ns=108212716
+row round=17 arm=none2 event=same n=200000 cpu_ns=219769729 wall_ns=238877230
+row round=17 arm=none2 event=distinct n=20000 cpu_ns=28078554 wall_ns=30416422
+row round=17 arm=none event=nullsys n=1000000 cpu_ns=103571353 wall_ns=112924834
+row round=17 arm=none event=same n=200000 cpu_ns=228364755 wall_ns=248437427
+row round=17 arm=none event=distinct n=20000 cpu_ns=30526964 wall_ns=33067322
+capture round=17 pid=127574 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1387058 idle_wall_ns=1000514953 agent_cpu_ns=136837388 agent_wall_ns=864532462 ok
+row round=17 arm=p15d event=nullsys n=1000000 cpu_ns=95806334 wall_ns=104274832
+row round=17 arm=p15d event=same n=200000 cpu_ns=427020893 wall_ns=491937839
+row round=17 arm=p15d event=distinct n=20000 cpu_ns=55639408 wall_ns=63111178
+row round=18 arm=none event=nullsys n=1000000 cpu_ns=104668925 wall_ns=114125716
+row round=18 arm=none event=same n=200000 cpu_ns=287842537 wall_ns=311865321
+row round=18 arm=none event=distinct n=20000 cpu_ns=43288269 wall_ns=46892390
+capture round=18 pid=127580 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=31 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2622732 idle_wall_ns=1000955462 agent_cpu_ns=144942374 agent_wall_ns=859586316 ok
+row round=18 arm=p15d event=nullsys n=1000000 cpu_ns=90003073 wall_ns=97497502
+row round=18 arm=p15d event=same n=200000 cpu_ns=439471332 wall_ns=494977878
+row round=18 arm=p15d event=distinct n=20000 cpu_ns=55115102 wall_ns=62335616
+row round=18 arm=none2 event=nullsys n=1000000 cpu_ns=99672096 wall_ns=107994736
+row round=18 arm=none2 event=same n=200000 cpu_ns=221849885 wall_ns=241360425
+row round=18 arm=none2 event=distinct n=20000 cpu_ns=26910338 wall_ns=29150367
+capture round=19 pid=127592 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=32 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1491854 idle_wall_ns=1001082984 agent_cpu_ns=147633165 agent_wall_ns=891460217 ok
+row round=19 arm=p15d event=nullsys n=1000000 cpu_ns=94341076 wall_ns=102572867
+row round=19 arm=p15d event=same n=200000 cpu_ns=446015664 wall_ns=519764425
+row round=19 arm=p15d event=distinct n=20000 cpu_ns=56028880 wall_ns=63863005
+row round=19 arm=none2 event=nullsys n=1000000 cpu_ns=93529109 wall_ns=101333414
+row round=19 arm=none2 event=same n=200000 cpu_ns=198542613 wall_ns=215090952
+row round=19 arm=none2 event=distinct n=20000 cpu_ns=27872335 wall_ns=30192249
+row round=19 arm=none event=nullsys n=1000000 cpu_ns=94152153 wall_ns=102057451
+row round=19 arm=none event=same n=200000 cpu_ns=210233810 wall_ns=227788303
+row round=19 arm=none event=distinct n=20000 cpu_ns=24422416 wall_ns=26454791
+/home/ashu/p15venv/bin/python bench/open_cost/summarize.py build/open_cost.txt | tee build/open_cost.md
+# open_cost: what capture adds to an open and a close (decision 22a.4)
+
+Run: kernel=7.0.0-38-generic cpus=3 rounds=20 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=-.
+
+20 rounds. Null syscall (getppid) without capture, median: 105.0 ns; with p15d: 93.6 ns.
+
+## same: one file opened again and again (steady state); thread CPU time, primary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,061.4 ns | 997.0 ns to 1,141.8 ns |
+| none2 | 1,033.2 ns | 992.7 ns to 1,109.2 ns |
+| p15d | 2,209.9 ns | 2,092.2 ns to 2,417.5 ns |
+
+- **p15d against none:** overhead +108.61 %, 95 % interval +93.29 % to +124.71 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,140.5 ns (95 % interval 1,047.3 ns to 1,386.8 ns), 10.86 null syscalls; ratio of medians 2.0821; effect p = 1.91e-06
+
+## same: one file opened again and again (steady state); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,150.0 ns | 1,080.1 ns to 1,242.2 ns |
+| none2 | 1,119.3 ns | 1,075.5 ns to 1,206.8 ns |
+| p15d | 2,614.2 ns | 2,433.7 ns to 2,794.3 ns |
+
+- **p15d against none:** overhead +124.61 %, 95 % interval +111.00 % to +137.65 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,443.6 ns (95 % interval 1,297.3 ns to 1,670.9 ns), 13.75 null syscalls; ratio of medians 2.2733; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); thread CPU time, primary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,372.0 ns | 1,313.5 ns to 1,530.8 ns |
+| none2 | 1,419.5 ns | 1,351.9 ns to 1,535.8 ns |
+| p15d | 2,863.8 ns | 2,746.5 ns to 3,423.7 ns |
+
+- **p15d against none:** overhead +115.50 %, 95 % interval +95.29 % to +129.42 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,606.1 ns (95 % interval 1,392.1 ns to 1,887.9 ns), 15.30 null syscalls; ratio of medians 2.0873; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,486.2 ns | 1,422.8 ns to 1,658.3 ns |
+| none2 | 1,537.6 ns | 1,464.4 ns to 1,663.6 ns |
+| p15d | 3,495.3 ns | 3,116.8 ns to 3,859.4 ns |
+
+- **p15d against none:** overhead +129.81 %, 95 % interval +107.39 % to +144.17 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,989.3 ns (95 % interval 1,744.4 ns to 2,275.2 ns), 18.95 null syscalls; ratio of medians 2.3519; effect p = 1.91e-06
+
+## What the capture wrote and what it cost p15d
+
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- records per open+close: 2.000; bytes per open+close in the WAL: 171.6 (OPEN 115.6, CLOSE 56.0)
+- opens carrying the object's facts: 9.1%
+- opens by other processes during the traced arms: 797
+- p15d idle: 1.83 ms of CPU per second (mean; median 1.74)
+- p15d per open+close of the workload: 707.2 ns of CPU in the window (mean), 699.4 ns after the idle rate is taken off (median 656.8 ns)
+- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without capture): mean 61.7%, median 61.2%, range 39.8% to 119.9%
+- agent overhead of the whole workload, as eAudit defines it (all of p15d's CPU in the window / the workload's CPU time without capture, null syscalls included): mean 43.1%, median 43.6%
+
+ashu@p15-dev:~/fiery-dragon$ git -C ~/fiery-dragon worktree add -f /var/tmp/fd-main origin/main
+Preparing worktree (detached HEAD 7273603)
+HEAD is now at 7273603 Merge pull request #78 from ranahunter10/docs/papers-csv-fields
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && sudo env PYTHONPATH=/var/tmp/fd-main/python ~/p15venv/bin/python -m p15.graph /var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2 /var/tmp/p15-soak/g-main.duckdb --profile > build/g-main.txt 2>&1; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ sudo env PYTHONPATH=python ~/p15venv/bin/python -m p15.graph /var/tmp/p15-soak/wal/20261111T225714Z-9c3a49c2 /var/tmp/p15-soak/g-br.duckdb --profile > build/g-br.txt 2>&1; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ grep -E "read the WAL|raw tables" build/g-main.txt build/g-br.txt
+build/g-main.txt:profile    37.021 s  read the WAL, the process tree
+build/g-main.txt:profile    24.978 s  raw tables
+build/g-br.txt:profile    45.634 s  read the WAL, the process tree
+build/g-br.txt:profile    27.705 s  raw tables
+ashu@p15-dev:~/fiery-dragon$

@@ -61,7 +61,10 @@ Not changed by any of these: the object identity from the inode, the books, the 
 
 ## 5. What to measure next, in this order
 
-First results (2026-11-12, [evidence](../evidence/vm/2026-11-12-graph3-and-costs/README.md)): item 1, round 6 of 7, gives 785.4 ns per open+close unprofiled, kernel statistics' own cost included. Item 3 gives 38.2 % of frees unregistered. Item 2 did not run (the system Python lacked `google_crc32c`; `run.py` now stops before any arm and names the fix).
+Results (2026-11-12, [first](../evidence/vm/2026-11-12-graph3-and-costs/README.md), [second](../evidence/vm/2026-11-12-open-cost-v2/README.md)):
+- Item 1: the shipped programs cost 741.4 ns per open+close, median of 7 rounds, the kernel statistics' own cost included (path 306.7, free 229.5, session 182.9).
+- Item 2: capture adds 1,140.5 ns to an open+close of a known file, against E-0176's 1,396.3, on a host about 20 % slower that day. p15d costs 699.4 ns per open+close above idle, against 552.1, and its idle rate is 1.83 ms per second.
+- Item 3: 38.2 % of frees are of files capture never opened.
 
 1. **The shipped object's bodies**, unprofiled: `bench/prim_cost/prog_stats.py` on today's main (commands in the session). This tells whether the 500 ns budget (E-0193) is missed by 400 ns or by less.
 2. **The whole pipeline end to end**, `bench/open_cost` on today's main: v2 of the open path, the walk fallback and the adaptive poll, all since E-0176.

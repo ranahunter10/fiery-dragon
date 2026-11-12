@@ -272,10 +272,10 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 39. **First VM numbers for decisions 36 to 38** (E-0211, E-0212, [evidence](evidence/vm/2026-11-12-graph3-and-costs/README.md)):
     - ADR-0031 confirmed on the hour's graph: no exec image without its edge, and p15d is named `p15d`.
     - Tracking takes under 0.5 s either way, whole command.
-    - The shipped programs cost 785.4 ns per open+close unprofiled (one round of seven so far).
+    - The shipped programs cost 741.4 ns per open+close unprofiled (7 rounds, E-0213). Capture adds 1,140.5 ns to a known file's open+close end to end (E-0176: 1,396.3), and p15d's idle rate is 1.83 ms per second.
     - 38.2 % of file frees are of files capture never opened.
     - Reads and writes run at about 317 per second under the soak's workload.
-    - The graph build summed to 107.8 s; its WAL read is to be timed back to back against main.
+    - The graph build summed to 107.8 s. Its WAL read took 37.0 s on main and 45.6 s on the branch, one build each; the branch adds only one comparison per RENAME there, so this is most likely the host (INF, E-0213).
 
 ## Decisions waiting
 
@@ -292,4 +292,4 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    1. Measure the shipped object unprofiled (`bench/prim_cost/prog_stats.py`) and the whole pipeline (`bench/open_cost`) on today's main, and read `free_unregistered` from the soak's FILE_STATS. These say how far the 500 ns budget is missed and how large C2's extra CLOSEs would be.
    2. Then a harness, `bench/open_variants`: C1 (the session alone, walking every path), C1b (kprobe.multi entry only), C2 (open-file ids paired in user space), built from `file.bpf.c` by -D flags, the shipped object unchanged.
    3. Then choose by a new ADR on its numbers. Profile p15d (C4) beside it.
-   First results (decision 39): item 1 gives 785.4 ns per open+close in one round (the other six rounds are still to be sent), and 38.2 % of frees are unregistered. `bench/open_cost` is still to run, with `P15_PYTHON=~/p15venv/bin/python`.
+   Results (decision 39, E-0213): item 1 gives 741.4 ns per open+close, so the budget is missed by 241 ns. 38.2 % of frees are unregistered. Capture adds 1,140.5 ns end to end, of which p15d's CPU is 699.4 ns per open+close, about as large as all the programs' bodies together.
