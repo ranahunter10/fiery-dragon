@@ -301,10 +301,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | File | Job | Public names |
 |---|---|---|
 | [`check-evidence.sh`](../tools/ci/check-evidence.sh) | Verify every SHA256SUMS under docs/evidence/: raw evidence must stay byte for byte. |  |
+| [`check_csv.py`](../tools/ci/check_csv.py) | The project's two CSV journals keep their shape (docs/journal/README.md, CONTRIBUTING.md §5). | `check` |
 | [`check_exits.py`](../tools/ci/check_exits.py) | One fatal path (ADR-0019 G2.2): no exit(), _exit(), _Exit(), quick_exit() or abort() in the daemon's C code, except at sites marked on the same line with a comment `exit-ok: <re... | `code_only`, `scan` |
 | [`check_hardening.py`](../tools/ci/check_hardening.py) | Check that daemon binaries really carry the ADR-0019 G3.3 hardening, not just that the flags were passed: a later flag (or a default) can silently undo an earlier one. | `checks`, `run` |
 | [`mutate_py.py`](../tools/ci/mutate_py.py) | Mutation sweep for the Python gates and harnesses (CONTRIBUTING §6: every gate is checked by a mutation sweep): tools/ci/check_exits.py, tools/ci/check_hardening.py, the WAL rea... |  |
 | [`run-tests.sh`](../tools/ci/run-tests.sh) | Run every unit-test file on its own (several share module names, e.g. |  |
+| [`test_check_csv.py`](../tools/ci/test_check_csv.py) | each kind of problem is found, and a well-formed file passes. | `write`, `TestLog`, `TestPapers`, `TestRepo` |
 | [`test_check_exits.py`](../tools/ci/test_check_exits.py) | Tests for tools/ci/check_exits.py (ADR-0019 G2.2). | `run`, `CheckExits` |
 | [`test_check_hardening.py`](../tools/ci/test_check_hardening.py) | Tests for tools/ci/check_hardening.py, on readelf/nm lines copied from build/p15-spine. | `verdict`, `CheckHardening` |
 

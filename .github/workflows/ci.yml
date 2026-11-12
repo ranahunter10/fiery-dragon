@@ -42,6 +42,8 @@ jobs:
         run: tools/ci/run-tests.sh
       - name: Evidence checksums
         run: tools/ci/check-evidence.sh
+      - name: Journals keep their shape (fields, ids, grades)
+        run: python tools/ci/check_csv.py
 
   bpf:
     name: BPF build (vendored libbpf/bpftool) and smoke load (runner kernel, not the target)
