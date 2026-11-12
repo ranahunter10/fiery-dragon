@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "bench: open_cost counts p15d's thread switches" (with E-0218's evidence)
+**Last updated:** 2026-11-12 (UTC), PR "docs: the tools' user-space pipelines against p15d's (decision 43)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -283,6 +283,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 42. **p15d's CRC32C by the CPU's instruction: p15d's CPU per open+close down 35 %** (E-0218, [evidence](evidence/vm/2026-11-12-crc32c-hw/README.md)): 455.1 ns against 699.4, and the agent overhead by eAudit's definition 28.6 % against 43.6 %. p15d's threads switch only 3.1 times per 1,000 open+close, so decision 41's "a third thread switching" was a misreading: the kernel samples are time with interrupts off, credited where they come back on, to be attributed from the call graphs.
 
+43. **The tools' user-space pipelines studied** (E-0220, E-0221, [note](research/2026-11-12-userspace-pipelines.md)): 1 MiB batches cut p15d's CPU per open+close from 413 to 204 ns (E-0220), and today's two fixes together from 699 to 204. Against Falco, Tetragon, Tracee and eAudit: p15d matches the best on kernel wake-ups and batching. It keeps on purpose its writer thread, back-pressure, record checks and checksums. Its remaining levers are the ring reader (libbpf stores the consumer position per record) and record size. No design change is taken here: decision waiting 11.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -300,3 +302,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    3. Then choose by a new ADR on its numbers. Profile p15d (C4) beside it.
    Results (decision 39, E-0213): item 1 gives 741.4 ns per open+close, so the budget is missed by 241 ns. 38.2 % of frees are unregistered. Capture adds 1,140.5 ns end to end, of which p15d's CPU is 699.4 ns per open+close, about as large as all the programs' bodies together.
    Then (decision 41, E-0215): C1 is not cheaper. Recommendation now: (a) p15d's CRC32C by the SSE4.2 `crc32` instruction, with the table kept for CPUs without it and for the tests; (b) then the thread switching, by measuring the drain's and writer's wake-ups per batch; (c) C1b and C2 only after (a) and (b), re-measured end to end. Then (decision 42): (a) done, −244 ns. (b) is withdrawn: switches are few. Next: attribute the kernel samples by their call graphs, then decide. Then (E-0219): the kernel samples are the drain's eventfd kick of the writer at each published batch, about 200 µs each on this VM (INF). Next: `--batch-kb` 1024 and 4096 measured with no code; then one wake per poll by code, if the wakes prove to be the cost.
+11. **User-space pipeline** (decision 43). Recommendation, in this order:
+   1. U1: make `--batch-kb 1024` and `--queue-batches 16` the defaults (the same 16 MiB). Measured: 413 to 204 ns per open+close (E-0220). Records still reach the writer at every poll.
+   2. U3, with U4: a drain reader that stores the ring's consumer position once per take, not per record, with its counters added once per take. Built as a p15d option and measured against libbpf's reader on `prog_stats` and `open_cost`, because it may lower the BPF programs' cost as well as p15d's.
+   3. U2 only if the soak still shows switches after U1.
+   4. U5 (smaller records) by an ADR after U3's numbers.
