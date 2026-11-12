@@ -1072,9 +1072,12 @@ struct trace_event_raw_sock_msg_length___p15 {
 	int flags;
 } __attribute__((preserve_access_index));
 
-static __always_inline int sock_flow(void *ctx_sk, long ret, int msg_flags, __u16 kind)
+static __always_inline int sock_flow(__u64 sk_addr, long ret, int msg_flags, __u16 kind)
 {
-	struct sock *sk = ctx_sk;
+	/* the tracepoint gives the sock's address as a scalar; cast it to a trusted pointer so the
+	 * chain to the file and inode is a protected direct load, as file_free casts its key (E-0190).
+	 * read_facts needs a trusted inode: a bpf_probe_read scalar would be rejected (R6 invalid). */
+	struct sock *sk = sk_addr ? bpf_core_cast((void *)sk_addr, struct sock) : NULL;
 	struct socket *sock;
 	struct file *file;
 	struct inode *inode;
@@ -1090,8 +1093,8 @@ static __always_inline int sock_flow(void *ctx_sk, long ret, int msg_flags, __u1
 		flow_count(P15_FLC_S_EXCL_KTHREAD);
 		return 0;
 	}
-	sock = BPF_CORE_READ(sk, sk_socket);
-	file = sock ? BPF_CORE_READ(sock, file) : NULL;
+	sock = sk ? sk->sk_socket : NULL;
+	file = sock ? sock->file : NULL;
 	if (!file) {
 		flow_count(P15_FLC_S_NO_FILE);   /* a kernel socket used from a user task (D6): out of scope */
 		return 0;
@@ -1105,7 +1108,7 @@ static __always_inline int sock_flow(void *ctx_sk, long ret, int msg_flags, __u1
 		return 0;
 	}
 	flow_count(P15_FLC_S_ATTEMPT);
-	inode = BPF_CORE_READ(file, f_inode);
+	inode = file->f_inode;
 	if (!inode)
 		return 0;
 	if (kind == P15_FLOWK_RECV && (msg_flags & MSG_PEEK))
@@ -1118,13 +1121,13 @@ static __always_inline int sock_flow(void *ctx_sk, long ret, int msg_flags, __u1
 SEC("tracepoint/sock/sock_send_length")
 int flow_send(struct trace_event_raw_sock_msg_length___p15 *ctx)
 {
-	return sock_flow(ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_SEND);
+	return sock_flow((__u64)ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_SEND);
 }
 
 SEC("tracepoint/sock/sock_recv_length")
 int flow_recv(struct trace_event_raw_sock_msg_length___p15 *ctx)
 {
-	return sock_flow(ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_RECV);
+	return sock_flow((__u64)ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_RECV);
 }
 
 

@@ -160,6 +160,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`p15_counters.h`](../bpf/include/p15_counters.h) | Per-cause counters shared by the BPF programs and the daemon (ADR-0006, accounting invariant). |  |
 | [`p15_dpath.h`](../bpf/include/p15_dpath.h) | a file's path by walking its dentries and mounts, the way the kernel's d_path does (fs/d_path.c v7.0: d_path L265-292, prepend_path L155-196, __prepend_path L101-139), for a pro... |  |
 | [`p15_file.h`](../bpf/include/p15_file.h) | File identity (ADR-0015, STATE decision 19): what file.bpf.c and p15d share. |  |
+| [`p15_flow.h`](../bpf/include/p15_flow.h) | Data flow (ADR-0005, STATE decisions 18 and 47): the counters the flow programs in file.bpf.c keep, in their own mmapable map (bpf/include/p15_counters.h layout, P15_FLC__N name... |  |
 | [`p15_kernel.h`](../bpf/include/p15_kernel.h) | Kernel facts the BPF programs need that vmlinux.h does not carry (macros are not in BTF). |  |
 | [`p15_prof.h`](../bpf/include/p15_prof.h) | Section timing for bench/open_sections (STATE decision waiting 1): where the file programs' time goes, section by section. |  |
 | [`p15_snap.h`](../bpf/include/p15_snap.h) | The process snapshot's books (ADR-0007 rule 3, ADR-0023), shared by snap.bpf.c, which counts, and p15d, which zeroes them before each snapshot and copies them into SNAP_DONE aft... |  |
