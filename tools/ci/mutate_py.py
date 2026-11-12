@@ -44,7 +44,7 @@ SKC, SKS, SKP, _TSK = ("bench/soak/check.py", "bench/soak/summarize.py", "bench/
                        "bench/soak/test_soak.py")
 _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", "python/tests/test_provenance.py"
 # a file's tests: one or several; a mutant is killed when any of them fails
-TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR),
+TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR, _TG),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
          GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW, ICS: _TIC, ICR: _TIC, SKC: _TSK, SKS: _TSK, SKP: _TSK}
 
@@ -195,7 +195,7 @@ M = [
  (REC, 'if vl not in (0, dt.itemsize) or f[f"{vname}_full"] != vl:', 'if f[f"{vname}_full"] != vl:'),
  (REC, 'out["oflags"] & ~OBJ_SUBVOL_UNKNOWN or ', ""),
  (REC, ' or out["seen"] not in (1, 2, 3, 4, 5)', ""),
- (REC, 'if lay.name == "OPEN" and not f["fflags"] & gen.FF_PATH_MISSING and f["verdict"]:', "if False:"),
+ (REC, 'if lay.name == "OPEN" and not f["fflags"] & _ret and f["verdict"]:', "if False:"),
  (REC, 'if lay.name == "OPEN_VERDICT" and f["verdict"] >= 0:', "if False:"),
  (REC, 'bool(f["fflags"] & gen.FF_PATH_ERROR) != bool(f["path_err"])', "False"),
  (REC, 'and bool(f["fflags"] & gen.FF_FULL_SIZE) and n == lay.max_size)', "and bool(f[\"fflags\"] & gen.FF_FULL_SIZE))"),
@@ -512,7 +512,22 @@ M = [
  (OSS, '+ ("" if c["missing"] else', '+ ("" if True else'),
  (OSS, '            if sec in out["rows"][r]:\n', '            if False:\n'),
  (OSS, '        if d["contend"] is not None or d["walk"] is not None:\n', '        if d["walk"] is not None:\n'),
- (OSS, 'out += PC.host_lines([d["host"][r] for r in timed], ref)[0]', 'out += PC.host_lines([d["host"][r] for r in sorted(rows)], ref)[0]'),
+ (OSS, 'out += PC.host_lines([d["host"][r] for r in timed], ref)[0]', 'out += PC.host_lines([d["host"][r] for r in sorted(rows)], ref)[0]'), # ADR-0031: images over time, names from the leader
+ (TREE, '            if r.h["tid"] != r.h["tgid"]:\n', '            if False:\n'),
+ (TREE, '            if r.h["tid"] != r.h["tgid"]:\n', '            if r.h["tid"] == r.h["tgid"]:\n'),
+ (GBUILD, '            start = k[1] if (i == 0 and im.seen_in == "snapshot") else im.ts_ns\n            if start <= t:', '            start = im.ts_ns\n            if start <= t:'),
+ (GBUILD, '            start = k[1] if (i == 0 and im.seen_in == "snapshot") else im.ts_ns\n            out.append', '            start = im.ts_ns\n            out.append'),
+ (GBUILD, '            if start <= t:\n                best = im', '            if start < t:\n                best = im'),
+ (GBUILD, '        if p.parent is None or p.fork_ns is None or p.fork_ns > t:\n            return None', '        if True:\n            return None'),
+ (GBUILD, '        if inherited is not None and not (p.images and p.images[0].ts_ns <= p.fork_ns):', '        if inherited is not None and False:'),
+ (GBUILD, '            counts["image_none"] += 1', '            pass'),
+ (GBUILD, '        tree_counts = {**tree.counts, **image_counts}', '        tree_counts = dict(tree.counts)'),
+ (GSQL, 'ASOF LEFT JOIN proc_image di ON di.node_id = e.dst AND e.ts_ns >= di.valid_from', 'ASOF LEFT JOIN proc_image di ON di.node_id = e.dst AND e.ts_ns > di.valid_from'),
+ (GSQL, 'ASOF LEFT JOIN proc_image si ON si.node_id = e.src AND e.ts_ns >= si.valid_from', 'ASOF LEFT JOIN proc_image si ON si.node_id = e.dst AND e.ts_ns >= si.valid_from'),
+ (GSQL, "FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id AND x.ts_ns = proc_image.ts_ns", "FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id"),
+ (GSQL, "WHERE r.tid <> r.tgid\n", "WHERE true\n"),
+ (GSQL, "WHERE n.kind = 'proc' AND e.dst_image IS NULL),", "WHERE e.dst_image IS NULL),"),
+ (GCLI, '"fid_two_objs", "image_exec_without_edge")', '"fid_two_objs")'),
 ]
 
 

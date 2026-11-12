@@ -183,6 +183,22 @@ FROM proc_src s
 JOIN node n ON n.key = 'p:' || s.tgid || ':' || s.start_ns
 LEFT JOIN node pn ON pn.key = 'p:' || s.parent_tgid || ':' || s.parent_start_ns;
 
+-- a process's programs over time (ADR-0031): image i is in effect from valid_from until image i+1's.
+-- exe_node: the file node of the EXECUTE edge that started an exec image (NULL for snapshot and fork rows)
+CREATE TABLE proc_image AS
+SELECT n.node_id, i.image_no, i.valid_from, i.ts_ns, i.seen_in, i.filename, i.cmd, i.truncated,
+       i.exe_major, i.exe_minor, i.exe_ino, i.backing, NULL::BIGINT AS exe_node
+FROM image_src i JOIN node n ON n.key = 'p:' || i.tgid || ':' || i.start_ns
+ORDER BY n.node_id, i.image_no;
+
+-- a thread's own names (ADR-0031): renames of a thread other than the leader, which name the thread,
+-- not the process (prctl PR_SET_NAME, /proc/PID/task/TID/comm)
+CREATE TABLE thread_name AS
+SELECT n.node_id, r.tid, r.ts_ns, p15_comm(r.old_comm) AS old_comm, p15_comm(r.new_comm) AS new_comm, r.ring, r.seq
+FROM raw_rename r JOIN node n ON n.key = 'p:' || r.tgid || ':' || r.start_ns
+WHERE r.tid <> r.tgid
+ORDER BY r.ts_ns, r.seq;
+
 CREATE TABLE file AS
 SELECT n.node_id, s.key, s.rule, coalesce(s.open_path, x.name) AS path,
        CASE WHEN s.open_path IS NOT NULL THEN 'kernel' WHEN x.name IS NOT NULL THEN 'exec-argument' END AS path_from,
@@ -252,10 +268,24 @@ SELECT ts_ns, 'p:' || tgid || ':' || start_ns, 's:' || sock_cookie, CASE op WHEN
        ret = 0, ret, NULL, NULL, ring, seq
 FROM raw_net WHERE op IN (3, 4);
 
-CREATE TABLE edge AS
+CREATE TABLE edge_plain AS
 SELECT (row_number() OVER (ORDER BY e.ts_ns, e.ring, e.seq, e.op))::BIGINT AS edge_id, e.ts_ns,
        s.node_id AS src, d.node_id AS dst, e.op, e.ok, e.ret, e.fid, e.access, e.ring, e.seq
 FROM edge_src e JOIN node s ON s.key = e.src JOIN node d ON d.key = e.dst;
+
+-- each end's program at the edge's time (ADR-0031): the image whose valid_from is the latest at or
+-- before ts_ns, by ASOF JOIN; NULL when that end is not a process or the process has no image then
+CREATE TABLE edge AS
+SELECT e.*, si.image_no AS src_image, di.image_no AS dst_image
+FROM edge_plain e
+ASOF LEFT JOIN proc_image si ON si.node_id = e.src AND e.ts_ns >= si.valid_from
+ASOF LEFT JOIN proc_image di ON di.node_id = e.dst AND e.ts_ns >= di.valid_from
+ORDER BY e.edge_id;
+DROP TABLE edge_plain;
+
+UPDATE proc_image SET exe_node = x.src
+FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id AND x.ts_ns = proc_image.ts_ns
+  AND proc_image.seen_in = 'exec';
 
 -- ---- the books: every case that is counted instead of guessed ----
 CREATE TABLE graph_count (name VARCHAR, n BIGINT, meaning VARCHAR);
@@ -281,7 +311,15 @@ UNION ALL SELECT 'accept_not_paired', (SELECT count(*) FROM raw_net a WHERE a.op
         SELECT 1 FROM sock_pair p JOIN node n ON n.node_id = p.server_node WHERE n.key = 's:' || a.sock_cookie)),
        'accepted connections with no exact ISN join to a connect in the run (a remote client, or no ISN)'
 UNION ALL SELECT 'edge_' || op || CASE WHEN ok THEN '' ELSE '_failed' END, count(*), 'edges' FROM edge GROUP BY op, ok
-UNION ALL SELECT 'node_' || kind, count(*), 'nodes' FROM node GROUP BY kind;
+UNION ALL SELECT 'node_' || kind, count(*), 'nodes' FROM node GROUP BY kind
+UNION ALL SELECT 'image_' || seen_in, count(*), 'process images by where they came from (ADR-0031)'
+       FROM proc_image GROUP BY seen_in
+UNION ALL SELECT 'image_exec_without_edge', (SELECT count(*) FROM proc_image WHERE seen_in = 'exec' AND exe_node IS NULL),
+       'exec images with no EXECUTE edge at their time: must be 0 (ADR-0031)'
+UNION ALL SELECT 'edge_proc_end_without_image', (SELECT count(*) FROM edge e JOIN node n ON n.node_id = e.dst
+        WHERE n.kind = 'proc' AND e.dst_image IS NULL),
+       'edges into a process that had no known program at their time (ADR-0031)'
+UNION ALL SELECT 'thread_rename', (SELECT count(*) FROM thread_name), 'renames of a thread that is not its process''s leader';
 
 DROP TABLE fact_row;
 DROP TABLE fid_row;

@@ -37,6 +37,7 @@ To write a new one:
 | [0028](0028-graph-v0-duckdb-raw-tables-and-star.md) | Graph v0: generated raw tables in DuckDB, a star built in SQL over them, and a PIDSMaker export that states what it leaves out | accepted (under STATE decision 22a) | 2026-11-11 |
 | [0029](0029-path-walked-when-the-fentry-is-skipped.md) | When the path fentry is skipped, the session's return walks the path (a sequence-checked dentry walk, `d_dname` names made as the kernel makes them), and an overlay's real file gets BACKING (supersedes ADR-0015 rule 6 in part) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
 | [0030](0030-adaptive-drain-poll.md) | The drain's timer adapts: 10 ms after work, doubling to 200 ms when idle; the writer sleeps until its next deadline (supersedes ADR-0020 rule 2's 10 ms timer) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
+| [0031](0031-graph-images-by-time-and-leader-names.md) | The graph keeps every program a process ran (`proc_image`), each edge names the program at its time by ASOF JOIN, and a process's name comes from its leader (extends ADR-0028 rule 2) | accepted (under STATE decision 36) | 2026-11-12 |
 
 ## Planned (from capture blueprint v1, §8.3)
 

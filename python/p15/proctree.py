@@ -6,7 +6,10 @@ carries, stable across exec. The tree is built from:
 
 - FORK kind 1: a new process, whose parent is the header's process;
 - EXEC: a new program image of the same process;
-- RENAME: the comm after it (every exec renames);
+- RENAME of the thread-group leader (tid = tgid): the process's comm after it (every exec renames,
+  and an exec makes the execing thread the leader before it renames: fs/exec.c v7.0, de_thread
+  before __set_task_comm). A rename of another thread names that thread only: counted
+  (`rename_thread`) and left to the graph's `thread_name` table;
 - EXIT with group_dead = 1: the process ended (E-0066; one EXIT per thread, only the last one
   ends the process).
 
@@ -49,7 +52,7 @@ class Proc:
     parent: Key | None = None
     fork_ns: int | None = None             # when the FORK that made it ran
     images: list[Image] = field(default_factory=list)
-    comm: str | None = None                # the last comm seen
+    comm: str | None = None                # the leader's last comm (a thread's own name is not the process's)
     exit_ns: int | None = None
     exit_code: int | None = None           # the wait status (task->exit_code)
     children: list[Key] = field(default_factory=list)
@@ -133,7 +136,7 @@ def build(recs, run_start_ns: int | None = None, opening: S.Snapshot | None = No
     processes join the tree with their parents and programs."""
     counts = dict.fromkeys(("fork_process", "fork_thread", "exec", "rename", "exit_thread", "exit_process",
                             "exit_twice", "fork_twice", "placeholder", "pre_existing", "fork_missing",
-                            "from_snapshot", "pre_existing_unlisted"), 0)
+                            "from_snapshot", "pre_existing_unlisted", "rename_thread"), 0)
     procs: dict[Key, Proc] = {}
     gaps: list[Gap] = []
     first_ts = None
@@ -168,6 +171,9 @@ def build(recs, run_start_ns: int | None = None, opening: S.Snapshot | None = No
                 bool(r.h["flags"] & R.F_TRUNCATED), (k0, k1, r.f["exe_ino"]),
                 backing=PV.backing(r), notes=PV.unusual(r)))
         elif n == "RENAME":
+            if r.h["tid"] != r.h["tgid"]:
+                counts["rename_thread"] += 1     # a thread's name (prctl, /proc/.../comm), not the process's
+                continue
             counts["rename"] += 1
             proc(r.proc).comm = R.comm(r.f["new_comm"])
         elif n == "EXIT":
