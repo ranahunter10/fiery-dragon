@@ -70,7 +70,8 @@ SELECT * FROM bt;
   - On a hand-made graph it returns BackTracker's answer exactly. It excludes a source whose event came after the sink's threshold, and a writer that wrote after the reader had read; a later cycle back does not matter.
   - On 900,000 random edges over 150,000 nodes, the backtrack reaches 3 nodes in about 0.04 s. Times fall as the walk goes backward, so a uniform random graph dies out fast.
   - **With hubs** (half of all edges start or end at 1 % of the nodes, as shells and shared libraries do), it reaches 133,701 of the 150,000 nodes, the dependency explosion, in about 0.25 s, because no path is enumerated.
-  - The real test is the soak's graph on the VM.
+- On the VM, on the hour's soak graph (MEAS; [evidence](../evidence/vm/2026-11-12-backtrack-soak/)): 0.055 to 0.113 s per backtrack over 925,014 edges and 153,914 nodes. No edge points into a file, so every backtrack stops at the files it reaches. From p15d it reached 3,840 files and no other process. From a python process forked in the run it reached that process's parent and 34,239 files. Both stop at a process from the opening snapshot, which has no CLONE edge into it.
+- **What the query cannot cross today** (SRC, `graph.sql`): a write (no file→writer edge until 2b), a TCP connection (the client-to-server join is the `sock_pair` table, not an edge), and an overlay file's backing file (`file_backing`, also a table). `track.py` (R2) must follow `sock_pair` and `file_backing` as edges, and its tests must cross a connection.
 - Forward tracking is the mirror: the earliest time each node can be affected, `min(greatest(...))`.
 - No path is enumerated, so the query cannot blow up with paths. It can still return a large node set: dependency explosion is a property of the data, met by reduction (Hossain's FD downstream) and ranking (DepImpact, §3).
 - **Recommendation R2:** `python/p15/graph/track.py` with backward and forward queries, tested against a straightforward Python BackTracker on generated graphs (equal node sets and thresholds); on the VM, run on the soak's graph and time it. Its answers are only meaningful once 2b gives write edges, so the code can come now and the first real use after 2b.
@@ -120,7 +121,7 @@ What follows for us:
 | # | Change | When | Test |
 |---|---|---|---|
 | R1 | `proc_image` per exec; edges get the image current at their time by ASOF JOIN; `proc.cmd` kept as the last image for compatibility | graph v1 (gate 10), or a small PR before 2b | graph tests: an open before and after an exec name different images; the soak's memfd step |
-| R2 | `track.py`: backward and forward queries with `USING KEY`, BackTracker's thresholds | code now; first real use after 2b | equal to a Python reference on generated graphs; timed on the soak's graph on the VM |
+| R2 | `track.py`: backward and forward queries with `USING KEY`, BackTracker's thresholds; `sock_pair` and `file_backing` followed as edges | code now; first real use after 2b | equal to a Python reference on generated graphs; timed on the soak's graph on the VM |
 | R3 | Bulk decode of the WAL with generated numpy dtypes | gate 10 | the soak's graph build under 60 s per hour (`--strict-graph-time`) |
 | R4 | A streaming builder with a bounded, counted pending table | gate 10 | equal to the offline builder on the soak's WAL |
 | R5 | Step 2b as planned (ADR-0005): first a cost harness for the read/write hooks and the event rates under the soak's workload, then FLOW per call and the ceiling gate, then 2c. Keep bytes and counts. The graph's write-direction edges come from FLOW. | next (gate 5) | the ceiling gate (N3); the soak with backtracking from written files |
@@ -133,7 +134,7 @@ What follows for us:
 | Does it hold for an hour without leaking or drifting? | Answered: memory flattens at 27.65 MiB, CPU flat (E-0203) |
 | What does it cost idle and under load? | Answered: 1.14 ms/s idle (E-0200), 4.3 ms/s under the soak's load (E-0202); program bodies 897 ns per open+close (E-0192), against a 500 ns budget: **open** |
 | Can the graph answer "who wrote this file and where did it come from"? | **No, until 2b** (§1); the query exists in design (R2) |
-| Is the graph's labelling of processes right at every event time? | **No**: the last image labels everything (R1) |
+| Is the graph's labelling of processes right at every event time? | **No**: the last image labels everything (R1); and a process takes any of its threads' new names, so p15d is named `p15d-writer` (E-0206, decision waiting 9) |
 | Can the graph keep up with capture? | **Not yet**: about 80 s per hour, target 60 (R3, gate 10) |
 | Will reads and writes fit the pipeline? | **Open**: 2b's ceiling gate decides; folding by Xu's rule (2c) and per-CPU batching (decision waiting 6) are the answers ready |
 | Are the network programs skipped under contention? | **Open**: decision waiting 2, measured in 2e |

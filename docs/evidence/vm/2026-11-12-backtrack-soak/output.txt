@@ -1,0 +1,5 @@
+duckdb 2.0.0
+edges 925014 nodes 153914
+round 0: 0.102 s, reached [('file', 3840), ('proc', 1)]
+round 1: 0.065 s, reached [('file', 3840), ('proc', 1)]
+round 2: 0.055 s, reached [('file', 3840), ('proc', 1)]
