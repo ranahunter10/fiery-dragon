@@ -64,7 +64,7 @@ struct p15_run {
 	uint64_t file_selftest_consumed;         /* file records the self-tests took from the bulk ring */
 	_Atomic uint64_t file_drained, file_invalid;
 	_Atomic uint64_t files_live_max, objs_live_max;   /* the most entries seen at a poll */
-	int file_fentry_fd;                      /* the path fentry: skips located (PATH_MISSING), not lost */
+	int file_fentry_fd;                      /* the path fentry: its skips are written by the session return (ADR-0029), not lost */
 	int file_kprobe_fd[3];                   /* the session and the frees: skips are losses */
 	int n_file_kprobe;
 	_Atomic uint64_t fentry_missed, file_kprobe_missed;

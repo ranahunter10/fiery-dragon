@@ -8,8 +8,9 @@
  *                                       FMODE_BACKING file (overlayfs)
  *   kprobe.session/security_file_open  entry: registers the open file (its object is filled in by
  *                                       whichever program computes it), so both programs name one fid;
- *                                       return: OPEN_VERDICT if the LSM denied, OPEN with PATH_MISSING
- *                                       and the facts if the fentry did not run (E-0189)
+ *                                       return: OPEN_VERDICT if the LSM denied; if the fentry did not
+ *                                       run (E-0189), OPEN with the walked path (PATH_WALKED, ADR-0029)
+ *                                       and the facts, or BACKING for an overlay's real file
  *   kprobe.multi/security_file_free    CLOSE (NEVER_OPENED, KTHREAD) and the open-file entry's end
  *   kprobe.multi/security_inode_free   the object entry's end
  * Kernel fields are read with direct loads, not bpf_probe_read_kernel: the fentry's argument and
@@ -28,6 +29,7 @@
 #include "p15_records.h"
 #include "p15_snap.h"
 #include "p15_prof.h"   /* empty unless -DP15_PROFILE (bench/open_sections) */
+#include "p15_dpath.h"  /* the bounded dentry walk (ADR-0029) */
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -115,6 +117,22 @@ struct {
 	__type(key, __u32);
 	__type(value, struct path_slot);
 } path_scratch SEC(".maps");
+
+/* The session return's OPEN, built whole with the walked path (ADR-0029 rule 5): one slot per CPU,
+ * no claim, because a kprobe.session program never runs twice at once on a CPU (a nested run is
+ * skipped and counted in its missed). 256 bytes beyond OPEN_BUF: the walk bounds each copy by a
+ * mask, not by the bytes left (p15_dpath.h). */
+struct walk_slot {
+	struct p15_dp_scratch dp;
+	__u8 rec[OPEN_BUF + 256];
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, __u32);
+	__type(value, struct walk_slot);
+} walk_scratch SEC(".maps");
 
 /* btrfs is a module: matched against its BTF if it was loaded at load time (rule 2, V6). */
 struct btrfs_key___p15 {
@@ -305,11 +323,13 @@ static __always_inline struct file_ent *file_ent_get(struct file *file, struct i
 	return file_ent_get_key((__u64)file, inode, obj, &created);
 }
 
-/* OPEN into buf (a claimed slot, or a full-size reservation zeroed by the caller): fixed part, the
- * facts when they must travel, the path. Returns the record's length padded to 8. With zero_pad the
- * padding bytes after the path are zeroed (a slot holds whatever its last record left). */
+/* OPEN into buf (a claimed slot, a full-size reservation zeroed by the caller, or the session
+ * return's walk slot): fixed part, the facts when they must travel, the path. Returns the record's
+ * length padded to 8. With zero_pad the padding bytes after the path are zeroed (a slot holds
+ * whatever its last record left). dps NULL: the path is bpf_d_path's (the fentry); otherwise the
+ * walk's, in dps's scratch (the session return, ADR-0029), and buf has 256 bytes beyond OPEN_BUF. */
 static __always_inline __u32 build_open(__u8 *buf, struct file *file, struct inode *inode, struct obj_ent **oe,
-					struct file_ent **fe, int *carried, int zero_pad)
+					struct file_ent **fe, int *carried, int zero_pad, struct p15_dp_scratch *dps)
 {
 	struct p15_open *r = (void *)buf;
 	struct p15_part_objfacts f;
@@ -342,6 +362,28 @@ static __always_inline __u32 build_open(__u8 *buf, struct file *file, struct ino
 		r->facts_len = r->facts_full = sizeof(f);
 		off += sizeof(f);
 	}
+	if (dps) {
+		/* the walk (ADR-0029 rules 1-3): the same string as bpf_d_path, or a flag that says why not */
+		__u32 dpf = 0;
+
+		plen = p15_dpath(&file->f_path, (char *)(buf + off), dps, &dpf) & (P15_PATH_MAX - 1);
+		if ((dpf & P15_DP_NO_ROOT) || ((dpf & P15_DP_DNAME) && !(dpf & P15_DP_SYNTH))) {
+			plen = 0;
+			r->path_full = 0;
+			r->fflags |= P15_FF_PATH_MISSING;
+		} else {
+			r->fflags |= P15_FF_PATH_WALKED;
+			if (dpf & P15_DP_RACED)
+				r->fflags |= P15_FF_PATH_RACED;
+			if (dpf & P15_DP_TRUNCATED) {
+				r->path_full = P15_LEN_UNKNOWN;
+				r->h.flags |= P15_F_TRUNCATED;
+			} else {
+				r->path_full = plen;
+			}
+		}
+		goto have_path;
+	}
 	/* bpf_d_path (allowed on security_file_open, K10): the kernel's own path */
 	PROF_T(t_dpath);
 	n = bpf_d_path(&file->f_path, (char *)(buf + off), P15_PATH_MAX);
@@ -364,6 +406,7 @@ static __always_inline __u32 build_open(__u8 *buf, struct file *file, struct ino
 		r->path_err = (__s32)n;
 		count(P15_FC_OPEN_PATH_ERROR);
 	}
+have_path:
 	r->path_len = plen;
 	len = off + plen;
 	if (zero_pad) {
@@ -402,8 +445,9 @@ static __always_inline struct path_slot *claim(void)
 	return NULL;
 }
 
-/* BACKING (rule 4): the real file and the overlay object it stands for. */
-static __always_inline int write_backing(struct file *file, struct inode *inode)
+/* BACKING (rule 4): the real file and the overlay object it stands for. From the fentry, or from the
+ * session return when the fentry was skipped (ADR-0029 rule 4): each counts in its own slots. */
+static __always_inline int write_backing(struct file *file, struct inode *inode, __u32 emitted, __u32 lost)
 {
 	struct backing_file *bf = (void *)((char *)file - bpf_core_field_offset(struct backing_file, file));
 	/* bf is computed, not a BTF pointer: read through the helper, then cast for read_facts' direct
@@ -421,7 +465,7 @@ static __always_inline int write_backing(struct file *file, struct inode *inode)
 	read_facts(inode, &f);
 	r = bpf_ringbuf_reserve(&bulk_rb, P15_BACKING_MAX_SIZE, 0);
 	if (!r) {
-		count(P15_FC_BACKING_LOST);
+		count(lost);
 		return 0;
 	}
 	__builtin_memset(r, 0, P15_BACKING_MAX_SIZE);
@@ -456,7 +500,7 @@ static __always_inline int write_backing(struct file *file, struct inode *inode)
 	r->h.len = len;
 	/* reserved at the maximum: the reader takes h.len; the rest of the reservation is zero */
 	bpf_ringbuf_submit(r, wake());
-	count(P15_FC_BACKING_EMITTED);
+	count(emitted);
 	facts_done(oe, carry);
 	facts_done(uoe, ucarry);
 	if (fe)
@@ -484,7 +528,7 @@ int BPF_PROG(file_open_path, struct file *file)
 		return 0;
 	}
 	if (file->f_mode & P15_FMODE_BACKING)
-		return write_backing(file, inode);
+		return write_backing(file, inode, P15_FC_BACKING_EMITTED, P15_FC_BACKING_LOST);
 
 	PROF_T(t_claim);
 	s = claim();
@@ -492,7 +536,7 @@ int BPF_PROG(file_open_path, struct file *file)
 	if (s) {
 		long rc;
 
-		len = build_open(s->rec, file, inode, &oe, &fe, &carried, 1);
+		len = build_open(s->rec, file, inode, &oe, &fe, &carried, 1, NULL);
 		if (len > P15_OPEN_MAX_SIZE)
 			len = P15_OPEN_MAX_SIZE;
 		PROF_T(t_out);
@@ -515,7 +559,7 @@ int BPF_PROG(file_open_path, struct file *file)
 		}
 		/* full size (rule 6): zeroed first, so every byte after the path is zero */
 		zero_full(r);
-		build_open(r, file, inode, &oe, &fe, &carried, 0);
+		build_open(r, file, inode, &oe, &fe, &carried, 0, NULL);
 		((struct p15_open *)r)->fflags |= P15_FF_FULL_SIZE;
 		((struct p15_open *)r)->h.len = P15_OPEN_MAX_SIZE;
 		bpf_ringbuf_submit(r, wake());
@@ -565,15 +609,55 @@ static __always_inline void write_missing(struct file *file, struct file_ent *fe
 	r->h.len = len;   /* the reservation is larger only by the facts it may not carry: zero */
 	bpf_ringbuf_submit(r, wake());
 	count(P15_FC_MISSING_EMITTED);
+	count(P15_FC_WALK_UNNAMED);
 	facts_done(oe, carry);
 }
 
-static __always_inline void write_verdict(struct file_ent *fe, int verdict)
+/* The session return's OPEN with the walked path (ADR-0029), built whole in the CPU's walk slot and
+ * copied at its exact size. Without the slot (never expected): OPEN with PATH_MISSING. */
+static __always_inline void write_walked(struct file *file, struct file_ent *fe, int verdict)
+{
+	struct inode *inode = file->f_inode;
+	struct obj_ent *oe = NULL;
+	struct file_ent *fe2 = NULL;
+	struct walk_slot *ws;
+	struct p15_open *r;
+	__u32 zero = 0, len;
+	int carried = 0;
+
+	ws = bpf_map_lookup_elem(&walk_scratch, &zero);
+	if (!ws) {
+		write_missing(file, fe, verdict);
+		return;
+	}
+	len = build_open(ws->rec, file, inode, &oe, &fe2, &carried, 1, &ws->dp);
+	if (len > P15_OPEN_MAX_SIZE)
+		len = P15_OPEN_MAX_SIZE;
+	r = (struct p15_open *)ws->rec;
+	r->verdict = verdict;
+	if (bpf_ringbuf_output(&bulk_rb, ws->rec, len, wake())) {
+		count(P15_FC_MISSING_LOST);
+		return;
+	}
+	count(P15_FC_MISSING_EMITTED);
+	if (r->fflags & P15_FF_PATH_WALKED) {
+		count(P15_FC_WALKED);
+		if (r->fflags & P15_FF_PATH_RACED)
+			count(P15_FC_WALK_RACED);
+		if (r->h.flags & P15_F_TRUNCATED)
+			count(P15_FC_WALK_TRUNCATED);
+	} else {
+		count(P15_FC_WALK_UNNAMED);
+	}
+	facts_done(oe, carried);
+}
+
+static __always_inline void write_verdict(struct file_ent *fe, int verdict, __u32 emitted, __u32 lost)
 {
 	struct p15_open_verdict *r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
 
 	if (!r) {
-		count(P15_FC_VERDICT_LOST);
+		count(lost);
 		return;
 	}
 	__builtin_memset(r, 0, sizeof(*r));
@@ -583,7 +667,7 @@ static __always_inline void write_verdict(struct file_ent *fe, int verdict)
 	r->verdict = verdict;
 	r->fflags = kthread() ? P15_FF_KTHREAD : 0;
 	bpf_ringbuf_submit(r, wake());
-	count(P15_FC_VERDICT_EMITTED);
+	count(emitted);
 }
 
 SEC("kprobe.session/security_file_open")
@@ -632,10 +716,19 @@ int file_open_session(struct pt_regs *ctx)
 		return 0;
 	}
 	ret = (int)PT_REGS_RC(ctx);
-	if (!(fe->state & ST_FENTRY_RAN))
-		write_missing(bpf_core_cast((void *)key, struct file), fe, ret);
-	else if (ret)
-		write_verdict(fe, ret);
+	if (!(fe->state & ST_FENTRY_RAN)) {
+		file = bpf_core_cast((void *)key, struct file);
+		if (file->f_mode & P15_FMODE_BACKING) {
+			/* an overlay's real file: BACKING as the fentry would have written (ADR-0029 rule 4) */
+			count(P15_FC_RET_BACKING);
+			write_backing(file, file->f_inode, P15_FC_RET_BACKING_EMITTED, P15_FC_RET_BACKING_LOST);
+			if (ret)
+				write_verdict(fe, ret, P15_FC_RET_BACKING_VERDICT_EMITTED, P15_FC_RET_BACKING_VERDICT_LOST);
+		} else {
+			write_walked(file, fe, ret);
+		}
+	} else if (ret)
+		write_verdict(fe, ret, P15_FC_VERDICT_EMITTED, P15_FC_VERDICT_LOST);
 	else
 		count(P15_FC_SESSION_COMMON);
 	PROF_ADD(P15_PROF_SESS_RETURN, t_ret);

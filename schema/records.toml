@@ -614,7 +614,7 @@ doc = "BACKING: the record carries the overlay object's facts (its `user_facts` 
 [[fflag]]
 name = "PATH_MISSING"
 bit = 2
-doc = "OPEN written by the kprobe.session return because the path fentry did not run for this open (skipped for another task, ADR-0015 rule 6): no path, nothing guessed"
+doc = "OPEN written by the kprobe.session return because the path fentry did not run for this open (skipped for another task, ADR-0015 rule 6), without a path: the walk could not name it (a filesystem whose d_dname it does not know, a task without fs; ADR-0029 rule 2). Nothing guessed"
 
 [[fflag]]
 name = "PATH_ERROR"
@@ -636,6 +636,16 @@ name = "KTHREAD"
 bit = 6
 doc = "the record was written in a kernel thread (PF_KTHREAD): its header names that thread, not the file's user (ADR-0015 rule 8)"
 
+[[fflag]]
+name = "PATH_WALKED"
+bit = 7
+doc = "OPEN written by the kprobe.session return because the path fentry did not run: the path is the bounded dentry walk's (bpf/include/p15_dpath.h, ADR-0029), equal to bpf_d_path's in every case the harness checks; with TRUNCATED, its last components, not rooted"
+
+[[fflag]]
+name = "PATH_RACED"
+bit = 8
+doc = "with PATH_WALKED: a rename or mount changed the tree during both tries of the walk, so the path may join two states of it; kept, not trusted (ADR-0029 rule 3)"
+
 [[part]]
 name = "OBJFACTS"
 doc = "An object's facts (ADR-0015 rule 2): what the kernel says about one in-memory inode when capture first names it. The reader decides the graph node from them (rule 3, ADR-0027)."
@@ -656,19 +666,19 @@ name = "OPEN"
 type = 6
 version = 1
 class = "OPEN"
-doc = "One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with the path, or, with PATH_MISSING, by the kprobe.session return when the fentry did not run. An FMODE_BACKING open writes BACKING instead. The header names the task that opened."
+doc = "One open that reached security_file_open (ADR-0015 rule 6). Written by the fentry with bpf_d_path's path, or, when the fentry did not run, by the kprobe.session return with the walked path (PATH_WALKED) or none (PATH_MISSING) (ADR-0029). An FMODE_BACKING open writes BACKING instead, from either program. The header names the task that opened."
 fields = [
   { name = "fid",      c = "u64", doc = "the open-file id (ADR-0015 rule 1): one struct file for its lifetime; shared by fork, dup and SCM_RIGHTS" },
   { name = "obj",      c = "u64", doc = "the object id of the file's inode (ADR-0015 rule 1)" },
-  { name = "fflags",   c = "u32", doc = "P15_FF_* (OBJ_NEW, PATH_MISSING, PATH_ERROR, FULL_SIZE, KTHREAD)" },
+  { name = "fflags",   c = "u32", doc = "P15_FF_* (OBJ_NEW, PATH_MISSING, PATH_WALKED, PATH_RACED, PATH_ERROR, FULL_SIZE, KTHREAD)" },
   { name = "f_flags",  c = "u32", doc = "file->f_flags: the open flags (O_ACCMODE, O_APPEND, O_CREAT, ...) as the kernel holds them" },
   { name = "f_mode",   c = "u32", doc = "file->f_mode at security_file_open (FMODE_READ, FMODE_WRITE, ...; FMODE_OPENED is not set yet)" },
-  { name = "verdict",  c = "i32", doc = "with PATH_MISSING: security_file_open's return; otherwise 0, and a denial follows as OPEN_VERDICT" },
+  { name = "verdict",  c = "i32", doc = "with PATH_MISSING or PATH_WALKED (the session's return wrote it): security_file_open's return; otherwise 0, and a denial follows as OPEN_VERDICT" },
   { name = "path_err", c = "i32", doc = "with PATH_ERROR: bpf_d_path's negative errno; else 0" },
 ]
 var = [
   { name = "facts", part = "OBJFACTS", doc = "the object's facts, present exactly when fflags has OBJ_NEW" },
-  { name = "path", max = 4096, doc = "bpf_d_path(&file->f_path) without its NUL: the kernel's own path (mounts crossed, ' (deleted)' kept, the task's root). A path longer than PATH_MAX is the dentry name with header flag TRUNCATED; empty with PATH_MISSING or PATH_ERROR" },
+  { name = "path", max = 4096, doc = "bpf_d_path(&file->f_path) without its NUL: the kernel's own path (mounts crossed, ' (deleted)' kept, the task's root); with PATH_WALKED the walk's, which is the same string. A path longer than PATH_MAX is the dentry name with header flag TRUNCATED (with PATH_WALKED: its last components); empty with PATH_MISSING or PATH_ERROR" },
 ]
 
 [[record]]
@@ -781,6 +791,69 @@ fields = [
   { name = "facts_dup", c = "u64", doc = "a second record carried an object's facts (decision 19.7: twice, never zero); cumulative" },
   { name = "subvol_unknown", c = "u64", doc = "facts of a btrfs object read without btrfs BTF (oflags SUBVOL_UNKNOWN); cumulative" },
   { name = "kthread_open", c = "u64", doc = "OPEN records written in a kernel thread (KTHREAD); cumulative" },
+  { name = "files_live",      c = "u64", doc = "open-file entries now (the FILES_LIVE gauge)" },
+  { name = "objs_live",       c = "u64", doc = "object entries now (the OBJS_LIVE gauge)" },
+  { name = "files_live_max",  c = "u64", doc = "the most open-file entries the drain saw at a poll, since the run's start" },
+  { name = "objs_live_max",   c = "u64", doc = "the most object entries the drain saw at a poll, since the run's start" },
+  { name = "file_drained",    c = "u64", doc = "file-identity records the drain copied into a batch, cumulative" },
+  { name = "file_invalid",    c = "u64", doc = "file-identity records refused by p15_rec_check, never written (run DEGRADED), cumulative" },
+  { name = "fentry_missed",   c = "u64", doc = "opens whose path fentry the kernel skipped (its recursion_misses): each has an OPEN with PATH_MISSING, so not a loss" },
+  { name = "kprobe_missed",   c = "u64", doc = "runs the kernel skipped of the session and the two free programs (recursion_misses; run DEGRADED)" },
+  { name = "file_map_entries", c = "u32", doc = "the open-file map's size (--file-map-entries)" },
+  { name = "obj_map_entries",  c = "u32", doc = "the object map's size (--obj-map-entries)" },
+]
+
+[[record]]
+name = "FILE_STATS"
+type = 40
+version = 2
+class = "STATS"
+doc = "The file-identity programs' health, written with every STATS record (ADR-0015, STATE decision 19): the counters of bpf/include/p15_file.h since the run's start (version 2: the session return's walk and BACKING, ADR-0029), their books' drain side, the maps' fill and the kernel's skips. The books close as p15_file.h states; a lost OPEN, BACKING, CLOSE or session record, or a skipped session or free, makes the run DEGRADED."
+fields = [
+  { name = "fentry_run", c = "u64", doc = "the path fentry ran; cumulative" },
+  { name = "fentry_no_inode", c = "u64", doc = "... for a file without an inode (never expected: counted, nothing written); cumulative" },
+  { name = "open_emitted", c = "u64", doc = "OPEN records the fentry submitted; cumulative" },
+  { name = "open_lost", c = "u64", doc = "... lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "open_full_size", c = "u64", doc = "... written full size: no scratch slot was free (rule 6); cumulative" },
+  { name = "open_truncated", c = "u64", doc = "... whose path did not fit (dentry name, TRUNCATED); cumulative" },
+  { name = "open_path_error", c = "u64", doc = "... whose bpf_d_path failed otherwise (PATH_ERROR); cumulative" },
+  { name = "backing_emitted", c = "u64", doc = "BACKING records submitted; cumulative" },
+  { name = "backing_lost", c = "u64", doc = "BACKING records lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "backing_user_unread", c = "u64", doc = "BACKING without the overlay inode (user_obj 0, READ_FAILED); cumulative" },
+  { name = "session_entry", c = "u64", doc = "the kprobe.session ran at entry; cumulative" },
+  { name = "session_no_inode", c = "u64", doc = "... for a file without an inode: no return run; cumulative" },
+  { name = "session_return", c = "u64", doc = "the session's return run; cumulative" },
+  { name = "session_common", c = "u64", doc = "... with the OPEN written and verdict 0: nothing to write; cumulative" },
+  { name = "missing_emitted", c = "u64", doc = "OPEN with PATH_MISSING (the fentry did not run); cumulative" },
+  { name = "missing_lost", c = "u64", doc = "PATH_MISSING OPEN records lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "verdict_emitted", c = "u64", doc = "OPEN_VERDICT; cumulative" },
+  { name = "verdict_lost", c = "u64", doc = "OPEN_VERDICT records lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "session_no_cookie", c = "u64", doc = "return run with an empty cookie (never expected); cumulative" },
+  { name = "session_no_entry", c = "u64", doc = "return run without an open-file entry (its map was full); cumulative" },
+  { name = "free_run", c = "u64", doc = "security_file_free ran (every struct file of the system); cumulative" },
+  { name = "close_emitted", c = "u64", doc = "CLOSE records submitted; cumulative" },
+  { name = "close_lost", c = "u64", doc = "CLOSE records lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "free_unregistered", c = "u64", doc = "a free of a file capture never registered (decision 19.5); cumulative" },
+  { name = "inode_free_run", c = "u64", doc = "security_inode_free ran; cumulative" },
+  { name = "inode_free_hit", c = "u64", doc = "... and deleted an object entry; cumulative" },
+  { name = "file_map_full", c = "u64", doc = "no open-file entry: the event is written with a fresh, unregistered id; cumulative" },
+  { name = "obj_map_full", c = "u64", doc = "no object entry: the facts go inline, with a fresh id; cumulative" },
+  { name = "file_stale", c = "u64", doc = "an entry whose stored inode differs from the live file's: replaced (rule 9); cumulative" },
+  { name = "obj_stale", c = "u64", doc = "an entry whose dev/ino/gen differ from the live inode's: replaced; cumulative" },
+  { name = "file_race", c = "u64", doc = "another program inserted the entry between lookup and insert; cumulative" },
+  { name = "obj_race", c = "u64", doc = "another program inserted the object entry between lookup and insert; cumulative" },
+  { name = "facts_dup", c = "u64", doc = "a second record carried an object's facts (decision 19.7: twice, never zero); cumulative" },
+  { name = "subvol_unknown", c = "u64", doc = "facts of a btrfs object read without btrfs BTF (oflags SUBVOL_UNKNOWN); cumulative" },
+  { name = "kthread_open", c = "u64", doc = "OPEN records written in a kernel thread (KTHREAD); cumulative" },
+  { name = "walked", c = "u64", doc = "the session return's OPENs with the walked path (PATH_WALKED); with walk_unnamed, missing_emitted; cumulative" },
+  { name = "walk_raced", c = "u64", doc = "... of which PATH_RACED: the tree moved during both tries; cumulative" },
+  { name = "walk_truncated", c = "u64", doc = "... of which TRUNCATED: a bound of the walk cut the path; cumulative" },
+  { name = "walk_unnamed", c = "u64", doc = "the session return's OPENs without a path (PATH_MISSING): an unknown d_dname, no fs, no scratch; cumulative" },
+  { name = "ret_backing", c = "u64", doc = "session returns, with the fentry skipped, for an FMODE_BACKING file: BACKING written or lost; cumulative" },
+  { name = "ret_backing_emitted", c = "u64", doc = "BACKING records the session return submitted; cumulative" },
+  { name = "ret_backing_lost", c = "u64", doc = "... lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "ret_backing_verdict_emitted", c = "u64", doc = "OPEN_VERDICT records after such a BACKING (a denial); cumulative" },
+  { name = "ret_backing_verdict_lost", c = "u64", doc = "... lost to a full bulk ring (run DEGRADED); cumulative" },
   { name = "files_live",      c = "u64", doc = "open-file entries now (the FILES_LIVE gauge)" },
   { name = "objs_live",       c = "u64", doc = "object entries now (the OBJS_LIVE gauge)" },
   { name = "files_live_max",  c = "u64", doc = "the most open-file entries the drain saw at a poll, since the run's start" },

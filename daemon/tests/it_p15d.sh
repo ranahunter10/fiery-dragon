@@ -333,7 +333,7 @@ else
     echo "  SKIP the bulk ring's flood (file identity not loadable here; CI and the VM run it)"
 fi
 
-echo "case 12: the path program left unattached: the session return writes every open, with its object (E-0190) [t+${SECONDS}s]"
+echo "case 12: the path program left unattached: the session return writes every open, walked, with its object (E-0190, ADR-0029) [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
     "$B/p15d" --wal-dir "$T/c12" --test-no-path-fentry --duration 2 2>"$T/c12.err"; rc=$?
     RUN=$T/c12; inspect >"$T/c12.txt" 2>&1
@@ -342,14 +342,27 @@ if [ "$NET_OK" = 1 ]; then
     c12=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
 from p15 import records as R
-bulk = list(wal.read_run(Path(sys.argv[1])).ring_records(1))
+run = wal.read_run(Path(sys.argv[1]))
+bulk = list(run.ring_records(1))
 opens = {r.f['fid']: r for r in bulk if r.name == 'OPEN'}
 closes = [r for r in bulk if r.name == 'CLOSE' and r.f['fid'] in opens]
-print(len(opens), sum(1 for r in opens.values() if r.f['fflags'] & R.gen.FF_PATH_MISSING),
-      len(closes), sum(1 for r in closes if r.f['obj'] == opens[r.f['fid']].f['obj'] != 0))" "$(ls -d "$T"/c12/*/ | head -1)")
-    read -r n_open n_missing n_close n_same <<<"$c12"
-    echo "  OPEN $n_open (PATH_MISSING $n_missing); CLOSE of those $n_close, naming the OPEN's object $n_same"
-    check "[ \"\${n_open:-0}\" -gt 0 ] && [ \"$n_open\" = \"$n_missing\" ]" "every OPEN came from the session return (PATH_MISSING)"
+walked = [r for r in opens.values() if r.f['fflags'] & R.gen.FF_PATH_WALKED]
+named = sum(1 for r in walked if r.var['path'] and (r.var['path'][:1] == b'/' or b':' in r.var['path']))
+unnamed = [r for r in opens.values() if r.f['fflags'] & R.gen.FF_PATH_MISSING]
+missing = len(unnamed)
+by_fs = {}   # unnamed opens by filesystem magic (a d_dname the walk does not know): for the log
+for r in unnamed:
+    fm = r.var['facts']['fs_magic'] if r.var.get('facts') is not None else 0
+    by_fs[fm] = by_fs.get(fm, 0) + 1
+fs = [r for r in run.ring_records(2) if r.name == 'FILE_STATS']
+print(len(opens), len(walked), missing, named, len(closes), sum(1 for r in closes if r.f['obj'] == opens[r.f['fid']].f['obj'] != 0),
+      fs[-1].f['walked'] if fs else -1, ','.join(f'{k:#x}:{v}' for k, v in sorted(by_fs.items())) or '-')" "$(ls -d "$T"/c12/*/ | head -1)")
+    read -r n_open n_walked n_missing n_named n_close n_same fs_walked fs_unnamed <<<"$c12"
+    echo "  OPEN $n_open (PATH_WALKED $n_walked, $n_named with a path; PATH_MISSING $n_missing, by fs magic $fs_unnamed); CLOSE of those $n_close, naming the OPEN's object $n_same; last FILE_STATS walked $fs_walked"
+    check "[ \"\${n_open:-0}\" -gt 0 ] && [ \"$n_open\" = \"\$((n_walked + n_missing))\" ]" "every OPEN came from the session return (PATH_WALKED or PATH_MISSING)"
+    check "[ \"\${n_walked:-0}\" -gt 0 ] && [ \"$n_walked\" = \"$n_named\" ]" "every walked OPEN has a path, rooted or made as the filesystem names it"
+    # the last FILE_STATS is written before the final drain, so it can trail the records; the books (END above) close exactly
+    check "[ \"\${fs_walked:-0}\" -gt 0 ] && [ \"$fs_walked\" -le \"\${n_walked:-0}\" ]" "FILE_STATS counts walked opens, never more than the WAL holds"
     check "[ \"\${n_close:-0}\" -gt 0 ] && [ \"$n_close\" = \"$n_same\" ]" "every CLOSE of those opens names the OPEN's object, not 0"
 else
     echo "  SKIP (file identity not loadable here; CI and the VM run it)"

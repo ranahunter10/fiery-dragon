@@ -38,6 +38,8 @@ INNER = {"open_all": ("open_claim", "open_hdr", "open_facts", "open_obj", "open_
          "sess_entry": ("sess_file",), "free_all": ("free_lookup", "free_ring", "free_delete")}
 CONFIG = re.compile(r"^config mode=(single|contend) (rounds|workers)=(\d+) n=(\d+) ncpu=(\d+) dir=(\S+)$")
 ROW = re.compile(r"^row round=(-?\d+) sec=(\w+) n=(\d+) ns=(\d+)$")
+WKEYS = ("walked", "walk_unnamed", "walk_raced", "walk_truncated", "rec_walked", "target", "target_wrong")
+WALK = re.compile(r"^walk " + " ".join(f"{k}=(\\d+)" for k in WKEYS) + "$")
 BOOKS = re.compile(r"^books (ok|FAIL) open=(\d+) close=(\d+) other=(\d+)$")
 CONTEND = re.compile(r"^contend " + " ".join(f"{k}=(\\d+)" for k in (
     "workers", "n", "opens", "fentry_run", "session_entry", "session_no_inode", "missing", "open_emitted",
@@ -53,7 +55,7 @@ class ParseError(Exception):
 
 
 def parse(text: str) -> dict:
-    out = {"rows": defaultdict(dict), "host": {}, "config": None, "books": None, "contend": None, "bad": []}
+    out = {"rows": defaultdict(dict), "host": {}, "config": None, "books": None, "contend": None, "walk": None, "bad": []}
     for line in text.splitlines():
         if line.startswith("config "):
             m = CONFIG.match(line)
@@ -85,6 +87,11 @@ def parse(text: str) -> dict:
             if not m:
                 raise ParseError(f"unparsed contend line: {line}")
             out["contend"] = dict(zip(CKEYS, (int(x) for x in m.groups())))
+        elif line.startswith("walk "):
+            m = WALK.match(line)
+            if not m or out["walk"] is not None:
+                raise ParseError(f"unparsed or second walk line: {line}")
+            out["walk"] = dict(zip(WKEYS, (int(x) for x in m.groups())))
         elif line.startswith("books "):
             m = BOOKS.match(line)
             if not m:
@@ -158,13 +165,31 @@ def contend(d: dict) -> tuple[list[str], int]:
     seen = c["fentry_run"] + c["missing"]
     out += [f"- Opens seen by the session program while the workers ran (all tasks): {c['session_entry']:,}; "
             f"path program runs: {c['fentry_run']:,}.",
-            f"- **Path program skipped: {c['missing']:,} opens** (OPEN written with PATH_MISSING), "
+            f"- **Path program skipped: {c['missing']:,} opens** (OPEN written by the session return), "
             f"{c['missing'] / seen:.2e} of {seen:,}."
             + ("" if c["missing"] else f" None skipped: below {3 / seen:.2e} at 95 % (rule of three)."),
             f"- The kernel's own counts: recursion_misses path {c['rmiss_path']}, session {c['rmiss_session']}, "
             f"close {c['rmiss_free']}; kprobe_multi.missed session {c['lmiss_session']}, close {c['lmiss_free']}.",
             f"- Records lost to a full ring: OPEN {c['open_lost']}, PATH_MISSING {c['missing_lost']}, CLOSE {c['close_lost']}.",
             ""]
+    w = d["walk"]
+    if w is None:
+        out += ["No walk line: a run from before ADR-0029, when a skipped open had no path.", ""]
+        return out, 0
+    out += [f"- **The session return walked {w['walked']:,} of the {c['missing']:,} skipped opens** (PATH_WALKED, ADR-0029); "
+            f"{w['walk_unnamed']:,} without a path; {w['walk_raced']:,} RACED, {w['walk_truncated']:,} TRUNCATED.",
+            f"- Walked OPENs read from the ring: {w['rec_walked']:,}; of those naming a file called `same`, "
+            f"{w['target']:,}, **{w['target_wrong']:,} with another path than DIR/same**.", ""]
+    if w["walked"] + w["walk_unnamed"] != c["missing"]:
+        bad.append(f"walked {w['walked']} + without a path {w['walk_unnamed']} != the return's OPENs {c['missing']}")
+    if w["rec_walked"] != w["walked"]:
+        bad.append(f"walked OPENs read {w['rec_walked']} != the WALKED counter {w['walked']}")
+    if w["target_wrong"]:
+        bad.append(f"{w['target_wrong']} walked OPENs of DIR/same with another path")
+    if c["missing"] and not w["target"]:
+        bad.append("opens were skipped but no walked OPEN of DIR/same was read")
+    if bad:
+        return out + ["## Checks that failed", ""] + [f"- {b}" for b in bad] + [""], 1
     return out, 0
 
 
@@ -172,7 +197,7 @@ def report(text: str, ref: float | None = None) -> tuple[str, int]:
     d = parse(text)
     head = ["# open_sections: where the file programs' time goes", ""]
     if d["config"]["mode"] == "single":
-        if d["contend"] is not None:
+        if d["contend"] is not None or d["walk"] is not None:
             raise ParseError("a contend line in a single run")
         body, rc = single(d, ref)
     else:

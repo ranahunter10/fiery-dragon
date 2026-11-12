@@ -43,7 +43,7 @@ struct p15_loader {
 	int miss_fd[5];            /* program fds by spine record type 1..4, for recursion_misses (ADR-0020) */
 	int net_miss_fd[8];
 	int n_net_miss;
-	int file_fentry_fd;         /* the path fentry: its skips are located (PATH_MISSING), not lost */
+	int file_fentry_fd;         /* the path fentry: its skips are written by the session return (ADR-0029), not lost */
 	int file_kprobe_fd[3];      /* the session and the two frees: their skips are losses */
 	int n_file_kprobe;
 	int ncpu;                   /* possible CPUs: the counter maps' row count (ADR-0026) */

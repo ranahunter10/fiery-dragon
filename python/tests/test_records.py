@@ -129,7 +129,7 @@ class FileIdentity(unittest.TestCase):
 
     def test_fflags_each_record_may_carry(self):
         self.why(rec("CLOSE", fflags=R.gen.FF_OBJ_NEW), "CLOSE: fflags bits this record never carries")
-        self.why(rec("OPEN", fflags=1 << 7), "OPEN: fflags bits this record never carries")
+        self.why(rec("OPEN", fflags=1 << 9), "OPEN: fflags bits this record never carries")
         self.why(rec("FD", fflags=R.gen.FF_KTHREAD, var={"facts": facts()}), "FD: fflags bits this record never carries")
         c = dec(rec("CLOSE", fid=4, fflags=R.gen.FF_NEVER_OPENED | R.gen.FF_KTHREAD))
         self.assertEqual(c.f["fflags"], R.gen.FF_NEVER_OPENED | R.gen.FF_KTHREAD)
@@ -142,6 +142,15 @@ class FileIdentity(unittest.TestCase):
         self.why(rec("OPEN", path_err=-22), "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err")
         self.why(rec("OPEN", fflags=R.gen.FF_PATH_ERROR), "OPEN: path_err without PATH_ERROR, or PATH_ERROR without path_err")
         self.assertEqual(dec(rec("OPEN", fflags=R.gen.FF_PATH_ERROR, path_err=-22)).f["path_err"], -22)
+
+    def test_walked_opens(self):   # ADR-0029
+        w = dec(rec("OPEN", fflags=R.gen.FF_PATH_WALKED | R.gen.FF_PATH_RACED, verdict=-13, var={"path": b"/a/b"}))
+        self.assertEqual((w.f["verdict"], w.var["path"]), (-13, b"/a/b"))
+        why = "OPEN: PATH_WALKED with PATH_MISSING, or PATH_RACED without PATH_WALKED"
+        self.why(rec("OPEN", fflags=R.gen.FF_PATH_WALKED | R.gen.FF_PATH_MISSING), why)
+        self.why(rec("OPEN", fflags=R.gen.FF_PATH_RACED, var={"path": b"/a"}), why)
+        self.why(rec("OPEN", fflags=R.gen.FF_PATH_WALKED | R.gen.FF_PATH_ERROR, path_err=-22),
+                 "OPEN: a walked path with PATH_ERROR or FULL_SIZE (those are the fentry's)")
 
     def test_full_size_open(self):
         lay = R.gen.RECORDS[(R.TYPES["OPEN"], 1)]

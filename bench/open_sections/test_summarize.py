@@ -27,12 +27,12 @@ def single(rounds=5, n=1000, host=90.0, drop=None, samples=None, books="ok", ext
     return "\n".join(L + ([f"books {books} open=1 close=1 other=0"] if books else [])) + "\n" + extra
 
 
-def contend(missing=0, fentry=2400100, opens=2400000, lost=0, books="ok"):
+def contend(missing=0, fentry=2400100, opens=2400000, lost=0, books="ok", walk=None):
     return (f"config mode=contend workers=12 n=200000 ncpu=3 dir=/var/tmp/x\n"
             f"contend workers=12 n=200000 opens={opens} fentry_run={fentry} session_entry={fentry + missing} "
             f"session_no_inode=0 missing={missing} open_emitted={fentry} open_lost={lost} missing_lost=0 "
             f"close_emitted=2400200 close_lost=0 rmiss_path={missing} rmiss_session=0 rmiss_free=0 "
-            f"lmiss_session=0 lmiss_free=0\nbooks {books} open=1 close=1 other=0\n")
+            f"lmiss_session=0 lmiss_free=0\n" + (f"walk {walk}\n" if walk else "") + f"books {books} open=1 close=1 other=0\n")
 
 
 class Single(unittest.TestCase):
@@ -85,7 +85,8 @@ class Contend(unittest.TestCase):
     def test_skips_are_counted_against_every_open_seen(self):
         out, rc = OS.report(contend(missing=24))
         self.assertEqual(rc, 0)
-        self.assertIn("**Path program skipped: 24 opens** (OPEN written with PATH_MISSING), 1.00e-05 of 2,400,124.", out)
+        self.assertIn("**Path program skipped: 24 opens** (OPEN written by the session return), 1.00e-05 of 2,400,124.", out)
+        self.assertIn("No walk line: a run from before ADR-0029", out)
         self.assertNotIn("rule of three", out)
         self.assertIn("recursion_misses path 24", out)
 
@@ -103,6 +104,29 @@ class Contend(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertNotIn("skipped:", out)
         self.assertEqual(OS.report(contend(fentry=2399995, missing=5))[1], 0)   # exactly the workers' opens
+
+    def test_walk(self):
+        ok = "walked=20 walk_unnamed=4 walk_raced=1 walk_truncated=0 rec_walked=20 target=18 target_wrong=0"
+        out, rc = OS.report(contend(missing=24, walk=ok))
+        self.assertEqual(rc, 0)
+        self.assertIn("**The session return walked 20 of the 24 skipped opens** (PATH_WALKED, ADR-0029); 4 without a path; "
+                      "1 RACED, 0 TRUNCATED.", out)
+        self.assertIn("of those naming a file called `same`, 18, **0 with another path than DIR/same**.", out)
+        for bad, why in ((ok.replace("walk_unnamed=4", "walk_unnamed=3"), "walked 20 + without a path 3 != the return's OPENs 24"),
+                         (ok.replace("rec_walked=20", "rec_walked=19"), "walked OPENs read 19 != the WALKED counter 20"),
+                         (ok.replace("target_wrong=0", "target_wrong=2"), "2 walked OPENs of DIR/same with another path"),
+                         (ok.replace("target=18", "target=0"), "no walked OPEN of DIR/same was read")):
+            out, rc = OS.report(contend(missing=24, walk=bad))
+            self.assertEqual(rc, 1, why)
+            self.assertIn(why, out)
+        self.assertEqual(OS.report(contend(walk=ok.replace("walked=20", "walked=0").replace("walk_unnamed=4", "walk_unnamed=0")
+                                           .replace("rec_walked=20", "rec_walked=0").replace("target=18", "target=0")))[1], 0)
+        with self.assertRaisesRegex(OS.ParseError, "second walk line"):
+            OS.report(contend(walk=ok + "\nwalk " + ok))
+        with self.assertRaisesRegex(OS.ParseError, "unparsed or second walk"):
+            OS.report(contend(walk="walked=1"))
+        with self.assertRaisesRegex(OS.ParseError, "a contend line in a single run"):
+            OS.report(single(extra="walk " + ok + "\n"))
 
     def test_shape(self):
         with self.assertRaisesRegex(OS.ParseError, "needs one contend line"):

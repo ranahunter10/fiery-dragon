@@ -1,0 +1,103 @@
+ashu@p15-dev:~/fiery-dragon$ cd ~/fiery-dragon && sudo chown -R "$USER" build; git fetch origin && git checkout -B bpf/path-walk-fallback origin/bpf/path-walk-fallback
+[sudo: authenticate] Password:
+remote: Enumerating objects: 80, done.
+remote: Counting objects: 100% (80/80), done.
+remote: Compressing objects: 100% (23/23), done.
+remote: Total 80 (delta 58), reused 79 (delta 57), pack-reused 0 (from 0)
+Unpacking objects: 100% (80/80), 58.43 KiB | 797.00 KiB/s, done.
+From https://github.com/ranahunter10/fiery-dragon
+   4c90682..a561530  bench/path-walk        -> origin/bench/path-walk
+ * [new branch]      bpf/path-walk-fallback -> origin/bpf/path-walk-fallback
+branch 'bpf/path-walk-fallback' set up to track 'origin/bpf/path-walk-fallback'.
+Switched to a new branch 'bpf/path-walk-fallback'
+ashu@p15-dev:~/fiery-dragon$ make -j3 build/p15d build/p15w-inspect build/net_probe build/open_sections build/open_cost build/path_walk && git log --oneline -1
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15w_inspect.c daemon/records.c daemon/wal.c daemon/crc32c.c -o build/p15w-inspect
+make: 'build/open_cost' is up to date.
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/spine.bpf.c -o build/spine.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/net.bpf.c -o build/net.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -mcpu=v3 -c bpf/progs/file.bpf.c -o build/file.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -c bpf/progs/snap.bpf.c -o build/snap.bpf.o
+make: 'build/net_probe' is up to date.
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -mcpu=v3 -DP15_PROFILE -c bpf/progs/file.bpf.c -o build/file_prof.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/ashu/fiery-dragon/build/libbpf -mcpu=v3 -c bench/path_walk/path_walk.bpf.c -o build/path_walk.bpf.o
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/net.bpf.o > build/net.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/file.bpf.o > build/file.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/snap.bpf.o > build/snap.skel.h
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/path_walk.bpf.o > build/path_walk.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"2a5d2eb18ba9"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/path_walk/path_walk.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/path_walk
+/home/ashu/fiery-dragon/build/bpftool/bootstrap/bpftool gen skeleton build/file_prof.bpf.o > build/file_prof.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fiery-dragon/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/open_sections/open_sections.c daemon/counters.c /home/ashu/fiery-dragon/build/libbpf/libbpf.a -lelf -lz -o build/open_sections
+2a5d2eb (HEAD -> bpf/path-walk-fallback, origin/bpf/path-walk-fallback) test: case 12's FILE_STATS check allows the last stats to trail the final drain
+ashu@p15-dev:~/fiery-dragon$ build/open_cost /var/tmp/p15-open-cost 1 1 | grep nullsys
+workload pid=49590 cpu=2 same=1 distinct=1 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=86868390 wall_ns=87416787
+ashu@p15-dev:~/fiery-dragon$ sudo build/path_walk /var/tmp/p15-path-walk 20 20000 > build/path_walk.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ python3 bench/path_walk/summarize.py build/path_walk.txt
+# path_walk: the dentry walk against bpf_d_path (gate 2)
+
+dir=/var/tmp/p15-path-walk rounds=20 n=20000 kallsyms_rename_lock=1 kallsyms_mount_lock=1
+
+| case | samples | verdict (worst) | expected | walk's flags | bpf_d_path | walk |
+|---|---|---|---|---|---|---|
+| plain | 1 | equal | equal | - | `/var/tmp/p15-path-walk/plain/a/b/c/file` | `/var/tmp/p15-path-walk/plain/a/b/c/file` |
+| root | 1 | equal | equal | - | `/` | `/` |
+| dir | 1 | equal | equal | - | `/var/tmp/p15-path-walk` | `/var/tmp/p15-path-walk` |
+| proc | 1 | equal | equal | - | `/proc/49604/status` | `/proc/49604/status` |
+| sysfs | 1 | equal | equal | - | `/sys/kernel/mm/transparent_hugepage/enabled` | `/sys/kernel/mm/transparent_hugepage/enabled` |
+| devtmpfs | 1 | equal | equal | - | `/dev/null` | `/dev/null` |
+| deep40 | 1 | equal | equal | - | `/var/tmp/p15-path-walk/deep/d00/d01/d02/d03/d04/d05/d06/d07/` | `/var/tmp/p15-path-walk/deep/d00/d01/d02/d03/d04/d05/d06/d07/` |
+| deep70 | 1 | flagged | flagged | TRUNCATED | `/var/tmp/p15-path-walk/deep/d00/d01/d02/d03/d04/d05/d06/d07/` | `/d07/d08/d09/d10/d11/d12/d13/d14/d15/d16/d17/d18/d19/d20/d21` |
+| longnames | 1 | equal | equal | - | `/var/tmp/p15-path-walk/long/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn` | `/var/tmp/p15-path-walk/long/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn` |
+| tmpfs | 1 | equal | equal | - | `/var/tmp/p15-path-walk/tmpfs/sub/file` | `/var/tmp/p15-path-walk/tmpfs/sub/file` |
+| bind | 1 | equal | equal | - | `/var/tmp/p15-path-walk/bound/b/c/file` | `/var/tmp/p15-path-walk/bound/b/c/file` |
+| overlay | 2 | equal | equal | - | `/var/tmp/p15-path-walk/ovl/m/low` | `/var/tmp/p15-path-walk/ovl/m/low` |
+| ... sample 1 | | equal | | NOT_UNDER_ROOT | `/low` | `/low` |
+| deleted | 1 | equal | equal | DELETED | `/var/tmp/p15-path-walk/gone_(deleted)` | `/var/tmp/p15-path-walk/gone_(deleted)` |
+| memfd | 1 | equal | equal | DNAME,SYNTH | `/memfd:p15memfd_(deleted)` | `/memfd:p15memfd_(deleted)` |
+| pipe | 1 | equal | equal | DNAME,SYNTH | `pipe:[124327]` | `pipe:[124327]` |
+| socket | 1 | equal | equal | DNAME,SYNTH | `socket:[124328]` | `socket:[124328]` |
+| eventfd | 1 | equal | equal | DNAME,SYNTH | `anon_inode:[eventfd]` | `anon_inode:[eventfd]` |
+| chroot | 1 | equal | equal | - | `/a/b/c/file` | `/a/b/c/file` |
+
+Rename race: 20,000 opens against 3,742 renames on another CPU; 19,904 samples: 19,622 equal, 105 flagged, 177 not compared (the tree moved between bpf_d_path and the walk) (106 RACED after the retry; 129 needed the retry), **0 wrong without a flag**; bpf_d_path failed 0, opens failed 96.
+
+Samples the ring had no room for (fentry, all parts): 0. Flags the walk set in the kprobe.session: TRUNCATED,RACED,DNAME,DELETED,NOT_UNDER_ROOT,RETRIED,SYNTH.
+
+| path | rounds | bpf_d_path (fentry) | walk (fentry) | walk (kprobe.session) |
+|---|---|---|---|---|
+| short | 20 | 157.0 ns | 228.9 ns | 245.1 ns |
+| deep20 | 20 | 314.0 ns | 506.1 ns | 515.4 ns |
+
+## Verdict
+
+- PASS: no case and no race sample gave a wrong path without a flag
+
+ashu@p15-dev:~/fiery-dragon$ sudo build/open_sections contend 12 200000 /var/tmp/p15-open-cost > build/open_contend.txt; echo "rc=$?"
+rc=0
+ashu@p15-dev:~/fiery-dragon$ python3 bench/open_sections/summarize.py build/open_contend.txt
+# open_sections: where the file programs' time goes
+
+Run: 12 processes, not pinned, 200,000 open+close each (2,400,000), on 3 CPUs.
+
+- Opens seen by the session program while the workers ran (all tasks): 2,400,000; path program runs: 2,207,285.
+- **Path program skipped: 192,715 opens** (OPEN written by the session return), 8.03e-02 of 2,400,000.
+- The kernel's own counts: recursion_misses path 192715, session 0, close 0; kprobe_multi.missed session 0, close 0.
+- Records lost to a full ring: OPEN 0, PATH_MISSING 0, CLOSE 0.
+
+- **The session return walked 192,715 of the 192,715 skipped opens** (PATH_WALKED, ADR-0029); 0 without a path; 0 RACED, 0 TRUNCATED.
+- Walked OPENs read from the ring: 192,715; of those naming a file called `same`, 192,715, **0 with another path than DIR/same**.
+
+ashu@p15-dev:~/fiery-dragon$ sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 daemon/tests/it_p15d.sh build 2>&1 | tee ~/it-v3.txt | grep -E "case 12|PATH_WALKED|FAIL|it_p15d:"
+case 12: the path program left unattached: the session return writes every open, walked, with its object (E-0190, ADR-0029) [t+111s]
+  OPEN 6 (PATH_WALKED 5, 5 with a path; PATH_MISSING 1, by fs magic 0x0:1); CLOSE of those 4, naming the OPEN's object 4; last FILE_STATS walked 1
+  ok   every OPEN came from the session return (PATH_WALKED or PATH_MISSING)
+it_p15d: PASS (0 failed checks)
+ashu@p15-dev:~/fiery-dragon$ sha256sum build/path_walk.txt build/open_contend.txt ~/it-v3.txt
+258de2e6e5044ccf8a12d2bae5b4cca47eb649471ee37316c25dd39d89de4989  build/path_walk.txt
+c0f9720df00d5810ed50cac173cb0242e97fdfa0e32460977d650d4a1ec45cf5  build/open_contend.txt
+1743760c73c734cc8d80bf3ccc18b90fd47dd33015c7aef397aaa743824b4c01  /home/ashu/it-v3.txt
+ashu@p15-dev:~/fiery-dragon$

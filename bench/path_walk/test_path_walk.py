@@ -11,7 +11,7 @@ import summarize as S  # noqa: E402
 
 
 def case(name, verdict="equal", flags=0, dpath="/a/b", walk="/a/b"):
-    return (f"case {name} verdict={verdict} flags=0x{flags:x} dpath_rc={len(dpath) + 1} dpath_len={len(dpath)} "
+    return (f"case {name} samples=1 open_errno=0 verdict={verdict} flags=0x{flags:x} dpath_rc={len(dpath) + 1} dpath_len={len(dpath)} "
             f"walk_len={len(walk)} dpath={dpath} walk={walk}")
 
 
@@ -26,8 +26,6 @@ def run(over=None, race="race opens=100 renames=900 samples=100 equal=90 flagged
             L.append(over[c])
         elif c == "deep70":
             L.append(case(c, "flagged", 1, "/d/e", "/e"))
-        elif c == "pipe":
-            L.append(case(c, "flagged", 4, "pipe:[5]", ""))
         else:
             L.append(case(c))
     if race:
@@ -47,8 +45,10 @@ class Report(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("PASS", out)
         self.assertIn("| short | 3 | 90.0 ns | 121.0 ns | 110.0 ns |", out)
-        self.assertIn("| deep70 | flagged | flagged | TRUNCATED |", out)
+        self.assertIn("| deep70 | 1 | flagged | flagged | TRUNCATED |", out)
         self.assertIn("**0 wrong without a flag**", out)
+        for c in ("memfd", "pipe", "socket", "eventfd"):   # named by the walk as d_dname would (E-0196)
+            self.assertIn(f"| {c} | 1 | equal | equal |", out)
         self.assertIn("7 not compared", out)
         self.assertIn("no room for (fentry, all parts): 4. Flags the walk set in the kprobe.session: RETRIED.", out)
 
@@ -83,6 +83,29 @@ class Report(unittest.TestCase):
         out, rc = S.report(run(times=False))
         self.assertEqual(rc, 1)
         self.assertIn("no timing rounds", out)
+
+    def test_further_samples(self):
+        two = case("overlay").replace("samples=1", "samples=2")
+        out, rc = S.report(run({"overlay": two + "\nsample overlay 1 verdict=equal flags=0x10 dpath_rc=5 dpath_len=4 "
+                                "walk_len=4 dpath=/low walk=/low"}))
+        self.assertEqual(rc, 0)
+        self.assertIn("| ... sample 1 | | equal | | NOT_UNDER_ROOT | `/low` | `/low` |", out)
+        out, rc = S.report(run({"overlay": two.replace("verdict=equal", "verdict=MISMATCH") + "\nsample overlay 1 "
+                                "verdict=MISMATCH flags=0x0 dpath_rc=5 dpath_len=4 walk_len=2 dpath=/low walk=/x"}))
+        self.assertEqual(rc, 1)
+        self.assertIn("FAIL: case overlay sample 1: the walk gave another path", out)
+        self.assertIn("| pipe | 1 | equal | equal |", out)
+        many = case("bind").replace("samples=1", "samples=9") + "".join(
+            f"\nsample bind {k} verdict=equal flags=0x0 dpath_rc=2 dpath_len=1 walk_len=1 dpath=/ walk=/" for k in (1, 2, 3))
+        self.assertEqual(S.report(run({"bind": many}))[1], 0)
+        for bad, why in ((two, "2 samples, 0 sample lines"),
+                         (case("bind") + "\nsample bind 2 verdict=equal flags=0x0 dpath_rc=2 dpath_len=1 walk_len=1 dpath=/ walk=/",
+                          "out of order"),
+                         (case("bind") + "\nsample bind 1 verdict=equal", "unparsed sample")):
+            with self.assertRaisesRegex(S.ParseError, why):
+                S.report(run({"overlay" if bad is two else "bind": bad}))
+        with self.assertRaisesRegex(S.ParseError, "out of order"):
+            S.report("sample nope 1 verdict=equal flags=0x0 dpath_rc=2 dpath_len=1 walk_len=1 dpath=/ walk=/\n" + run())
 
     def test_malformed(self):
         for t, why in ((run(drop="chroot"), "missing cases: chroot"), (run(race=None), "one race line"),

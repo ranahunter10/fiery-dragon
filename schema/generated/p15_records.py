@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "fd750b091efcf9c3337fb7ddafce35ee102b7ee8c19da218a4b82753546a2d3e"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "0603d28802aa51b208a2948eee61ec8f5491f8a1fc3fd02080bd6243854d3c18"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -24,6 +24,8 @@ FF_PATH_ERROR = 1 << 3
 FF_FULL_SIZE = 1 << 4
 FF_NEVER_OPENED = 1 << 5
 FF_KTHREAD = 1 << 6
+FF_PATH_WALKED = 1 << 7
+FF_PATH_RACED = 1 << 8
 
 HEADER_DTYPE = np.dtype({'names': ['type', 'version', 'len', 'flags', 'ts_ns', 'tgid', 'tid', 'start_ns'], 'formats': ['<u2', '<u2', '<u2', '<u2', '<u8', '<u4', '<u4', '<u8'], 'offsets': [0, 2, 4, 6, 8, 16, 20, 24], 'itemsize': 32})
 
@@ -144,6 +146,9 @@ RECORDS = {
     (40, 1): Layout('FILE_STATS', 40, 1, 'STATS',
         np.dtype({'names': ['h', 'fentry_run', 'fentry_no_inode', 'open_emitted', 'open_lost', 'open_full_size', 'open_truncated', 'open_path_error', 'backing_emitted', 'backing_lost', 'backing_user_unread', 'session_entry', 'session_no_inode', 'session_return', 'session_common', 'missing_emitted', 'missing_lost', 'verdict_emitted', 'verdict_lost', 'session_no_cookie', 'session_no_entry', 'free_run', 'close_emitted', 'close_lost', 'free_unregistered', 'inode_free_run', 'inode_free_hit', 'file_map_full', 'obj_map_full', 'file_stale', 'obj_stale', 'file_race', 'obj_race', 'facts_dup', 'subvol_unknown', 'kthread_open', 'files_live', 'objs_live', 'files_live_max', 'objs_live_max', 'file_drained', 'file_invalid', 'fentry_missed', 'kprobe_missed', 'file_map_entries', 'obj_map_entries'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 380], 'itemsize': 384}),
         384, 384, ()),
+    (40, 2): Layout('FILE_STATS', 40, 2, 'STATS',
+        np.dtype({'names': ['h', 'fentry_run', 'fentry_no_inode', 'open_emitted', 'open_lost', 'open_full_size', 'open_truncated', 'open_path_error', 'backing_emitted', 'backing_lost', 'backing_user_unread', 'session_entry', 'session_no_inode', 'session_return', 'session_common', 'missing_emitted', 'missing_lost', 'verdict_emitted', 'verdict_lost', 'session_no_cookie', 'session_no_entry', 'free_run', 'close_emitted', 'close_lost', 'free_unregistered', 'inode_free_run', 'inode_free_hit', 'file_map_full', 'obj_map_full', 'file_stale', 'obj_stale', 'file_race', 'obj_race', 'facts_dup', 'subvol_unknown', 'kthread_open', 'walked', 'walk_raced', 'walk_truncated', 'walk_unnamed', 'ret_backing', 'ret_backing_emitted', 'ret_backing_lost', 'ret_backing_verdict_emitted', 'ret_backing_verdict_lost', 'files_live', 'objs_live', 'files_live_max', 'objs_live_max', 'file_drained', 'file_invalid', 'fentry_missed', 'kprobe_missed', 'file_map_entries', 'obj_map_entries'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 384, 392, 400, 408, 416, 424, 432, 440, 448, 452], 'itemsize': 456}),
+        456, 456, ()),
 }
 
 # The raw DuckDB tables of p15_records.sql: record name -> ((column, DuckDB type), ...), in order.
@@ -661,6 +666,15 @@ SQL_COLUMNS = {
         ('facts_dup', 'UBIGINT'),
         ('subvol_unknown', 'UBIGINT'),
         ('kthread_open', 'UBIGINT'),
+        ('walked', 'UBIGINT'),
+        ('walk_raced', 'UBIGINT'),
+        ('walk_truncated', 'UBIGINT'),
+        ('walk_unnamed', 'UBIGINT'),
+        ('ret_backing', 'UBIGINT'),
+        ('ret_backing_emitted', 'UBIGINT'),
+        ('ret_backing_lost', 'UBIGINT'),
+        ('ret_backing_verdict_emitted', 'UBIGINT'),
+        ('ret_backing_verdict_lost', 'UBIGINT'),
         ('files_live', 'UBIGINT'),
         ('objs_live', 'UBIGINT'),
         ('files_live_max', 'UBIGINT'),

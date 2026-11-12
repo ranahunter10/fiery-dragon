@@ -50,7 +50,8 @@ for _n in dir(gen):
 OBJ_SUBVOL_UNKNOWN = 1                 # OBJFACTS oflags bit 0 (schema/records.toml)
 # fflags each record may carry (schema/records.toml docs), and which part each OBJ_NEW-like flag announces
 _FFLAGS_OK = {
-    "OPEN": gen.FF_OBJ_NEW | gen.FF_PATH_MISSING | gen.FF_PATH_ERROR | gen.FF_FULL_SIZE | gen.FF_KTHREAD,
+    "OPEN": gen.FF_OBJ_NEW | gen.FF_PATH_MISSING | gen.FF_PATH_WALKED | gen.FF_PATH_RACED | gen.FF_PATH_ERROR |
+    gen.FF_FULL_SIZE | gen.FF_KTHREAD,
     "OPEN_VERDICT": gen.FF_KTHREAD,
     "BACKING": gen.FF_OBJ_NEW | gen.FF_USER_OBJ_NEW | gen.FF_KTHREAD,
     "CLOSE": gen.FF_NEVER_OPENED | gen.FF_KTHREAD,
@@ -136,7 +137,13 @@ def decode(buf, off: int, ring: int, seq: int) -> Record:
             raise RecordError(f"{lay.name}: non-zero reserved", off)
         if lay.name in ("OPEN", "FD") and bool(f["fflags"] & gen.FF_PATH_ERROR) != bool(f["path_err"]):
             raise RecordError(f"{lay.name}: path_err without PATH_ERROR, or PATH_ERROR without path_err", off)
-        if lay.name == "OPEN" and not f["fflags"] & gen.FF_PATH_MISSING and f["verdict"]:
+        _ret = gen.FF_PATH_MISSING | gen.FF_PATH_WALKED   # written by the session's return (ADR-0029)
+        if lay.name == "OPEN" and ((f["fflags"] & _ret) == _ret or
+                                   (f["fflags"] & gen.FF_PATH_RACED and not f["fflags"] & gen.FF_PATH_WALKED)):
+            raise RecordError("OPEN: PATH_WALKED with PATH_MISSING, or PATH_RACED without PATH_WALKED", off)
+        if lay.name == "OPEN" and f["fflags"] & gen.FF_PATH_WALKED and f["fflags"] & (gen.FF_PATH_ERROR | gen.FF_FULL_SIZE):
+            raise RecordError("OPEN: a walked path with PATH_ERROR or FULL_SIZE (those are the fentry's)", off)
+        if lay.name == "OPEN" and not f["fflags"] & _ret and f["verdict"]:
             raise RecordError("OPEN: a verdict on an OPEN the fentry wrote (a denial is OPEN_VERDICT)", off)
         if lay.name == "OPEN_VERDICT" and f["verdict"] >= 0:
             raise RecordError("OPEN_VERDICT: the verdict is not a denial", off)

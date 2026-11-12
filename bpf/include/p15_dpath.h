@@ -10,9 +10,18 @@
  *   - a mount's root crosses to its mountpoint in the parent mount, until the task's root or a
  *     mount that is its own parent (the namespace's root: flag P15_DP_NOT_UNDER_ROOT);
  *   - an unlinked dentry gets " (deleted)";
- *   - a dentry whose d_op has d_dname (pipes, sockets, anon inodes) is not walked:
- *     d_path would ask the filesystem for a made-up name, which a BPF program cannot. Flag
- *     P15_DP_DNAME, no path; ADR-0027 names such files by their open file, not their path.
+ *   - a dentry whose d_op has d_dname is not walked: d_path asks the filesystem for a made-up name
+ *     (d_path L276-279). A BPF program cannot call it, so the walk writes the same string itself for
+ *     the four the kernel uses for pseudo files, identified without kernel addresses (E-0196):
+ *       d_alloc_pseudo's default, simple_dname: "/" name " (deleted)" (a memfd, an O_TMPFILE-less
+ *         shmem file; fs/dcache.c L1866-1879, fs/d_path.c L318-325): the dentry is DCACHE_NORCU
+ *         and its superblock has no default d_op, so d_alloc_pseudo gave it anon_ops;
+ *       pipefs_dname "pipe:[ino]", sockfs_dname "socket:[ino]", anon_inodefs_dname
+ *         "anon_inode:" name (fs/pipe.c L874-878, net/socket.c L374-378, fs/anon_inodes.c L74-78,
+ *         all through dynamic_dname, d_path.c L301-316, 64 bytes at most): the dentry has its
+ *         superblock's default d_op and the superblock is that filesystem's (by magic).
+ *     Flags P15_DP_DNAME | P15_DP_SYNTH. Any other d_dname: P15_DP_DNAME alone and no path;
+ *     ADR-0027 names such files by their open file, not their path.
  * What it does that d_path does by retrying:
  *   - d_path re-walks while the rename or mount sequence counter moved (prepend_path's
  *     read_seqbegin_or_lock). A BPF program cannot take the lock, so the walk reads both counters
@@ -44,6 +53,12 @@
 #define P15_DP_NO_SEQ (1u << 6)           /* the sequence counters' addresses are unknown */
 #define P15_DP_NO_ROOT (1u << 7)          /* the task has no fs (an exiting kernel thread) */
 #define P15_DP_RETRIED (1u << 8)          /* the first try raced; the second did not */
+#define P15_DP_SYNTH (1u << 9)            /* with DNAME: the name the filesystem's d_dname makes, written by the walk */
+
+/* include/uapi/linux/magic.h */
+#define P15_DP_PIPEFS_MAGIC 0x50495045u
+#define P15_DP_SOCKFS_MAGIC 0x534F434Bu
+#define P15_DP_ANON_INODE_FS_MAGIC 0x09041934u
 
 #ifdef __bpf__
 #include <bpf/bpf_core_read.h>
@@ -77,6 +92,100 @@ static __always_inline __u32 p15_dp_seq(const void *lock)
 		bpf_probe_read_kernel(&v, sizeof(v),
 				      (const char *)lock + bpf_core_field_offset(struct seqlock, seqcount.seqcount.sequence));
 	return v;
+}
+
+/* The superblock's default dentry operations: __s_d_op since v7.0's set_default_d_op, s_d_op before. */
+struct super_block___p15new {
+	const struct dentry_operations *__s_d_op;
+} __attribute__((preserve_access_index));
+
+struct super_block___p15old {
+	const struct dentry_operations *s_d_op;
+} __attribute__((preserve_access_index));
+
+static __always_inline int p15_dp_sb_dop(struct super_block *sb, __u64 *dop)
+{
+	if (bpf_core_field_exists(struct super_block___p15new, __s_d_op)) {
+		*dop = (__u64)((struct super_block___p15new *)sb)->__s_d_op;
+		return 1;
+	}
+	if (bpf_core_field_exists(struct super_block___p15old, s_d_op)) {
+		*dop = (__u64)((struct super_block___p15old *)sb)->s_d_op;
+		return 1;
+	}
+	return 0;
+}
+
+/* buf[off...] = s (n bytes, n <= 16); returns the new offset. */
+static __always_inline __u32 p15_dp_lit(char *buf, __u32 off, const char *s, __u32 n)
+{
+	for (__u32 i = 0; i < 16 && i < n; i++)
+		buf[(off + i) & (P15_DP_BUF - 1)] = s[i];
+	return off + n;
+}
+
+/* buf[off...] = v in decimal; returns the new offset. */
+static __always_inline __u32 p15_dp_dec(char *buf, __u32 off, __u64 v)
+{
+	char t[20];
+	__u32 k = 0;
+
+	for (int i = 0; i < 20; i++) {
+		t[i] = '0' + (char)(v % 10);
+		v /= 10;
+		k = i + 1;
+		if (!v)
+			break;
+	}
+	for (__u32 i = 0; i < 20 && i < k; i++)
+		buf[(off + i) & (P15_DP_BUF - 1)] = t[(k - 1 - i) % 20];
+	return off + k;
+}
+
+/* The name a d_dname filesystem makes, where the walk knows it (see the top). Returns the length;
+ * *flags gets DNAME, and SYNTH when buf holds the name. */
+static __always_inline __u32 p15_dp_dname(struct dentry *d, char *buf, __u32 *flags)
+{
+	struct super_block *sb = d->d_sb;
+	__u32 magic = (__u32)sb->s_magic, len = d->d_name.len, off = 0;
+	const unsigned char *name = d->d_name.name;
+	__u64 dop = 0;
+
+	*flags = P15_DP_DNAME;
+	buf[0] = 0;
+	if (!p15_dp_sb_dop(sb, &dop))
+		return 0;
+	if (!dop && bpf_core_enum_value_exists(enum dentry_flags, DCACHE_NORCU) &&
+	    (d->d_flags & bpf_core_enum_value(enum dentry_flags, DCACHE_NORCU))) {
+		/* simple_dname: "/" name " (deleted)" */
+		if (len > P15_DP_NAME_MAX)
+			return 0;
+		buf[0] = '/';
+		if (len && bpf_probe_read_kernel(buf + 1, len & P15_DP_NAME_MAX, name))
+			return 0;
+		off = p15_dp_lit(buf, 1 + len, " (deleted)", 10);
+	} else if (dop && (__u64)d->d_op == dop && magic == P15_DP_PIPEFS_MAGIC) {
+		off = p15_dp_lit(buf, 0, "pipe:[", 6);
+		off = p15_dp_dec(buf, off, d->d_inode->i_ino);
+		off = p15_dp_lit(buf, off, "]", 1);
+	} else if (dop && (__u64)d->d_op == dop && magic == P15_DP_SOCKFS_MAGIC) {
+		off = p15_dp_lit(buf, 0, "socket:[", 8);
+		off = p15_dp_dec(buf, off, d->d_inode->i_ino);
+		off = p15_dp_lit(buf, off, "]", 1);
+	} else if (dop && (__u64)d->d_op == dop && magic == P15_DP_ANON_INODE_FS_MAGIC) {
+		/* dynamic_dname refuses more than 63 bytes: d_path then fails, and so do we */
+		if (11 + len > 63)
+			return 0;
+		off = p15_dp_lit(buf, 0, "anon_inode:", 11);
+		if (len && bpf_probe_read_kernel(buf + 11, len & 63, name))
+			return 0;
+		off += len;
+	} else {
+		return 0;
+	}
+	buf[off & (P15_DP_BUF - 1)] = 0;
+	*flags = P15_DP_DNAME | P15_DP_SYNTH;
+	return off;
 }
 
 /* One dentry or one mount crossing (__prepend_path's loop body). */
@@ -184,10 +293,8 @@ static __always_inline __u32 p15_dpath(const struct path *path, char *buf, struc
 	int tries;
 
 	buf[0] = 0;
-	if (d->d_op && d->d_op->d_dname && (d != d->d_parent || d != path->mnt->mnt_root)) {
-		*flags = P15_DP_DNAME;
-		return 0;
-	}
+	if (d->d_op && d->d_op->d_dname && (d != d->d_parent || d != path->mnt->mnt_root))
+		return p15_dp_dname(d, buf, flags);
 	if (!fs) {
 		*flags = P15_DP_NO_ROOT;
 		return 0;

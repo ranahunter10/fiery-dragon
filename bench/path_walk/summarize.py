@@ -24,12 +24,15 @@ import sys
 from pathlib import Path
 
 CASES = ("plain", "root", "dir", "proc", "sysfs", "devtmpfs", "deep40", "deep70", "longnames", "tmpfs", "bind",
-         "overlay", "deleted", "memfd", "pipe", "chroot")
-EXPECT = {"deep70": "flagged", "pipe": "flagged"}
-WHY = {"deep70": "70 components: beyond the walk's 64, so TRUNCATED", "pipe": "pipefs names it (d_dname): DNAME"}
+         "overlay", "deleted", "memfd", "pipe", "socket", "eventfd", "chroot")
+EXPECT = {"deep70": "flagged"}
+WHY = {"deep70": "70 components: beyond the walk's 64, so TRUNCATED"}
 CONFIG = re.compile(r"^config dir=\S+ rounds=(\d+) n=(\d+) ")
-CASE = re.compile(r"^case (\w+) (verdict=(\w+) flags=0x([0-9a-f]+) dpath_rc=(-?\d+) dpath_len=(\d+) walk_len=(\d+) "
-                  r"dpath=(\S*) walk=(\S*)|open_failed errno=\d+|no_sample|mount_failed( errno=\d+)?|chroot_failed errno=\d+)$")
+_S = r"verdict=(\w+) flags=0x([0-9a-f]+) dpath_rc=(-?\d+) dpath_len=(\d+) walk_len=(\d+) dpath=(\S*) walk=(\S*)"
+CASE = re.compile(r"^case (\w+) (samples=(\d+) open_errno=(\d+) " + _S +
+                  r"|open_failed errno=\d+|no_sample|mount_failed( errno=\d+)?|chroot_failed errno=\d+)$")
+SAMPLE = re.compile(r"^sample (\w+) (\d+) " + _S + "$")
+KEEP = 4   # path_walk.c keeps at most this many samples of a case
 RACE = re.compile(r"^race opens=(\d+) renames=(\d+) samples=(\d+) equal=(\d+) flagged=(\d+) moved=(\d+) raced=(\d+) "
                   r"retried=(\d+) "
                   r"mismatch=(\d+) dpath_failed=(\d+) open_failed=(\d+)$")
@@ -37,7 +40,7 @@ END = re.compile(r"^end lost=(\d+) kprobe_flags=0x([0-9a-f]+)$")
 TIME = re.compile(r"^time round=(-?\d+) path=(\w+) fentry_runs=(\d+) dpath_ns=(\d+) walk_fentry_ns=(\d+) kprobe_runs=(\d+) "
                   r"walk_kprobe_ns=(\d+)$")
 FLAGS = ((1, "TRUNCATED"), (2, "RACED"), (4, "DNAME"), (8, "DELETED"), (16, "NOT_UNDER_ROOT"), (32, "ESCAPED"),
-         (64, "NO_SEQ"), (128, "NO_ROOT"), (256, "RETRIED"))
+         (64, "NO_SEQ"), (128, "NO_ROOT"), (256, "RETRIED"), (512, "SYNTH"))
 
 
 class ParseError(Exception):
@@ -60,10 +63,18 @@ def parse(text: str):
             if name in cases:
                 raise ParseError(f"case {name} twice")
             if m[3] is None:
-                cases[name] = {"verdict": line.split()[2].split("=")[0], "flags": 0, "raw": line}
+                cases[name] = {"verdict": line.split()[2].split("=")[0], "flags": 0, "raw": line, "n": 0, "more": []}
             else:
-                cases[name] = {"verdict": m[3], "flags": int(m[4], 16), "dpath_rc": int(m[5]), "dpath": m[8],
-                               "walk": m[9], "raw": line}
+                cases[name] = {"verdict": m[5], "flags": int(m[6], 16), "dpath_rc": int(m[7]), "dpath": m[10],
+                               "walk": m[11], "raw": line, "n": int(m[3]), "errno": int(m[4]), "more": []}
+        elif line.startswith("sample "):
+            m = SAMPLE.match(line)
+            if not m:
+                raise ParseError(f"unparsed sample: {line}")
+            c = cases.get(m[1])
+            if c is None or int(m[2]) != len(c["more"]) + 1:
+                raise ParseError(f"a sample out of order: {line}")
+            c["more"].append({"verdict": m[3], "flags": int(m[4], 16), "dpath": m[8], "walk": m[9]})
         elif line.startswith("race_mismatch "):
             other.append(line)
         elif line.startswith("race "):
@@ -100,6 +111,9 @@ def parse(text: str):
             other.append(line)
         else:
             raise ParseError(f"unknown line: {line}")
+    for name, c in cases.items():
+        if len(c["more"]) != max(0, min(c["n"], KEEP) - 1):
+            raise ParseError(f"case {name}: {c['n']} samples, {len(c['more'])} sample lines")
     missing = [c for c in CASES if c not in cases]
     if missing:
         raise ParseError(f"missing cases: {', '.join(missing)}")
@@ -115,12 +129,18 @@ def report(text: str) -> tuple[str, int]:
     fails, notes = [], []
     out = ["# path_walk: the dentry walk against bpf_d_path (gate 2)", ""]
     out += [ln[7:] for ln in other if ln.startswith("config ")] + [""]
-    out += ["| case | verdict | expected | walk's flags | bpf_d_path | walk |", "|---|---|---|---|---|---|"]
+    out += ["| case | samples | verdict (worst) | expected | walk's flags | bpf_d_path | walk |",
+            "|---|---|---|---|---|---|---|"]
     for c in CASES:
         r = cases[c]
         exp = EXPECT.get(c, "equal")
-        out.append(f"| {c} | {r['verdict']} | {exp} | {flag_names(r['flags'])} | `{r.get('dpath', '')[:60]}` | "
+        out.append(f"| {c} | {r['n']} | {r['verdict']} | {exp} | {flag_names(r['flags'])} | `{r.get('dpath', '')[:60]}` | "
                    f"`{r.get('walk', '')[:60]}` |")
+        for k, x in enumerate(r["more"], 1):
+            out.append(f"| ... sample {k} | | {x['verdict']} | | {flag_names(x['flags'])} | `{x['dpath'][:60]}` | "
+                       f"`{x['walk'][:60]}` |")
+            if x["verdict"] == "MISMATCH":
+                fails.append(f"case {c} sample {k}: the walk gave another path and did not say so")
         if r["verdict"] == "MISMATCH":
             fails.append(f"case {c}: the walk gave another path and did not say so")
         elif r["verdict"] not in ("equal", "flagged"):

@@ -18,10 +18,13 @@
  *   the ring. One "contend" line: the counters' change over the run (fentry runs, session entries,
  *   OPENs written with PATH_MISSING because the path program did not run, records lost), the records
  *   read from the ring by type, and the programs' recursion_misses and links' kprobe_multi.missed.
- *   These count every task's opens, not only the workers'.
+ *   These count every task's opens, not only the workers'. Then one "walk" line (ADR-0029): the
+ *   counters of the session return's walk, the OPENs read with PATH_WALKED, and of those naming a
+ *   file called "same", how many name DIR/same (resolved) exactly and how many another path.
  * Last line: "books ok" when the ring handed over every record the counters say was written (OPEN
- * = OPEN_EMITTED + MISSING_EMITTED, CLOSE = CLOSE_EMITTED) and nothing was lost; else "books FAIL",
- * exit 1.
+ * = OPEN_EMITTED + MISSING_EMITTED, CLOSE = CLOSE_EMITTED) and nothing was lost, and in contend
+ * mode the walked OPENs read equal the WALKED counter and none of DIR/same is wrong; else
+ * "books FAIL", exit 1.
  */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -51,7 +54,9 @@ static const char *const SEC_NAME[P15_PROF__N] = {
 };
 
 struct books {
-	unsigned long long open, close, other;
+	unsigned long long open, close, other, walked, target, target_wrong;
+	const char *want;   /* DIR/same, resolved: what a walked OPEN of it must say */
+	size_t want_len;
 };
 
 static int on_rec(void *ctx, void *data, size_t size)
@@ -61,8 +66,22 @@ static int on_rec(void *ctx, void *data, size_t size)
 
 	if (size < sizeof(*h))
 		b->other++;
-	else if (h->type == P15_T_OPEN)
+	else if (h->type == P15_T_OPEN) {
+		const struct p15_open *o = data;
+
 		b->open++;
+		if (size >= sizeof(*o) && (o->fflags & P15_FF_PATH_WALKED)) {
+			const char *pth = (const char *)(o + 1) + o->facts_len;
+
+			b->walked++;
+			if (b->want && sizeof(*o) + o->facts_len + o->path_len <= size && o->path_len >= 5 &&
+			    !memcmp(pth + o->path_len - 5, "/same", 5)) {
+				b->target++;
+				if (o->path_len != b->want_len || memcmp(pth, b->want, b->want_len))
+					b->target_wrong++;
+			}
+		}
+	}
 	else if (h->type == P15_T_CLOSE)
 		b->close++;
 	else
@@ -119,7 +138,7 @@ int main(int argc, char **argv)
 	struct p15_counters ctr = { 0 };
 	struct books b = { 0 };
 	uint64_t c0[P15_CTR_MAX], c1[P15_CTR_MAX];
-	char path[4096];
+	char path[4096], want[4096];
 	int single, ncpu, rc = 0;
 	long rounds = 0, workers = 0, n;
 
@@ -156,6 +175,10 @@ int main(int argc, char **argv)
 	}
 	ring_buffer__consume(rb);
 	b = (struct books){ 0 };
+	if (realpath(path, want)) {
+		b.want = want;
+		b.want_len = strlen(want);
+	}
 	p15_counters_sum(&ctr, c0);
 	printf("config mode=%s %s=%ld n=%ld ncpu=%d dir=%s\n", argv[1], single ? "rounds" : "workers",
 	       single ? rounds : workers, n, ncpu, argv[4]);
@@ -227,13 +250,18 @@ int main(int argc, char **argv)
 		       D(P15_FC_MISSING_EMITTED), D(P15_FC_OPEN_EMITTED), D(P15_FC_OPEN_LOST), D(P15_FC_MISSING_LOST),
 		       D(P15_FC_CLOSE_EMITTED), D(P15_FC_CLOSE_LOST), m1[0] - m0[0], m1[1] - m0[1], m1[2] - m0[2],
 		       l1[1] - l0[1], l1[2] - l0[2]);
+		ring_buffer__consume(rb);
+		printf("walk walked=%llu walk_unnamed=%llu walk_raced=%llu walk_truncated=%llu rec_walked=%llu target=%llu "
+		       "target_wrong=%llu\n",
+		       D(P15_FC_WALKED), D(P15_FC_WALK_UNNAMED), D(P15_FC_WALK_RACED), D(P15_FC_WALK_TRUNCATED), b.walked,
+		       b.target, b.target_wrong);
 	}
 	ring_buffer__consume(rb);
 	p15_counters_sum(&ctr, c1);
 	{
 		int ok = !rc && b.open == D(P15_FC_OPEN_EMITTED) + D(P15_FC_MISSING_EMITTED) &&
 			 b.close == D(P15_FC_CLOSE_EMITTED) && !D(P15_FC_OPEN_LOST) && !D(P15_FC_MISSING_LOST) &&
-			 !D(P15_FC_CLOSE_LOST);
+			 !D(P15_FC_CLOSE_LOST) && (single || (b.walked == D(P15_FC_WALKED) && !b.target_wrong && b.want));
 
 		printf("books %s open=%llu close=%llu other=%llu\n", ok ? "ok" : "FAIL", b.open, b.close, b.other);
 		rc = ok ? 0 : 1;
