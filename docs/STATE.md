@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "docs: research for the full capture layer, the graph and DuckDB (decision 35)"
+**Last updated:** 2026-11-12 (UTC), PR "graph: each edge names its program at its time; names come from the leader (ADR-0031)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -263,6 +263,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 35. **Research for the full capture layer, the graph and DuckDB** (E-0205, [note](research/2026-11-12-full-capture-graph-duckdb.md)): writes have no edge from the writer until 2b, so 2b is the prerequisite of investigation; the graph labels events with a process's last image; DuckDB loads by column with no indexes, ordered by time; BackTracker's rule runs as one `USING KEY` query (checked in the dev container, [evidence](evidence/research/2026-11-12-backtrack-prototype/output.txt); on the VM's soak graph 0.055 to 0.113 s, stopping at every file because no edge points into one, E-0206, [evidence](evidence/vm/2026-11-12-backtrack-soak/README.md)). No design change is taken here: its five recommendations are decision waiting 8.
 
+36. **The research recommendations accepted** (maintainer 2026-11-12, "recommendations accepted"; E-0208): decision waiting 8's order (R5, R2 alongside, R1 before 2b, R3 and R4 in gate 10), decision waiting 9's fix, and R2 widened to `sock_pair` and `file_backing`. R1 and the fix are ADR-0031 (#79): `proc_image` with each edge's program by ASOF JOIN, and names from the leader only. #77 and #78 merged.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -272,9 +274,5 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 5. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
 6. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
 7. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
-8. **The research note's recommendations** (decision 35, E-0205). Recommendation, in this order:
-   1. R5 next: gate 5 as ADR-0005 plans, starting with a cost harness for the read/write hooks and their event rates under the soak's workload, then FLOW per call and the ceiling gate. Keep bytes and counts (DepImpact needs them).
-   2. R2 alongside: `p15/graph/track.py`, backward and forward `USING KEY` queries that also follow `sock_pair` and `file_backing` as edges, tested against a Python BackTracker on generated graphs (one crossing a TCP connection), and timed on the soak's graph on the VM (first timing: E-0206).
-   3. R1 as a small graph PR before 2b: a `proc_image` table per exec and each edge's image by ASOF JOIN.
-   4. R3 and R4 in gate 10: bulk decoding with generated numpy dtypes, then a streaming builder with a bounded, counted pending table, tested against the offline builder.
-9. **A process's name is any of its threads' names** (E-0206). `proctree.py` sets a process's comm from every RENAME record, whatever its tid, so p15d is named `p15d-writer` in the graph. A program that renames a thread (browsers and JVMs do it constantly, and malware can) relabels its whole process. The record carries the tid, so the capture loses nothing; only the graph's reading is wrong. Recommendation: a graph PR that renames the process only when tid = tgid and keeps the thread names in their own table with times. Tests: a process whose thread renames itself keeps its name, and p15d is `p15d` on the soak graph.
+8. ~~**The research note's recommendations**~~ Accepted (decision 36): R1 done by ADR-0031; R2, R5, then R3 and R4 to come in that order.
+9. ~~**A process's name is any of its threads' names**~~ Fixed by ADR-0031 (decision 36); confirmed on the soak graph when the VM rebuilds it.

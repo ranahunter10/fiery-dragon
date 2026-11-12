@@ -31,7 +31,16 @@ PROC_SRC_COLS = [("tgid", "UINTEGER"), ("start_ns", "UBIGINT"), ("parent_tgid", 
                  ("parent_start_ns", "UBIGINT"), ("first_ns", "UBIGINT"), ("fork_ns", "UBIGINT"), ("exit_ns", "UBIGINT"),
                  ("exit_code", "INTEGER"), ("exe_path", "VARCHAR"), ("cmd", "VARCHAR"), ("comm", "VARCHAR"),
                  ("origin", "VARCHAR"), ("kthread", "BOOLEAN"), ("in_gap", "BOOLEAN"), ("n_images", "UINTEGER")]
+# A process's programs over time (ADR-0031): one row per image, valid from `valid_from` until the
+# next row's. seen_in: "exec" (an EXEC record), "snapshot" (the opening snapshot's program of a
+# process that started before the capture: valid from its start), "fork" (a child before its first
+# exec runs its parent's program: a copy of the parent's image at the fork, valid from the fork).
+IMAGE_SRC_COLS = [("tgid", "UINTEGER"), ("start_ns", "UBIGINT"), ("image_no", "UINTEGER"), ("valid_from", "UBIGINT"),
+                  ("ts_ns", "UBIGINT"), ("seen_in", "VARCHAR"), ("filename", "VARCHAR"), ("cmd", "VARCHAR"),
+                  ("truncated", "BOOLEAN"), ("exe_major", "UINTEGER"), ("exe_minor", "UINTEGER"), ("exe_ino", "UBIGINT"),
+                  ("backing", "VARCHAR")]
 PROC_SRC_DDL = ("CREATE TABLE proc_src (" + ", ".join(f"{c} {t}" for c, t in PROC_SRC_COLS) + ");\n"
+                "CREATE TABLE image_src (" + ", ".join(f"{c} {t}" for c, t in IMAGE_SRC_COLS) + ");\n"
                 "CREATE TABLE tree_count (name VARCHAR, n BIGINT);\n")
 
 
@@ -94,6 +103,53 @@ def proc_rows(tree: P.Tree, first: dict[P.Key, int]) -> list[tuple]:
     return out
 
 
+def image_rows(tree: P.Tree) -> tuple[list[tuple], dict[str, int]]:
+    """Every process's images in time order (IMAGE_SRC_COLS), and their counts. A forked child's first
+    rows copy the image its parent ran at the fork, found the same way for the parent (so a chain of
+    forks without an exec reaches the program an ancestor ran). A process with no image and no
+    parent image has no row: its edges carry no image (NULL), counted as `image_none`."""
+    counts = dict.fromkeys(("image_exec", "image_snapshot", "image_fork", "image_none"), 0)
+    memo: dict[tuple[P.Key, int], P.Image | None] = {}
+
+    def at(k: P.Key, t: int, depth: int = 0):
+        """The image process k ran at time t, with where it came from, or None."""
+        p = tree.procs.get(k)
+        if p is None or depth > 4096:          # a parent cycle is impossible (ADR-0009); bounded anyway
+            return None
+        best = None
+        for i, im in enumerate(p.images):
+            start = k[1] if (i == 0 and im.seen_in == "snapshot") else im.ts_ns
+            if start <= t:
+                best = im
+        if best is not None:
+            return best
+        if p.parent is None or p.fork_ns is None or p.fork_ns > t:
+            return None
+        mk = (p.parent, p.fork_ns)
+        if mk not in memo:
+            memo[mk] = at(p.parent, p.fork_ns, depth + 1)
+        return memo[mk]
+
+    rows = []
+    for k in sorted(tree.procs):
+        p = tree.procs[k]
+        out = []
+        inherited = at(p.parent, p.fork_ns) if p.parent is not None and p.fork_ns is not None else None
+        if inherited is not None and not (p.images and p.images[0].ts_ns <= p.fork_ns):
+            out.append((p.fork_ns, p.fork_ns, "fork", inherited))
+        for i, im in enumerate(p.images):
+            start = k[1] if (i == 0 and im.seen_in == "snapshot") else im.ts_ns
+            out.append((start, im.ts_ns, im.seen_in, im))
+        if not out:
+            counts["image_none"] += 1
+        for n, (start, ts, seen, im) in enumerate(out):
+            counts["image_" + seen] += 1
+            rows.append((k[0], k[1], n, start, ts, seen, im.filename,
+                         " ".join(im.argv) if im.argv else None, im.truncated, im.exe[0], im.exe[1], im.exe[2],
+                         im.backing))
+    return rows, counts
+
+
 def statements(sql: str) -> list[str]:
     """graph.sql cut into its statements: a statement ends at a line whose code (before a -- comment)
     ends with ';'. graph.sql keeps every ';' at the end of a line for this."""
@@ -133,12 +189,16 @@ def build(run_dir: Path, out: Path, profile: list | None = None) -> Result:
     done = False
     try:
         con.create_function("p15_text", text, ["BLOB"], "VARCHAR")
+        con.create_function("p15_comm", lambda b: R.comm(bytes(b)), ["BLOB"], "VARCHAR")
         con.create_function("p15_addr", addr, ["BLOB", "USMALLINT"], "VARCHAR")
         raw_rows = raw.load(con, run, rings, errors)
         lap("raw tables")
         con.execute(PROC_SRC_DDL)
         raw.insert_rows(con, "proc_src", PROC_SRC_COLS, proc_rows(tree, first))
-        raw.insert_rows(con, "tree_count", [("name", "VARCHAR"), ("n", "BIGINT")], sorted(tree.counts.items()))
+        images, image_counts = image_rows(tree)
+        raw.insert_rows(con, "image_src", IMAGE_SRC_COLS, images)
+        tree_counts = {**tree.counts, **image_counts}
+        raw.insert_rows(con, "tree_count", [("name", "VARCHAR"), ("n", "BIGINT")], sorted(tree_counts.items()))
         lap("proc_src")
         if profile is None:
             con.execute(SQL.read_text())
@@ -152,4 +212,4 @@ def build(run_dir: Path, out: Path, profile: list | None = None) -> Result:
         con.close()
         if not done:
             out.unlink(missing_ok=True)     # never leave half a graph behind
-    return Result(raw_rows, counts, dict(tree.counts), [f"{s.path.name}: {st.describe()}" for s, st in run.stops])
+    return Result(raw_rows, counts, tree_counts, [f"{s.path.name}: {st.describe()}" for s, st in run.stops])

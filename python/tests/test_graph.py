@@ -442,6 +442,105 @@ class ExecEdges(Base):
         self.assertEqual(self.res.counts["accept_not_paired"], 3)
 
 
+class Images(Base):
+    """ADR-0031: a process's programs over time, each edge's program at its time, and names from the
+    leader only."""
+    C, D, E = (720, T0 + 30), (725, T0 + 35), (730, T0 + 60)
+
+    def exe(self, t, p, path):
+        return rec("EXEC", var={"filename": path, "argv": path + b"\0x\0"}, **hdr(t, p), old_tid=p[0],
+                   exe_ino=40 + t % 7, exe_dev=DEV, exe_gen=1, exe_fs_magic=EXT4)
+
+    def ren(self, t, p, tid, new):
+        return rec("RENAME", h_ts_ns=t, h_tgid=p[0], h_tid=tid, h_start_ns=p[1], old_comm=b"x", new_comm=new)
+
+    def run_story(self):
+        f = facts(ino=5, dev=DEV, gen=1, mode=REG, fs_magic=EXT4)
+        return self.graph(
+            spine=[self.exe(T0 + 20, A, b"/bin/a"), self.ren(T0 + 20, A, A[0], b"a"),
+                   SC.fork(T0 + 30, A, self.C), SC.fork(T0 + 35, self.C, self.D),
+                   self.exe(T0 + 40, self.C, b"/bin/c"), self.ren(T0 + 40, self.C, self.C[0], b"c"),
+                   self.ren(T0 + 50, A, A[0] + 1, b"worker"),
+                   self.exe(T0 + 60, A, b"/bin/a2"), SC.fork(T0 + 60, A, self.E)],
+            bulk=[opn(T0 + 15, A, 1, 10, b"/f", f),          # before A's first exec, A not in a snapshot
+                  opn(T0 + 25, A, 2, 10, b"/f"),             # A runs /bin/a
+                  opn(T0 + 35, self.C, 3, 10, b"/f"),        # C before its exec: its parent's program
+                  opn(T0 + 36, self.D, 5, 10, b"/f"),        # D, forked by C before C's exec: A's program
+                  opn(T0 + 37, B2, 6, 10, b"/f"),            # a process with no program in the run
+                  opn(T0 + 45, self.C, 4, 10, b"/f"),        # C runs /bin/c
+                  SC.net(T0 + 46, self.C, "CONNECT", 1, "10.0.0.1:5000", "10.0.0.2:80"),
+                  opn(T0 + 65, A, 7, 10, b"/f")])            # A runs /bin/a2
+
+    def test_each_edge_names_the_program_running_at_its_time(self):
+        c = self.run_story()
+        rows = self.q(c, "SELECT e.fid, i.seen_in, i.filename, i.cmd FROM edge e JOIN proc p ON p.node_id = e.dst "
+                         "LEFT JOIN proc_image i ON i.node_id = e.dst AND i.image_no = e.dst_image "
+                         "WHERE e.op = 'OPEN' ORDER BY e.ts_ns")
+        self.assertEqual(rows, [(1, None, None, None), (2, "exec", "/bin/a", "/bin/a x"),
+                                (3, "fork", "/bin/a", "/bin/a x"), (5, "fork", "/bin/a", "/bin/a x"),
+                                (6, None, None, None), (4, "exec", "/bin/c", "/bin/c x"),
+                                (7, "exec", "/bin/a2", "/bin/a2 x")])
+        self.assertEqual(self.q(c, "SELECT p.tgid, i.image_no, i.valid_from - ?, i.seen_in, i.filename FROM proc_image i "
+                                   "JOIN proc p USING (node_id) ORDER BY p.tgid, i.image_no", T0),
+                         [(700, 0, 20, "exec", "/bin/a"), (700, 1, 60, "exec", "/bin/a2"),
+                          (720, 0, 30, "fork", "/bin/a"), (720, 1, 40, "exec", "/bin/c"),
+                          (725, 0, 35, "fork", "/bin/a"), (730, 0, 60, "fork", "/bin/a2")])
+        # CLONE: the parent's program at the fork (an image is in effect from its own time on), the child's first
+        self.assertEqual(self.q(c, "SELECT s.tgid, d.tgid, e.src_image, e.dst_image FROM edge e JOIN proc s ON s.node_id = e.src "
+                                   "JOIN proc d ON d.node_id = e.dst WHERE op = 'CLONE' ORDER BY e.ts_ns"),
+                         [(700, 720, 0, 0), (720, 725, 0, 0), (700, 730, 1, 0)])
+        self.assertEqual(self.q(c, "SELECT src_image, dst_image FROM edge WHERE op = 'CONNECT'"), [(1, None)])
+        # an exec image names the file of its own EXECUTE edge
+        self.assertEqual(self.q(c, "SELECT count(DISTINCT i.exe_node) FROM proc_image i JOIN edge e ON e.op = 'EXECUTE' "
+                                   "AND e.dst = i.node_id AND e.ts_ns = i.ts_ns AND e.src = i.exe_node "
+                                   "AND e.dst_image = i.image_no WHERE i.seen_in = 'exec'"), [(3,)])
+        cn = self.res.counts
+        self.assertEqual((cn["image_exec"], cn["image_fork"], cn["image_exec_without_edge"]), (3, 3, 0))
+        self.assertEqual(cn["edge_proc_end_without_image"], 2)     # fid 1 (A before its exec) and fid 6 (B2)
+        self.assertEqual((self.res.tree_counts["image_none"], self.res.tree_counts["image_fork"]), (1, 3))
+        # the last image is still proc.cmd
+        self.assertEqual(self.q(c, "SELECT tgid, cmd FROM proc WHERE tgid IN (700, 720) ORDER BY tgid"),
+                         [(700, "/bin/a2 x"), (720, "/bin/c x")])
+
+    def test_a_child_forked_before_the_opening_snapshot_ran_has_the_snapshot_program(self):
+        k = (800, T0 + 50)
+        c = self.graph(spine=[SC.fork(T0 + 50, SC.BASH, k)], bulk=[opn(T0 + 60, k, 1, 10, b"/f")],
+                       daemon=SC.snapshot(T0 + 100, 0, 1, SC.OPENING))
+        self.assertEqual(self.q(c, "SELECT i.seen_in, i.filename FROM edge e JOIN proc_image i ON i.node_id = e.dst "
+                                   "AND i.image_no = e.dst_image WHERE e.op = 'OPEN'"), [("fork", "/usr/bin/bash")])
+
+    def test_a_threads_rename_names_the_thread_not_the_process(self):
+        c = self.run_story()
+        self.assertEqual(self.q(c, "SELECT tgid, comm FROM proc WHERE tgid IN (700, 720) ORDER BY tgid"), [(700, "a"), (720, "c")])
+        self.assertEqual(self.q(c, "SELECT p.tgid, t.tid, t.new_comm, t.ts_ns - ? FROM thread_name t JOIN proc p USING (node_id)",
+                                T0), [(700, 701, "worker", 50)])
+        self.assertEqual(self.res.counts["thread_rename"], 1)
+        self.assertEqual((self.res.tree_counts["rename"], self.res.tree_counts["rename_thread"]), (2, 1))
+
+    def test_an_exec_image_without_its_edge_makes_the_run_invalid(self):
+        from unittest import mock
+        fake = B.Result({"record_error": 0}, {"image_exec_without_edge": 1}, {}, [])
+        err = io.StringIO()
+        with mock.patch.object(B, "build", return_value=fake), contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(err):
+            self.assertEqual(CLI.main([str(self.d / "run"), str(self.d / "g.duckdb")]), 1)
+        self.assertIn("image_exec_without_edge must be 0", err.getvalue())
+
+    def test_a_snapshot_program_holds_from_the_process_start(self):
+        SC.build(self.d / "run", snap=True)
+        self.res = B.build(self.d / "run", self.d / "g.duckdb")
+        c = self.open()
+        self.assertEqual(self.q(c, "SELECT i.image_no, i.valid_from, i.seen_in, i.filename FROM proc_image i "
+                                   "JOIN proc p USING (node_id) WHERE p.tgid = 500"), [(0, SC.BASH[1], "snapshot", "/usr/bin/bash")])
+        # bash's forks are made by bash's program; each child starts with it, then runs its own
+        self.assertEqual(self.q(c, "SELECT DISTINCT si.filename FROM edge e JOIN proc_image si ON si.node_id = e.src "
+                                   "AND si.image_no = e.src_image WHERE e.op = 'CLONE' AND e.src = "
+                                   "(SELECT node_id FROM proc WHERE tgid = 500)"), [("/usr/bin/bash",)])
+        self.assertEqual(self.q(c, "SELECT i.seen_in, i.cmd FROM proc_image i JOIN proc p USING (node_id) "
+                                   "WHERE p.tgid = 600 ORDER BY i.image_no"),
+                         [("fork", "-bash"), ("exec", "python3 -m http.server 18077")])
+
+
 class BuildFile(Base):
     def test_refuses_to_overwrite_and_leaves_nothing_half_built(self):
         SC.build(self.d / "run")
