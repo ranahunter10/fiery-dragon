@@ -1,0 +1,9 @@
+duckdb 2.0.0
+hand-made: [('F', 100), ('P2', 41), ('X', 31), ('P1', 21), ('Z', 16), ('net', 11)] EQUAL
+random 150000 nodes 900000 edges, round 0: 0.041 s, nodes reached 3
+random 150000 nodes 900000 edges, round 1: 0.038 s, nodes reached 3
+random 150000 nodes 900000 edges, round 2: 0.041 s, nodes reached 3
+hubs 1500 of 150000 nodes, 900000 edges, round 0: 0.268 s, nodes reached 133701
+hubs 1500 of 150000 nodes, 900000 edges, round 1: 0.253 s, nodes reached 133701
+hubs 1500 of 150000 nodes, 900000 edges, round 2: 0.240 s, nodes reached 133701
+dev container, 2 CPUs, not the target
