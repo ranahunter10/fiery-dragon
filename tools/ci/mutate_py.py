@@ -33,6 +33,7 @@ GEN = "schema/gen/gen.py"
 GRAW, GBUILD, GSQL, GPM, GCLI = ("python/p15/graph/raw.py", "python/p15/graph/build.py", "python/p15/graph/graph.sql",
                                  "python/p15/graph/pidsmaker.py", "python/p15/graph/__main__.py")
 _TG = "python/tests/test_graph.py"
+GTRACK, _TTR = "python/p15/graph/track.py", "python/tests/test_track.py"
 OCR, OCS = "bench/open_cost/run.py", "bench/open_cost/summarize.py"
 _TO = "bench/open_cost/test_open_cost.py"
 PCS, PCP = "bench/prim_cost/summarize.py", "bench/prim_cost/prog_stats.py"
@@ -46,7 +47,7 @@ _TT, _TR, _TP = "python/tests/test_trace.py", "python/tests/test_reconcile.py", 
 # a file's tests: one or several; a mutant is killed when any of them fails
 TESTS = {WAL: "python/tests/test_wal.py", REC: "python/tests/test_records.py", TREE: (_TT, _TR, _TG),
          NET: _TT, TRACE: (_TT, _TR), HTML: _TT, SNAP: _TR, RECON: _TR, PROV: _TP,
-         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW, ICS: _TIC, ICR: _TIC, SKC: _TSK, SKS: _TSK, SKP: _TSK}
+         GRAW: _TG, GBUILD: _TG, GSQL: _TG, GPM: _TG, GCLI: _TG, GTRACK: _TTR, OCR: _TO, OCS: _TO, PCS: _TPC, PCP: _TPC, PWS: _TPW, ICS: _TIC, ICR: _TIC, SKC: _TSK, SKS: _TSK, SKP: _TSK}
 
 M = [
  (EXITS, r'CALL = re.compile(r"\b(exit|_exit|_Exit|quick_exit|abort)\s*\(")', r'CALL = re.compile(r"\b(exit|_exit|_Exit|abort)\s*\(")'),
@@ -527,7 +528,21 @@ M = [
  (GSQL, "FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id AND x.ts_ns = proc_image.ts_ns", "FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id"),
  (GSQL, "WHERE r.tid <> r.tgid\n", "WHERE true\n"),
  (GSQL, "WHERE n.kind = 'proc' AND e.dst_image IS NULL),", "WHERE e.dst_image IS NULL),"),
- (GCLI, '"fid_two_objs", "image_exec_without_edge")', '"fid_two_objs")'),
+ (GCLI, '"fid_two_objs", "image_exec_without_edge")', '"fid_two_objs")'), # R2: backward and forward tracking
+ (GTRACK, "SELECT src, dst, ts_ns, op FROM edge WHERE ok\n", "SELECT src, dst, ts_ns, op FROM edge WHERE true\n"),
+ (GTRACK, "UNION ALL SELECT client_node, server_node, NULL::UBIGINT, 'PAIR' FROM sock_pair\n", ""),
+ (GTRACK, "UNION ALL SELECT user_node, real_node, NULL::UBIGINT, 'BACKING' FROM file_backing\n", ""),
+ (GTRACK, "FROM proc WHERE fork_ns IS NULL AND parent_node IS NOT NULL", "FROM proc WHERE false"),
+ (GTRACK, "SELECT parent_node, node_id, start_ns, 'CLONE_BEFORE'", "SELECT parent_node, node_id, 0, 'CLONE_BEFORE'"),
+ (GTRACK, "(e.ts_ns IS NULL OR e.ts_ns < bt.thr)", "(e.ts_ns IS NULL OR e.ts_ns <= bt.thr)"),
+ (GTRACK, "SELECT e.src, max(CASE", "SELECT e.src, min(CASE"),
+ (GTRACK, "WHERE r.thr IS NULL OR (CASE WHEN e.ts_ns IS NULL THEN bt.thr ELSE e.ts_ns END) > r.thr", "WHERE r.thr IS NULL OR (CASE WHEN e.ts_ns IS NULL THEN bt.thr ELSE e.ts_ns END) < r.thr"),
+ (GTRACK, "SELECT e.src, max(CASE WHEN e.ts_ns IS NULL THEN bt.thr ELSE", "SELECT e.src, max(CASE WHEN e.ts_ns IS NULL THEN 0 ELSE"),
+ (GTRACK, "(e.ts_ns IS NULL OR e.ts_ns > ft.thr)", "(e.ts_ns IS NULL OR e.ts_ns >= ft.thr)"),
+ (GTRACK, "SELECT e.dst, min(CASE", "SELECT e.dst, max(CASE"),
+ (GTRACK, "SELECT e.dst, min(CASE WHEN e.ts_ns IS NULL THEN ft.thr ELSE e.ts_ns END)", "SELECT e.dst, min(CASE WHEN e.ts_ns IS NULL THEN ft.thr ELSE ft.thr END)"),
+ (GTRACK, "WHERE key = ? OR CAST(node_id AS VARCHAR) = ?", "WHERE key = ? OR key = ?"),
+ (GTRACK, "        if len(order) > a.top:\n", "        if False:\n"),
 ]
 
 

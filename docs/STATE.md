@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "graph: each edge names its program at its time; names come from the leader (ADR-0031)"
+**Last updated:** 2026-11-12 (UTC), PR "graph: backward and forward tracking (R2)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -265,6 +265,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 
 36. **The research recommendations accepted** (maintainer 2026-11-12, "recommendations accepted"; E-0208): decision waiting 8's order (R5, R2 alongside, R1 before 2b, R3 and R4 in gate 10), decision waiting 9's fix, and R2 widened to `sock_pair` and `file_backing`. R1 and the fix are ADR-0031 (#79): `proc_image` with each edge's program by ASOF JOIN, and names from the leader only. #77 and #78 merged.
 
+37. **Tracking, R2, taken under decision 36** (E-0209): `python3 -m p15.graph.track` runs BackTracker's rule backward and its mirror forward as one `USING KEY` query each. It follows the edges that happened; the TCP pairs (client to server) and the overlay links as relations with no time; and, for a process from the opening snapshot, its parent at its start. On 40 random graphs it equals a plain-Python reference exactly. Timed on the soak graph when the VM runs it.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -274,5 +276,5 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 5. **A tamper-window metric for step 6** (R-042; E-0170). Recommendation: add it to step 6's protocol by a new ADR and measure before changing any design.
 6. **Per-CPU batching as the fallback for step 2b** (R-042 §3.5; E-0170). Recommendation: keep ADR-0005's plan and let 2b's ceiling gate decide.
 7. **Parked until capture is strong** (decision 26): where PIDSMaker runs; what the first detection number is measured on.
-8. ~~**The research note's recommendations**~~ Accepted (decision 36): R1 done by ADR-0031; R2, R5, then R3 and R4 to come in that order.
+8. ~~**The research note's recommendations**~~ Accepted (decision 36): R1 done by ADR-0031, R2 by decision 37; R5, then R3 and R4 to come in that order.
 9. ~~**A process's name is any of its threads' names**~~ Fixed by ADR-0031 (decision 36); confirmed on the soak graph when the VM rebuilds it.
