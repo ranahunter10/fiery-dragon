@@ -298,6 +298,12 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     5. #82 to #86 merged.
     6. **#87's own matrix passed** on the VM (all 12 steps, soak PASS, books closed; E-0230, [evidence](evidence/vm/2026-11-12-matrix-pr87/README.md)): the first PR merged under rule 3.
 
+47. **Decisions waiting 13 to 16 accepted** (maintainer 2026-11-13, "recommended decisions are accepted after the deep thinking from my side"; E-0238):
+    1. **FLOW's start time by option A:** the session's cookie keeps the file, task storage keeps {file, entry time}; a failed creation or a mismatch is flagged `START_UNKNOWN` and counted (E-0237: below the VM's resolution, at most 99 ns per read).
+    2. **FLOW stays 96 bytes** as ADR-0005 rule 8 asks; the ceiling of step 2b part 4 reports bytes per second beside records per second.
+    3. **Every record's padding is checked**, after a matrix run shows no program writes non-zero padding today.
+    4. **The socket edges:** a send or receive on a socket without a file is counted `no_file` and not written; sends inside splice and sendfile are written as SEND until step 2d.
+
 ## Decisions waiting
 
 1. ~~**An open's path must survive a skipped fentry**~~ decided by ADR-0029 (decision 31): walked in the session's return when skipped. Open within it: whether walking every open in one program (option b) costs less once the fentry's own cost is saved (ADR-0029 falsifier 3; not measured).
@@ -321,7 +327,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
    3. U2 only if the soak still shows switches after U1.
    4. U5 (smaller records) by an ADR after U3's numbers.
 12. ~~**The capture layer's acceptance criteria and plan**~~ Accepted: decision 46.
-13. **Where FLOW's start time comes from** (E-0227, [design checks](research/2026-11-12-step-2b-design-checks.md) §2). A kprobe.session's cookie is 8 bytes (SRC), so on `vfs_read` it cannot keep both the file and the entry time. Recommendation: option A. The cookie keeps the file pointer, and task storage keeps {file, entry time}; a failed creation or a nested transfer is flagged `START_UNKNOWN` and counted. Measured in the 2b dry run against end time only (option D), whose use would need an ADR superseding ADR-0005 rule 8. **Measured (E-0237, [evidence](evidence/vm/2026-11-12-flow-cost/README.md)):** with the record, A against D is +19.6 ns per read (95 % interval −55.9 to +99.3 ns), below what the VM resolves; 20,000 of 20,000 start times fell inside their reads. The record itself costs 113.9 ns per read over the bare session, and the bare session 281.0 ns over an untraced read (1.91 null syscalls).
-14. **FLOW's size** (E-0226). 96 bytes as ADR-0005 rule 8 asks, against 88 if the rare unregistered transfer went as a FILE before its FLOW (an ADR superseding rule 8). Recommendation: keep 96 and let step 2b's ceiling decide, with bytes per second reported beside records per second.
-15. **Padding of the records before FLOW and FILE is not checked** by `p15_rec_check` or the reader (E-0226). A program that builds a record in reused memory could carry old bytes in `_pad`. Recommendation: check every type's padding, after a matrix run on the VM shows that no program writes non-zero padding today.
-16. **The socket tracepoints' edges in 2b** (E-0227, design checks §3). Recommendation: a send or receive on a socket without a file (kernel code using a kernel socket from a user task) is counted `no_file` and not written (ADR-0005 rule 11). Sends inside splice and sendfile are written as SEND until step 2d's SPLICE records exist; then they follow rule 11's `inside_splice`.
+13. ~~**Where FLOW's start time comes from**~~ Accepted: decision 47.
+14. ~~**FLOW's size**~~ Accepted: decision 47.
+15. ~~**Padding of the records before FLOW and FILE is not checked**~~ Accepted: decision 47.
+16. ~~**The socket tracepoints' edges in 2b**~~ Accepted: decision 47.
