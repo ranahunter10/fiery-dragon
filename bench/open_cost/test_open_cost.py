@@ -194,6 +194,26 @@ class Driver(unittest.TestCase):
             self.assertEqual((work / "p15d-0.log").exists(), verdict == "FAIL")
             SUM.CAP.match(cap).groups()                       # the report can read the line
 
+    def test_perf_samples_p15d_over_the_workload_only(self):
+        """--perf starts perf record on p15d's pid before the workload and stops it with SIGINT."""
+        log = self.d / "perf.log"
+        fake = self.stub("import signal, sys, time\n"
+                         f"open({str(log)!r}, 'w').write(' '.join(sys.argv[1:]))\n"
+                         f"signal.signal(signal.SIGINT, lambda *a: (open({str(log)!r}, 'a').write(' SIGINT'), sys.exit(0)))\n"
+                         "time.sleep(60)\n")
+        a = SimpleNamespace(perf=self.d / "prof", perf_bin=str(fake))
+        pr = RUN.perf_start(a, 4321, 7)
+        self.assertIsNone(pr.poll())
+        RUN.perf_stop(pr)
+        self.assertEqual(pr.returncode, 0)
+        args = log.read_text()
+        self.assertIn(f"record -q -F 1999 --call-graph dwarf,16384 -p 4321 -o {self.d / 'prof' / 'perf-7.data'}", args)
+        self.assertTrue(args.endswith(" SIGINT"))
+        self.assertIsNone(RUN.perf_start(SimpleNamespace(perf=None), 1, 0))
+        RUN.perf_stop(None)
+        with self.assertRaisesRegex(RUN.RunError, "perf exited 1"):
+            RUN.perf_start(SimpleNamespace(perf=self.d / "prof", perf_bin=str(self.stub("import sys; sys.exit(1)\n"))), 1, 0)
+
     def test_p15d_that_dies_or_never_starts(self):
         log = self.d / "log"
         log.write_text("p15d level=error code=load\n")
@@ -250,6 +270,13 @@ def run_text(rounds=12, add_same=150.0, add_distinct=400.0, noise=0.0, agent_per
 
 
 class Report(unittest.TestCase):
+    def test_a_profiling_run_gives_no_timing(self):
+        text, rc = SUM.report(run_text().replace("p15d_args=-", "p15d_args=- perf=/tmp/prof", 1))
+        self.assertEqual(rc, 1)
+        self.assertIn("no timing is reported", text)
+        self.assertNotIn("median per open+close", text)
+        self.assertIn("bytes per open+close", text)              # the books are still shown
+
     def test_numbers(self):
         text, rc = SUM.report(run_text())
         self.assertEqual(rc, 0)

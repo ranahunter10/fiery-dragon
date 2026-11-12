@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "docs: why an open+close costs what it does, against the published tools"
+**Last updated:** 2026-11-12 (UTC), PR "bench: profile p15d during open_cost (decision 40)"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -276,6 +276,8 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     - 38.2 % of file frees are of files capture never opened.
     - Reads and writes run at about 317 per second under the soak's workload.
     - The graph build summed to 107.8 s. Its WAL read took 37.0 s on main and 45.6 s on the branch, one build each; the branch adds only one comparison per RENAME there, so this is most likely the host (INF, E-0213).
+
+40. **The recommended order taken** (maintainer 2026-11-12, "do recommended"; E-0214): #79, #80 and #81 merged. Then p15d's profile first (C4, `bench/open_cost --perf`, #82), and the kernel-side variants' harness (`bench/open_variants`, C1 first) after it.
 
 ## Decisions waiting
 
