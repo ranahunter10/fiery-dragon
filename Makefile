@@ -55,7 +55,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe $(OUT)/sliceb_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk
+         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
@@ -161,6 +161,10 @@ $(OUT)/test_selftest: daemon/tests/test_selftest.c $(DAEMON_COMMON) daemon/*.h $
 
 $(OUT)/test_wal: daemon/tests/test_wal.c $(WAL_SRC) daemon/wal.h daemon/crc32c.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_wal.c $(WAL_SRC) -o $@
+
+# What p15d's CRC32C costs per byte, table against the CPU's instruction (bench/crc32c/, E-0215)
+$(OUT)/crc32c_bench: bench/crc32c/crc32c_bench.c daemon/crc32c.c daemon/crc32c.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/crc32c/crc32c_bench.c daemon/crc32c.c -o $@
 
 $(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@

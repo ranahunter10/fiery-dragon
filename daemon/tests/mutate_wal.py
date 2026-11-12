@@ -51,6 +51,12 @@ M = [
  ("wal.c", "crc = p15_crc32c(crc, zero4, 4);", ""),
  ("wal.c", "w->st.short_writes++;", "w->st.short_writes++; r = 0;"),
  ("crc32c.c", "c = (c >> 1) ^ (0x82F63B78u & (0u - (c & 1)));", "c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1)));"),
+ # the SSE4.2 path (E-0215): its 8-byte and tail loops and both inversions. Skipping the alignment
+ # loop is an equivalent mutant (memcpy reads unaligned words), so it has none.
+ ("crc32c.c", "\t\tc = _mm_crc32_u64(c, v);\n", "\t\tc = _mm_crc32_u64(c, v ^ 1);\n"),
+ ("crc32c.c", "\twhile (n--)\n\t\tc = _mm_crc32_u8((uint32_t)c, *p++);", "\twhile (n-- > 1)\n\t\tc = _mm_crc32_u8((uint32_t)c, *p++);"),
+ ("crc32c.c", "\treturn ~(uint32_t)c;", "\treturn (uint32_t)c;"),
+ ("crc32c.c", "\tuint64_t c = ~crc;", "\tuint64_t c = crc;"),
  ("wal.c", "w->st.oversize_batches++;", ""),
  ("wal.c", "if (ftruncate(fd, s.good_end) || fdatasync(fd))", "if (ftruncate(fd, s.good_end + 8) || fdatasync(fd))"),
 ]
