@@ -147,6 +147,48 @@ class ErrorTest(unittest.TestCase):
 PART = '\n[[part]]\nname = "PT"\nfields = [{ name = "a", c = "u64" }, { name = "b", c = "u32" }, { name = "c", c = "u32" }]\n'
 
 
+def enum(name="K", field="A.x", values='{ name = "ONE", value = 1 }, { name = "TWO", value = 2 }'):
+    return f'\n[[enum]]\nname = "{name}"\nfield = "{field}"\ndoc = "d"\nvalues = [{values}]\n'
+
+
+class EnumTest(unittest.TestCase):
+    """[[enum]]: the values a record field may hold, emitted for C and Python (ADR-0008 rule 2)."""
+
+    def err(self, path, needle):
+        with self.assertRaises(gen.SchemaError) as cm:
+            gen.load(path)
+        self.assertIn(needle, str(cm.exception))
+
+    def test_emitted_for_c_python_and_md(self):
+        s = gen.load(schema(enum() + rec()))
+        c, py, md = gen.emit_c(s), gen.emit_py(s), gen.emit_md(s)
+        self.assertIn("#define P15_K_ONE 1", c)
+        self.assertIn("#define P15_K_TWO 2", c)
+        self.assertIn("#define P15_K_MAX 2", c)
+        self.assertIn("K = {1: 'ONE', 2: 'TWO'}   # A.x", py)
+        self.assertIn("K_TWO = 2", py)
+        self.assertIn("- 2 `TWO`: ", md)
+        ns: dict = {}
+        exec(compile(py, "p15_records.py", "exec"), ns)
+        self.assertEqual((ns["K"], ns["K_ONE"]), ({1: "ONE", 2: "TWO"}, 1))
+
+    def test_rules(self):
+        self.err(schema(enum(values='{ name = "ZERO", value = 0 }') + rec()), "integer > 0")
+        self.err(schema(enum(values='{ name = "a", value = 1 }') + rec()), "upper-case name")
+        self.err(schema(enum(values='{ name = "A", value = 1 }, { name = "B", value = 1 }') + rec()), "share a name or a number")
+        self.err(schema(enum(values='{ name = "A", value = 1 }, { name = "A", value = 2 }') + rec()), "share a name or a number")
+        self.err(schema(enum() + enum() + rec()), "bad or duplicate name")
+        self.err(schema(enum(values="") + rec()), "no values")
+        self.err(schema(enum(field="A.nope") + rec()), "is no record's field")
+        self.err(schema(enum(field="B.x") + rec()), "is no record's field")
+
+    def test_real_schema_enums(self):
+        s = gen.load()
+        e = {x.name: x for x in s.enums}
+        self.assertEqual([n for n, _, _ in e["FLOW_KIND"].values], ["READ", "WRITE", "RECV", "SEND"])
+        self.assertEqual((e["FLOW_REASON"].values[0][:2], e["FLOW_REASON"].values[-1][:2]), (("SINGLE", 1), ("MARK_LOST", 12)))
+
+
 class PartAndFflagTest(unittest.TestCase):
     """[[part]]: a header-less struct a var field carries whole or not at all; [[fflag]]: u32
     record-field flags (ADR-0015 rule 2, STATE decision 19)."""

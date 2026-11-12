@@ -545,8 +545,177 @@ static void test_file_records(void)
 	       !p15_is_file_type(P15_T_NET), "the bulk ring's file types");
 }
 
+/* A valid unfolded FLOW (step 2b): one READ of 4 bytes, with or without facts. */
+static struct p15_flow_v1 *mk_flow(__u32 fflags, int facts)
+{
+	size_t fl = facts ? sizeof(struct p15_part_objfacts) : 0;
+	struct p15_flow_v1 *r = (void *)mk(P15_T_FLOW, (unsigned)(sizeof(*r) + fl));
+
+	r->fid = 5;
+	r->obj = 2;
+	r->first_ts = 100;
+	r->last_ts = 150;
+	r->bytes = 4;
+	r->count = 1;
+	r->kind = P15_FLOW_KIND_READ;
+	r->reason = P15_FLOW_REASON_SINGLE;
+	r->fflags = fflags;
+	r->facts_len = r->facts_full = (__u16)fl;
+	if (facts)
+		((struct p15_part_objfacts *)(r + 1))->seen = 3;
+	return r;
+}
+
+static struct p15_file_v1 *mk_filerec(__u32 fflags, int facts, const char *name)
+{
+	size_t nl = strlen(name), fl = facts ? sizeof(struct p15_part_objfacts) : 0;
+	struct p15_file_v1 *r = (void *)mk(P15_T_FILE, (unsigned)((sizeof(*r) + fl + nl + 7) & ~7ul));
+
+	r->fid = 9;
+	r->obj = 3;
+	r->fflags = fflags;
+	r->seen = 3;
+	r->facts_len = r->facts_full = (__u16)fl;
+	if (facts)
+		((struct p15_part_objfacts *)(r + 1))->seen = 3;
+	r->name_len = r->name_full = (__u16)nl;
+	memcpy((__u8 *)(r + 1) + fl, name, nl);
+	return r;
+}
+
+/* FLOW and FILE (ADR-0005 rules 2, 7, 8; ADR-0015 rules 2, 5, 9): the rules and wording of
+ * python/p15/records.py (_flow_check and the FILE checks). */
+static void test_flow_records(void)
+{
+	const char *cnt = "FLOW: count 0, fewer bytes than events, or a SINGLE of count other than 1";
+	const char *kindf = "FLOW: PEEK on a kind other than RECV, or VECTORED/START_UNKNOWN on a socket kind";
+	const char *unreg = "FLOW: UNREGISTERED without reason MAP_FULL, or MAP_FULL without UNREGISTERED";
+	const char *namef = "FILE: name_full differs from name_len without TRUNCATED, or the reverse";
+	struct p15_flow_v1 *r;
+	struct p15_file_v1 *fr;
+	char line[512];
+
+	EXPECT(sizeof(struct p15_flow_v1) == 96 && sizeof(struct p15_file_v1) == 80, "FLOW 96 and FILE 80 bytes");
+	EXPECT(P15_T_FLOW == 10 && P15_T_FILE == 11 && P15_FLOW_KIND_MAX == 4 && P15_FLOW_REASON_MAX == 12,
+	       "FLOW and FILE type numbers, the enums' ranges");
+	mk_flow(0, 0);
+	WHY("FLOW READ", "accepted");
+	EXPECT(ok_exact(sizeof(*r)), "FLOW read within its bytes");
+	EXPECT(!strcmp(p15_type_name(P15_T_FLOW), "FLOW") && !strcmp(p15_type_name(P15_T_FILE), "FILE"), "named");
+	p15_rec_format(buf, line, sizeof(line));
+	EXPECT(strstr(line, "FLOW") && strstr(line, " READ fid=5 obj=2 first=100 last=150 bytes=4 count=1"), line);
+	r = mk_flow(P15_FF_PEEK, 0);
+	r->kind = P15_FLOW_KIND_RECV;
+	WHY("RECV with PEEK", "accepted");
+	r = mk_flow(P15_FF_VECTORED | P15_FF_START_UNKNOWN, 0);
+	r->kind = P15_FLOW_KIND_WRITE;
+	WHY("vectored WRITE, start unknown", "accepted");
+	mk_flow(P15_FF_UNREGISTERED | P15_FF_OBJ_NEW, 1);
+	WHY("unregistered with facts", "accepted");
+	EXPECT(ok_exact(sizeof(*r) + sizeof(struct p15_part_objfacts)), "FLOW with facts read within its bytes");
+	r = mk_flow(P15_FF_UNREGISTERED, 0);
+	r->reason = P15_FLOW_REASON_MAP_FULL;
+	WHY("MAP_FULL unregistered", "accepted");
+	r = mk_flow(0, 0);
+	r->count = r->bytes = 3;
+	r->reason = P15_FLOW_REASON_SWEEP;
+	WHY("an aggregate of 3", "accepted");
+
+	r = mk_flow(0, 0);
+	r->kind = 0;
+	WHY("kind 0", "FLOW: unknown kind or reason");
+	r->kind = 5;
+	WHY("kind 5", "FLOW: unknown kind or reason");
+	r = mk_flow(0, 0);
+	r->reason = 0;
+	WHY("reason 0", "FLOW: unknown kind or reason");
+	r->reason = 13;
+	WHY("reason 13", "FLOW: unknown kind or reason");
+	r = mk_flow(0, 0);
+	r->count = 0;
+	WHY("count 0", cnt);
+	r = mk_flow(0, 0);
+	r->count = 0;
+	r->reason = P15_FLOW_REASON_SWEEP;
+	WHY("count 0 of a SWEEP (only the count rule refuses it)", cnt);
+	r = mk_flow(0, 0);
+	r->count = 2;
+	r->bytes = 1;
+	r->reason = P15_FLOW_REASON_SWEEP;
+	WHY("fewer bytes than events", cnt);
+	r = mk_flow(0, 0);
+	r->count = 2;
+	r->bytes = 8;
+	WHY("SINGLE of count 2", cnt);
+	mk_flow(P15_FF_PEEK, 0);
+	WHY("PEEK on READ", kindf);
+	r = mk_flow(P15_FF_VECTORED, 0);
+	r->kind = P15_FLOW_KIND_SEND;
+	WHY("VECTORED on SEND", kindf);
+	r = mk_flow(P15_FF_START_UNKNOWN, 0);
+	r->kind = P15_FLOW_KIND_RECV;
+	WHY("START_UNKNOWN on RECV", kindf);
+	mk_flow(P15_FF_OBJ_NEW, 1);
+	WHY("facts on a registered file", "FLOW: facts on a registered open file (they travel in OPEN, FILE or FD)");
+	r = mk_flow(0, 0);
+	r->reason = P15_FLOW_REASON_MAP_FULL;
+	WHY("MAP_FULL without UNREGISTERED", unreg);
+	r = mk_flow(P15_FF_UNREGISTERED, 0);
+	r->reason = P15_FLOW_REASON_RACE;
+	WHY("UNREGISTERED with RACE", unreg);
+	mk_flow(P15_FF_UNREGISTERED | P15_FF_OBJ_NEW, 0);
+	WHY("OBJ_NEW without facts", "FLOW: facts present without its flag, or its flag without it");
+	mk_flow(P15_FF_KTHREAD, 0);
+	WHY("KTHREAD", "FLOW: fflags bits this record never carries");
+	r = mk_flow(0, 0);
+	r->_pad[1] = 1;
+	WHY("dirty padding", "FLOW: non-zero padding");
+	r = mk_flow(0, 0);
+	r->h.len = sizeof(*r) + 8;
+	WHY("FLOW with slack", "len larger than its fields need");
+	r = mk_flow(P15_FF_UNREGISTERED | P15_FF_OBJ_NEW, 1);
+	r->h.len = sizeof(*r) + 32;             /* the facts end 8 bytes past len */
+	EXPECT(!ok_exact(r->h.len), "FLOW facts past len refused before they are read (ASan)");
+
+	mk_filerec(P15_FF_OBJ_NEW, 1, "");
+	WHY("FILE of a pipe with facts", "accepted");
+	mk_filerec(0, 0, "memfd:x");
+	WHY("FILE of a memfd", "accepted");
+	p15_rec_format(buf, line, sizeof(line));
+	EXPECT(strstr(line, "FILE") && strstr(line, " fid=9 obj=3") && strstr(line, "name=\"memfd:x\"(7/7)"), line);
+	fr = mk_filerec(0, 0, "");
+	fr->seen = 2;
+	WHY("FILE seen 2", "FILE: unknown 'seen'");
+	mk_filerec(P15_FF_KTHREAD, 0, "");
+	WHY("FILE KTHREAD", "FILE: fflags bits this record never carries");
+	mk_filerec(0, 1, "");
+	WHY("FILE facts without OBJ_NEW", "FILE: facts present without its flag, or its flag without it");
+	fr = mk_filerec(0, 0, "x");
+	fr->name_full = 70;
+	WHY("FILE name cut without TRUNCATED", namef);
+	fr = mk_filerec(0, 0, "x");
+	fr->h.flags = P15_F_TRUNCATED;
+	WHY("FILE TRUNCATED, name whole", namef);
+	fr->name_full = 70;
+	WHY("FILE TRUNCATED, name cut", "accepted");
+	fr = mk_filerec(0, 0, "");
+	fr->name_len = fr->name_full = 64;
+	fr->h.len = sizeof(*fr) + 72;
+	WHY("FILE name over 63", "variable field beyond len");
+	fr = mk_filerec(0, 0, "ab");
+	fr->h.len += 8;
+	WHY("FILE with slack", "len larger than its fields need");
+	fr = mk_filerec(0, 0, "ab");
+	buf[sizeof(*fr) + 3] = 1;               /* in the 6 bytes padding the name to 8 */
+	WHY("FILE dirty tail", "non-zero bytes after the variable fields");
+	fr = mk_filerec(0, 0, "");
+	fr->_pad[0] = 1;
+	WHY("FILE dirty padding", "FILE: non-zero padding");
+}
+
 int main(void)
 {
+	test_flow_records();
 	test_file_records();
 	test_fixed_sizes();
 	test_end();
