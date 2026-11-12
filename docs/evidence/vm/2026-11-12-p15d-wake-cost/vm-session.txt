@@ -1,0 +1,87 @@
+ashu@p15-dev:~/fiery-dragon$ grep "added per open+close" build/oc_crc.md
+  - added per open+close 1,125.0 ns (95 % interval 1,006.8 ns to 1,676.0 ns), 11.66 null syscalls; ratio of medians 2.0656; effect p = 1.91e-06
+  - added per open+close 1,220.8 ns (95 % interval 1,070.5 ns to 1,708.2 ns), 12.65 null syscalls; ratio of medians 2.1322; effect p = 1.91e-06
+  - added per open+close 1,808.2 ns (95 % interval 1,324.1 ns to 2,400.8 ns), 18.74 null syscalls; ratio of medians 2.0079; effect p = 1.91e-06
+  - added per open+close 1,835.9 ns (95 % interval 1,357.3 ns to 2,486.3 ns), 19.02 null syscalls; ratio of medians 2.0345; effect p = 1.91e-06
+ashu@p15-dev:~/fiery-dragon$ sudo perf report -i /var/tmp/p15-perf2/perf-0.data --no-children --symbols=_raw_spin_unlock_irq -g --stdio 2>/dev/null | head -80
+# To display the perf.data header info, please use --header/--header-only options.
+#
+# symbol: _raw_spin_unlock_irq
+#
+# Total Lost Samples: 0
+#
+# Samples: 107  of event 'task-clock:ppp'
+# Event count (approx.): 53526750
+#
+# Overhead  Command      Shared Object
+# ........  ...........  .................
+#
+    29.91%  p15d         [kernel.kallsyms]
+            |
+            ---_start
+               __libc_start_main
+               0x78d56b62a600
+               main
+               p15_drain_poll
+               |
+               |--28.97%--take_all
+               |          take
+               |          p15_drain_room (inlined)
+               |          publish (inlined)
+               |          p15q_publish
+               |          write
+               |          0x78d56b6a039b
+               |          0x78d56b6ac802
+               |          entry_SYSCALL_64_after_hwframe
+               |          do_syscall_64
+               |          x64_sys_call
+               |          __x64_sys_write
+               |          ksys_write
+               |          vfs_write
+               |          eventfd_write
+               |          _raw_spin_unlock_irq
+               |
+                --0.93%--after_poll
+                          publish (inlined)
+                          p15q_publish
+                          write
+                          0x78d56b6a039b
+                          0x78d56b6ac802
+                          entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_write
+                          ksys_write
+                          vfs_write
+                          eventfd_write
+                          _raw_spin_unlock_irq
+
+     0.93%  p15d-writer  [kernel.kallsyms]
+            |
+            ---0x78d56b7375cb
+               0x78d56b6a3df9
+               p15_writer_main
+               drain_queue
+               append (inlined)
+               p15w_append
+               write_all
+               writev
+               0x78d56b6a039b
+               0x78d56b6ac802
+               entry_SYSCALL_64_after_hwframe
+               do_syscall_64
+               x64_sys_call
+               __x64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               generic_perform_write
+               ext4_da_write_begin
+               __filemap_get_folio_mpol
+               filemap_add_folio
+               __filemap_add_folio
+               _raw_spin_unlock_irq
+
+ashu@p15-dev:~/fiery-dragon$
