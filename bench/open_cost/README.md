@@ -21,6 +21,8 @@ sudo make bench-open-cost ROUNDS=20          # raw lines in build/open_cost.txt,
 ```
 `DIR=` moves the files (default `/var/tmp/p15-open-cost`; it must be a real filesystem), `SAME=` and `DISTINCT=` change the counts, `P15D_ARGS='--p15d-arg=--no-net'` passes options to p15d.
 
+**Thread switches.** Each traced arm also counts p15d's context switches, voluntary and not, over all its threads (`/proc/PID/task/*/status`), in the idle window and in the workload's window. The report gives them per 1,000 open+close and per idle second. p15d's profile spent about a third of its samples switching threads (E-0215); this is the number a change to the drain's or writer's wake-ups must lower.
+
 **Where p15d's time goes** (`--perf DIR`): each traced arm also runs `perf record` with DWARF call graphs on p15d's threads over the workload's window only. p15d and libbpf are built `-O2 -g` without frame pointers, hence DWARF. Sampling costs p15d CPU, so such a run is a profile, not a timing: its config line says `perf=DIR`, and `summarize.py` reports its books and refuses its timings.
 ```
 sudo ~/p15venv/bin/python bench/open_cost/run.py --p15d build/p15d --workload build/open_cost \

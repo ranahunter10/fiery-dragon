@@ -98,6 +98,20 @@ def workload(binary: Path, d: Path, same: int, distinct: int, cpu: int | None) -
     return int(head["pid"]), rows
 
 
+def agent_switches(pid: int, proc: Path = Path("/proc")) -> int:
+    """Context switches of every thread of `pid`, voluntary and not (/proc/PID/task/*/status). p15d's
+    profile spent about a third of its samples switching threads (E-0215); this counts them."""
+    total = 0
+    for t in (proc / str(pid) / "task").iterdir():
+        try:
+            for line in (t / "status").read_text().splitlines():
+                if line.startswith(("voluntary_ctxt_switches:", "nonvoluntary_ctxt_switches:")):
+                    total += int(line.split()[1])
+        except FileNotFoundError:
+            continue
+    return total
+
+
 def capture_books(run_dir: Path, pid: int, d: Path, expected: int) -> dict:
     """What the WAL holds about the workload's opens. Raises RunError if the run cannot be read."""
     from p15 import records as R
@@ -191,14 +205,14 @@ def traced_arm(a, work: Path, rnd: int) -> tuple[list[str], str]:
     try:
         wait_started(log, p, START_TIMEOUT_S)
         time.sleep(a.settle)
-        c0, t0 = agent_cpu_ns(p.pid), time.monotonic_ns()
+        c0, t0, s0 = agent_cpu_ns(p.pid), time.monotonic_ns(), agent_switches(p.pid)
         time.sleep(a.idle)
-        c1, t1 = agent_cpu_ns(p.pid), time.monotonic_ns()
+        c1, t1, s1 = agent_cpu_ns(p.pid), time.monotonic_ns(), agent_switches(p.pid)
         prof = perf_start(a, p.pid, rnd)
         try:
             pid, rows = workload(a.workload, a.dir, a.same, a.distinct, a.cpu)
             time.sleep(0.2)                      # the drain's last poll of what the workload wrote
-            c2, t2 = agent_cpu_ns(p.pid), time.monotonic_ns()
+            c2, t2, s2 = agent_cpu_ns(p.pid), time.monotonic_ns(), agent_switches(p.pid)
         finally:
             perf_stop(prof)
     finally:
@@ -220,6 +234,7 @@ def traced_arm(a, work: Path, rnd: int) -> tuple[list[str], str]:
             " ".join(f"{k}={b[k]}" for k in ("opens", "path_missing", "closes", "facts", "open_bytes", "close_bytes",
                                              "other_opens", "lost", "end", "state", "invariant", "stops")) +
             f" exit={code} idle_cpu_ns={c1 - c0} idle_wall_ns={t1 - t0} agent_cpu_ns={c2 - c1} agent_wall_ns={t2 - t1}"
+            f" idle_switches={s1 - s0} agent_switches={s2 - s1}"
             f" {'ok' if b['ok'] else 'FAIL'}")
     if not a.keep:
         shutil.rmtree(wal, ignore_errors=True)

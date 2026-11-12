@@ -135,6 +135,14 @@ class Driver(unittest.TestCase):
         mk.assert_not_called()
         self.assertIn("P15_PYTHON", err.getvalue())
 
+    def test_agent_switches_sums_threads(self):
+        for tid, v, nv in ((10, 50, 7), (11, 3, 1)):
+            t = self.d / "10" / "task" / str(tid)
+            t.mkdir(parents=True)
+            (t / "status").write_text(f"Name:\tp15d\nvoluntary_ctxt_switches:\t{v}\nnonvoluntary_ctxt_switches:\t{nv}\n")
+        (self.d / "10" / "task" / "12").mkdir()                 # a thread that exited: no file
+        self.assertEqual(RUN.agent_switches(10, self.d), 61)
+
     def test_agent_cpu_sums_threads(self):
         for tid, ns in ((10, 500), (11, 70)):
             t = self.d / "10" / "task" / str(tid)
@@ -270,6 +278,17 @@ def run_text(rounds=12, add_same=150.0, add_distinct=400.0, noise=0.0, agent_per
 
 
 class Report(unittest.TestCase):
+    def test_switches_are_reported_when_the_run_has_them(self):
+        text, rc = SUM.report(run_text())
+        self.assertEqual(rc, 0)
+        self.assertNotIn("thread switches", text)                # an older run: no line, no error
+        new = run_text().replace(" ok\n", " idle_switches=40 agent_switches=550 ok\n")
+        text, rc = SUM.report(new)
+        self.assertEqual(rc, 0)
+        self.assertIn("p15d's thread switches: 500.0 per 1,000 open+close in the window (median), 40.0 per second idle", text)
+        with self.assertRaisesRegex(SUM.ParseError, "other fields"):
+            SUM.report(run_text().replace(" ok\n", " surprise=1 ok\n"))
+
     def test_a_profiling_run_gives_no_timing(self):
         text, rc = SUM.report(run_text().replace("p15d_args=-", "p15d_args=- perf=/tmp/prof", 1))
         self.assertEqual(rc, 1)

@@ -40,6 +40,7 @@ OPEN_EVENTS = ("same", "distinct")
 CAP_KEYS = ("pid", "expected", "opens", "path_missing", "closes", "facts", "open_bytes", "close_bytes", "other_opens",
             "lost", "end", "state", "invariant", "stops", "exit", "idle_cpu_ns", "idle_wall_ns", "agent_cpu_ns",
             "agent_wall_ns")
+CAP_OPTIONAL = ("idle_switches", "agent_switches")     # since E-0217; older runs lack them
 
 
 class ParseError(Exception):
@@ -68,7 +69,7 @@ def parse(text: str):
             if not m:
                 raise ParseError(f"unparsed capture: {line}")
             f = {k: int(v) for k, v in (kv.split("=") for kv in m[2].split())}
-            if set(f) != set(CAP_KEYS):
+            if not set(CAP_KEYS) <= set(f) <= set(CAP_KEYS) | set(CAP_OPTIONAL):
                 raise ParseError(f"capture line with other fields: {line}")
             if m[3] != "ok":
                 bad.append(f"round {m[1]}: capture books: {m[2].strip()}")
@@ -144,6 +145,10 @@ def capture_section(rows, caps) -> list[str]:
         f"{P.median(idle_rate) / 1e6:.2f})",
         f"- p15d per open+close of the workload: {_ns(P.mean(gross))} of CPU in the window (mean), "
         f"{_ns(P.mean(net))} after the idle rate is taken off (median {_ns(P.median(net))})",
+    ] + ([
+        f"- p15d's thread switches: {P.median([x['agent_switches'] / x['expected'] * 1000 for x in c]):.1f} per 1,000 "
+        f"open+close in the window (median), {P.median([x['idle_switches'] / (x['idle_wall_ns'] / 1e9) for x in c]):.1f} "
+        "per second idle (median)"] if all("agent_switches" in x for x in c) else []) + [
         f"- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without "
         f"capture): mean {P.mean(agent_net):.1%}, median {P.median(agent_net):.1%}, range {min(agent_net):.1%} to "
         f"{max(agent_net):.1%}",
