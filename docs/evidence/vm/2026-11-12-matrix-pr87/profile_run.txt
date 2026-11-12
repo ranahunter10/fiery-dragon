@@ -1,0 +1,41 @@
+config kernel=7.0.0-38-generic cpus=3 rounds=3 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=- perf=/var/tmp/p15-measure/20261112T192615Z/perf
+row round=-1 arm=none2 event=nullsys n=1000000 cpu_ns=102614411 wall_ns=102609193
+row round=-1 arm=none2 event=same n=200000 cpu_ns=288760660 wall_ns=291238616
+row round=-1 arm=none2 event=distinct n=20000 cpu_ns=29226960 wall_ns=29223494
+row round=-1 arm=none event=nullsys n=1000000 cpu_ns=106944215 wall_ns=106953748
+row round=-1 arm=none event=same n=200000 cpu_ns=204697874 wall_ns=204696358
+row round=-1 arm=none event=distinct n=20000 cpu_ns=27239390 wall_ns=27235166
+capture round=-1 pid=6929 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=1752 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1793176 idle_wall_ns=1000598986 agent_cpu_ns=103284538 agent_wall_ns=1919620238 idle_switches=13 agent_switches=399 ok
+row round=-1 arm=p15d event=nullsys n=1000000 cpu_ns=226888597 wall_ns=232102646
+row round=-1 arm=p15d event=same n=200000 cpu_ns=1055562001 wall_ns=1101341170
+row round=-1 arm=p15d event=distinct n=20000 cpu_ns=73221234 wall_ns=75525492
+row round=0 arm=none event=nullsys n=1000000 cpu_ns=105176521 wall_ns=105168932
+row round=0 arm=none event=same n=200000 cpu_ns=199960917 wall_ns=199960174
+row round=0 arm=none event=distinct n=20000 cpu_ns=27609210 wall_ns=27605568
+capture round=0 pid=6939 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=1768 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1811859 idle_wall_ns=1000852250 agent_cpu_ns=82187004 agent_wall_ns=1154383255 idle_switches=14 agent_switches=217 ok
+row round=0 arm=p15d event=nullsys n=1000000 cpu_ns=129287333 wall_ns=130344081
+row round=0 arm=p15d event=same n=200000 cpu_ns=459068998 wall_ns=459103438
+row round=0 arm=p15d event=distinct n=20000 cpu_ns=58778312 wall_ns=58776951
+row round=0 arm=none2 event=nullsys n=1000000 cpu_ns=95660556 wall_ns=96422719
+row round=0 arm=none2 event=same n=200000 cpu_ns=207543508 wall_ns=211147451
+row round=0 arm=none2 event=distinct n=20000 cpu_ns=33011054 wall_ns=33020211
+capture round=1 pid=6947 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=1767 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=6077446 idle_wall_ns=1001166996 agent_cpu_ns=82681942 agent_wall_ns=1190857844 idle_switches=18 agent_switches=387 ok
+row round=1 arm=p15d event=nullsys n=1000000 cpu_ns=121049185 wall_ns=122161378
+row round=1 arm=p15d event=same n=200000 cpu_ns=463802360 wall_ns=490789286
+row round=1 arm=p15d event=distinct n=20000 cpu_ns=65402129 wall_ns=69635570
+row round=1 arm=none2 event=nullsys n=1000000 cpu_ns=129016167 wall_ns=129870778
+row round=1 arm=none2 event=same n=200000 cpu_ns=231787952 wall_ns=232684675
+row round=1 arm=none2 event=distinct n=20000 cpu_ns=29596984 wall_ns=29594819
+row round=1 arm=none event=nullsys n=1000000 cpu_ns=109256348 wall_ns=109276104
+row round=1 arm=none event=same n=200000 cpu_ns=235871575 wall_ns=236792440
+row round=1 arm=none event=distinct n=20000 cpu_ns=31563501 wall_ns=32507867
+row round=2 arm=none2 event=nullsys n=1000000 cpu_ns=106792273 wall_ns=106802563
+row round=2 arm=none2 event=same n=200000 cpu_ns=209919877 wall_ns=209926197
+row round=2 arm=none2 event=distinct n=20000 cpu_ns=26221262 wall_ns=26218144
+row round=2 arm=none event=nullsys n=1000000 cpu_ns=107150321 wall_ns=107148631
+row round=2 arm=none event=same n=200000 cpu_ns=226990170 wall_ns=226996782
+row round=2 arm=none event=distinct n=20000 cpu_ns=28001042 wall_ns=27998211
+capture round=2 pid=6958 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=1768 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1695745 idle_wall_ns=1001644255 agent_cpu_ns=114074116 agent_wall_ns=1458313431 idle_switches=14 agent_switches=400 ok
+row round=2 arm=p15d event=nullsys n=1000000 cpu_ns=104744885 wall_ns=104750250
+row round=2 arm=p15d event=same n=200000 cpu_ns=537339068 wall_ns=566614398
+row round=2 arm=p15d event=distinct n=20000 cpu_ns=267923474 wall_ns=280324603

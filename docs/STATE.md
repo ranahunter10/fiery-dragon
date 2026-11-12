@@ -295,6 +295,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
     3. **The matrix is the merge rule for capture PRs** (CONTRIBUTING.md §5), with sweeps before defaults and estimates that never decide.
     4. **The order:** step 2b next (Phase B), then 2c, 2d and 2e, the deployment evidence, graph v1, then the export. No further open-path work before 2b.
     5. #82 to #86 merged.
+    6. **#87's own matrix passed** on the VM (all 12 steps, soak PASS, books closed; E-0230, [evidence](evidence/vm/2026-11-12-matrix-pr87/README.md)): the first PR merged under rule 3.
 
 ## Decisions waiting
 

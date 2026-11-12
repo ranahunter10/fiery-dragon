@@ -1,0 +1,60 @@
+config duration=600 sample=60 settle=10 pause=1 p15d_args=- ncpu=3
+sample t=60 cpu_ms_per_s=4.815 drain_ms_per_s=2.918 writer_ms_per_s=1.897 rss_kb=23608 wal_bytes=3404888 state=0 spine_drained=3863 spine_skipped=0 bulk_written=27044 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=120 cpu_ms_per_s=5.275 drain_ms_per_s=3.018 writer_ms_per_s=2.257 rss_kb=23716 wal_bytes=6602872 state=0 spine_drained=7800 spine_skipped=0 bulk_written=53761 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=180 cpu_ms_per_s=5.302 drain_ms_per_s=3.115 writer_ms_per_s=2.186 rss_kb=23920 wal_bytes=10030160 state=0 spine_drained=11651 spine_skipped=0 bulk_written=82146 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.202
+sample t=240 cpu_ms_per_s=5.573 drain_ms_per_s=3.092 writer_ms_per_s=2.481 rss_kb=23980 wal_bytes=13289504 state=0 spine_drained=15643 spine_skipped=0 bulk_written=109510 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=300 cpu_ms_per_s=5.114 drain_ms_per_s=2.979 writer_ms_per_s=2.135 rss_kb=23988 wal_bytes=16503616 state=0 spine_drained=19486 spine_skipped=0 bulk_written=136221 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=360 cpu_ms_per_s=5.430 drain_ms_per_s=3.071 writer_ms_per_s=2.360 rss_kb=23988 wal_bytes=19737896 state=0 spine_drained=23446 spine_skipped=0 bulk_written=163172 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=420 cpu_ms_per_s=5.799 drain_ms_per_s=3.418 writer_ms_per_s=2.381 rss_kb=24012 wal_bytes=22955832 state=0 spine_drained=27286 spine_skipped=0 bulk_written=189890 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=480 cpu_ms_per_s=5.344 drain_ms_per_s=2.949 writer_ms_per_s=2.395 rss_kb=24076 wal_bytes=26100752 state=0 spine_drained=30999 spine_skipped=0 bulk_written=215977 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.203
+sample t=540 cpu_ms_per_s=5.349 drain_ms_per_s=3.257 writer_ms_per_s=2.092 rss_kb=24116 wal_bytes=29341464 state=0 spine_drained=35072 spine_skipped=0 bulk_written=243087 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.201
+sample t=600 cpu_ms_per_s=5.776 drain_ms_per_s=3.526 writer_ms_per_s=2.251 rss_kb=24116 wal_bytes=32541792 state=0 spine_drained=38762 spine_skipped=0 bulk_written=268881 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.203
+sample t=660 cpu_ms_per_s=2.934 drain_ms_per_s=1.492 writer_ms_per_s=1.441 rss_kb=24116 wal_bytes=32766576 state=0 spine_drained=38823 spine_skipped=0 bulk_written=270044 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.202
+workload exit=0
+end exit=0 end=1 state=0 invariant=1 records=321604 read_errors=0 stops=0 read_s=4
+truth step=archive steps=75 expected=1950 found=1950
+truth step=compile steps=75 expected=2100 found=2100
+truth step=git steps=75 expected=975 found=975
+truth step=http steps=75 expected=225 found=225
+truth step=memfd steps=74 expected=74 found=74
+truth step=pyfiles steps=75 expected=900 found=900
+truth step=shell steps=74 expected=148 found=148
+file_stats open_emitted=134328 missing_emitted=0 walked=0 walk_raced=0 walk_truncated=0 walk_unnamed=0 open_lost=0 missing_lost=0 close_lost=0 fentry_missed=0 kprobe_missed=0 files_live_max=593 objs_live_max=1281
+graph_out graph: /var/tmp/p15-measure-soak/graph.duckdb
+graph_out records: FORK 10003, EXEC 9100, EXIT 10010, RENAME 9710, CLOCK_SYNC 68, STATS 672, END 1, NET 1405, NET_STATS 672, PROC 1755, SNAP_DONE 13, OPEN 134332, CLOSE 134363, FD 8828, FILE_STATS 672
+graph_out   accept_not_paired            0
+graph_out   edge_ACCEPT                  600
+graph_out   edge_BIND                    75
+graph_out   edge_CLONE                   9103
+graph_out   edge_CONNECT                 655
+graph_out   edge_EXECUTE                 9100
+graph_out   edge_HELD                    601
+graph_out   edge_LISTEN                  75
+graph_out   edge_OPEN                    134332
+graph_out   edge_proc_end_without_image  3
+graph_out   edge_without_node            0
+graph_out   exec_file_tuple              9100
+graph_out   fid_two_objs                 0
+graph_out   file_rule_fid                169
+graph_out   file_rule_obj                1282
+graph_out   file_rule_tuple              14976
+graph_out   image_exec                   9100
+graph_out   image_exec_without_edge      0
+graph_out   image_fork                   9100
+graph_out   image_snapshot               34
+graph_out   node_file                    16427
+graph_out   node_proc                    9241
+graph_out   node_sock                    1330
+graph_out   obj_facts_conflict           0
+graph_out   open_denied                  0
+graph_out   open_never_opened            0
+graph_out   open_no_path                 0
+graph_out   openfile_close-only          1
+graph_out   openfile_open                134332
+graph_out   openfile_snapshot            512
+graph_out   thread_rename                604
+graph_out tree: exec 9100, exit_process 9111, exit_thread 899, fork_process 9103, fork_thread 900, from_snapshot 138, image_exec 9100, image_fork 9100, image_none 107, image_snapshot 34, pre_existing 138, rename 9106, rename_thread 604
+graph rc=0 build_s=17 bytes=36974592
+graph_truth dropper_chain found=75 expected=75
+graph_truth sock_pairs found=600 expected=600
+graph_truth memfd_exec found=74 expected=74
