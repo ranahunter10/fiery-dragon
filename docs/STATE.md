@@ -20,7 +20,7 @@ So that no session re-reads the repo to find its place (the maintainer's request
    - the dev container's kernel never shows pid 1 to a task iterator (E-0105; the VM and CI do): run `it_p15d.sh` there with `P15_IT_PID1=0`;
    - the VM's `/tmp` is a tmpfs with a per-user quota: a test killed mid-write leaves its files there (E-0107);
    - measure on the VM with the host on its charger, in Best performance mode: on battery it ran about 2-4 times slower (E-0108).
-   - the VM's host can stop the guest for minutes (E-0088, E-0250): `summary.md`'s Stalls section names every matrix step a stall touched, and the soak's report says STALL; those steps' rates are not quotable (E-0251).
+   - the VM's host can stop the guest for minutes (E-0088, E-0250): `summary.md`'s Stalls section names every matrix step a stall touched, and the soak's report says STALL; those steps' rates are not quotable (E-0252).
 
 ## Phase 0 gate
 
