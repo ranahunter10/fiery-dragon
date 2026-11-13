@@ -197,6 +197,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`barrier.c`](../daemon/barrier.c) | See barrier.h. | `p15_barrier` |
+| [`barrier.h`](../daemon/barrier.h) | A grace-period barrier from user space (docs/research/2026-11-13-detach-fault-design.md §3.1). | `p15_barrier` |
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
 | [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_config_meta` |
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
@@ -238,6 +240,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |

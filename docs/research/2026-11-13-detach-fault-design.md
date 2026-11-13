@@ -2,6 +2,8 @@
 
 For decision waiting 23 (E-0246, E-0247). The maintainer decides; no fix is written here.
 
+**Status, 2026-11-13:** the maintainer chose option A in §3's form (E-0304). It is built in the same PR as this note (E-0305): `bpf/include/p15_flow.h` states the design as built. One difference from §3.7: `V_CLAIM_RACE` is reported and is not a term of B1 (it counts tasks, not calls), and a return that cannot release its call is `V_RELEASE_FAILED`, which is a term.
+
 **How this was established.** By reading only: our code on PR #90 at 7984a97, and Linux at tag v7.0 (028ef9c): `kernel/trace/fprobe.c`, `kernel/trace/fgraph.c`, `kernel/trace/bpf_trace.c`, `kernel/bpf/bpf_task_storage.c`, `kernel/bpf/bpf_local_storage.c`, `kernel/bpf/trampoline.c`, `kernel/sched/membarrier.c`, `kernel/fork.c`. Nothing was run. Every kernel claim is SRC with its line; every cost is INF until `bench/flow_cost` measures it. The other session checks each line before anyone builds on it.
 
 ## 1. The fault, from the source
