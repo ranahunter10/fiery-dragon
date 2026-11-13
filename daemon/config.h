@@ -44,6 +44,11 @@ struct p15_config {
 				      * closing snapshot */
 	uint32_t writer_batch_ms;    /* --test-writer-batch-ms: TEST ONLY, the writer sleeps this long after each
 				      * batch, so the queue fills (E-0173) */
+	uint32_t flow_stop_wait_ms;  /* --flow-stop-wait-ms: at the end, how long the flow programs' short calls get
+				      * to return and be recorded before the open ones are counted (p15_flow.h) */
+	uint32_t flow_cut_pause_ms;  /* --test-flow-cut-pause-ms: TEST ONLY, wait between the count of open calls
+				      * and the detach, so a test can release one in that window */
+	uint32_t barrier_fail;       /* --test-barrier-fail 1: TEST ONLY, the grace-period barrier reports failure */
 	uint32_t poll_max_ms;        /* --poll-max-ms: the drain's longest poll timeout, 10..1000, default 200; 10 ms
 				      * after a poll that took records, doubled after each empty one (ADR-0030) */
 };

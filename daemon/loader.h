@@ -36,6 +36,7 @@ struct p15_loader {
 	struct bpf_link *fd_iter_link; /* the snapshot's FD pass (ADR-0015 rule 7); NULL with --no-files */
 	struct bpf_link *flow_links[6]; /* the flow programs (ADR-0005): attached after the self-tests so their I/O is not in the books */
 	int n_flow_links;
+	struct bpf_link *flow_open_link; /* the end's count of open calls (p15_flow.h): a task iterator, run once */
 	int selftest_failed;       /* failed checks, or -errno if it could not run */
 	int net_selftest_failed;
 	int file_selftest_failed;
@@ -59,7 +60,17 @@ struct p15_loader {
 
 /* Returns 0, or a P15_EXIT_* code with a reason in err. */
 P15_MUST_CHECK int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char *err, size_t errlen);
-/* Detach every program (so the rings stop filling); the maps stay readable. */
+/* The end of the flow programs' run, in two steps (bpf/include/p15_flow.h). Both do nothing and
+ * return 0 when the flow programs are not attached.
+ * p15_loader_flow_gate: shut the gate, a store into the mapped .bss. The caller then waits a grace
+ * period (p15_barrier) before the count.
+ * p15_loader_flow_count: run the task iterator that claims every open call into OPEN_AT_END.
+ * Returns 0, or -errno if the iterator could not be created or read. */
+void p15_loader_flow_gate(struct p15_loader *l);
+P15_MUST_CHECK int p15_loader_flow_count(struct p15_loader *l);
+/* Detach every program (so the rings stop filling); the maps stay readable. The spine is detached
+ * last, as it is attached first: every record another program writes names a process, and that
+ * process's EXIT belongs in the same run. */
 void p15_loader_detach(struct p15_loader *l);
 void p15_loader_free(struct p15_loader *l);
 int p15_loader_spine_rb_fd(const struct p15_loader *l);

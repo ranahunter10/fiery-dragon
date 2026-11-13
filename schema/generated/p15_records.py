@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "131e161bd94c51177f31961a8a66a8188f47396a8b6ee9cc983294844c015150"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "f737b88a76c85db99013bf0477b0e1433085aedd70fd3e93ccba33d5f6d3ca0e"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -178,8 +178,8 @@ RECORDS = {
         np.dtype({'names': ['h', 'fentry_run', 'fentry_no_inode', 'open_emitted', 'open_lost', 'open_full_size', 'open_truncated', 'open_path_error', 'backing_emitted', 'backing_lost', 'backing_user_unread', 'session_entry', 'session_no_inode', 'session_return', 'session_common', 'missing_emitted', 'missing_lost', 'verdict_emitted', 'verdict_lost', 'session_no_cookie', 'session_no_entry', 'free_run', 'close_emitted', 'close_lost', 'free_unregistered', 'inode_free_run', 'inode_free_hit', 'file_map_full', 'obj_map_full', 'file_stale', 'obj_stale', 'file_race', 'obj_race', 'facts_dup', 'subvol_unknown', 'kthread_open', 'walked', 'walk_raced', 'walk_truncated', 'walk_unnamed', 'ret_backing', 'ret_backing_emitted', 'ret_backing_lost', 'ret_backing_verdict_emitted', 'ret_backing_verdict_lost', 'files_live', 'objs_live', 'files_live_max', 'objs_live_max', 'file_drained', 'file_invalid', 'fentry_missed', 'kprobe_missed', 'file_map_entries', 'obj_map_entries'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336, 344, 352, 360, 368, 376, 384, 392, 400, 408, 416, 424, 432, 440, 448, 452], 'itemsize': 456}),
         456, 456, ()),
     (41, 1): Layout('FLOW_STATS', 41, 1, 'STATS',
-        np.dtype({'names': ['h', 'sess_entry', 'sess_return', 'v_excl_self', 'v_excl_kthread', 'v_owned_by_sock', 'v_empty', 'v_failed', 'v_no_inode', 'v_attempt', 'sock_seen', 's_excl_self', 's_excl_kthread', 's_no_file', 's_empty', 's_failed', 's_no_inode', 's_attempt', 'read_emitted', 'write_emitted', 'send_emitted', 'recv_emitted', 'flow_lost', 'start_unknown', 'unregistered', 'file_emitted', 'file_lost', 'file_map_full', 'flow_drained', 'flow_invalid', 'flow_missed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264], 'itemsize': 272}),
-        272, 272, ()),
+        np.dtype({'names': ['h', 'sess_entry', 'sess_return', 'v_excl_self', 'v_excl_kthread', 'v_owned_by_sock', 'v_empty', 'v_failed', 'v_no_inode', 'v_attempt', 'sock_seen', 's_excl_self', 's_excl_kthread', 's_no_file', 's_empty', 's_failed', 's_no_inode', 's_attempt', 'read_emitted', 'write_emitted', 'send_emitted', 'recv_emitted', 'flow_lost', 'start_unknown', 'unregistered', 'file_emitted', 'file_lost', 'file_map_full', 'v_gated', 'v_no_slot_entry', 'v_no_slot_return', 'open_at_end', 'returned_after_count', 'v_release_failed', 'v_entry_while_open', 'v_claim_race', 'flow_drained', 'flow_invalid', 'flow_missed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328], 'itemsize': 336}),
+        336, 336, ()),
     (10, 1): Layout('FLOW', 10, 1, 'FLOW',
         np.dtype({'names': ['h', 'fid', 'obj', 'first_ts', 'last_ts', 'bytes', 'count', 'fflags', 'kind', 'reason', 'facts_full', 'facts_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u2', '<u2', '<u4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 76, 80, 82, 84, 88, 90], 'itemsize': 96}),
         96, 136, (('facts', 40),), (('facts', 'OBJFACTS'),)),
@@ -786,6 +786,14 @@ SQL_COLUMNS = {
         ('file_emitted', 'UBIGINT'),
         ('file_lost', 'UBIGINT'),
         ('file_map_full', 'UBIGINT'),
+        ('v_gated', 'UBIGINT'),
+        ('v_no_slot_entry', 'UBIGINT'),
+        ('v_no_slot_return', 'UBIGINT'),
+        ('open_at_end', 'UBIGINT'),
+        ('returned_after_count', 'UBIGINT'),
+        ('v_release_failed', 'UBIGINT'),
+        ('v_entry_while_open', 'UBIGINT'),
+        ('v_claim_race', 'UBIGINT'),
         ('flow_drained', 'UBIGINT'),
         ('flow_invalid', 'UBIGINT'),
         ('flow_missed', 'UBIGINT'),

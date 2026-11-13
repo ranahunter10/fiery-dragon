@@ -34,6 +34,9 @@ static const struct opt OPTS[] = {
 	{ "--test-writer-stall-ms", U32(writer_stall_ms), 0,    600000,  0,      0 },
 	{ "--test-writer-batch-ms", U32(writer_batch_ms), 0,    10000,   0,      0 },
 	{ "--poll-max-ms",         U32(poll_max_ms),      10,   1000,    200,    0 },   /* ADR-0030 */
+	{ "--flow-stop-wait-ms",   U32(flow_stop_wait_ms), 0,   10000,   200,    0 },
+	{ "--test-flow-cut-pause-ms", U32(flow_cut_pause_ms), 0, 10000,  0,      0 },
+	{ "--test-barrier-fail",   U32(barrier_fail),     0,    1,       0,      0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
@@ -159,7 +162,8 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.spine_ring_kb", "config.bulk_ring_kb", "config.queue_batches", "config.batch_kb",
 		"config.test_drain_pause_ms", "config.file_map_entries", "config.obj_map_entries",
 		"config.test_start_pause_ms", "config.stop_stall_s", "config.test_writer_stall_ms",
-		"config.test_writer_batch_ms", "config.poll_max_ms",
+		"config.test_writer_batch_ms", "config.poll_max_ms", "config.flow_stop_wait_ms",
+		"config.test_flow_cut_pause_ms", "config.test_barrier_fail",
 	};
 	size_t n = 0;
 

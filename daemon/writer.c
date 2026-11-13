@@ -49,9 +49,18 @@ static int flow_books(struct p15_run *r, char *why, size_t n)
 	uint64_t emitted = L(READ_EMITTED) + L(WRITE_EMITTED) + L(SEND_EMITTED) + L(RECV_EMITTED);
 	uint64_t taken = atomic_load(&r->flow_drained) + r->flow_selftest_consumed + atomic_load(&r->flow_invalid);
 
-	if (L(SESS_ENTRY) != L(SESS_RETURN) + L(V_EXCL_SELF) + L(V_EXCL_KTHREAD) + L(V_OWNED_BY_SOCK)) {
-		snprintf(why, n, "FLOW: vfs entries %llu != returns + excluded self + excluded kthread + owned by a socket",
-			 (unsigned long long)L(SESS_ENTRY));
+	/* B1, written without a subtraction so no side can wrap: what entered (and the returns that
+	 * settle a claimed or slot-less call) against where each entry went */
+	if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_RELEASE_FAILED) + L(V_NO_SLOT_RETURN) !=
+	    L(SESS_RETURN) + L(V_EXCL_SELF) + L(V_EXCL_KTHREAD) + L(V_OWNED_BY_SOCK) + L(V_GATED) + L(OPEN_AT_END) +
+	    L(V_NO_SLOT_ENTRY)) {
+#define U(slot) ((unsigned long long)L(slot))
+		/* every term, in the order of bpf/include/p15_flow.h's B1 (short names: the reason is 256 bytes) */
+		snprintf(why, n, "FLOW B1 vfs entries: entry %llu + rac %llu + relfail %llu + nsret %llu != ret %llu + "
+			 "self %llu + kth %llu + sock %llu + gated %llu + open %llu + nsent %llu", U(SESS_ENTRY), U(RETURNED_AFTER_COUNT),
+			 U(V_RELEASE_FAILED), U(V_NO_SLOT_RETURN), U(SESS_RETURN), U(V_EXCL_SELF), U(V_EXCL_KTHREAD),
+			 U(V_OWNED_BY_SOCK), U(V_GATED), U(OPEN_AT_END), U(V_NO_SLOT_ENTRY));
+#undef U
 		return -1;
 	}
 	if (L(SESS_RETURN) != L(V_EMPTY) + L(V_FAILED) + L(V_NO_INODE) + L(V_ATTEMPT)) {
@@ -470,6 +479,14 @@ static void flow_stats(struct p15_writer *w)
 	F(file_emitted, P15_FLC_FILE_EMITTED)
 	F(file_lost, P15_FLC_FILE_LOST)
 	F(file_map_full, P15_FLC_FILE_MAP_FULL)
+	F(v_gated, P15_FLC_V_GATED)
+	F(v_no_slot_entry, P15_FLC_V_NO_SLOT_ENTRY)
+	F(v_no_slot_return, P15_FLC_V_NO_SLOT_RETURN)
+	F(open_at_end, P15_FLC_OPEN_AT_END)
+	F(returned_after_count, P15_FLC_RETURNED_AFTER_COUNT)
+	F(v_release_failed, P15_FLC_V_RELEASE_FAILED)
+	F(v_entry_while_open, P15_FLC_V_ENTRY_WHILE_OPEN)
+	F(v_claim_race, P15_FLC_V_CLAIM_RACE)
 #undef F
 	s.flow_drained = atomic_load(&r->flow_drained);
 	s.flow_invalid = atomic_load(&r->flow_invalid);
@@ -498,7 +515,7 @@ static void stats(struct p15_writer *w, uint64_t now)
 static void end_record(struct p15_writer *w)
 {
 	struct { struct p15_end e; char tail[P15_END_REASON_MAX + 8]; } buf;
-	char why[200];
+	char why[256];
 	size_t rl;
 	int inv = p15_invariant_check(w->run, why, sizeof(why));
 	char reason[256];

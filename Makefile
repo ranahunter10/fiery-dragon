@@ -59,7 +59,7 @@ SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitc
          $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/flow_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
-P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c \
+P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/barrier.c \
             daemon/selftest_net.c daemon/selftest_file.c daemon/selftest_flow.c daemon/snapshot.c daemon/snapshot_frame.c \
             $(DAEMON_COMMON) $(WAL_SRC)
 # provenance for the WAL header (ADR-0007): the daemon's commit and the vendored bpftool's tag

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 
 #include "counters.h"
@@ -84,6 +85,7 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 			bpf_program__set_autoattach(flow[i], false);
 			l->flow_prog_fd[l->n_flow_prog++] = bpf_program__fd(flow[i]);
 		}
+		bpf_program__set_autoattach(l->file->progs.flow_open_iter, false);   /* a link made with the flow programs */
 	}
 	/* The FD pass's iterator link (ADR-0015 rule 7): made now, used by every snapshot. A link, not
 	 * an attach to an event: nothing runs until the snapshot creates an iterator from it. */
@@ -296,6 +298,12 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 			}
 			l->flow_links[l->n_flow_links++] = lk;
 		}
+		/* the end's count of open calls: a link only, nothing runs until p15_loader_flow_count */
+		l->flow_open_link = bpf_program__attach_iter(l->file->progs.flow_open_iter, NULL);
+		if (!l->flow_open_link) {
+			snprintf(err, errlen, "file: the flow programs' task iterator could not be made: %s", strerror(errno));
+			return P15_EXIT_LOAD;
+		}
 		{
 			unsigned long long flc = 0, fc = 0, nc = 0;
 			char *text = NULL;
@@ -329,10 +337,38 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 	return 0;
 }
 
+void p15_loader_flow_gate(struct p15_loader *l)
+{
+	if (l->file && l->n_flow_links)
+		__atomic_store_n(&l->file->bss->flow_gate, 1, __ATOMIC_SEQ_CST);   /* mapped: a store, no system call (ADR-0026) */
+}
+
+int p15_loader_flow_count(struct p15_loader *l)
+{
+	char buf[64];
+	ssize_t r;
+	int fd;
+
+	if (!l->file || !l->n_flow_links || !l->flow_open_link)
+		return 0;
+	fd = bpf_iter_create(bpf_link__fd(l->flow_open_link));
+	if (fd < 0)
+		return fd;
+	/* the program prints nothing: reading to the end is what runs it over every task */
+	while ((r = read(fd, buf, sizeof(buf))) > 0 || (r < 0 && errno == EINTR))
+		;
+	if (r < 0) {
+		int e = -errno;
+
+		close(fd);
+		return e;
+	}
+	close(fd);
+	return 0;
+}
+
 void p15_loader_detach(struct p15_loader *l)
 {
-	if (l->spine)
-		spine_bpf__detach(l->spine);
 	if (l->net)
 		net_bpf__detach(l->net);
 	/* the flow programs were attached by hand (ADR-0005), the socket tracepoints first: destroyed in
@@ -342,6 +378,8 @@ void p15_loader_detach(struct p15_loader *l)
 	l->n_flow_links = 0;
 	if (l->file)
 		file_bpf__detach(l->file);
+	if (l->spine)
+		spine_bpf__detach(l->spine);   /* last: see loader.h */
 }
 
 void p15_loader_free(struct p15_loader *l)
@@ -350,6 +388,8 @@ void p15_loader_free(struct p15_loader *l)
 	net_bpf__destroy(l->net);
 	bpf_link__destroy(l->fd_iter_link);
 	l->fd_iter_link = NULL;
+	bpf_link__destroy(l->flow_open_link);
+	l->flow_open_link = NULL;
 	file_bpf__destroy(l->file);
 	l->spine = NULL;
 	l->net = NULL;

@@ -484,6 +484,46 @@ else
     echo "  SKIP (file identity not loadable here; CI and the VM run it)"
 fi
 
+echo "case 15: no grace period at the end (--test-barrier-fail): the run says its end counts are not exact [t+${SECONDS}s]"
+"$B/p15d" --wal-dir "$T/c15" $NET --duration 1 --test-barrier-fail 1 2>"$T/c15.err"; rc=$?
+RUN=$T/c15; inspect >"$T/c15.txt" 2>&1; irc=$?
+check "[ $rc -eq 3 ] && [ $irc -eq 0 ]" "exit 3 (DEGRADED), WAL valid (p15d $rc, inspect $irc)"
+check "grep -q 'END: exit 3, state 1, invariant 1' $T/c15.txt && grep -q 'the end counts are not exact' $T/c15.txt" "END: DEGRADED, the books still close, the reason says the end counts are not exact"
+check "grep -q 'code=barrier' $T/c15.err" "  ... and the log has the barrier's error, never a silent wait"
+
+echo "case 16: --flow with three calls held open across the detach: a read, a write and a readv (p15_flow.h) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    held() {   # held NAME MODE [p15d options]: one run with the holder; MODE released feeds the read in the pause
+        local name=$1 mode=$2; shift 2
+        rm -f "$T/c16-hold.json"
+        "$B/p15d" --wal-dir "$T/$name" --flow --duration 4 --stats-ms 200 "$@" 2>"$T/$name.err" &
+        pid=$!
+        hpid=
+        if started "$T/$name.err"; then
+            "$PY" daemon/tests/it_flow_open.py hold "$T" & hpid=$!
+            for _ in $(seq 100); do [ -s "$T/c16-hold.json" ] && break; sleep 0.1; done
+            if [ "$mode" = released ]; then
+                for _ in $(seq 200); do grep -q 'code=test_pause phase=flow_cut' "$T/$name.err" 2>/dev/null && break; sleep 0.05; done
+                kill -USR1 "$hpid"
+            fi
+        fi
+        wait $pid; rc=$?
+        [ -n "$hpid" ] && kill -TERM "$hpid" 2>/dev/null; wait "$hpid" 2>/dev/null
+        RUN=$T/$name; inspect >"$T/$name.txt"; irc=$?
+        check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && [ -s $T/c16-hold.json ]" "exit 0, WAL valid, the holder ran (p15d $rc, inspect $irc)"
+        check "grep -q 'END: exit 0, state 0, invariant 1' $T/$name.txt" "END: exit 0, RUNNING, the books close with calls open at the detach"
+        while IFS= read -r line; do
+            case "$line" in ok\ *) ok "${line#ok }";; FAIL\ *) bad "${line#FAIL }";; *) bad "unexpected checker output: $line";; esac
+        done < <(PYTHONPATH=python "$PY" daemon/tests/it_flow_open.py check "$(ls -d "$T/$name"/*/ | head -1)" "$T" "$mode" 2>&1)
+        [ $fail -eq 0 ] || grep -E "code=(end|barrier|fail)" "$T/$name.err" | tail -3
+    }
+    held c16 held
+    echo "case 17: --flow with the held read released between the count and the detach (--test-flow-cut-pause-ms) [t+${SECONDS}s]"
+    held c17 released --test-flow-cut-pause-ms 1500
+else
+    echo "  SKIP (the flow programs are not loadable here; CI and the VM run cases 16 and 17)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

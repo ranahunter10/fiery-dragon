@@ -81,6 +81,7 @@ struct p15_run {
 	int n_flow_prog;
 	_Atomic uint64_t flow_missed;
 	uint64_t flow_missed_base;
+	int flow_attached;                       /* the flow programs are attached (--flow): the end counts their open calls */
 
 	/* events the kernel skipped before our programs ran (ADR-0020 rule 3): bpf_prog_info.recursion_misses
 	 * of each attached program, read by the drain; *_base is the read after the self-tests */
