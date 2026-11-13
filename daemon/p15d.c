@@ -157,6 +157,7 @@ int main(int argc, char **argv)
 		struct p15_loader_opts lo = {
 			.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,
 			.files = run.files, .flow = run.cfg.flow, .test_no_path_fentry = run.cfg.test_no_path_fentry,
+			.test_flow_file_fail_first = run.cfg.test_flow_file_fail_first,
 			.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,
 		};
 
@@ -177,6 +178,7 @@ int main(int argc, char **argv)
 	run.spine_selftest_consumed = ld.spine_consumed;
 	run.net_selftest_consumed = ld.net_consumed;
 	run.file_selftest_consumed = ld.file_consumed;
+	run.flow_selftest_consumed = ld.flow_consumed;
 	run.file_fentry_fd = ld.file_fentry_fd;
 	for (int i = 0; i < ld.n_file_kprobe; i++)
 		run.file_kprobe_fd[i] = ld.file_kprobe_fd[i];
@@ -226,15 +228,21 @@ int main(int argc, char **argv)
 	KV("libbpf.version", libbpf_version_string());
 	KV("bpftool.version", P15_BPFTOOL_VERSION);
 	KV("hooks.manifest", ld.manifest);
-	KV("selftest.result", run.net && run.files ? "pass (spine, files, net)" : run.net ? "pass (spine, net)"
-			      : run.files ? "pass (spine, files)" : "pass (spine)");
+	KV("selftest.result", run.net && run.files ? (run.cfg.flow ? "pass (spine, files, net, flow)" : "pass (spine, files, net)")
+			      : run.net ? "pass (spine, net)"
+			      : run.files ? (run.cfg.flow ? "pass (spine, files, flow)" : "pass (spine, files)") : "pass (spine)");
 	KV("ring.spine.bytes", ring_b);
 	KV("ring.bulk.bytes", run.net || run.files ? bulk_b : "0 (--no-net --no-files: no bulk capture)");
 	KV("tz", tz);
 	KV("drain.sched", sched);
 	KV("recovered.bytes_cut", cut);
 #undef KV
-	nm += p15_config_meta(&run.cfg, meta + nm, cfg_vals, sizeof(meta) / sizeof(meta[0]) - nm);
+	{
+		/* bounded by both arrays: the values' rows as well as the header's slots */
+		size_t room = sizeof(meta) / sizeof(meta[0]) - nm, rows = sizeof(cfg_vals) / sizeof(cfg_vals[0]);
+
+		nm += p15_config_meta(&run.cfg, meta + nm, cfg_vals, room < rows ? room : rows);
+	}
 
 	memset(&wo, 0, sizeof(wo));
 	wo.dir = run_dir;

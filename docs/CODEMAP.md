@@ -149,7 +149,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`check.py`](../bench/soak/check.py) | The soak's ground-truth checks (bench/soak/workload.py's log against the WAL and the graph). | `Truth`, `graph_wants`, `graph_check` |
 | [`soak.py`](../bench/soak/soak.py) | The soak (gate 4 of STATE decision 28): p15d under real programs for a long run, sampled as it goes, then every operation the workload logged checked against the WAL and the gra... | `SoakError`, `prom`, `threads`, `rss_kb`, `du`, `wait_started`, `emit`, `finish` |
-| [`summarize.py`](../bench/soak/summarize.py) | Summarize a soak (bench/soak/soak.py): gate 4 of STATE decision 28. | `ParseError`, `kv`, `parse`, `graph_books`, `report` |
+| [`summarize.py`](../bench/soak/summarize.py) | Summarize a soak (bench/soak/soak.py): gate 4 of STATE decision 28. | `ParseError`, `kv`, `parse`, `graph_books`, `late_samples`, `report` |
 | [`test_soak.py`](../bench/soak/test_soak.py) | Tests for the soak's checks and report (bench/soak/check.py, summarize.py, soak.py's parsers). | `opn`, `exe`, `net`, `Truth`, `Prom`, `soak_text`, `Report` |
 | [`workload.py`](../bench/soak/workload.py) | The soak's workload (gate 4 of STATE decision 28): real programs in a loop, each step logging what it did, so the soak can check that capture saw every one of those things. | `boot_ns`, `run`, `which`, `step_compile`, `step_git`, `step_archive`, `step_pyfiles`, `step_http`, `step_shell`, `step_memfd` |
 
@@ -222,6 +222,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
 | [`selftest_file.c`](../daemon/selftest_file.c) | The file-identity self-test (ADR-0015 confirmation 1). |  |
 | [`selftest_file.h`](../daemon/selftest_file.h) | Load-time self-test of the file-identity programs (ADR-0015 confirmation 1, ADR-0003). |  |
+| [`selftest_flow.c`](../daemon/selftest_flow.c) | The data-flow self-test (ADR-0005, ADR-0003). |  |
+| [`selftest_flow.h`](../daemon/selftest_flow.h) | Load-time self-test of the data-flow programs (ADR-0005, ADR-0003), run once they are attached. |  |
 | [`selftest_net.c`](../daemon/selftest_net.c) | The network-intent self-test (ADR-0004 rule 6). | `p15_selftest_net` |
 | [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). |  |
 | [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_set_fd`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
@@ -341,3 +343,5 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`measure_capture.sh`](../tools/vm/measure_capture.sh) | The standing measurement matrix of the capture layer (audit 2026-11-12, §4 and §6 Phase A). | `need`, `step` |
 | [`sliceb_attach_check.sh`](../tools/vm/sliceb_attach_check.sh) | Slice B attach-point check (ADR-0005, ADR-0015; design checks O1-O3, O5 in docs/research/2026-11-09-slice-b-design-checks.md). |  |
+| [`stalls.py`](../tools/vm/stalls.py) | Find the guest's stalls in its kernel log and name the matrix steps they touched (E-0250). | `signs`, `stalls`, `steps`, `touched`, `report` |
+| [`test_stalls.py`](../tools/vm/test_stalls.py) | Tests for tools/vm/stalls.py, on the guest's own lines from E-0250 (2026-11-13). | `Stalls` |

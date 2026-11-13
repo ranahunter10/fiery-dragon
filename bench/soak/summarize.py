@@ -12,6 +12,11 @@ execution present); at most 10 % of the workload's steps failed. The graph's bui
 workload is reported against its target, GRAPH_S_PER_HOUR (STATE decision 34); it fails the run only
 with --strict-graph-time (the default once gate 10's streaming builder lands). Also reported, not judged: CPU,
 memory and WAL growth over the run, event rates, the walk's counters, the graph's books.
+
+A stalled VM (E-0249, E-0250) is reported, not judged: when a sample comes more than LATE times its
+planned interval after the one before it (the first, after the workload's start), the report says
+so on a line starting "STALL:", and the rates over the run are not quotable. Recall and the books
+still decide the verdict: a stall does not lose events, it stops the clock's owner.
 """
 from __future__ import annotations
 
@@ -23,6 +28,7 @@ from pathlib import Path
 KV = re.compile(r"(\w+)=(\S+)")
 MUST_BE_ZERO = ("edge_without_node", "obj_facts_conflict", "fid_two_objs")
 GRAPH_S_PER_HOUR = 60.0     # STATE decision 34: an hour's graph in under a minute
+LATE = 1.5                  # a sample this many times its planned interval late marks a stall (E-0249)
 
 
 class ParseError(Exception):
@@ -86,6 +92,16 @@ def graph_books(lines: list[str]) -> dict[str, int]:
     return out
 
 
+def late_samples(samples: list[dict], planned: float) -> list[tuple[float, float]]:
+    """(t, interval) for every sample that came more than LATE x planned after the one before it."""
+    out, prev = [], 0.0
+    for x in samples:
+        if x["t"] - prev > LATE * planned:
+            out.append((x["t"], x["t"] - prev))
+        prev = x["t"]
+    return out
+
+
 def report(text: str, strict_graph_time: bool = False) -> tuple[str, int]:
     d = parse(text)
     fails, notes = list(d["errors"]), []
@@ -125,6 +141,14 @@ def report(text: str, strict_graph_time: bool = False) -> tuple[str, int]:
                 f"{int(s[-1].get('bulk_written', s[-1].get('net_written', 0))):,}; kernel skips: spine "
                 f"{int(s[-1]['spine_skipped'])}, NET {int(s[-1]['net_skipped'])}; queue full {int(s[-1]['queue_full'])}; "
                 f"GAP records {int(s[-1]['gaps'])}.", ""]
+        late = late_samples(s, float(c["sample"]))
+        if late:
+            lost = sum(iv - float(c["sample"]) for _, iv in late)
+            out += ["STALL: " + "; ".join(f"the sample at t={t:.0f} s came {iv:.0f} s after the one before it"
+                                          for t, iv in late) +
+                    f" (planned every {float(c['sample']):.0f} s): about {lost:.0f} s of the run lost to a stall. "
+                    "The rates above are not quotable (E-0249).", ""]
+            notes.append(f"a stall touched the soak (about {lost:.0f} s): its rates are not quotable")
         if span_h >= 0.25 and rss[-1] > rss[0] * 1.5 and rss[-1] - rss[0] > 10 * 1024:
             notes.append(f"resident memory grew from {rss[0] / 1024:.1f} to {rss[-1] / 1024:.1f} MiB")
         if any(x["state"] for x in s):

@@ -25,6 +25,7 @@ struct p15_loader_opts {
 	int files;                   /* the file-identity programs (ADR-0015) */
 	int flow;                    /* attach the data-flow programs (ADR-0005); needs files */
 	int test_no_path_fentry;     /* TEST ONLY: leave the path fentry unattached (ADR-0015 confirmation 1) */
+	int test_flow_file_fail_first; /* TEST ONLY: lose the first FILE record of every file (it_p15d case 14) */
 	uint32_t file_map_entries, obj_map_entries;
 };
 
@@ -39,6 +40,8 @@ struct p15_loader {
 	int net_selftest_failed;
 	int file_selftest_failed;
 	unsigned long long file_consumed;   /* file-identity records the self-tests took from the bulk ring */
+	unsigned long long flow_consumed;   /* FLOW and FILE records the flow self-test took from the bulk ring */
+	int flow_selftest_failed;
 	__u64 daemon_start_ns;     /* from the self-test (ADR-0009 identity of p15d) */
 	__u64 spine_consumed;      /* records the self-tests took from the rings: part of the run's books */
 	unsigned long long net_consumed;

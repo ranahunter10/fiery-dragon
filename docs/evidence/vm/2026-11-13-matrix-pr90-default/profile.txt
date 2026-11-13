@@ -1,0 +1,53 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 100  of event 'task-clock:ppp'
+# Event count (approx.): 50025000
+#
+# Overhead  Shared Object      Symbol                          
+# ........  .................  ................................
+#
+    18.00%  p15d               [.] tiles
+    13.00%  p15d               [.] on_bulk
+     9.00%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+     8.00%  p15d               [.] p15_rec_check
+     7.00%  p15d               [.] crc_hw
+     4.00%  [kernel.kallsyms]  [k] do_syscall_64
+     4.00%  p15d               [.] after_poll
+     3.00%  [kernel.kallsyms]  [k] kernel_init_pages
+     2.00%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+     2.00%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+     2.00%  [kernel.kallsyms]  [k] memchr_inv
+     2.00%  p15d               [.] memcpy@plt
+     2.00%  p15d               [.] prog_misses
+     1.00%  [kernel.kallsyms]  [k] __memcg_slab_post_alloc_hook
+     1.00%  [kernel.kallsyms]  [k] __rcu_read_lock
+     1.00%  [kernel.kallsyms]  [k] __sys_bpf
+     1.00%  [kernel.kallsyms]  [k] _find_first_bit
+     1.00%  [kernel.kallsyms]  [k] _find_next_bit
+     1.00%  [kernel.kallsyms]  [k] alloc_anon_folio
+     1.00%  [kernel.kallsyms]  [k] apparmor_capable
+     1.00%  [kernel.kallsyms]  [k] btf_obj_id
+     1.00%  [kernel.kallsyms]  [k] ep_done_scan
+     1.00%  [kernel.kallsyms]  [k] folios_put_refs
+     1.00%  [kernel.kallsyms]  [k] fput
+     1.00%  [kernel.kallsyms]  [k] get_mem_cgroup_from_mm
+     1.00%  [kernel.kallsyms]  [k] jbd2_write_access_granted
+     1.00%  [kernel.kallsyms]  [k] mutex_lock
+     1.00%  [kernel.kallsyms]  [k] mutex_unlock
+     1.00%  [kernel.kallsyms]  [k] rep_movs_alternative
+     1.00%  [kernel.kallsyms]  [k] rmqueue.isra.0
+     1.00%  [kernel.kallsyms]  [k] select_estimate_accuracy
+     1.00%  [kernel.kallsyms]  [k] up_write
+     1.00%  libc.so.6          [.] epoll_wait
+     1.00%  libc.so.6          [.] syscall
+     1.00%  libc.so.6          [.] 0x0000000000197aa1
+     1.00%  p15d               [.] p15_counters_sum_rows
+     1.00%  p15d               [.] ring_buffer__epoll_fd
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

@@ -835,6 +835,19 @@ struct {
 	__type(value, struct rw_start);
 } rw_starts SEC(".maps");
 
+/* TEST ONLY (--test-flow-file-fail-first): the first FILE record of every file is lost as a full
+ * ring would lose it, so the retry below is exercised (it_p15d case 14). Off, the verifier removes
+ * the branch; the map then has one entry and is never used. On, a file whose first attempt finds
+ * the map full is not failed: the test can only ever lose fewer records, never more. */
+const volatile __u32 flow_test_file_fail_first;
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1);         /* the loader sizes it when the test switch is on */
+	__type(key, __u64);
+	__type(value, __u8);
+} flow_test_tried SEC(".maps");
+
 static __always_inline void flow_count(__u32 slot)
 {
 	__u32 row = bpf_get_smp_processor_id(), k;
@@ -865,11 +878,25 @@ static const __u32 flow_emit_slot[5] = {   /* FLOW.kind -> its EMITTED counter *
 static __always_inline int write_file_rec(struct file *file, __u64 fid, __u64 obj,
 					  const struct p15_part_objfacts *f, int carry, __u32 seen)
 {
-	struct p15_file *r = bpf_ringbuf_reserve(&bulk_rb, P15_FILE_MAX_SIZE, 0);
+	struct p15_file *r;
 	const unsigned char *dname;
 	__u32 off = sizeof(*r), full;
 	long m;
 
+	if (flow_test_file_fail_first) {
+		__u64 k = (__u64)file;
+		__u8 one = 1;
+
+		if (!bpf_map_lookup_elem(&flow_test_tried, &k)) {
+			if (!bpf_map_update_elem(&flow_test_tried, &k, &one, BPF_NOEXIST)) {
+				flow_count(P15_FLC_FILE_LOST);   /* as the !r branch below: the planted loss */
+				return 0;
+			}
+		} else {
+			bpf_map_delete_elem(&flow_test_tried, &k);
+		}
+	}
+	r = bpf_ringbuf_reserve(&bulk_rb, P15_FILE_MAX_SIZE, 0);
 	if (!r) {
 		flow_count(P15_FLC_FILE_LOST);
 		return 0;

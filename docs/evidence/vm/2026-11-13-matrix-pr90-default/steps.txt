@@ -1,0 +1,12 @@
+it_p15d rc=0 seconds=132.6
+crc32c rc=0 seconds=2.5
+prog_stats rc=0 seconds=7.2
+open_cost rc=0 seconds=273.6
+open_cost_report rc=0 seconds=0.0
+profile_run rc=0 seconds=53.1
+profile rc=0 seconds=0.4
+profile_callers rc=0 seconds=0.4
+idle rc=0 seconds=148.0
+idle_report rc=0 seconds=0.0
+soak rc=0 seconds=654.6
+soak_report rc=0 seconds=0.0

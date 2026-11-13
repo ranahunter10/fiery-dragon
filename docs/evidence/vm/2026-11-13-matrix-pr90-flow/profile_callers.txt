@@ -1,0 +1,115 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 61  of event 'task-clock:ppp'
+# Event count (approx.): 30515250
+#
+# Overhead  Command      Shared Object      Symbol                          
+# ........  ...........  .................  ................................
+#
+    40.98%  p15d         [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+            |
+            ---_start
+               __libc_start_main
+               0x7078c5c2a600
+               main
+               p15_drain_poll
+               after_poll
+               publish (inlined)
+               p15q_publish
+               write
+               0x7078c5ca039b
+               0x7078c5cac802
+               entry_SYSCALL_64_after_hwframe
+               do_syscall_64
+               x64_sys_call
+               __x64_sys_write
+               ksys_write
+               vfs_write
+               eventfd_write
+               _raw_spin_unlock_irq
+
+    16.39%  p15d-writer  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+            |
+            ---0x7078c5d375cb
+               0x7078c5ca3df9
+               p15_writer_main
+               |          
+               |--8.20%--p15w_tick
+               |          timed_sync
+               |          fdatasync
+               |          0x7078c5ca039b
+               |          0x7078c5cac802
+               |          entry_SYSCALL_64_after_hwframe
+               |          do_syscall_64
+               |          x64_sys_call
+               |          __x64_sys_fdatasync
+               |          do_fsync
+               |          ext4_sync_file
+               |          file_write_and_wait_range
+               |          __filemap_fdatawait_range
+               |          folio_wait_writeback
+               |          folio_wait_bit
+               |          folio_wait_bit_common
+               |          io_schedule
+               |          schedule
+               |          __schedule
+               |          finish_task_switch.isra.0
+               |          
+                --8.20%--p15q_wait
+                          poll (inlined)
+                          __poll
+                          0x7078c5ca039b
+                          0x7078c5cac802
+                          entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_poll
+                          do_sys_poll
+                          do_poll.constprop.0
+                          poll_schedule_timeout.constprop.0
+                          schedule_hrtimeout_range
+                          schedule_hrtimeout_range_clock
+                          schedule
+                          __schedule
+                          finish_task_switch.isra.0
+
+    16.39%  p15d-writer  p15d               [.] tiles
+            |
+            ---0x7078c5d375cb
+               0x7078c5ca3df9
+               p15_writer_main
+               drain_queue
+               append (inlined)
+               p15w_append
+               tiles
+
+     9.84%  p15d         [kernel.kallsyms]  [k] finish_task_switch.isra.0
+            |
+            ---_start
+               __libc_start_main
+               0x7078c5c2a600
+               main
+               p15_drain_poll
+               epoll_wait
+               0x7078c5ca039b
+               0x7078c5cac802
+               entry_SYSCALL_64_after_hwframe
+               do_syscall_64
+               x64_sys_call
+               __x64_sys_epoll_wait
+               do_epoll_wait
+               ep_poll
+               schedule_hrtimeout_range
+               schedule_hrtimeout_range_clock
+               schedule
+               __schedule
+               finish_task_switch.isra.0
+
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
