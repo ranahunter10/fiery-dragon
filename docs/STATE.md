@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-12 (UTC), PR "bench: flow_cost, the read hook's cost with each way of keeping FLOW's start time" (step 2b part 2)
+**Last updated:** 2026-11-13 (UTC), PR "research: a more robust capture layer, and the plan to a detection result"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -325,3 +325,7 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 14. **FLOW's size** (E-0226). 96 bytes as ADR-0005 rule 8 asks, against 88 if the rare unregistered transfer went as a FILE before its FLOW (an ADR superseding rule 8). Recommendation: keep 96 and let step 2b's ceiling decide, with bytes per second reported beside records per second.
 15. **Padding of the records before FLOW and FILE is not checked** by `p15_rec_check` or the reader (E-0226). A program that builds a record in reused memory could carry old bytes in `_pad`. Recommendation: check every type's padding, after a matrix run on the VM shows that no program writes non-zero padding today.
 16. **The socket tracepoints' edges in 2b** (E-0227, design checks §3). Recommendation: a send or receive on a socket without a file (kernel code using a kernel socket from a user task) is counted `no_file` and not written (ADR-0005 rule 11). Sends inside splice and sendfile are written as SEND until step 2d's SPLICE records exist; then they follow rule 11's `inside_splice`.
+27. **A witness at `security_file_permission` and a coverage book** ([research note](research/2026-11-13-robust-architecture-and-plan.md) §2 I1; E-0252). Every file transfer path on 7.0 passes it, io_uring, splice, sendfile and copy_file_range included, which the vfs hooks miss. Recommendation: adopt it as phase B's design after a `bench/flow_cost` arm measures its cost (estimated 80 to 150 ns per call, INF).
+28. **The capture watches itself** (note I4, F6). Today nothing notices another process detaching p15d's links, and the books still close. Recommendation: check the links each stats tick and record others' `bpf()` commands, as a phase D item.
+29. **An FPGA audit device as the WAL's out-of-host anchor** (note F3, I3; HARDLOG, R-055). Recommendation: put it on the FPGA layer's agenda to study, not to build now.
+30. **Plan the evaluation around Bilot et al.'s metrics** (node-level, per attack; note F4, R-054). Recommendation: read R-053 and R-054 in full first, then fix what capture must log for them.
