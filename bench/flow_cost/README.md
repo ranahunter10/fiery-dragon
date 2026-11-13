@@ -12,6 +12,15 @@
 | count | as ts, and an atomic add of the task's open-call count | as ts, and a compare-and-exchange taking the call off the count (the end's count of open calls, `bpf/include/p15_flow.h`; its cost is count against ts) |
 | end_rec | the cookie | a 96-byte FLOW (`schema/records.toml`): end time only, `START_UNKNOWN` |
 | ts_rec | as ts | the FLOW with `first_ts` from task storage |
+| wit | a kprobe.session on `security_file_permission`: the cookie | count the call by its verdict, granted or denied |
+| wit_entry | a kprobe.multi entry on `security_file_permission`: count the call | — |
+
+**The witness arms** (decision waiting 27; [research note](../../docs/research/2026-11-13-robust-architecture-and-plan.md) §2 I1). Every read and write reaches `security_file_permission` through `rw_verify_area` (fs/read_write.c:475 at v7.0), and so do io_uring, splice, sendfile and copy_file_range, which the vfs hooks miss. `wit` is the session I1 proposes, and `wit_entry` is its cheaper count-only variant (no verdict). The questions:
+- **wit against none:** the witness's cost per call, on top of whatever else hooks the read;
+- **wit against session:** a session on the LSM function against the same session on `vfs_read`;
+- **wit against wit_entry:** what the return, and with it the verdict, adds.
+
+Both arms measure the hook alone. I1's book (*mediated = flowed + denied + empty + intent*) needs per-task state to match a witness call to its FLOW; that state isn't built and its cost isn't included. A denied call fails the arm's books, since the harness's reads of `/dev/zero` are always granted.
 
 - The record arms reserve, fill and submit on a 64 MiB ring without a wakeup. A drain thread pinned to another CPU consumes the ring as it fills, as p15d's drain does, and checks every FLOW: its type, length, kind, bytes, `first_ts ≤ last_ts`, and `START_UNKNOWN` exactly in `end_rec`.
 - There is no file map and there are no marks: those are the same for A and D, and they are measured with step 2b's programs.
@@ -29,7 +38,10 @@
 - **ts against session:** task storage's cost on its own;
 - **ts_rec against end_rec:** what A adds to a record, the number that decides;
 - **count against ts:** what the end's count of open calls adds to every call (decision waiting 110);
-- **end_rec against session:** what writing the record costs.
+- **end_rec against session:** what writing the record costs;
+- **wit against session, wit against wit_entry:** the witness (above).
+
+A run from before the witness arms is still summarized; the report names the arms it lacks.
 
 An overhead is quoted only if ADR-0018 rule 2.4 allows it.
 

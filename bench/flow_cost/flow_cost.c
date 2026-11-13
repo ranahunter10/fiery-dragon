@@ -9,14 +9,16 @@
  * Arms (flow_cost.bpf.c): none and none2 (nothing attached: the untraced arm and its A/A control),
  * session (E-0138's anchor), ts (option A without a record), count (ts plus the per-task count of
  * open calls that the end of a run needs, bpf/include/p15_flow.h), end_rec (option D: a FLOW with its
- * end time only), ts_rec (option A with the FLOW). Per round, every arm runs READS x
+ * end time only), ts_rec (option A with the FLOW), wit (the mediation witness: a kprobe.session on
+ * security_file_permission counting each call by its verdict) and wit_entry (its entry-only,
+ * count-only variant). Per round, every arm runs READS x
  * read(/dev/zero, 1 byte) on the harness's own thread, pinned to one CPU, in an order rotated each
  * round, after one untimed warm-up of every arm. The primary metric is the thread's CPU time, the
  * secondary wall time. A drain thread on another CPU consumes the ring as it fills, and checks
  * every FLOW (type, length, kind, bytes 1, first_ts <= last_ts, START_UNKNOWN exactly in end_rec).
  *
  * Books per arm: hits equal READS; the untraced arms see none; no return without its cookie; no
- * lost start time, no failed storage creation, no failed reservation; the record arms' drained
+ * lost start time, no failed storage creation, no failed reservation, no denied witness call; the record arms' drained
  * FLOWs equal READS, each valid. Skip counters per arm: its program's recursion_misses and the
  * link's kprobe_multi.missed.
  *
@@ -44,10 +46,11 @@
 #include "flow_cost.skel.h"
 
 enum { H_SESSION, H_TS, H_END_REC, H_TS_REC, H_NOCOOKIE, H_TS_LOST, H_TS_CREATE_FAILED, H_RESERVE_FAILED, H_COUNT,
-       H_COUNT_LOST, H_N };
-enum arm { A_NONE, A_NONE2, A_SESSION, A_TS, A_COUNT, A_END_REC, A_TS_REC, A_N };
-static const char *const arm_name[A_N] = { "none", "none2", "session", "ts", "count", "end_rec", "ts_rec" };
-static const int arm_hit[A_N] = { -1, -1, H_SESSION, H_TS, H_COUNT, H_END_REC, H_TS_REC };
+       H_COUNT_LOST, H_WIT, H_WIT_DENIED, H_WIT_ENTRY, H_N };
+enum arm { A_NONE, A_NONE2, A_SESSION, A_TS, A_COUNT, A_END_REC, A_TS_REC, A_WIT, A_WIT_ENTRY, A_N };
+static const char *const arm_name[A_N] = { "none", "none2", "session", "ts", "count", "end_rec", "ts_rec", "wit",
+					    "wit_entry" };
+static const int arm_hit[A_N] = { -1, -1, H_SESSION, H_TS, H_COUNT, H_END_REC, H_TS_REC, H_WIT, H_WIT_ENTRY };
 
 /* the drain thread's view: records seen and refused since the last reset, and the check pass */
 static struct ring_buffer *rb;
@@ -166,6 +169,8 @@ static struct bpf_program *arm_prog(struct flow_cost_bpf *s, enum arm a)
 	case A_COUNT: return s->progs.rd_count;
 	case A_END_REC: return s->progs.rd_end_rec;
 	case A_TS_REC: return s->progs.rd_ts_rec;
+	case A_WIT: return s->progs.wit;
+	case A_WIT_ENTRY: return s->progs.wit_entry;
 	default: return NULL;
 	}
 }
@@ -220,10 +225,11 @@ static int arm(struct flow_cost_bpf *s, int fd, int round, enum arm a, int n)
 			fprintf(stderr, "warn: link destroy failed\n");
 	}
 	drain_wait(s);
-	got = arm_hit[a] < 0 ? hit(s, H_SESSION) + hit(s, H_TS) + hit(s, H_END_REC) + hit(s, H_TS_REC) + hit(s, H_COUNT)
+	got = arm_hit[a] < 0 ? hit(s, H_SESSION) + hit(s, H_TS) + hit(s, H_END_REC) + hit(s, H_TS_REC) + hit(s, H_COUNT) +
+				       hit(s, H_WIT) + hit(s, H_WIT_ENTRY)
 			     : hit(s, (__u32)arm_hit[a]);
 	lost = hit(s, H_NOCOOKIE) + hit(s, H_TS_LOST) + hit(s, H_TS_CREATE_FAILED) + hit(s, H_RESERVE_FAILED) +
-	       hit(s, H_COUNT_LOST);
+	       hit(s, H_COUNT_LOST) + hit(s, H_WIT_DENIED);
 	dr = atomic_load(&drained);
 	rf = atomic_load(&refused);
 	printf("row round=%d event=read arm=%s n=%d cpu_ns=%lld wall_ns=%lld hits=%llu lost=%llu drained=%llu refused=%llu "
