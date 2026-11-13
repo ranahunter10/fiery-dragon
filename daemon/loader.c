@@ -279,9 +279,12 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 	 * the programs still load with the object, so the verifier checks them whether or not they
 	 * attach. */
 	if (l->file && o->flow) {
+		/* The socket tracepoints first (Dragon's review F-11): a vfs session counts a socket's
+		 * read() or write() as owned by the socket and leaves it to the tracepoint, so the
+		 * tracepoints must already be attached when the first vfs session is. */
 		struct bpf_program *const flow[] = {
-			l->file->progs.flow_read, l->file->progs.flow_write, l->file->progs.flow_readv,
-			l->file->progs.flow_writev, l->file->progs.flow_send, l->file->progs.flow_recv,
+			l->file->progs.flow_send, l->file->progs.flow_recv, l->file->progs.flow_read,
+			l->file->progs.flow_write, l->file->progs.flow_readv, l->file->progs.flow_writev,
 		};
 		for (size_t i = 0; i < sizeof(flow) / sizeof(flow[0]); i++) {
 			struct bpf_link *lk = bpf_program__attach(flow[i]);
@@ -332,8 +335,10 @@ void p15_loader_detach(struct p15_loader *l)
 		spine_bpf__detach(l->spine);
 	if (l->net)
 		net_bpf__detach(l->net);
-	for (int i = 0; i < l->n_flow_links; i++)
-		bpf_link__destroy(l->flow_links[i]);   /* the flow programs were attached by hand (ADR-0005) */
+	/* the flow programs were attached by hand (ADR-0005), the socket tracepoints first: destroyed in
+	 * reverse, so the tracepoints outlast the vfs sessions that leave socket calls to them (F-11) */
+	for (int i = l->n_flow_links - 1; i >= 0; i--)
+		bpf_link__destroy(l->flow_links[i]);
 	l->n_flow_links = 0;
 	if (l->file)
 		file_bpf__detach(l->file);
