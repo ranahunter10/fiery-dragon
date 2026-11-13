@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "131e161bd94c51177f31961a8a66a8188f47396a8b6ee9cc983294844c015150"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "71dc3703503fcb6945d6642b1ec85f51adb9ac8e61de7ad0ae0657cfdec7d3e2"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -168,6 +168,9 @@ RECORDS = {
     (11, 1): Layout('FILE', 11, 1, 'OPEN',
         np.dtype({'names': ['h', 'fid', 'obj', 'fflags', 'f_flags', 'f_mode', 'seen', 'facts_full', 'name_full', 'facts_len', 'name_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 72, 74, 76], 'itemsize': 80}),
         80, 184, (('facts', 40), ('name', 63)), (('facts', 'OBJFACTS'),)),
+    (11, 2): Layout('FILE', 11, 2, 'OPEN',
+        np.dtype({'names': ['h', 'fid', 'obj', 'sock_cookie', 'fflags', 'f_flags', 'f_mode', 'seen', 'facts_full', 'name_full', 'facts_len', 'name_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 56, 60, 64, 68, 72, 76, 80, 82, 84], 'itemsize': 88}),
+        88, 192, (('facts', 40), ('name', 63)), (('facts', 'OBJFACTS'),)),
     (39, 1): Layout('FD', 39, 1, 'MARKER',
         np.dtype({'names': ['h', 'fid', 'obj', 'pos', 'fd', 'fflags', 'f_flags', 'f_mode', 'path_err', 'snap_id', 'facts_full', 'path_full', 'facts_len', 'path_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<i4', '<u4', '<u4', '<u4', '<u2', '<u2', 'S4'], 'offsets': [0, 32, 40, 48, 56, 60, 64, 68, 72, 76, 80, 84, 88, 90, 92], 'itemsize': 96}),
         96, 4232, (('facts', 40), ('path', 4096)), (('facts', 'OBJFACTS'),)),
@@ -634,6 +637,7 @@ SQL_COLUMNS = {
         ('start_ns', 'UBIGINT'),
         ('fid', 'UBIGINT'),
         ('obj', 'UBIGINT'),
+        ('sock_cookie', 'UBIGINT'),
         ('fflags', 'UINTEGER'),
         ('f_flags', 'UINTEGER'),
         ('f_mode', 'UINTEGER'),

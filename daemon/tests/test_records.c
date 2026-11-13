@@ -584,6 +584,26 @@ static struct p15_file_v1 *mk_filerec(__u32 fflags, int facts, const char *name)
 	return r;
 }
 
+/* FILE v2 (ADR-0032): v1 with sock_cookie after obj. */
+static struct p15_file_v2 *mk_filerec2(__u32 fflags, int facts, const char *name, __u64 cookie)
+{
+	size_t nl = strlen(name), fl = facts ? sizeof(struct p15_part_objfacts) : 0;
+	struct p15_file_v2 *r = (void *)mk(P15_T_FILE, (unsigned)((sizeof(*r) + fl + nl + 7) & ~7ul));
+
+	r->h.version = 2;
+	r->fid = 9;
+	r->obj = 3;
+	r->sock_cookie = cookie;
+	r->fflags = fflags;
+	r->seen = 5;
+	r->facts_len = r->facts_full = (__u16)fl;
+	if (facts)
+		((struct p15_part_objfacts *)(r + 1))->seen = 5;
+	r->name_len = r->name_full = (__u16)nl;
+	memcpy((__u8 *)(r + 1) + fl, name, nl);
+	return r;
+}
+
 /* FLOW and FILE (ADR-0005 rules 2, 7, 8; ADR-0015 rules 2, 5, 9): the rules and wording of
  * python/p15/records.py (_flow_check and the FILE checks). */
 static void test_flow_records(void)
@@ -712,6 +732,45 @@ static void test_flow_records(void)
 	fr = mk_filerec(0, 0, "");
 	fr->_pad[0] = 1;
 	WHY("FILE dirty padding", "FILE: non-zero padding");
+
+	{
+		struct p15_file_v2 *f2;
+
+		EXPECT(sizeof(struct p15_file_v2) == 88 && P15_FILE_VERSION == 2, "FILE v2: 88 bytes, the version written");
+		mk_filerec2(P15_FF_OBJ_NEW, 1, "TCP", 4242);
+		WHY("FILE v2 of a TCP socket with its cookie and facts", "accepted");
+		EXPECT(ok_exact(sizeof(*f2) + sizeof(struct p15_part_objfacts) + 8), "FILE v2 read within its bytes");
+		p15_rec_format(buf, line, sizeof(line));
+		EXPECT(strstr(line, " fid=9 obj=3 sock_cookie=4242 ") && strstr(line, "name=\"TCP\"(3/3)"), line);
+		mk_filerec2(0, 0, "UNIX", 0);
+		WHY("FILE v2, no cookie made", "accepted");
+		f2 = mk_filerec2(0, 0, "", 0);
+		f2->seen = 6;
+		WHY("FILE v2 seen 6", "FILE: unknown 'seen'");
+		mk_filerec2(P15_FF_KTHREAD, 0, "", 1);
+		WHY("FILE v2 KTHREAD", "FILE: fflags bits this record never carries");
+		mk_filerec2(0, 1, "", 1);
+		WHY("FILE v2 facts without OBJ_NEW", "FILE: facts present without its flag, or its flag without it");
+		f2 = mk_filerec2(0, 0, "x", 1);
+		f2->name_full = 70;
+		WHY("FILE v2 name cut without TRUNCATED", namef);
+		f2 = mk_filerec2(0, 0, "", 1);
+		f2->name_len = f2->name_full = 64;
+		f2->h.len = sizeof(*f2) + 72;
+		WHY("FILE v2 name over 63", "variable field beyond len");
+		f2 = mk_filerec2(0, 0, "ab", 1);
+		f2->h.len += 8;
+		WHY("FILE v2 with slack", "len larger than its fields need");
+		f2 = mk_filerec2(0, 0, "", 1);
+		f2->_pad[3] = 1;
+		WHY("FILE v2 dirty padding", "FILE: non-zero padding");
+		f2 = mk_filerec2(0, 0, "", 1);
+		f2->h.len = 80;                 /* a v2 record cut to v1's size */
+		WHY("FILE v2 shorter than its fixed part", "len shorter than the fixed part");
+		f2 = mk_filerec2(0, 0, "", 1);
+		f2->h.version = 3;
+		WHY("FILE v3", "unknown type or version");
+	}
 }
 
 int main(void)

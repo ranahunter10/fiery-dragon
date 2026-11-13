@@ -283,14 +283,23 @@ class DataFlow(unittest.TestCase):
         self.why(rec("FILE", seen=3, var={"name": b"x" * 63}, name_len=63, name_full=70), why)
         self.why(rec("FILE", seen=3, var={"name": b"x"}, h_flags=R.F_TRUNCATED), why)
         dec(rec("FILE", seen=3, var={"name": b"x" * 63}, name_len=63, name_full=70, h_flags=R.F_TRUNCATED))
-        self.why(rec("FILE", seen=3, name_len=64, name_full=64, length=80 + 72), "variable field beyond len")
-        self.why(rec("FILE", seen=3, var={"name": b"ab"}, length=96), "len larger than its fields need")
-        tail = bytearray(rec("FILE", seen=3, var={"name": b"ab"}))
-        tail[83] = 1                                    # in the padding after the name
-        self.why(bytes(tail), "non-zero bytes after the variable fields")
-        bad = bytearray(rec("FILE", seen=3))
-        bad[76] = 1                                     # _pad, after name_len (offsets 74-75)
-        self.why(bytes(bad), "FILE: non-zero padding")
+        # the byte offsets of each version's fixed part (v1 80 bytes, v2 88: sock_cookie after obj, ADR-0032)
+        for v, fixed in ((1, 80), (2, 88)):
+            with self.subTest(version=v):
+                self.why(rec("FILE", version=v, seen=3, name_len=64, name_full=64, length=fixed + 72),
+                         "variable field beyond len")
+                self.why(rec("FILE", version=v, seen=3, var={"name": b"ab"}, length=fixed + 16),
+                         "len larger than its fields need")
+                tail = bytearray(rec("FILE", version=v, seen=3, var={"name": b"ab"}))
+                tail[fixed + 3] = 1                     # in the padding after the name
+                self.why(bytes(tail), "non-zero bytes after the variable fields")
+                bad = bytearray(rec("FILE", version=v, seen=3))
+                bad[fixed - 4] = 1                      # _pad, the last 4 bytes of the fixed part
+                self.why(bytes(bad), "FILE: non-zero padding")
+                self.why(rec("FILE", version=v, seen=6), "FILE: unknown 'seen'")
+        r = dec(rec("FILE", seen=5, sock_cookie=4242, var={"name": b"TCP"}))
+        self.assertEqual((r.h["version"], r.f["sock_cookie"], r.var["name"]), (2, 4242, b"TCP"))
+        self.assertNotIn("sock_cookie", dec(rec("FILE", version=1, seen=5)).f)
 
 
 class Helpers(unittest.TestCase):

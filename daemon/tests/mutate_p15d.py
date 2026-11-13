@@ -108,6 +108,9 @@ M = [
     ("drain.c", "\t\tgot = ring__consume_n(r, room);", "\t\tgot = ring__consume(r);", IT),
     ("drain.c", "\tn = take_all(d);\n\tnote_poll_gap(d, p15_boot_ns());", "\tn = ring_buffer__consume(d->rb);\n\tnote_poll_gap(d, p15_boot_ns());", IT),
     ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;", "\tint n = 0, m;", IT),
+    # ADR-0032: a socket's FILE carries the cookie the kernel holds (it_p15d case 13 checks both TCP ends)
+    ("../bpf/progs/file.bpf.c", "\t\t  (__u64)sk->__sk_common.skc_cookie.counter);", "\t\t  0);", IT),
+    ("../bpf/progs/file.bpf.c", "\tr->sock_cookie = sock_cookie;\n", "", IT),
 ]
 
 

@@ -409,15 +409,17 @@ bulk = list(run.ring_records(1))
 fl = [r for r in bulk if r.name == 'FLOW' and r.h['tgid'] == me]
 k = lambda kind, n, ff=0: sum(1 for r in fl if r.f['kind'] == kind and r.f['bytes'] == n and (r.f['fflags'] & ff) == ff)
 files = [r for r in bulk if r.name == 'FILE' and r.h['tgid'] == me]
+nets = {r.f['sock_cookie'] for r in bulk if r.name == 'NET' and r.h['tgid'] == me and r.f['op'] in (1, 2)}
+joined = sum(1 for r in files if r.f['seen'] == 5 and r.f.get('sock_cookie', 0) in nets)
 st = [r for r in run.ring_records(2) if r.name == 'FLOW_STATS'][-1].f
 print(k(1, 12345), k(2, 12345), k(2, 7, g.FF_VECTORED), k(1, 7, g.FF_VECTORED), k(2, 3331), k(1, 3331),
       k(4, 321), k(4, 222), sum(r.f['bytes'] for r in fl if r.f['kind'] == 3 and not r.f['fflags'] & g.FF_PEEK),
       sum(1 for r in fl if r.f['kind'] == 3 and r.f['fflags'] & g.FF_PEEK), k(2, 321),
       sum(1 for r in files if r.f['seen'] == 3), sum(1 for r in files if r.f['seen'] == 5),
       sum(1 for r in fl if r.f['first_ts'] > r.f['last_ts']), sum(1 for r in fl if r.f['fflags'] & g.FF_START_UNKNOWN),
-      st['v_owned_by_sock'], st['flow_invalid'], st['flow_lost'], st['file_lost'], st['flow_missed'])" \
+      st['v_owned_by_sock'], st['flow_invalid'], st['flow_lost'], st['file_lost'], st['flow_missed'], joined, len(nets))" \
       "$(ls -d "$T"/c13/*/ | head -1)" "${wl:-0}")
-    read -r rd12 wr12 wv7 rv7 pw99 pr99 snd321 snd222 rcvb peek wr321 f_io f_net rev unk own inv flost filost miss <<<"$c13"
+    read -r rd12 wr12 wv7 rv7 pw99 pr99 snd321 snd222 rcvb peek wr321 f_io f_net rev unk own inv flost filost miss joined nnet <<<"$c13"
     echo "  workload pid ${wl:-?}: READ/WRITE 12345 $rd12/$wr12, readv/writev 7 $rv7/$wv7, pipe 3331 $pr99/$pw99; SEND 321 $snd321, 222 $snd222; RECV bytes $rcvb, PEEK $peek; FILE seen io $f_io, net $f_net; vfs on a socket $own"
     check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c13.txt" "--flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc $rc)"
     check "[ -n \"${wl:-}\" ] && [ \"$rd12\" = 1 ] && [ \"$wr12\" = 1 ]" "the 12345-byte write and read are one WRITE and one READ"
@@ -427,6 +429,7 @@ print(k(1, 12345), k(2, 12345), k(2, 7, g.FF_VECTORED), k(1, 7, g.FF_VECTORED), 
     check "[ \"${own:-0}\" -ge 1 ]" "  ... the vfs hook counted the socket call as owned by the socket ($own)"
     check "[ \"$rcvb\" = 543 ] && [ \"${peek:-0}\" -ge 1 ]" "the receiver's RECVs add up to the 543 bytes sent, and the peek is flagged PEEK"
     check "[ \"${f_io:-0}\" -ge 2 ] && [ \"${f_net:-0}\" -ge 1 ]" "FILE records for the pipe's two ends (first I/O) and the sockets (network)"
+    check "[ \"${nnet:-0}\" = 2 ] && [ \"${joined:-0}\" = 2 ]" "both TCP ends' FILE carry the cookie of their CONNECT and ACCEPT (ADR-0032; $joined of 2, NET cookies $nnet)"
     check "[ \"$rev\" = 0 ] && [ \"$unk\" = 0 ]" "every FLOW starts before it ends, and no start time was lost"
     check "[ \"$inv\" = 0 ] && [ \"$flost\" = 0 ] && [ \"$filost\" = 0 ] && [ \"$miss\" = 0 ]" "FLOW_STATS: none refused, none lost to the ring, no kernel skips"
     st13=$(PYTHONPATH=python "$PY" -c "

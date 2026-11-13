@@ -81,6 +81,14 @@ CREATE TABLE obj_facts AS
 SELECT * EXCLUDE (ring, seq) FROM fact_row
 QUALIFY row_number() OVER (PARTITION BY obj ORDER BY ts_ns, ring, seq) = 1;
 
+-- ---- a socket's file object and its NET records' cookie (ADR-0032) ----
+-- FILE v2 carries the cookie the kernel held in the sock when the socket was first seen at a
+-- transfer. An object joins the socket node of that cookie when exactly one cookie names it and a
+-- NET record names the cookie; anything else keeps its own node and is counted below.
+CREATE TABLE sock_obj AS
+SELECT obj, min(sock_cookie) AS cookie FROM raw_file WHERE sock_cookie > 0 GROUP BY obj
+HAVING count(DISTINCT sock_cookie) = 1 AND min(sock_cookie) IN (SELECT sock_cookie FROM raw_net);
+
 -- ---- openfile: one row per open-file id ----
 CREATE TABLE fid_row AS
 SELECT fid, obj, ts_ns, ring, seq, tgid, start_ns, f_flags, f_mode, path, 'open' AS how, 1 AS pri FROM raw_open
@@ -119,15 +127,18 @@ WITH first AS (
 SELECT f.fid, f.obj, f.how, f.ts_ns AS first_ns, f.tgid AS opener_tgid, f.start_ns AS opener_start_ns,
        f.f_flags, f.f_mode, p.path, nm.name, c.closed_ns, coalesce(c.never_opened, false) AS never_opened,
        coalesce(d.verdict, 0) AS verdict,
-       CASE WHEN f.obj IS NULL THEN 'obj-unknown' ELSE file_rule(f.fid, o.fs_magic, o.oflags) END AS rule,
-       CASE WHEN f.obj IS NULL THEN 'u:' || f.fid      -- no object id at all: a node of its own, never merged
+       CASE WHEN so.cookie IS NOT NULL THEN 'sock-cookie'
+            WHEN f.obj IS NULL THEN 'obj-unknown' ELSE file_rule(f.fid, o.fs_magic, o.oflags) END AS rule,
+       CASE WHEN so.cookie IS NOT NULL THEN 's:' || so.cookie   -- the socket node of its NET records (ADR-0032)
+            WHEN f.obj IS NULL THEN 'u:' || f.fid      -- no object id at all: a node of its own, never merged
             ELSE file_key(f.fid, f.obj, o.fs_magic, o.oflags, o.dev, o.subvol, o.ino, o.gen) END AS file_key
 FROM first f
 LEFT JOIN path p USING (fid)
 LEFT JOIN name nm USING (fid)
 LEFT JOIN closed c USING (fid)
 LEFT JOIN denied d USING (fid)
-LEFT JOIN obj_facts o ON o.obj = f.obj;
+LEFT JOIN obj_facts o ON o.obj = f.obj
+LEFT JOIN sock_obj so ON so.obj = f.obj;
 
 -- ---- the file an exec ran: by tuple where the filesystem is trusted, else by the object capture
 -- ---- saw with the same (dev, ino, gen) most recently before the exec, else a node of its own ----
@@ -150,8 +161,8 @@ FROM e LEFT JOIN m USING (ring, seq);
 
 -- ---- file nodes ----
 CREATE TABLE file_src AS
-WITH from_fid AS (
-    SELECT file_key AS key, rule, obj, first_ns, path FROM openfile
+WITH from_fid AS (                  -- a socket joined to its cookie is a socket node, not a file node
+    SELECT file_key AS key, rule, obj, first_ns, path FROM openfile WHERE rule <> 'sock-cookie'
 ), from_obj AS (                    -- objects named only as an overlay's user object (no fid of their own here)
     SELECT file_key(NULL, o.obj, o.fs_magic, o.oflags, o.dev, o.subvol, o.ino, o.gen) AS key,
            file_rule(NULL, o.fs_magic, o.oflags) AS rule, o.obj, o.ts_ns AS first_ns, NULL AS path
@@ -366,10 +377,21 @@ UNION ALL SELECT 'flow_unregistered', (SELECT count(*) FROM raw_flow WHERE (ffla
        'transfers on a file with no open-file entry (UNREGISTERED): each names an open file of its own'
 UNION ALL SELECT 'flow_start_unknown', (SELECT count(*) FROM raw_flow WHERE (fflags & 4096) <> 0),
        'transfers whose start time was not kept (START_UNKNOWN): their edge starts at its end'
-UNION ALL SELECT 'flow_sock_not_joined', (SELECT count(*) FROM raw_flow WHERE kind IN (3, 4)),
-       'transfers on a socket: their node is the socket''s file object, not the socket node of its NET records, until NET carries the object id (step 2e)'
+UNION ALL SELECT 'flow_sock_joined', (SELECT count(*) FROM raw_flow w JOIN openfile f USING (fid)
+        WHERE w.kind IN (3, 4) AND f.rule = 'sock-cookie'),
+       'transfers on a socket whose edge is on the socket node of its NET records (ADR-0032)'
+UNION ALL SELECT 'flow_sock_not_joined', (SELECT count(*) FROM raw_flow w LEFT JOIN openfile f USING (fid)
+        WHERE w.kind IN (3, 4) AND f.rule IS DISTINCT FROM 'sock-cookie'),
+       'transfers on a socket left on the socket''s file object: no cookie when it was first seen, no NET record of the cookie (a socket that never connected, accepted, listened or bound in the run), or two cookies for one object (ADR-0032)'
+UNION ALL SELECT 'sock_obj_two_cookies', (SELECT count(*) FROM (SELECT obj FROM raw_file WHERE sock_cookie > 0
+        GROUP BY obj HAVING count(DISTINCT sock_cookie) > 1)),
+       'socket objects named with two cookies: must be 0 (ADR-0032 falsifier)'
+UNION ALL SELECT 'sock_cookie_without_net', (SELECT count(DISTINCT sock_cookie) FROM raw_file
+        WHERE sock_cookie > 0 AND sock_cookie NOT IN (SELECT sock_cookie FROM raw_net)),
+       'cookies in FILE records that no NET record names (made by another program, or a socket NET does not hook)'
 UNION ALL SELECT 'thread_rename', (SELECT count(*) FROM thread_name), 'renames of a thread that is not its process''s leader';
 
+DROP TABLE sock_obj;
 DROP TABLE fact_row;
 DROP TABLE fid_row;
 DROP TABLE edge_src;
