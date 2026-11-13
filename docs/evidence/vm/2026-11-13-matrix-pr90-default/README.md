@@ -1,6 +1,6 @@
 # The capture matrix on PR #90's head, p15d's defaults (2026-11-13, 02:33 UTC)
 
-Evidence for E-0248 and E-0249. The full matrix (`sudo tools/vm/measure_capture.sh`, soak 600 s) on the VM at commit `99dc5bc`, clean, with p15d's defaults. `--flow` is off by default, so this run checks that #90 moved nothing else. The `--flow` run is in `../2026-11-13-matrix-pr90-flow/`.
+Evidence for E-0248, E-0249 and E-0250. The full matrix (`sudo tools/vm/measure_capture.sh`, soak 600 s) on the VM at commit `99dc5bc`, clean, with p15d's defaults. `--flow` is off by default, so this run checks that #90 moved nothing else. The `--flow` run is in `../2026-11-13-matrix-pr90-flow/`.
 
 | File | What |
 |---|---|
@@ -8,7 +8,8 @@ Evidence for E-0248 and E-0249. The full matrix (`sudo tools/vm/measure_capture.
 | `steps.txt` | every step's exit code and duration: 12 steps, all `rc=0` |
 | `summary.md` | one line per figure, each from its step's report |
 | `<step>.txt`, `<step>.err` | each step's raw output and its stderr |
-| `run-SHA256SUMS.txt` | the run's own checksums, written on the VM; they match every file here |
+| `journal-02.43-02.53.txt` | the guest's journal for the soak's window (`journalctl -k --since 02:43 --until 02:53 -o short-precise`), as printed in the maintainer's terminal: the first three and the last line are the prompt (E-0250) |
+| `run-SHA256SUMS.txt` | the run's own checksums, written on the VM; they match every file here except the journal, which was not part of the run directory |
 
 Not copied: the `perf/perf-*.data` files (binary). `profile.txt` and `profile_callers.txt` are the reports made from them.
 
@@ -27,6 +28,8 @@ What it shows (MEAS, VM):
 The two runs' 95 % intervals overlap on every open_cost arm. As with #88, two runs give no paired comparison between commits, so these are not a regression result in either direction.
 
 **The soak was stalled (E-0249).** The soak samples every 60 s, and its first sample came at t=454 s: one `time.sleep(60)` took about 454 s of `CLOCK_MONOTONIC`. Then samples came 60 s apart (t=514, 574, 634). Over its 600 s, the workload finished 16 or 17 steps of each kind, against 45 in the `--flow` run 30 minutes earlier. That fits roughly 200 s of real work (INF). The soak's harness does not detect this; nothing in `soak_report.txt` marks it. The correctness results stand: recall is 100 % on every step kind, the books closed and the graph checks match. The rates (CPU per second, WAL KiB/s) cover a run that was mostly frozen, so they are not compared with any other run. p15d's `poll_gap_max` did not show the stall because the gauge is reset at every stats interval.
+
+**What stalled: the whole guest, from outside it (E-0250).** The guest's journal for 02:43 to 02:53 UTC has 83 lines, all stamped 02:51:34: nothing was logged for about 8 minutes, then everything at once. The kernel's clocksource watchdog, which normally reads the clocks every 0.5 s, found 406.1 s between two reads (`Long readout interval, skipping watchdog check: cs_nsec: 406098549870`), with both clocks agreeing. The soft-lockup report (`CPU#1 stuck for 379s! [snapd:1062]`) has its RIP in `_raw_spin_unlock_irqrestore` just after interrupts were enabled again, inside an ordinary `tgkill`. At the same moment, systemd's watchdogs fired for udevd (3 min limit), snapd (5 min), logind and journald, which were then restarted. Services on every CPU missed their deadlines, not one CPU, and time passed with no timer running in the guest (MEAS). The guest was therefore not scheduled by its host for about 406 s. That it was the host is inferred; what on the host caused it is not known (INF). The soak's own overrun (about 394 s) falls within this window.
 
 **The 22 fentry skips.** `file_stats` in `soak.txt`: `fentry_missed=22`, `missing_emitted=22` (14 with their path walked, 8 without a path), `open_lost=0`. Each open the path program missed was written by the session return, as the fallback was built to do (E-0089's recursion guard). This is the first soak that shows the fallback being used.
 
