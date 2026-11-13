@@ -86,7 +86,7 @@ Either of these reopens the decision:
 | 5 | The sock tracepoints' program has a trusted `sk` (`bpf_core_cast`) and already reads `sk->sk_socket` by direct load, so reading a field is no helper call and is allowed in a classic tracepoint | SRC | `bpf/progs/file.bpf.c` `sock_flow` |
 | 6 | An accepted socket's descriptor is installed after `do_accept` returns, so after the fexit on `inet_accept` has made its cookie: no transfer on it can come first | SRC | v7.0 `net/socket.c:1988, 2022` (`ops->accept`, then `FD_ADD`) |
 | 7 | An aligned 8-byte load is how `atomic64_read` reads on x86-64 | INF | `arch/x86` `arch_atomic64_read` is `__READ_ONCE` (not re-read here) |
-| 8 | The cookie read and the FILE v2 layout load and run on 7.0, with both TCP ends joined | OPEN | CI's 7.0 runner, then the VM (it_p15d case 13) |
+| 8 | The cookie read and the FILE v2 layout load and run on 7.0, with both TCP ends joined | MEAS (CI's 7.0 runner; the VM: OPEN) | [`docs/evidence/probes/2026-11-14-socket-join-ci`](../evidence/probes/2026-11-14-socket-join-ci/README.md): 2 of 2 on 7.0.0-1017-azure |
 
 ## Pros and cons of the options
 
