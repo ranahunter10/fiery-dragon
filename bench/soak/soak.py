@@ -13,7 +13,8 @@ goes, then every operation the workload logged checked against the WAL and the g
    state, spine and network events, queue-full and GAP counts and the longest poll gap.
 3. p15d is stopped; an "end" line: its exit code, END's state and invariant.
 4. "truth" lines: per step kind, the items the workload logged and how many the WAL holds, with
-   up to 5 missing ones; then "file_stats" from the last FILE_STATS (the walk's counters included).
+   up to 5 missing ones; then "file_stats" from the last FILE_STATS (the walk's counters included), and "flow_stats" with every counter of
+   the last FLOW_STATS when the run has the flow programs (--flow).
 5. The graph of the run (python -m p15.graph): its output as "graph_out" lines and its exit code,
    then "graph_truth" lines: the dropper chain of every compiled program, the http connections
    paired by ISN, and every memfd execution.
@@ -229,6 +230,9 @@ def finish(work: Path, code: int, truth_log: Path, clean: bool) -> int:
             "open_emitted", "missing_emitted", "walked", "walk_raced", "walk_truncated", "walk_unnamed", "open_lost",
             "missing_lost", "close_lost", "fentry_missed", "kprobe_missed", "files_live_max", "objs_live_max")
             if k in fs.f))
+    fl = last.get("FLOW_STATS")
+    if fl is not None:
+        emit("flow_stats " + " ".join(f"{k}={v}" for k, v in fl.f.items() if isinstance(v, int)))
     db = work / "graph.duckdb"
     t0 = time.monotonic()
     g = subprocess.run([sys.executable, "-m", "p15.graph", str(run_dir), str(db)], capture_output=True, text=True,
