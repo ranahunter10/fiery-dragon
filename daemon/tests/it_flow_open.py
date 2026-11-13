@@ -105,6 +105,7 @@ def check(rundir: Path, out: Path, mode: str) -> int:
     say(s["open_at_end"] >= want, f"the end's count found the held calls open (open_at_end {s['open_at_end']} >= {want})")
     say((s["v_release_failed"], s["v_claim_race"]) == (0, 0),
         f"no release failed and the iterator gave up on no task ({s['v_release_failed']}, {s['v_claim_race']})")
+    say(s["v_release_none"] == 0, f"every return found its call in its task's count (v_release_none {s['v_release_none']})")
     say(s["v_no_slot_entry"] == 0 and s["v_no_slot_return"] == 0,
         f"every task had its slot ({s['v_no_slot_entry']} entries without one)")
     # book B1 itself is p15d's to check, on absolute counters (END's invariant, checked by the caller):

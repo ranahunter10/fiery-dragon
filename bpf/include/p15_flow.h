@@ -42,6 +42,10 @@
  * V_NO_SLOT_ENTRY at the entry, V_NO_SLOT_RETURN at the return; the difference is the slot-less
  * calls still open, which nothing can observe directly. V_RELEASE_FAILED (a return that could not
  * take its call off the count) and V_CLAIM_RACE (the iterator gave up on a task) are expected 0.
+ * V_RELEASE_NONE is a return that found its task's count at 0, open and claimed: its entry is not
+ * in the count, so there is nothing to take off and nothing to correct in B1 (the entry and the
+ * return are both counted and match). It is reported, not a term, and expected 0: every entry that
+ * has a return added itself to the count first, so a value above 0 means the count lost a call.
  * V_ENTRY_WHILE_OPEN is reported, not a term: an entry by a task whose count was already above 0
  * is a nested call, or the sign that an earlier return of that task was lost.
  * What the count cannot do: tell a call still open from a return lost earlier in the run. Both
@@ -86,6 +90,7 @@ enum p15_flc {
 	P15_FLC_V_RELEASE_FAILED,   /* a return that could not take its call off its task's count (expected 0) */
 	P15_FLC_V_ENTRY_WHILE_OPEN, /* an entry by a task with a call already open: nested, or an earlier return was lost (reported) */
 	P15_FLC_V_CLAIM_RACE,       /* the iterator gave up on a task's slot after its tries (expected 0; reported) */
+	P15_FLC_V_RELEASE_NONE,     /* a return that found its task's count at 0: its entry is not in it (expected 0; reported) */
 	P15_FLC__N,
 };
 

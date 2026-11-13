@@ -1119,8 +1119,12 @@ static __always_inline void rw_release(struct rw_start *st)
 			nw = w - P15_FLOW_CLAIM_ONE;
 		else if (w & P15_FLOW_OPEN_MASK)
 			nw = w - 1;
-		else
-			break;                  /* nothing to take: this return's entry is not in the count */
+		else {
+			/* nothing to take: this return's entry is not in the count, so B1 needs no
+			 * term for it (p15_flow.h) */
+			flow_count(P15_FLC_V_RELEASE_NONE);
+			return;
+		}
 		if (__sync_val_compare_and_swap(&st->open, w, nw) == w) {
 			if (claimed)
 				flow_count(P15_FLC_RETURNED_AFTER_COUNT);

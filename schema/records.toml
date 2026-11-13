@@ -948,6 +948,7 @@ fields = [
   { name = "v_release_failed", c = "u64", doc = "a return that could not take its call off its task's count (expected 0); cumulative" },
   { name = "v_entry_while_open", c = "u64", doc = "an entry by a task with a call already open: a nested call, or an earlier return of that task was lost (reported, not a book term); cumulative" },
   { name = "v_claim_race",   c = "u64", doc = "tasks whose slot the end's iterator gave up on after its tries (expected 0; reported); cumulative" },
+  { name = "v_release_none", c = "u64", doc = "a return that found its task's count of open calls at 0, so its entry is not in the count (expected 0; reported, not a book term); cumulative" },
   { name = "flow_drained",   c = "u64", doc = "FLOW and FILE records the drain copied into a batch; cumulative" },
   { name = "flow_invalid",   c = "u64", doc = "FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative" },
   { name = "flow_missed",    c = "u64", doc = "runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative" },

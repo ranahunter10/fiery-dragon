@@ -125,9 +125,11 @@ M = [
     ("p15d.c", "	rc = p15_loader_flow_count(l);\n", "	rc = 0;\n", IT),
     ("p15d.c", "	p15_loader_flow_gate(l);\n	barrier_or_degrade(r, \"after the flow gate\");", "	barrier_or_degrade(r, \"after the flow gate\");", IT),
     ("../bpf/progs/file.bpf.c", "	if (__sync_fetch_and_add(&st->open, 1) & P15_FLOW_OPEN_MASK)", "	if (0)", IT),
-    ("../bpf/progs/file.bpf.c", "		if (st)\n			rw_release(st);\n		else", "		if (st)\n			;\n		else", IT),
+    ("../bpf/progs/file.bpf.c", "		if (st)\n			rw_release(st);\n		else", "		if (st)\n			(void)rw_release;\n		else", IT),
     ("../bpf/progs/file.bpf.c", "		if (claimed)\n			nw = w - P15_FLOW_CLAIM_ONE;\n		else if", "		if (0)\n			nw = w - P15_FLOW_CLAIM_ONE;\n		else if", IT),
     ("../bpf/progs/file.bpf.c", "	if (flow_gate) {", "	if (0) {", IT),
+    # a return that never finds its call in the count: V_RELEASE_NONE moves (case 13's check)
+    ("../bpf/progs/file.bpf.c", "		else if (w & P15_FLOW_OPEN_MASK)\n			nw = w - 1;", "		else if (0)\n			nw = w - 1;", IT),
 ]
 
 

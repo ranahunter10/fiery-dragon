@@ -275,6 +275,7 @@ int main(void)
 	r.flowc[P15_FLC_V_NO_SLOT_RETURN] = 1;
 	r.flowc[P15_FLC_V_ENTRY_WHILE_OPEN] = 5;   /* reported only: no term of any book */
 	r.flowc[P15_FLC_V_CLAIM_RACE] = 4;         /* reported only */
+	r.flowc[P15_FLC_V_RELEASE_NONE] = 3;       /* reported only: its entry and its return are both counted */
 	r.flowc[P15_FLC_SESS_RETURN] = 26;     /* B2: returns = empty + failed + no inode + emit attempts */
 	r.flowc[P15_FLC_V_EMPTY] = 4;
 	r.flowc[P15_FLC_V_FAILED] = 1;

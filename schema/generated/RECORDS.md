@@ -920,7 +920,7 @@ Fixed part 456 bytes; at most 456 bytes with its variable fields.
 
 The data-flow programs' health (ADR-0005, STATE decisions 18 and 47), written with every STATS record: the counters of bpf/include/p15_flow.h since the run's start, their books' drain side, and the kernel's skips. The books close as p15_flow.h states (B1 to B5); a lost FLOW or FILE, or a skipped flow program, makes the run DEGRADED.
 
-Fixed part 336 bytes; at most 336 bytes with its variable fields.
+Fixed part 344 bytes; at most 344 bytes with its variable fields.
 
 | Offset | Field | Type | Meaning |
 |---:|---|---|---|
@@ -960,9 +960,10 @@ Fixed part 336 bytes; at most 336 bytes with its variable fields.
 | 288 | `v_release_failed` | u64 | a return that could not take its call off its task's count (expected 0); cumulative |
 | 296 | `v_entry_while_open` | u64 | an entry by a task with a call already open: a nested call, or an earlier return of that task was lost (reported, not a book term); cumulative |
 | 304 | `v_claim_race` | u64 | tasks whose slot the end's iterator gave up on after its tries (expected 0; reported); cumulative |
-| 312 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
-| 320 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
-| 328 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
+| 312 | `v_release_none` | u64 | a return that found its task's count of open calls at 0, so its entry is not in the count (expected 0; reported, not a book term); cumulative |
+| 320 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
+| 328 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
+| 336 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
 
 ## FLOW (type 10, version 1, class FLOW)
 

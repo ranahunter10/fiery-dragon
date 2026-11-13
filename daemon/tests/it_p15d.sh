@@ -415,9 +415,9 @@ print(k(1, 12345), k(2, 12345), k(2, 7, g.FF_VECTORED), k(1, 7, g.FF_VECTORED), 
       sum(1 for r in fl if r.f['kind'] == 3 and r.f['fflags'] & g.FF_PEEK), k(2, 321),
       sum(1 for r in files if r.f['seen'] == 3), sum(1 for r in files if r.f['seen'] == 5),
       sum(1 for r in fl if r.f['first_ts'] > r.f['last_ts']), sum(1 for r in fl if r.f['fflags'] & g.FF_START_UNKNOWN),
-      st['v_owned_by_sock'], st['flow_invalid'], st['flow_lost'], st['file_lost'], st['flow_missed'])" \
+      st['v_owned_by_sock'], st['flow_invalid'], st['flow_lost'], st['file_lost'], st['flow_missed'], st['v_release_none'])" \
       "$(ls -d "$T"/c13/*/ | head -1)" "${wl:-0}")
-    read -r rd12 wr12 wv7 rv7 pw99 pr99 snd321 snd222 rcvb peek wr321 f_io f_net rev unk own inv flost filost miss <<<"$c13"
+    read -r rd12 wr12 wv7 rv7 pw99 pr99 snd321 snd222 rcvb peek wr321 f_io f_net rev unk own inv flost filost miss relnone <<<"$c13"
     echo "  workload pid ${wl:-?}: READ/WRITE 12345 $rd12/$wr12, readv/writev 7 $rv7/$wv7, pipe 3331 $pr99/$pw99; SEND 321 $snd321, 222 $snd222; RECV bytes $rcvb, PEEK $peek; FILE seen io $f_io, net $f_net; vfs on a socket $own"
     check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c13.txt" "--flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc $rc)"
     check "[ -n \"${wl:-}\" ] && [ \"$rd12\" = 1 ] && [ \"$wr12\" = 1 ]" "the 12345-byte write and read are one WRITE and one READ"
@@ -429,6 +429,7 @@ print(k(1, 12345), k(2, 12345), k(2, 7, g.FF_VECTORED), k(1, 7, g.FF_VECTORED), 
     check "[ \"${f_io:-0}\" -ge 2 ] && [ \"${f_net:-0}\" -ge 1 ]" "FILE records for the pipe's two ends (first I/O) and the sockets (network)"
     check "[ \"$rev\" = 0 ] && [ \"$unk\" = 0 ]" "every FLOW starts before it ends, and no start time was lost"
     check "[ \"$inv\" = 0 ] && [ \"$flost\" = 0 ] && [ \"$filost\" = 0 ] && [ \"$miss\" = 0 ]" "FLOW_STATS: none refused, none lost to the ring, no kernel skips"
+    check "[ \"$relnone\" = 0 ]" "FLOW_STATS: every return found its call in its task's count (v_release_none ${relnone:-?})"
     st13=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
 print(wal.read_run(Path(sys.argv[1])).segments[0].meta.get('selftest.result', ''))" "$(ls -d "$T"/c13/*/ | head -1)")

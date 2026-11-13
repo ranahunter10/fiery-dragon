@@ -487,6 +487,7 @@ static void flow_stats(struct p15_writer *w)
 	F(v_release_failed, P15_FLC_V_RELEASE_FAILED)
 	F(v_entry_while_open, P15_FLC_V_ENTRY_WHILE_OPEN)
 	F(v_claim_race, P15_FLC_V_CLAIM_RACE)
+	F(v_release_none, P15_FLC_V_RELEASE_NONE)
 #undef F
 	s.flow_drained = atomic_load(&r->flow_drained);
 	s.flow_invalid = atomic_load(&r->flow_invalid);
