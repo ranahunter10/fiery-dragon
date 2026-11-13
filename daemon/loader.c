@@ -2,6 +2,7 @@
 /* Loading the spine programs and the self-test (ADR-0003). See loader.h. */
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <bpf/libbpf.h>
@@ -238,10 +239,17 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 	if (l->net) {
 		unsigned long long nc = 0, fc = 0;
 
-		null = fopen("/dev/null", "w");
-		l->net_selftest_failed = p15_selftest_net(bpf_map__fd(l->net->maps.bulk_rb), null ? null : stderr, &nc, &fc);
-		if (null)
-			fclose(null);
+		char *text = NULL;
+		size_t text_len = 0;
+		FILE *mem = open_memstream(&text, &text_len);
+
+		/* the report is kept, and printed only if the test fails: which check, on which try */
+		l->net_selftest_failed = p15_selftest_net(bpf_map__fd(l->net->maps.bulk_rb), mem ? mem : stderr, &nc, &fc);
+		if (mem)
+			fclose(mem);
+		if (l->net_selftest_failed != 0 && text)
+			fputs(text, stderr);
+		free(text);
 		l->net_consumed += nc;
 		l->file_consumed += fc;
 		if (l->net_selftest_failed != 0) {

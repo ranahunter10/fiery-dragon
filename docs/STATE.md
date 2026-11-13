@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-13 (UTC), PR "research: a more robust capture layer, and the plan to a detection result"
+**Last updated:** 2026-11-13 (UTC), PR "daemon: the network self-test retries a skipped record and reports its checks"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -21,6 +21,7 @@ So that no session re-reads the repo to find its place (the maintainer's request
    - the VM's `/tmp` is a tmpfs with a per-user quota: a test killed mid-write leaves its files there (E-0107);
    - measure on the VM with the host on its charger, in Best performance mode: on battery it ran about 2-4 times slower (E-0108).
    - the VM's host can stop the guest for minutes (E-0088, E-0250): `summary.md`'s Stalls section names every matrix step a stall touched, and the soak's report says STALL; those steps' rates are not quotable (E-0252).
+   - a self-test that fails prints its own report, which check and on which try: the network self-test now does, like the file and flow ones, and retries a skipped record up to 5 times (E-0254).
 
 ## Phase 0 gate
 

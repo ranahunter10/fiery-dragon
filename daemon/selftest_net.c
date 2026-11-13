@@ -71,10 +71,12 @@ static int check(FILE *log, int ok, const char *what)
 	return !ok;
 }
 
-int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed, unsigned long long *file_consumed)
+#define NET_TRIES 5
+
+/* One try: the five calls, then the checks. Returns failed checks or -errno; *missing is set when a
+ * record did not arrive, which is what a kernel skip of a preemptible fexit looks like (ADR-0020). */
+static int try_once(struct ring_buffer *rb, struct coll *c, FILE *log, int *missing)
 {
-	struct coll c;
-	struct ring_buffer *rb;
 	struct sockaddr_in a = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK) }, cl;
 	socklen_t al = sizeof(a), cll = sizeof(cl);
 	unsigned char lo[16] = { 127, 0, 0, 1 };
@@ -82,13 +84,9 @@ int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed, un
 	unsigned short port, cport;
 	const struct p15_net *b, *l, *t, *x, *u;
 
-	memset(&c, 0, sizeof(c));
-	c.me = (unsigned)getpid();
-	rb = ring_buffer__new(bulk_rb_fd, on_rec, &c, NULL);
-	if (!rb)
-		return -errno;
-	ring_buffer__consume(rb);           /* forget records from before the test */
-	c.n = c.other = c.invalid = 0;
+	*missing = 0;
+	ring_buffer__consume(rb);           /* forget records from before the try */
+	c->n = c->other = c->invalid = 0;
 	ls = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	cs = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	us = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
@@ -111,18 +109,21 @@ int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed, un
 	for (int i = 0; i < 5; i++)
 		ring_buffer__poll(rb, 20);
 	ring_buffer__consume(rb);            /* records don't wake the reader below the high-water mark (ADR-0020) */
-	b = find(&c, BIND, TCP, 0);
-	l = find(&c, LISTEN, TCP, 0);
-	t = find(&c, CONNECT, TCP, 0);
-	x = find(&c, ACCEPT, TCP, 0);
-	u = find(&c, CONNECT, UDP, 0);
+	b = find(c, BIND, TCP, 0);
+	l = find(c, LISTEN, TCP, 0);
+	t = find(c, CONNECT, TCP, 0);
+	x = find(c, ACCEPT, TCP, 0);
+	u = find(c, CONNECT, UDP, 0);
 	fprintf(log, "selftest net: listener 127.0.0.1:%u, client port %u; %d own records, %d of other processes, %d invalid\n",
-		port, cport, c.n, c.other, c.invalid);
-	failed += check(log, c.invalid == 0, "every record passes the checks");
-	failed += check(log, count(&c, BIND, TCP) == 1 && count(&c, LISTEN, TCP) == 1 && count(&c, CONNECT, TCP) == 1 &&
-			     count(&c, ACCEPT, TCP) == 1 && count(&c, CONNECT, UDP) == 1,
+		port, cport, c->n, c->other, c->invalid);
+	failed += check(log, c->invalid == 0, "every record passes the checks");
+	failed += check(log, count(c, BIND, TCP) == 1 && count(c, LISTEN, TCP) == 1 && count(c, CONNECT, TCP) == 1 &&
+			     count(c, ACCEPT, TCP) == 1 && count(c, CONNECT, UDP) == 1,
 			"exactly one TCP bind, listen, connect, accept and one UDP connect");
 	if (!b || !l || !t || !x || !u) {
+		fprintf(log, "  FAIL net: missing:%s%s%s%s%s\n", b ? "" : " bind", l ? "" : " listen", t ? "" : " connect",
+			x ? "" : " accept", u ? "" : " udp-connect");
+		*missing = 1;
 		failed++;
 		goto out;
 	}
@@ -153,8 +154,32 @@ out:
 		close(cs);
 	if (us >= 0)
 		close(us);
+	return rc ? rc : failed;
+}
+
+int p15_selftest_net(int bulk_rb_fd, FILE *log, unsigned long long *consumed, unsigned long long *file_consumed)
+{
+	struct coll c;
+	struct ring_buffer *rb;
+	int rc = 0, missing = 0;
+
+	memset(&c, 0, sizeof(c));
+	c.me = (unsigned)getpid();
+	rb = ring_buffer__new(bulk_rb_fd, on_rec, &c, NULL);
+	if (!rb)
+		return -errno;
+	/* The six network programs are fexit programs, which the kernel skips for one task while another
+	 * is preempted inside them on that CPU (ADR-0020, E-0089): a record that did not arrive is the
+	 * design working, not a failure. Try again, up to NET_TRIES times, as the file self-test does.
+	 * A record that arrived but is wrong fails at once: that is a defect, not a skip. */
+	for (int try = 0; try < NET_TRIES; try++) {
+		rc = try_once(rb, &c, log, &missing);
+		if (!missing || rc < 0 || try + 1 == NET_TRIES)
+			break;
+		fprintf(log, "selftest net: try %d: a record did not arrive (a kernel skip?); again\n", try);
+	}
 	ring_buffer__free(rb);
 	*consumed = c.total;
 	*file_consumed = c.file;
-	return rc ? rc : failed;
+	return rc;
 }
