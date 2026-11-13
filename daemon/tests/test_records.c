@@ -65,6 +65,7 @@ static void test_fixed_sizes(void)
 		{ P15_T_GAP, sizeof(struct p15_gap_v1), "GAP" },
 		{ P15_T_NET, sizeof(struct p15_net_v1), "NET" },
 		{ P15_T_NET_STATS, sizeof(struct p15_net_stats_v1), "NET_STATS" },
+		{ P15_T_FLOW_STATS, sizeof(struct p15_flow_stats_v1), "FLOW_STATS" },
 	};
 	struct p15_snap_done_v1 *sd;
 
@@ -84,7 +85,7 @@ static void test_fixed_sizes(void)
 		EXPECT(!strcmp(p15_type_name(t[i].type), t[i].name), what);
 	}
 	EXPECT(!strcmp(p15_type_name(P15_T_EXEC), "EXEC") && !strcmp(p15_type_name(P15_T_END), "END"), "var types named");
-	EXPECT(!strcmp(p15_type_name(41), "?") && !strcmp(p15_type_name(99), "?"), "unknown types");
+	EXPECT(!strcmp(p15_type_name(42), "?") && !strcmp(p15_type_name(99), "?"), "unknown types");
 	EXPECT(!strcmp(p15_type_name(P15_T_PROC), "PROC") && !strcmp(p15_type_name(P15_T_SNAP_DONE), "SNAP_DONE"),
 	       "snapshot types named");
 	mk(99, 32);

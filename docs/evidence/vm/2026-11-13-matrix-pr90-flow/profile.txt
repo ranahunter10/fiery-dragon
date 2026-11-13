@@ -1,0 +1,27 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 61  of event 'task-clock:ppp'
+# Event count (approx.): 30515250
+#
+# Overhead  Shared Object      Symbol                          
+# ........  .................  ................................
+#
+    40.98%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+    26.23%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+    16.39%  p15d               [.] tiles
+     4.92%  p15d               [.] on_bulk
+     1.64%  [kernel.kallsyms]  [k] __memcg_slab_post_alloc_hook
+     1.64%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     1.64%  [kernel.kallsyms]  [k] folio_wait_bit_common
+     1.64%  [kernel.kallsyms]  [k] handle_softirqs
+     1.64%  [kernel.kallsyms]  [k] mpage_process_page_bufs
+     1.64%  [kernel.kallsyms]  [k] rep_movs_alternative
+     1.64%  [kernel.kallsyms]  [k] shuffle_freelist
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

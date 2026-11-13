@@ -29,9 +29,12 @@ struct p15_config {
 	int realtime;                /* --no-rt clears it: the drain asks for SCHED_FIFO 1 (ADR-0017 layer 3) */
 	int net;                     /* --no-net clears it: load the ADR-0004 network-intent programs */
 	int files;                   /* --no-files clears it: load the ADR-0015 file-identity programs */
+	int flow;                    /* --flow sets it: attach the ADR-0005 data-flow programs (needs files); default off until step 2b part 3 is complete */
 	uint32_t file_map_entries;   /* --file-map-entries: open-file map size (decision 19.6, E-0142) */
 	uint32_t obj_map_entries;    /* --obj-map-entries: object map size */
 	int test_no_path_fentry;     /* --test-no-path-fentry: TEST ONLY, leave the path fentry unattached */
+	int test_flow_file_fail_first; /* --test-flow-file-fail-first: TEST ONLY (needs --flow), the first FILE record
+					* of every file is lost as a full ring would lose it, so its retry is tested */
 	uint32_t start_pause_ms;     /* --test-start-pause-ms: TEST ONLY, wait after the load-time self-tests,
 				      * before the WAL opens (E-0161) */
 	uint32_t drain_pause_ms;     /* --test-drain-pause-ms: TEST ONLY, sleep after each poll to force overflow */

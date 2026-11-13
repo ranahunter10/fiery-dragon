@@ -750,7 +750,7 @@ name = "FILE"
 type = 11
 version = 1
 class = "OPEN"
-doc = "An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id, before the FLOW that found it, by the program that found it. The header names that task."
+doc = "An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id by the program that registered the open file, before that program's FLOW; another thread's FLOW on the same file can reach the ring first, so a reader joins by fid, not by order. If it is lost to a full ring the registration is undone and the next transfer writes it. The header names the task that registered it."
 fields = [
   { name = "fid",      c = "u64", doc = "the open-file id it registers (ADR-0015 rule 1)" },
   { name = "obj",      c = "u64", doc = "the object id of the file's inode" },
@@ -905,6 +905,45 @@ fields = [
   { name = "obj_map_entries",  c = "u32", doc = "the object map's size (--obj-map-entries)" },
 ]
 
+
+[[record]]
+name = "FLOW_STATS"
+type = 41
+version = 1
+class = "STATS"
+doc = "The data-flow programs' health (ADR-0005, STATE decisions 18 and 47), written with every STATS record: the counters of bpf/include/p15_flow.h since the run's start, their books' drain side, and the kernel's skips. The books close as p15_flow.h states (B1 to B5); a lost FLOW or FILE, or a skipped flow program, makes the run DEGRADED."
+fields = [
+  { name = "sess_entry",     c = "u64", doc = "a vfs kprobe.session ran at entry; cumulative" },
+  { name = "sess_return",    c = "u64", doc = "... and its return ran; cumulative" },
+  { name = "v_excl_self",    c = "u64", doc = "a vfs entry in p15d itself (no return); cumulative" },
+  { name = "v_excl_kthread", c = "u64", doc = "a vfs entry in a kernel thread (no return); cumulative" },
+  { name = "v_owned_by_sock", c = "u64", doc = "a vfs entry on a socket, left to the sock tracepoints (ADR-0005 rule 11; no return); cumulative" },
+  { name = "v_empty",        c = "u64", doc = "a vfs return with ret == 0 (no record); cumulative" },
+  { name = "v_failed",       c = "u64", doc = "a vfs return with ret < 0 (no record); cumulative" },
+  { name = "v_no_inode",     c = "u64", doc = "a vfs return whose file has no inode (no record); cumulative" },
+  { name = "v_attempt",      c = "u64", doc = "a vfs return that reached the emit path (ret > 0); cumulative" },
+  { name = "sock_seen",      c = "u64", doc = "a sock tracepoint fired; cumulative" },
+  { name = "s_excl_self",    c = "u64", doc = "... in p15d itself (no record); cumulative" },
+  { name = "s_excl_kthread", c = "u64", doc = "... in a kernel thread (no record); cumulative" },
+  { name = "s_no_file",      c = "u64", doc = "... on a socket with no struct file (D6; no record); cumulative" },
+  { name = "s_empty",        c = "u64", doc = "... with ret == 0 (no record); cumulative" },
+  { name = "s_failed",       c = "u64", doc = "... with ret < 0 (no record); cumulative" },
+  { name = "s_no_inode",     c = "u64", doc = "... whose socket file has no inode (no record); cumulative" },
+  { name = "s_attempt",      c = "u64", doc = "... that reached the emit path (ret > 0); cumulative" },
+  { name = "read_emitted",   c = "u64", doc = "FLOW records of kind READ submitted; cumulative" },
+  { name = "write_emitted",  c = "u64", doc = "... WRITE; cumulative" },
+  { name = "send_emitted",   c = "u64", doc = "... SEND; cumulative" },
+  { name = "recv_emitted",   c = "u64", doc = "... RECV; cumulative" },
+  { name = "flow_lost",      c = "u64", doc = "FLOW records lost to a full bulk ring (run DEGRADED); cumulative" },
+  { name = "start_unknown",  c = "u64", doc = "vfs FLOWs whose entry time was not kept (START_UNKNOWN); a sub-count of the emitted; cumulative" },
+  { name = "unregistered",   c = "u64", doc = "FLOWs on a file with no entry, facts inline (UNREGISTERED, reason MAP_FULL); a sub-count of the emitted; cumulative" },
+  { name = "file_emitted",   c = "u64", doc = "FILE records for a file first seen at a transfer (ADR-0015 rule 5); cumulative" },
+  { name = "file_lost",      c = "u64", doc = "... lost to a full bulk ring (run DEGRADED; the open-file entry is removed so the next transfer retries); cumulative" },
+  { name = "file_map_full",  c = "u64", doc = "a pseudo file the files map was too full to register (its FLOW is UNREGISTERED); cumulative" },
+  { name = "flow_drained",   c = "u64", doc = "FLOW and FILE records the drain copied into a batch; cumulative" },
+  { name = "flow_invalid",   c = "u64", doc = "FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative" },
+  { name = "flow_missed",    c = "u64", doc = "runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative" },
+]
 # ---- data flow (ADR-0005; STATE decision 18): FLOW class, on the bulk ring, counted loss ----
 [[enum]]
 name = "FLOW_KIND"

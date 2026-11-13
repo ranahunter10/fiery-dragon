@@ -1,0 +1,87 @@
+ashu@p15-dev:~/fiery-dragon$ sudo journalctl -k --since "2026-11-13 02:43" --until "2026-11-13 02:53" -o short-precise > ~/softlockup-20261113.txt; wc -l ~/softlockup-20261113.txt
+83 /home/ashu/softlockup-20261113.txt
+ashu@p15-dev:~/fiery-dragon$ cat ~/softlockup-20261113.txt
+Nov 13 02:51:34.709212 p15-dev systemd[1]: systemd-udevd.service: Watchdog timeout (limit 3min)!
+Nov 13 02:51:34.709739 p15-dev systemd[1]: systemd-udevd.service: Killing process 523 (systemd-udevd) with signal SIGABRT.
+Nov 13 02:51:34.709853 p15-dev systemd[1]: snapd.service: Watchdog timeout (limit 5min)!
+Nov 13 02:51:34.709882 p15-dev systemd[1]: snapd.service: Killing process 1062 (snapd) with signal SIGABRT.
+Nov 13 02:51:34.709962 p15-dev kernel: watchdog: BUG: soft lockup - CPU#1 stuck for 379s! [snapd:1062]
+Nov 13 02:51:34.710169 p15-dev kernel: Modules linked in: qrtr nfnetlink cfg80211 binfmt_misc nls_iso8859_1 intel_rapl_msr intel_rapl_common intel_uncore_frequency_common intel_pmc_core pmt_telemetry pmt_discovery pmt_class intel_pmc_ssram_telemetry intel_vsec rapl joydev vmwgfx drm_ttm_helper i2c_piix4 ttm vboxguest i2c_smbus input_leds mac_hid sch_fq_codel efi_pstore dm_multipath vsock_loopback vmw_vsock_virtio_transport_common vmw_vsock_vmci_transport vsock vmw_vmci video psmouse wmi ahci ghash_clmulni_intel e1000 libahci serio_raw msr dmi_sysfs autofs4 aesni_intel
+Nov 13 02:51:34.710600 p15-dev kernel: CPU: 1 UID: 0 PID: 1062 Comm: snapd Kdump: loaded Not tainted 7.0.0-38-generic #38-Ubuntu PREEMPT(lazy)
+Nov 13 02:51:34.710668 p15-dev kernel: Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+Nov 13 02:51:34.710705 p15-dev kernel: RIP: 0010:_raw_spin_unlock_irqrestore+0x21/0x60
+Nov 13 02:51:34.710749 p15-dev kernel: Code: 90 90 90 90 90 90 90 90 90 0f 1f 44 00 00 55 49 89 f0 48 89 e5 e8 af 09 00 00 90 41 f7 c0 00 02 00 00 74 06 fb 0f 1f 44 00 00 <65> ff 0d 98 1c ce 01 74 13 5d 31 c0 31 d2 31 c9 31 f6 31 ff 45 31
+Nov 13 02:51:34.710958 p15-dev kernel: RSP: 0018:ffffd4e280927b50 EFLAGS: 00010206
+Nov 13 02:51:34.710983 p15-dev kernel: RAX: 0000000000000001 RBX: ffff8d27cac0aa80 RCX: 0000000000000000
+Nov 13 02:51:34.711026 p15-dev kernel: RDX: 0000000000000000 RSI: 0000000000000282 RDI: ffff8d27c01e0840
+Nov 13 02:51:34.711087 p15-dev kernel: RBP: ffffd4e280927b50 R08: 0000000000000282 R09: 0000000000000000
+Nov 13 02:51:34.711127 p15-dev kernel: R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000282
+Nov 13 02:51:34.711144 p15-dev kernel: R13: 0000000000000000 R14: ffffd4e280927bd0 R15: 0000000000000000
+Nov 13 02:51:34.711188 p15-dev kernel: FS:  0000735263c0b780(0000) GS:ffff8d292c27b000(0000) knlGS:0000000000000000
+Nov 13 02:51:34.711214 p15-dev kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+Nov 13 02:51:34.711229 p15-dev kernel: CR2: 000070eef5f275fd CR3: 00000001032ee002 CR4: 00000000000706f0
+Nov 13 02:51:34.711243 p15-dev kernel: Call Trace:
+Nov 13 02:51:34.711260 p15-dev kernel:  <TASK>
+Nov 13 02:51:34.711272 p15-dev kernel:  do_send_sig_info+0x72/0xc0
+Nov 13 02:51:34.711346 p15-dev kernel:  do_send_specific+0x90/0xc0
+Nov 13 02:51:34.711365 p15-dev kernel:  __x64_sys_tgkill+0xb3/0xf0
+Nov 13 02:51:34.711387 p15-dev kernel:  x64_sys_call+0xc90/0x2390
+Nov 13 02:51:34.711403 p15-dev kernel:  do_syscall_64+0x105/0x5a0
+Nov 13 02:51:34.711420 p15-dev kernel:  ? get_sigframe+0xec/0x290
+Nov 13 02:51:34.711442 p15-dev kernel:  ? _raw_spin_unlock_irq+0xe/0x50
+Nov 13 02:51:34.711463 p15-dev kernel:  ? signal_setup_done+0xf0/0x1d0
+Nov 13 02:51:34.711479 p15-dev kernel:  ? restore_fpregs_from_init_fpstate.constprop.0+0x1f/0x60
+Nov 13 02:51:34.711490 p15-dev kernel:  ? handle_signal+0xc0/0x160
+Nov 13 02:51:34.711505 p15-dev kernel:  ? arch_do_signal_or_restart+0xb5/0x110
+Nov 13 02:51:34.711521 p15-dev kernel:  ? exit_to_user_mode_loop+0x8f/0x540
+Nov 13 02:51:34.711534 p15-dev kernel:  ? arch_exit_to_user_mode_prepare.isra.0+0xd/0xe0
+Nov 13 02:51:34.711549 p15-dev kernel:  ? do_syscall_64+0x140/0x5a0
+Nov 13 02:51:34.711571 p15-dev kernel:  ? arch_exit_to_user_mode_prepare.isra.0+0xd/0xe0
+Nov 13 02:51:34.711584 p15-dev kernel: clocksource: Long readout interval, skipping watchdog check: cs_nsec: 406098549870 wd_nsec: 406098452586
+Nov 13 02:51:34.711596 p15-dev kernel:  ? do_syscall_64+0x140/0x5a0
+Nov 13 02:51:34.711613 p15-dev kernel:  ? do_syscall_64+0x140/0x5a0
+Nov 13 02:51:34.711626 p15-dev kernel:  ? handle_mm_fault+0x1be/0x2e0
+Nov 13 02:51:34.711642 p15-dev kernel:  ? arch_exit_to_user_mode_prepare.isra.0+0xd/0x100
+Nov 13 02:51:34.711655 p15-dev kernel:  ? irqentry_exit+0x97/0x6f0
+Nov 13 02:51:34.711670 p15-dev kernel:  ? clear_bhb_loop+0x70/0xc0
+Nov 13 02:51:34.711684 p15-dev kernel:  ? clear_bhb_loop+0x70/0xc0
+Nov 13 02:51:34.711724 p15-dev kernel:  ? clear_bhb_loop+0x70/0xc0
+Nov 13 02:51:34.711771 p15-dev kernel:  ? clear_bhb_loop+0x70/0xc0
+Nov 13 02:51:34.711785 p15-dev kernel:  entry_SYSCALL_64_after_hwframe+0x76/0x7e
+Nov 13 02:51:34.711797 p15-dev kernel: RIP: 0033:0x625449acd1b6
+Nov 13 02:51:34.711813 p15-dev kernel: Code: c3 cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc 48 8b 7c 24 08 48 8b 74 24 10 48 8b 54 24 18 b8 ea 00 00 00 0f 05 <c3> cc cc cc cc cc cc cc cc cc 8b 7c 24 08 48 8b 74 24 10 48 8b 54
+Nov 13 02:51:34.711829 p15-dev kernel: RSP: 002b:00002071346df8b0 EFLAGS: 00000216 ORIG_RAX: 00000000000000ea
+Nov 13 02:51:34.711840 p15-dev kernel: RAX: ffffffffffffffda RBX: 0000000000000017 RCX: 0000625449acd1b6
+Nov 13 02:51:34.711855 p15-dev kernel: RDX: 0000000000000017 RSI: 00000000000004b5 RDI: 0000000000000426
+Nov 13 02:51:34.711869 p15-dev kernel: RBP: 00002071346df8d0 R08: 000062544ba1d020 R09: 000062544b099b10
+Nov 13 02:51:34.712196 p15-dev kernel: R10: 0000000000000000 R11: 0000000000000216 R12: fffffffffffffff8
+Nov 13 02:51:34.712216 p15-dev kernel: R13: 0000000000000000 R14: 00002071346d6000 R15: 0000000000000000
+Nov 13 02:51:34.712232 p15-dev kernel:  </TASK>
+Nov 13 02:51:34.712275 p15-dev systemd[1]: Starting sysstat-collect.service - system activity accounting tool...
+Nov 13 02:51:34.712313 p15-dev systemd[1]: snapd.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+Nov 13 02:51:34.712330 p15-dev systemd[1]: snapd.service: Failed with result 'watchdog'.
+Nov 13 02:51:34.712345 p15-dev systemd[1]: snapd.service: Scheduled restart job, restart counter is at 1.
+Nov 13 02:51:34.712361 p15-dev systemd[1]: Starting snapd.service - Snap Daemon...
+Nov 13 02:51:34.712381 p15-dev systemd[1]: sysstat-collect.service: Deactivated successfully.
+Nov 13 02:51:34.712394 p15-dev systemd[1]: Finished sysstat-collect.service - system activity accounting tool.
+Nov 13 02:51:34.712408 p15-dev systemd[1]: systemd-udevd.service: Main process exited, code=dumped, status=6/ABRT
+Nov 13 02:51:34.712420 p15-dev systemd[1]: systemd-udevd.service: Failed with result 'watchdog'.
+Nov 13 02:51:34.712437 p15-dev systemd[1]: systemd-udevd.service: Consumed 2.902s CPU time over 1h 10min 55.369s wall clock time, 34.6M memory peak.
+Nov 13 02:51:34.712493 p15-dev systemd[1]: systemd-udevd.service: Scheduled restart job, restart counter is at 1.
+Nov 13 02:51:34.712508 p15-dev systemd[1]: Starting systemd-udevd.service - Rule-based Manager for Device Events and Files...
+Nov 13 02:51:34.712530 p15-dev systemd[1]: systemd-logind.service: Main process exited, code=dumped, status=6/ABRT
+Nov 13 02:51:34.712545 p15-dev systemd[1]: systemd-logind.service: Failed with result 'watchdog'.
+Nov 13 02:51:34.712561 p15-dev systemd[1]: systemd-logind.service: Scheduled restart job, restart counter is at 1.
+Nov 13 02:51:34.712573 p15-dev systemd[1]: modprobe@drm.service - Load Kernel Module drm skipped, unmet condition check ConditionKernelModuleLoaded=!drm
+Nov 13 02:51:34.712706 p15-dev systemd[1]: Starting systemd-logind.service - User Login Management...
+Nov 13 02:51:34.712720 p15-dev systemd[1]: systemd-journald.service: Main process exited, code=dumped, status=6/ABRT
+Nov 13 02:51:34.712733 p15-dev systemd[1]: systemd-journald.service: Failed with result 'watchdog'.
+Nov 13 02:51:34.712754 p15-dev systemd[1]: systemd-journald.service: Scheduled restart job, restart counter is at 2.
+Nov 13 02:51:34.712771 p15-dev systemd[1]: Starting systemd-journald.service - Journal Service...
+Nov 13 02:51:34.712789 p15-dev systemd[1]: Started systemd-udevd.service - Rule-based Manager for Device Events and Files.
+Nov 13 02:51:34.712938 p15-dev systemd-journald[33207]: Collecting audit messages is disabled.
+Nov 13 02:51:34.713043 p15-dev systemd-journald[33207]: File /var/log/journal/6dfc301be5f2455085d424c1f099f7fc/system.journal corrupted or uncleanly shut down, renaming and replacing.
+Nov 13 02:51:34.716195 p15-dev systemd[1]: Started systemd-journald.service - Journal Service.
+Nov 13 02:51:34.813416 p15-dev kernel: loop4: detected capacity change from 0 to 8
+Nov 13 02:51:34.935172 p15-dev kernel: audit: type=1400 audit(1794538294.933:203): apparmor="STATUS" operation="profile_replace" info="same as current profile, skipping" profile="unconfined" name="/usr/lib/snapd/snap-confine" pid=33273 comm="apparmor_parser"
+ashu@p15-dev:~/fiery-dragon$
