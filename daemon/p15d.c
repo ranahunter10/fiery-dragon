@@ -24,11 +24,13 @@
 #include <unistd.h>
 #include <bpf/libbpf.h>
 
+#include "barrier.h"
 #include "config.h"
 #include "crc32c.h"
 #include "drain.h"
 #include "exitcodes.h"
 #include "loader.h"
+#include "p15_flow.h"
 #include "p15_records.h"
 #include "run.h"
 #include "snapshot.h"
@@ -103,6 +105,73 @@ static const char *raise_priority(int want_rt)
  * waiting: the writer still holds the WAL, so nothing it uses is freed, and END is not written
  * (a reader says the run did not stop in order). A stop that cannot finish is never a silent wait.
  */
+/* The vfs calls that have entered and not returned, as book B1 sees them (bpf/include/p15_flow.h),
+ * from the counters the drain last read. 0 when every entry has its return or its exclusion. */
+static uint64_t flow_open_now(struct p15_run *r)
+{
+#define L(slot) atomic_load(&r->flowc[P15_FLC_##slot])
+	uint64_t in = L(SESS_ENTRY);
+	uint64_t out = L(SESS_RETURN) + L(V_EXCL_SELF) + L(V_EXCL_KTHREAD) + L(V_OWNED_BY_SOCK) + L(V_GATED);
+#undef L
+	return in > out ? in - out : 0;
+}
+
+/* A grace period, or the run says its end counts are not exact (barrier.h): never a silent sleep. */
+static void barrier_or_degrade(struct p15_run *r, const char *what)
+{
+	int rc = p15_barrier((int)r->cfg.barrier_fail);
+	char msg[160];
+
+	if (!rc)
+		return;
+	snprintf(msg, sizeof(msg), "no grace period %s (membarrier: %s): the end counts are not exact", what,
+		 strerror(-rc));
+	logline("error", "barrier", msg);
+	p15_run_set_state(r, P15_RUN_DEGRADED, msg);
+}
+
+/*
+ * The end of the flow programs' run (bpf/include/p15_flow.h; the design note of 2026-11-13). A
+ * call inside vfs_read or vfs_write when its session is detached never runs its return, so the
+ * open calls are counted while the sessions are still attached: the gate, a grace period, a
+ * bounded wait in which the short calls return and are recorded as usual, then the task iterator.
+ * This thread keeps draining throughout. Returns 0, or -ETIMEDOUT if the writer stood still.
+ */
+static int flow_cut(struct p15_run *r, struct p15_loader *l, struct p15_drain *d)
+{
+	struct p15_watch wd = { 0 };
+	uint64_t end;
+	int rc;
+
+	p15_loader_flow_gate(l);
+	barrier_or_degrade(r, "after the flow gate");
+	end = p15_mono_ns() + (uint64_t)r->cfg.flow_stop_wait_ms * 1000000ull;
+	do {
+		if (p15_drain_poll(d, 10))
+			p15_fail(r, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
+		if (p15_writer_stalled(r, &wd, p15_mono_ns()))
+			return -ETIMEDOUT;
+	} while (flow_open_now(r) && p15_mono_ns() < end && !atomic_load(&r->fatal_code));
+	rc = p15_loader_flow_count(l);
+	if (rc) {
+		char msg[128];
+
+		snprintf(msg, sizeof(msg), "flow: the count of open calls failed: %s", strerror(-rc));
+		p15_fail(r, P15_EXIT_INTERNAL, msg);
+	}
+	if (r->cfg.flow_cut_pause_ms) {
+		/* TEST ONLY (config.test_flow_cut_pause_ms in the header): the window between the count and
+		 * the detach, held open so a test can let a counted call return in it */
+		uint64_t until = p15_mono_ns() + (uint64_t)r->cfg.flow_cut_pause_ms * 1000000ull;
+
+		fprintf(stderr, "p15d level=info code=test_pause phase=flow_cut ms=%u\n", r->cfg.flow_cut_pause_ms);
+		while (p15_mono_ns() < until && !atomic_load(&r->fatal_code))
+			if (p15_drain_poll(d, 10))
+				p15_fail(r, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
+	}
+	return 0;
+}
+
 static int stuck(struct p15_run *r, struct p15_loader *l, const char *phase)
 {
 	char msg[256];
@@ -117,8 +186,8 @@ static int stuck(struct p15_run *r, struct p15_loader *l, const char *phase)
 int main(int argc, char **argv)
 {
 	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
-	static char cfg_vals[24][24];
-	struct p15w_kv meta[40];
+	static char cfg_vals[32][24];
+	struct p15w_kv meta[64];
 	struct p15_loader ld;
 	struct p15_drain d;
 	struct p15_writer w;
@@ -186,6 +255,7 @@ int main(int argc, char **argv)
 	for (int i = 0; i < ld.n_flow_prog; i++)
 		run.flow_prog_fd[i] = ld.flow_prog_fd[i];
 	run.n_flow_prog = ld.n_flow_prog;
+	run.flow_attached = ld.n_flow_links > 0;
 	sched = raise_priority(run.cfg.realtime);
 
 	/* the run directory: <wal-dir>/<UTC time>-<boot id prefix> (ADR-0007 rule 1) */
@@ -320,7 +390,11 @@ int main(int argc, char **argv)
 				return stuck(&run, &ld, "the closing snapshot");
 		}
 	}
+	if (run.flow_attached && !atomic_load(&run.fatal_code) && flow_cut(&run, &ld, &d))
+		return stuck(&run, &ld, "the count of open flow calls");
 	p15_loader_detach(&ld);
+	/* a program run that began before the detach may still be counting: the books are read after it */
+	barrier_or_degrade(&run, "after the detach");
 	rc = p15_drain_finish(&d);
 	if (rc == -ETIMEDOUT)
 		return stuck(&run, &ld, "the final drain");

@@ -24,7 +24,8 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 const volatile __u32 harness_tgid;
 
-enum { H_SESSION, H_TS, H_END_REC, H_TS_REC, H_NOCOOKIE, H_TS_LOST, H_TS_CREATE_FAILED, H_RESERVE_FAILED, H_N };
+enum { H_SESSION, H_TS, H_END_REC, H_TS_REC, H_NOCOOKIE, H_TS_LOST, H_TS_CREATE_FAILED, H_RESERVE_FAILED, H_COUNT,
+       H_COUNT_LOST, H_N };
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -37,6 +38,7 @@ struct {
 struct start {
 	__u64 file;
 	__u64 ts;
+	__u64 open;     /* the count arm: the task's open calls, as file.bpf.c's rw_starts keeps them */
 };
 
 struct {
@@ -161,6 +163,42 @@ int rd_ts(struct pt_regs *ctx)
 	f = cookie_file(ctx);
 	if (f && start_of(f) && (long)PT_REGS_RC(ctx) > 0)
 		count(H_TS);
+	return 0;
+}
+
+/* The count arm: ts, plus what the end's count of open calls costs every call (bpf/include/
+ * p15_flow.h): an atomic add of the task's open count at the entry, and at the return a
+ * compare-and-exchange that takes the call off it. Its difference from ts is that cost. */
+SEC("kprobe.session/vfs_read")
+int rd_count(struct pt_regs *ctx)
+{
+	struct start *s;
+	__u64 f, w;
+
+	if (!bpf_session_is_return(ctx)) {
+		if (entry(ctx, 1))
+			return 1;
+		s = bpf_task_storage_get(&starts, bpf_get_current_task_btf(), 0, 0);
+		if (s)
+			__sync_fetch_and_add(&s->open, 1);
+		else
+			count(H_COUNT_LOST);
+		return 0;
+	}
+	f = cookie_file(ctx);
+	s = bpf_task_storage_get(&starts, bpf_get_current_task_btf(), 0, 0);
+	if (!f || !s || s->file != f) {
+		count(H_TS_LOST);
+		return 0;
+	}
+	s->file = 0;
+	w = s->open;
+	if (!(w & 0xffffffffull) || __sync_val_compare_and_swap(&s->open, w, w - 1) != w) {
+		count(H_COUNT_LOST);      /* one thread, no other actor: the exchange cannot fail here */
+		return 0;
+	}
+	if ((long)PT_REGS_RC(ctx) > 0)
+		count(H_COUNT);
 	return 0;
 }
 

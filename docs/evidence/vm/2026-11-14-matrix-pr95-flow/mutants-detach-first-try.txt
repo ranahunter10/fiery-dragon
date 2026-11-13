@@ -1,0 +1,76 @@
+ashu@p15-dev:~/fiery-dragon$ sudo P15_PYTHON=$HOME/p15venv/bin/python P15_IT_NET=1 python3 daemon/tests/mutate_p15d.py 74 75 76 77 78 79 2>&1 | tee ~/mutants-detach.txt
+baseline: the unit tests pass in 0 s; a mutant gets 120 s
+baseline: the end-to-end test fail on the unmutated tree (exit 1 after 163 s); no mutant was run
+  FAIL p15d did not start within 15 s: p15d level=error code=load msg="network self-test failed (2)"
+  FAIL exit 0 (valid run)
+  FAIL p15w-inspect: every segment valid, every record passes, END present
+  FAIL END: exit 0, RUNNING, invariant closed
+  FAIL every one of the 200 children's EXEC of /bin/true is in the WAL (got 0)
+  FAIL the kernel skipped no spine event (ADR-0020: )
+  FAIL a STATS record every 200 ms (got 0)
+  FAIL Prometheus textfile written
+  FAIL hook manifest in the header
+  FAIL END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  FAIL an opening and a closing snapshot, both complete (their books close)
+  FAIL ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  FAIL the snapshot lists p15d itself, with its resolved path
+  FAIL pid 1 is in the opening snapshot
+it_p15d: FAIL (14 failed checks)
+  FAIL the Python reader accepts /tmp/p15d-it-91UTM2/c1
+)
+  ok   no release failed and the iterator gave up on no task (0, 0)
+  ok   every task had its slot (0 entries without one)
+  ok   a call that entered after the gate is counted, and opens nothing (v_gated 116 >= 1)
+  ok   the call released after the count is counted (returned_after_count 1 >= 1)
+  ok     ... and its FLOW of 4201 bytes is in the WAL (1)
+  ok     ... with the start time of its entry, taken long before the count
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+case 4: a bad flag [t+163s]
+  ok   exit 64 (usage)
+it_p15d: FAIL (14 failed checks)
+ls: cannot access '/tmp/p15d-it-91UTM2/c1/*/': No such file or directory
+python reader: p15.wal: .: no seg-*.p15w files
+  FAIL the Python reader accepts /tmp/p15d-it-91UTM2/c1
+ls: cannot access '/tmp/p15d-it-91UTM2/c1/*/': No such file or directory
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    run = wal.read_run(Path(sys.argv[1]))
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 281, in read_run
+    raise RunError(f"{path}: no seg-*.p15w files")
+p15.wal.RunError: .: no seg-*.p15w files
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    st = [r for r in wal.read_run(Path(sys.argv[1])).ring_records(2) if r.name == 'STATS'][-1]
+                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 281, in read_run
+    raise RunError(f"{path}: no seg-*.p15w files")
+p15.wal.RunError: .: no seg-*.p15w files
+grep: /tmp/p15d-it-91UTM2/c1.prom: No such file or directory
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    c = trace.load(Path(sys.argv[1])); r = c.recon
+  File "/home/ashu/fiery-dragon/python/p15/trace.py", line 117, in load
+    run = W.read_run(path)
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 281, in read_run
+    raise RunError(f"{path}: no seg-*.p15w files")
+p15.wal.RunError: .: no seg-*.p15w files
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+    c = trace.load(Path(sys.argv[1])); print(int(any(k[0] == 1 for k in c.snapshots[0].procs)))
+  File "/home/ashu/fiery-dragon/python/p15/trace.py", line 117, in load
+    run = W.read_run(path)
+  File "/home/ashu/fiery-dragon/python/p15/wal.py", line 281, in read_run
+    raise RunError(f"{path}: no seg-*.p15w files")
+p15.wal.RunError: .: no seg-*.p15w files
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+  ok   the Python reader's counts equal p15w-inspect's (c5)
+  ok   the Python reader's counts equal p15w-inspect's (c6)
+  ok   the Python reader's counts equal p15w-inspect's (c8)
+  ok   the Python reader's counts equal p15w-inspect's (c9)
+  ok   the Python reader's counts equal p15w-inspect's (c13)
+  ok   the Python reader's counts equal p15w-inspect's (c14)
+  ok   the Python reader's counts equal p15w-inspect's (c16)
+  ok   the Python reader's counts equal p15w-inspect's (c17)
+
+ashu@p15-dev:~/fiery-dragon$

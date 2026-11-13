@@ -108,6 +108,25 @@ M = [
     ("drain.c", "\t\tgot = ring__consume_n(r, room);", "\t\tgot = ring__consume(r);", IT),
     ("drain.c", "\tn = take_all(d);\n\tnote_poll_gap(d, p15_boot_ns());", "\tn = ring_buffer__consume(d->rb);\n\tnote_poll_gap(d, p15_boot_ns());", IT),
     ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;", "\tint n = 0, m;", IT),
+    # the end of the flow programs' run (bpf/include/p15_flow.h; the design note of 2026-11-13): B1's
+    # terms by the unit test, the stop's order and the programs' count word by it_p15d cases 15 to 17
+    ("writer.c", "+ L(V_OWNED_BY_SOCK) + L(V_GATED) + L(OPEN_AT_END) +", "+ L(V_OWNED_BY_SOCK) + L(OPEN_AT_END) +", UNIT),
+    ("writer.c", "+ L(V_OWNED_BY_SOCK) + L(V_GATED) + L(OPEN_AT_END) +", "+ L(V_OWNED_BY_SOCK) + L(V_GATED) +", UNIT),
+    ("writer.c", "if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_RELEASE_FAILED) + L(V_NO_SLOT_RETURN) !=",
+     "if (L(SESS_ENTRY) + L(V_RELEASE_FAILED) + L(V_NO_SLOT_RETURN) !=", UNIT),
+    ("writer.c", "if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_RELEASE_FAILED) + L(V_NO_SLOT_RETURN) !=",
+     "if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_NO_SLOT_RETURN) !=", UNIT),
+    ("writer.c", "if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_RELEASE_FAILED) + L(V_NO_SLOT_RETURN) !=",
+     "if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_RELEASE_FAILED) !=", UNIT),
+    ("writer.c", "	    L(V_NO_SLOT_ENTRY)) {", "	    0) {", UNIT),
+    ("barrier.c", "	if (test_fail)\n		return -ENOSYS;", "	(void)test_fail;", IT),
+    ("p15d.c", "	p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n}\n\n/*\n * The end of the flow", "}\n\n/*\n * The end of the flow", IT),
+    ("p15d.c", "	rc = p15_loader_flow_count(l);\n", "	rc = 0;\n", IT),
+    ("p15d.c", "	p15_loader_flow_gate(l);\n	barrier_or_degrade(r, \"after the flow gate\");", "	barrier_or_degrade(r, \"after the flow gate\");", IT),
+    ("../bpf/progs/file.bpf.c", "	if (__sync_fetch_and_add(&st->open, 1) & P15_FLOW_OPEN_MASK)", "	if (0)", IT),
+    ("../bpf/progs/file.bpf.c", "		if (st)\n			rw_release(st);\n		else", "		if (st)\n			;\n		else", IT),
+    ("../bpf/progs/file.bpf.c", "		if (claimed)\n			nw = w - P15_FLOW_CLAIM_ONE;\n		else if", "		if (0)\n			nw = w - P15_FLOW_CLAIM_ONE;\n		else if", IT),
+    ("../bpf/progs/file.bpf.c", "	if (flow_gate) {", "	if (0) {", IT),
 ]
 
 

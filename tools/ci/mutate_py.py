@@ -594,7 +594,7 @@ M = [
  (FCS, '    if not checks:\n', '    if False:\n'),
  (FCS, 'missing = [a for a in ALL_ARMS if a not in rows[r]]', 'missing = []'),
  (FCS, 'for metric in (() if bad else ("cpu_ns", "wall_ns")):', 'for metric in ("cpu_ns", "wall_ns"):'),
- (FCS, 'QUESTIONS = (("ts", "session"), ("ts_rec", "end_rec"), ("end_rec", "session"))', 'QUESTIONS = (("ts", "session"), ("end_rec", "ts_rec"), ("end_rec", "session"))'),
+ (FCS, 'QUESTIONS = (("ts", "session"), ("ts_rec", "end_rec"), ("end_rec", "session"), ("count", "ts"))', 'QUESTIONS = (("ts", "session"), ("end_rec", "ts_rec"), ("end_rec", "session"), ("count", "ts"))'),
  (FCS, 'return "\\n".join(out), 1 if bad else 0', 'return "\\n".join(out), 0'),
 ]
 

@@ -28,8 +28,8 @@ int main(void)
 {
 	struct p15_config c;
 	char err[200];
-	struct p15w_kv kv[24];
-	char vals[24][24];
+	struct p15w_kv kv[32];
+	char vals[32][24];
 	size_t n;
 
 	EXPECT(parse(&c, err, 0) != 0 && strstr(err, "--wal-dir"), "--wal-dir is required");
@@ -58,8 +58,12 @@ int main(void)
 	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--textfile") != 0, "--textfile needs a value");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
-	n = p15_config_meta(&c, kv, vals, 24);
-	EXPECT(n == 23, "every setting echoed");
+	n = p15_config_meta(&c, kv, vals, 32);
+	EXPECT(n == 26, "every setting echoed");
+	EXPECT(!strcmp(kv[17].key, "config.flow_stop_wait_ms") && !strcmp(kv[17].value, "200") &&
+	       !strcmp(kv[18].key, "config.test_flow_cut_pause_ms") && !strcmp(kv[18].value, "0") &&
+	       !strcmp(kv[19].key, "config.test_barrier_fail") && !strcmp(kv[19].value, "0"),
+	       "the end's wait and its two test switches echoed, with their defaults");
 	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "200"), "the poll maximum echoed, its default 200 (ADR-0030)");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
 	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "65536") &&

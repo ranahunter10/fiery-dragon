@@ -1,0 +1,8 @@
+crc32c size=4096 rounds=9 bytes_per_round=67108864 impl=sse4.2
+table   1.9791 ns per byte (median; 1.9645 to 2.3108)
+sse4.2  0.0926 ns per byte (median; 0.0902 to 0.1013)
+speed-up 21.4x; same crc: yes
+crc32c size=120 rounds=9 bytes_per_round=67108800 impl=sse4.2
+table   2.3507 ns per byte (median; 2.3325 to 2.6266)
+sse4.2  0.1201 ns per byte (median; 0.1123 to 0.1484)
+speed-up 19.6x; same crc: yes

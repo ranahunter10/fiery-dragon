@@ -7,7 +7,8 @@
  *   flow_cost ROUNDS READS CHECKS      (root)
  *
  * Arms (flow_cost.bpf.c): none and none2 (nothing attached: the untraced arm and its A/A control),
- * session (E-0138's anchor), ts (option A without a record), end_rec (option D: a FLOW with its
+ * session (E-0138's anchor), ts (option A without a record), count (ts plus the per-task count of
+ * open calls that the end of a run needs, bpf/include/p15_flow.h), end_rec (option D: a FLOW with its
  * end time only), ts_rec (option A with the FLOW). Per round, every arm runs READS x
  * read(/dev/zero, 1 byte) on the harness's own thread, pinned to one CPU, in an order rotated each
  * round, after one untimed warm-up of every arm. The primary metric is the thread's CPU time, the
@@ -42,10 +43,11 @@
 #include "p15_records.h"
 #include "flow_cost.skel.h"
 
-enum { H_SESSION, H_TS, H_END_REC, H_TS_REC, H_NOCOOKIE, H_TS_LOST, H_TS_CREATE_FAILED, H_RESERVE_FAILED, H_N };
-enum arm { A_NONE, A_NONE2, A_SESSION, A_TS, A_END_REC, A_TS_REC, A_N };
-static const char *const arm_name[A_N] = { "none", "none2", "session", "ts", "end_rec", "ts_rec" };
-static const int arm_hit[A_N] = { -1, -1, H_SESSION, H_TS, H_END_REC, H_TS_REC };
+enum { H_SESSION, H_TS, H_END_REC, H_TS_REC, H_NOCOOKIE, H_TS_LOST, H_TS_CREATE_FAILED, H_RESERVE_FAILED, H_COUNT,
+       H_COUNT_LOST, H_N };
+enum arm { A_NONE, A_NONE2, A_SESSION, A_TS, A_COUNT, A_END_REC, A_TS_REC, A_N };
+static const char *const arm_name[A_N] = { "none", "none2", "session", "ts", "count", "end_rec", "ts_rec" };
+static const int arm_hit[A_N] = { -1, -1, H_SESSION, H_TS, H_COUNT, H_END_REC, H_TS_REC };
 
 /* the drain thread's view: records seen and refused since the last reset, and the check pass */
 static struct ring_buffer *rb;
@@ -161,6 +163,7 @@ static struct bpf_program *arm_prog(struct flow_cost_bpf *s, enum arm a)
 	switch (a) {
 	case A_SESSION: return s->progs.rd_session;
 	case A_TS: return s->progs.rd_ts;
+	case A_COUNT: return s->progs.rd_count;
 	case A_END_REC: return s->progs.rd_end_rec;
 	case A_TS_REC: return s->progs.rd_ts_rec;
 	default: return NULL;
@@ -217,9 +220,10 @@ static int arm(struct flow_cost_bpf *s, int fd, int round, enum arm a, int n)
 			fprintf(stderr, "warn: link destroy failed\n");
 	}
 	drain_wait(s);
-	got = arm_hit[a] < 0 ? hit(s, H_SESSION) + hit(s, H_TS) + hit(s, H_END_REC) + hit(s, H_TS_REC)
+	got = arm_hit[a] < 0 ? hit(s, H_SESSION) + hit(s, H_TS) + hit(s, H_END_REC) + hit(s, H_TS_REC) + hit(s, H_COUNT)
 			     : hit(s, (__u32)arm_hit[a]);
-	lost = hit(s, H_NOCOOKIE) + hit(s, H_TS_LOST) + hit(s, H_TS_CREATE_FAILED) + hit(s, H_RESERVE_FAILED);
+	lost = hit(s, H_NOCOOKIE) + hit(s, H_TS_LOST) + hit(s, H_TS_CREATE_FAILED) + hit(s, H_RESERVE_FAILED) +
+	       hit(s, H_COUNT_LOST);
 	dr = atomic_load(&drained);
 	rf = atomic_load(&refused);
 	printf("row round=%d event=read arm=%s n=%d cpu_ns=%lld wall_ns=%lld hits=%llu lost=%llu drained=%llu refused=%llu "

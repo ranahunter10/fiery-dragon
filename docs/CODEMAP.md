@@ -169,7 +169,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
-| [`file.bpf.c`](../bpf/progs/file.bpf.c) | file identity (ADR-0015 rules 1-9, ADR-0027, STATE decision 19), proven by the step 2a dry run (bpf/test/sliceb_probe, E-0145, E-0146): fentry/security_file_open OPEN with bpf_d... | `fentry/security_file_open → file_open_path`, `kprobe.session/security_file_open`, `kprobe.multi/security_file_free`, `kprobe.multi/security_inode_free`, `kprobe.session/vfs_read`, `kprobe.session/vfs_write`, `kprobe.session/vfs_readv`, `kprobe.session/vfs_writev`, `tracepoint/sock/sock_send_length`, `tracepoint/sock/sock_recv_length`, `iter/task_file` |
+| [`file.bpf.c`](../bpf/progs/file.bpf.c) | file identity (ADR-0015 rules 1-9, ADR-0027, STATE decision 19), proven by the step 2a dry run (bpf/test/sliceb_probe, E-0145, E-0146): fentry/security_file_open OPEN with bpf_d... | `fentry/security_file_open → file_open_path`, `kprobe.session/security_file_open`, `kprobe.multi/security_file_free`, `kprobe.multi/security_inode_free`, `kprobe.session/vfs_read`, `kprobe.session/vfs_write`, `kprobe.session/vfs_readv`, `kprobe.session/vfs_writev`, `tracepoint/sock/sock_send_length`, `tracepoint/sock/sock_recv_length`, `iter/task`, `iter/task_file` |
 | [`net.bpf.c`](../bpf/progs/net.bpf.c) | network intent (ADR-0004). | `fexit/inet_stream_connect → net_connect_stream`, `fexit/inet_dgram_connect → net_connect_dgram`, `fexit/inet_accept → net_accept`, `fexit/inet_listen → net_listen`, `fexit/inet_bind → net_bind4`, `fexit/inet6_bind → net_bind6` |
 | [`snap.bpf.c`](../bpf/progs/snap.bpf.c) | the process snapshot (ADR-0007 rule 3, ADR-0023). | `iter.s/task` |
 | [`spine.bpf.c`](../bpf/progs/spine.bpf.c) | the process spine (ADR-0003, ADR-0020). | `tp_btf/sched_process_fork → spine_fork`, `tracepoint/sched/sched_process_exec`, `tracepoint/sched/sched_process_exit`, `tracepoint/task/task_rename` |
@@ -197,6 +197,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`barrier.c`](../daemon/barrier.c) | See barrier.h. | `p15_barrier` |
+| [`barrier.h`](../daemon/barrier.h) | A grace-period barrier from user space (docs/research/2026-11-13-detach-fault-design.md §3.1). | `p15_barrier` |
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
 | [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_config_meta` |
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
@@ -207,8 +209,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish` |
 | [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_free`, `p15_drain_room`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
-| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd` |
-| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd`, `p15_loader_file_counters_fd`, `p15_loader_flow_counters_fd` |
+| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_start`, `p15_loader_flow_gate`, `p15_loader_flow_count`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd` |
+| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_start`, `p15_loader_flow_gate`, `p15_loader_flow_count`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd`, `p15_loader_file_counters_fd`, `p15_loader_flow_counters_fd` |
 | [`p15_spine.c`](../daemon/p15_spine.c) | load and attach the spine programs (ADR-0003), then p15-spine selftest run the load-time self-test once; exit 0 only if it passes p15-spine dump SECONDS run the self-test, then ... |  |
 | [`p15d.c`](../daemon/p15d.c) | the capture daemon (Phase 1 step 4b; ADR-0006, 0007, 0017, 0019). |  |
 | [`p15w_inspect.c`](../daemon/p15w_inspect.c) | check and summarise a P15W run directory or segment files (ADR-0007 "tools/wal-inspect"). |  |
@@ -238,6 +240,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 
 | File | Job | Public names |
 |---|---|---|
+| [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |

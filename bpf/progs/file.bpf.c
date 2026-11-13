@@ -822,11 +822,19 @@ const volatile __u32 flow_counters_ncpu;
 
 /* Option A's per-task slot: the file of the vfs call in progress and its entry time. One slot per
  * task; a nested transfer overwrites it, and the outer return then finds a mismatch and flags
- * START_UNKNOWN (measured below the VM's resolution, E-0237). */
+ * START_UNKNOWN (measured below the VM's resolution, E-0237). `open` counts the task's vfs calls
+ * that have entered and not returned, with the count the end's iterator claimed in its high half
+ * (p15_flow.h): a count, not a mark, so a nested call cannot hide the outer one. */
 struct rw_start {
 	__u64 file;
 	__u64 ts;
+	__u64 open;
 };
+
+/* Shut by p15d when the run ends (a store through the mapped .bss, no system call): an entry that
+ * reads it shut opens no slot and skips its return. p15d then waits an RCU grace period, so every
+ * program run that read it open has finished before the iterator below counts the open calls. */
+volatile __u32 flow_gate;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_TASK_STORAGE);
@@ -847,6 +855,19 @@ struct {
 	__type(key, __u64);
 	__type(value, __u8);
 } flow_test_tried SEC(".maps");
+
+static __always_inline void flow_count_add(__u32 slot, __u64 n)
+{
+	__u32 row = bpf_get_smp_processor_id(), k;
+	__u64 *c;
+
+	if (row > flow_counters_ncpu)
+		row = flow_counters_ncpu;
+	k = P15_CTR_SLOT(row, slot);
+	c = bpf_map_lookup_elem(&flow_counters, &k);
+	if (c)
+		__sync_fetch_and_add(c, n);
+}
 
 static __always_inline void flow_count(__u32 slot)
 {
@@ -1063,27 +1084,74 @@ static __always_inline int rw_entry(struct pt_regs *ctx)
 			return 1;
 		}
 	}
-	*cookie = key;
-	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, BPF_LOCAL_STORAGE_GET_F_CREATE);
-	if (st) {
-		st->file = key;
-		st->ts = bpf_ktime_get_boot_ns();
+	if (flow_gate) {
+		flow_count(P15_FLC_V_GATED);   /* the run is ending: this call opens nothing and has no return */
+		return 1;
 	}
+	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, BPF_LOCAL_STORAGE_GET_F_CREATE);
+	if (!st) {
+		/* no slot (allocation failed): the call is still recorded, without its start time, and
+		 * is counted on the cookie's bit instead of the slot's count */
+		flow_count(P15_FLC_V_NO_SLOT_ENTRY);
+		*cookie = key | P15_FLOW_COOKIE_NO_SLOT;
+		return 0;
+	}
+	if (__sync_fetch_and_add(&st->open, 1) & P15_FLOW_OPEN_MASK)
+		flow_count(P15_FLC_V_ENTRY_WHILE_OPEN);
+	st->file = key;
+	st->ts = bpf_ktime_get_boot_ns();
+	*cookie = key;
 	return 0;
+}
+
+/* A return takes its call off its task's count: from the claimed half if the end's iterator has
+ * counted it (RETURNED_AFTER_COUNT), else from the open half. Only this task's returns and the
+ * iterator change the word, so a compare-and-exchange fails at most once. */
+static __always_inline void rw_release(struct rw_start *st)
+{
+	int i;
+
+	for (i = 0; i < P15_FLOW_CAS_TRIES; i++) {
+		__u64 w = st->open, nw;
+		int claimed = (w >> 32) != 0;
+
+		if (claimed)
+			nw = w - P15_FLOW_CLAIM_ONE;
+		else if (w & P15_FLOW_OPEN_MASK)
+			nw = w - 1;
+		else
+			break;                  /* nothing to take: this return's entry is not in the count */
+		if (__sync_val_compare_and_swap(&st->open, w, nw) == w) {
+			if (claimed)
+				flow_count(P15_FLC_RETURNED_AFTER_COUNT);
+			return;
+		}
+	}
+	flow_count(P15_FLC_V_RELEASE_FAILED);
 }
 
 /* vfs return: the transfer's size is the return value; a FLOW only for ret > 0. */
 static __always_inline int rw_return(struct pt_regs *ctx, __u16 kind, __u32 vectored)
 {
 	__u64 *cookie = bpf_session_cookie(ctx);
-	__u64 file_key = *cookie, now, first;
+	__u64 file_key = *cookie & ~P15_FLOW_COOKIE_NO_SLOT, now, first;
 	long ret = (long)PT_REGS_RC(ctx);
 	struct file *file;
 	struct inode *inode;
-	struct rw_start *st;
+	struct rw_start *st = NULL;
 	__u32 extra = vectored;
 
 	flow_count(P15_FLC_SESS_RETURN);
+	/* every return, before any of the early ones below, settles its entry's place in the books */
+	if (*cookie & P15_FLOW_COOKIE_NO_SLOT) {
+		flow_count(P15_FLC_V_NO_SLOT_RETURN);
+	} else {
+		st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, 0);
+		if (st)
+			rw_release(st);
+		else
+			flow_count(P15_FLC_V_RELEASE_FAILED);   /* the entry made a slot: it cannot be gone */
+	}
 	if (ret == 0) {
 		flow_count(P15_FLC_V_EMPTY);
 		return 0;
@@ -1100,7 +1168,6 @@ static __always_inline int rw_return(struct pt_regs *ctx, __u16 kind, __u32 vect
 	}
 	flow_count(P15_FLC_V_ATTEMPT);
 	now = bpf_ktime_get_boot_ns();
-	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, 0);
 	if (st && st->file == file_key) {
 		first = st->ts;
 		st->file = 0;   /* used: a later return without its entry cannot match it */
@@ -1208,6 +1275,36 @@ SEC("tracepoint/sock/sock_recv_length")
 int flow_recv(struct trace_event_raw_sock_msg_length___p15 *ctx)
 {
 	return sock_flow((__u64)ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_RECV);
+}
+
+/* The end's count of open calls (p15_flow.h): run once by p15d after the gate and the grace
+ * period, while the sessions are still attached. For every task with a slot, the open half of its
+ * count moves to the claimed half and is added to OPEN_AT_END. A return racing with this either
+ * took its call off the open half first (then it is not counted here) or finds it claimed. */
+SEC("iter/task")
+int flow_open_iter(struct bpf_iter__task *ctx)
+{
+	struct task_struct *task = ctx->task;
+	struct rw_start *st;
+	int i;
+
+	if (!task)
+		return 0;
+	st = bpf_task_storage_get(&rw_starts, task, 0, 0);
+	if (!st)
+		return 0;
+	for (i = 0; i < P15_FLOW_CAS_TRIES; i++) {
+		__u64 w = st->open, n = w & P15_FLOW_OPEN_MASK;
+
+		if (!n)
+			return 0;
+		if (__sync_val_compare_and_swap(&st->open, w, (w - n) + (n << 32)) == w) {
+			flow_count_add(P15_FLC_OPEN_AT_END, n);
+			return 0;
+		}
+	}
+	flow_count(P15_FLC_V_CLAIM_RACE);
+	return 0;
 }
 
 

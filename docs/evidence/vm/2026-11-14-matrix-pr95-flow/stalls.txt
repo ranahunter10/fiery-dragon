@@ -1,0 +1,7 @@
+stall end=1794595369.898 gap_s=1.5 signs=clocksource
+stall end=1794595548.570 gap_s=5.7 signs=clocksource
+stall end=1794597106.857 gap_s=490.3 signs=soft_lockup,clocksource
+touched it_p15d gap_s=1.5
+touched open_cost gap_s=5.7
+touched soak gap_s=490.3
+stalls 3

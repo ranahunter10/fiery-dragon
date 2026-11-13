@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "131e161bd94c51177f31961a8a66a8188f47396a8b6ee9cc983294844c015150"
+#define P15_SCHEMA_HASH "f737b88a76c85db99013bf0477b0e1433085aedd70fd3e93ccba33d5f6d3ca0e"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -1440,11 +1440,19 @@ struct p15_flow_stats_v1 {
 	__u64 file_emitted;
 	__u64 file_lost;
 	__u64 file_map_full;
+	__u64 v_gated;
+	__u64 v_no_slot_entry;
+	__u64 v_no_slot_return;
+	__u64 open_at_end;
+	__u64 returned_after_count;
+	__u64 v_release_failed;
+	__u64 v_entry_while_open;
+	__u64 v_claim_race;
 	__u64 flow_drained;
 	__u64 flow_invalid;
 	__u64 flow_missed;
 } __attribute__((aligned(8)));
-P15_ASSERT(sizeof(struct p15_flow_stats_v1) == 272, "p15_flow_stats_v1 size");
+P15_ASSERT(sizeof(struct p15_flow_stats_v1) == 336, "p15_flow_stats_v1 size");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, h) == 0, "p15_flow_stats_v1.h offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, sess_entry) == 32, "p15_flow_stats_v1.sess_entry offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, sess_return) == 40, "p15_flow_stats_v1.sess_return offset");
@@ -1473,11 +1481,19 @@ P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, unregistered) == 216, "p15_flo
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_emitted) == 224, "p15_flow_stats_v1.file_emitted offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_lost) == 232, "p15_flow_stats_v1.file_lost offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_map_full) == 240, "p15_flow_stats_v1.file_map_full offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_drained) == 248, "p15_flow_stats_v1.flow_drained offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_invalid) == 256, "p15_flow_stats_v1.flow_invalid offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_missed) == 264, "p15_flow_stats_v1.flow_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_gated) == 248, "p15_flow_stats_v1.v_gated offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_no_slot_entry) == 256, "p15_flow_stats_v1.v_no_slot_entry offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_no_slot_return) == 264, "p15_flow_stats_v1.v_no_slot_return offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, open_at_end) == 272, "p15_flow_stats_v1.open_at_end offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, returned_after_count) == 280, "p15_flow_stats_v1.returned_after_count offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_release_failed) == 288, "p15_flow_stats_v1.v_release_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_entry_while_open) == 296, "p15_flow_stats_v1.v_entry_while_open offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_claim_race) == 304, "p15_flow_stats_v1.v_claim_race offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_drained) == 312, "p15_flow_stats_v1.flow_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_invalid) == 320, "p15_flow_stats_v1.flow_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_missed) == 328, "p15_flow_stats_v1.flow_missed offset");
 
-#define P15_FLOW_STATS_V1_MAX_SIZE 272
+#define P15_FLOW_STATS_V1_MAX_SIZE 336
 
 /* FLOW v1 (FLOW): Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here. */
 struct p15_flow_v1 {

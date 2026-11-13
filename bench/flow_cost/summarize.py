@@ -9,7 +9,8 @@ as the secondary:
   - each arm's cost per read: median over rounds, with its order-statistic interval;
   - every traced arm against none, against the A/A floor (none2 against none);
   - the questions of decision waiting 13: ts against session (what option A's task storage adds
-    without a record), ts_rec against end_rec (what option A adds to a record: the deciding
+    without a record), count against ts (what the per-task count of open calls adds to every
+    call: decision waiting 110), ts_rec against end_rec (what option A adds to a record: the deciding
     number), end_rec against session (what writing the record costs);
   - the added cost per read in ns, also in null syscalls (ADR-0018 rule 3.2);
   - the kernel's skip counters per arm, and the check pass (option A's start times inside each
@@ -40,10 +41,10 @@ ROW = re.compile(r"^row round=(-?\d+) event=read arm=(\w+) n=(\d+) cpu_ns=(-?\d+
 NULL = re.compile(r"^nullsys round=(\d+) calls=(\d+) total_ns=(\d+)$")
 CHECK = re.compile(r"^check reads=(\d+) flows=(\d+) outside=(\d+) refused=(\d+) ts_lost=(\d+) "
                    r"create_failed=(\d+) (ok|FAIL)$")
-ALL_ARMS = ("none", "none2", "session", "ts", "end_rec", "ts_rec")
+ALL_ARMS = ("none", "none2", "session", "ts", "count", "end_rec", "ts_rec")
 UNTRACED = ("none", "none2")
 RECORDS = ("end_rec", "ts_rec")
-QUESTIONS = (("ts", "session"), ("ts_rec", "end_rec"), ("end_rec", "session"))
+QUESTIONS = (("ts", "session"), ("ts_rec", "end_rec"), ("end_rec", "session"), ("count", "ts"))
 
 
 class ParseError(Exception):

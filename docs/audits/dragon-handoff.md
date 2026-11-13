@@ -8,30 +8,54 @@ Dragon is the reviewing and implementing session the maintainer set up on 2026-1
 
 | What | Where |
 |---|---|
-| Phase 1, first pass: the design review, findings F-01 to F-15 | `docs/audits/2026-11-13-design-review-dragon.md`, branch `dragon/design-review` |
-| Earlier the same day, before this role: the review of #90's programs (V1 to V6) and the graph's FLOW edges | #90 (fixed by the other session in 3c3adc5), #91 |
+| Phase 1, first pass: the design review, findings F-01 to F-15 | `docs/audits/2026-11-13-design-review-dragon.md` (#92, merged). The other session's verdict on each finding is #92's comment: ten confirmed, F-06 corrected, F-11 fixed in #90 |
+| The detach fault's design note, with a first pass of the same fault in the other programs | `docs/research/2026-11-13-detach-fault-design.md` |
+| The detach fix (decisions 110 to 112, accepted E-0304): the gate, the per-task count, the claim, p15d's stop with `membarrier`, the spine detached last, B1's new terms, FLOW_STATS' fields, `it_p15d` cases 15 to 17, 14 planted bugs, the `flow_cost` arm `count` | branch `dragon/detach-fix`, four commits on #90 at 7984a97 (the note, the bench arm, the fix, STATE and journal) |
 
-## In progress
+## Proven, and not
 
-Nothing is half-built. No code was changed in this PR.
+Proven in the dev container (kernel 6.18): both compilers' builds, the C unit tests (also under ASan and UBSan), the layout check, `it_p15d` with case 15, planted bugs 66 to 73 of `mutate_p15d.py`.
+
+**Not proven anywhere yet**, because no session program loads in the dev container:
+- that the 7.0 verifier accepts the new atomics on the task slot and the `iter/task` program;
+- `it_p15d` cases 16 and 17;
+- planted bugs 74 to 79;
+- the `flow_cost` arm `count`, and so the cost per call (decision waiting 116).
+CI's 7.0 runner shows the first three when the PR is opened; the VM shows the fourth.
+
+## If CI fails on this PR, where to look first
+
+1. **The verifier refuses `flow_open_iter`:** `bpf_task_storage_get` on the iterator's task, then a compare-and-exchange on the value. If the helper is refused there, the fallback is the same claim from a `iter/task` program in `snap.bpf.c`'s style (sleepable), sharing `rw_starts` by fd.
+2. **The verifier refuses the bounded loop in `rw_release`:** unroll it by hand (four copies); the logic does not change.
+3. **Case 16 fails with B1 broken:** read END's reason: it prints every term. `open` above the three held calls is normal (other tasks block too); `relfail` above 0 is a bug in `rw_release`.
+4. **Case 17's `returned_after_count` is 0:** the read was released before the count (the helper signals on p15d's `code=test_pause phase=flow_cut` line), or the pause ended first.
+5. **Reconciliation changes** (`python/p15/reconcile.py`, ADR-0023, ADR-0024): the spine now runs for the whole of the stop, up to `--flow-stop-wait-ms` longer after the closing snapshot than before. If a reconciliation check counts events after the closing snapshot, it will see more of them.
+
+## Waiting on the maintainer
+
+116 (accept the fix on the `count` arm's number, or fall back to option B) and 117 (the daemon sweep's five stale anchors at #90's head).
+
+## Next, in the accepted order (robustness before folding)
+
+1. Whatever CI and the VM show on this PR.
+2. 113: the same term for the open path's session, after this fix has passed the VM matrix.
+3. 103: the open-file map sized from the host, and `file_map_full` as a DEGRADED state (small).
+4. 104: the canary of ADR-0019 G4.4, extended to an open and a transfer.
+5. 101 and 102: design notes first (FLOW on its own ring with a per-process loss count; a free-space reserve and a supervisor), after runs V-1 and V-2.
+6. 105, 107, 108, 114, 115: the coverage table and the limits, in an ADR; FORK version 2; ADR-0013.
+7. What phase 1 owes; then work queue items 4 to 9.
 
 ## Findings not yet fixed
 
-All of F-01 to F-15 (the review's §1). None is confirmed by a run. The maintainer's runs V-1, V-2 and V-3 (the review's §6) confirm or refute F-01, F-02 and F-04.
+From the review: F-01 to F-05, F-07 to F-10, F-12 to F-15 (F-06 corrected, F-11 fixed). Runs V-1, V-2 and V-3 are the maintainer's; V-1 and V-3 need `sudo` to read the WAL.
+From the note: the attach-side silence (114), ftrace's uncounted skips (115).
 
 ## Owed from phase 1 (the review's §7)
 
 1. Read every ADR end to end.
 2. Check each book term by term, and every early return in `spine.bpf.c`, `net.bpf.c`, `snap.bpf.c` and the open path of `file.bpf.c`.
-3. Re-read the flow programs as of 3c3adc5 (the review read the version before it).
-4. The WAL format against a crash at each offset; the reader's reconciliation.
-
-## Next, in the maintainer's order
-
-1. **The detach fault's design note** (decision waiting 23). Start from `kernel/trace/fprobe.c` at v7.0: `unregister_fprobe()` and `fprobe_return()`. Questions the note must answer for option A (gate, wait, a task iterator claiming each open `rw_starts` slot): the memory ordering between the gate and an entry already past it; a task that exits or execs between the cut and the detach (its task storage is freed: is the open call then counted or lost?); a failed storage creation (no slot to claim: the entry must be counted another way); nested calls (one slot per task holds one call); migration (none of the state is per-CPU, so INF: no effect). Alternatives to compare: an fsession (trampoline) in place of the kprobe.session, whose detach semantics for calls in flight must be read in `kernel/bpf/trampoline.c`; keeping the programs attached and closing the books on a gate alone; a per-task counter of open calls in task storage, summed by the iterator.
-2. The table of the same fault in every other program (F-03's three OPEN points, F-15).
-3. Fixes for the findings the maintainer accepts, one PR each.
-4. The independent review of #90 as a whole.
+3. The WAL format against a crash at each offset; the reader's reconciliation.
+The note's §6 covered the attach and detach behaviour of every program, which was part of item 2 of that list.
 
 ## Things that cost time
 

@@ -1,0 +1,254 @@
+build/flow_cost 20 200000 20000 | tee build/flow_cost.txt
+flow_cost: libbpf v1.7, reads on CPU 2, drain on CPU 0, 20 rounds, 200000 reads per arm, 7 arms, FLOW 96 bytes
+check reads=20000 flows=20000 outside=0 refused=0 ts_lost=0 create_failed=0 ok
+row round=-1 event=read arm=none n=20001 cpu_ns=5022053 wall_ns=5020518 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=none2 n=20001 cpu_ns=5066050 wall_ns=5065685 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=session n=20001 cpu_ns=9167791 wall_ns=9166439 hits=20001 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=ts n=20001 cpu_ns=10710942 wall_ns=10709763 hits=20001 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=count n=20001 cpu_ns=6376247 wall_ns=6375338 hits=20001 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=end_rec n=20001 cpu_ns=7939439 wall_ns=7938124 hits=20001 lost=0 drained=20001 refused=0 rmiss=0 lmiss=0
+row round=-1 event=read arm=ts_rec n=20001 cpu_ns=7803739 wall_ns=7800769 hits=20001 lost=0 drained=20001 refused=0 rmiss=0 lmiss=0
+nullsys round=0 calls=1000000 total_ns=109372721
+row round=0 event=read arm=none n=200000 cpu_ns=42247569 wall_ns=42241446 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=none2 n=200000 cpu_ns=30369369 wall_ns=30367697 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=session n=200000 cpu_ns=72551620 wall_ns=72551587 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=ts n=200000 cpu_ns=84660725 wall_ns=84661316 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=count n=200000 cpu_ns=62292204 wall_ns=62290218 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=end_rec n=200000 cpu_ns=102280158 wall_ns=102279794 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=0 event=read arm=ts_rec n=200000 cpu_ns=126759241 wall_ns=126761457 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+nullsys round=1 calls=1000000 total_ns=108002353
+row round=1 event=read arm=none2 n=200000 cpu_ns=48914377 wall_ns=48909186 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=session n=200000 cpu_ns=84901019 wall_ns=85336111 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=ts n=200000 cpu_ns=93124791 wall_ns=93123918 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=count n=200000 cpu_ns=108659732 wall_ns=108659219 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=end_rec n=200000 cpu_ns=105735537 wall_ns=106129215 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=ts_rec n=200000 cpu_ns=103035936 wall_ns=103036239 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=1 event=read arm=none n=200000 cpu_ns=52191293 wall_ns=52718226 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=2 calls=1000000 total_ns=119068966
+row round=2 event=read arm=session n=200000 cpu_ns=102625839 wall_ns=102673331 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=2 event=read arm=ts n=200000 cpu_ns=105675415 wall_ns=105675230 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=2 event=read arm=count n=200000 cpu_ns=84656766 wall_ns=84654531 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=2 event=read arm=end_rec n=200000 cpu_ns=88055805 wall_ns=88053488 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=2 event=read arm=ts_rec n=200000 cpu_ns=88625514 wall_ns=88624241 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=2 event=read arm=none n=200000 cpu_ns=51824145 wall_ns=51851926 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=2 event=read arm=none2 n=200000 cpu_ns=49924624 wall_ns=49923481 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=3 calls=1000000 total_ns=116534703
+row round=3 event=read arm=ts n=200000 cpu_ns=86189083 wall_ns=86189445 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=3 event=read arm=count n=200000 cpu_ns=71925599 wall_ns=71923879 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=3 event=read arm=end_rec n=200000 cpu_ns=109958865 wall_ns=109957058 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=3 event=read arm=ts_rec n=200000 cpu_ns=126459342 wall_ns=126458017 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=3 event=read arm=none n=200000 cpu_ns=50220342 wall_ns=50282684 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=3 event=read arm=none2 n=200000 cpu_ns=50555566 wall_ns=50552252 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=3 event=read arm=session n=200000 cpu_ns=97499869 wall_ns=97499147 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=4 calls=1000000 total_ns=119288569
+row round=4 event=read arm=count n=200000 cpu_ns=94832785 wall_ns=94830817 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=4 event=read arm=end_rec n=200000 cpu_ns=116173803 wall_ns=116172589 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=4 event=read arm=ts_rec n=200000 cpu_ns=125295662 wall_ns=125296614 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=4 event=read arm=none n=200000 cpu_ns=45320652 wall_ns=45328547 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=4 event=read arm=none2 n=200000 cpu_ns=37865434 wall_ns=37863406 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=4 event=read arm=session n=200000 cpu_ns=65448313 wall_ns=65447186 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=4 event=read arm=ts n=200000 cpu_ns=60434508 wall_ns=60433376 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=5 calls=1000000 total_ns=94466044
+row round=5 event=read arm=end_rec n=200000 cpu_ns=79844662 wall_ns=79842654 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=5 event=read arm=ts_rec n=200000 cpu_ns=120084716 wall_ns=120084780 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=5 event=read arm=none n=200000 cpu_ns=51729707 wall_ns=51735148 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=5 event=read arm=none2 n=200000 cpu_ns=50799431 wall_ns=50798829 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=5 event=read arm=session n=200000 cpu_ns=91955519 wall_ns=91954641 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=5 event=read arm=ts n=200000 cpu_ns=89751108 wall_ns=89748621 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=5 event=read arm=count n=200000 cpu_ns=82416406 wall_ns=82411618 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=6 calls=1000000 total_ns=108126659
+row round=6 event=read arm=ts_rec n=200000 cpu_ns=110208282 wall_ns=110213093 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=6 event=read arm=none n=200000 cpu_ns=28422166 wall_ns=28570227 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=6 event=read arm=none2 n=200000 cpu_ns=49874794 wall_ns=49874560 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=6 event=read arm=session n=200000 cpu_ns=83184413 wall_ns=83232773 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=6 event=read arm=ts n=200000 cpu_ns=62009742 wall_ns=62009660 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=6 event=read arm=count n=200000 cpu_ns=72169463 wall_ns=72166319 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=6 event=read arm=end_rec n=200000 cpu_ns=111237025 wall_ns=111234060 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+nullsys round=7 calls=1000000 total_ns=114679155
+row round=7 event=read arm=none n=200000 cpu_ns=50211100 wall_ns=50203606 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=7 event=read arm=none2 n=200000 cpu_ns=51138338 wall_ns=51139731 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=7 event=read arm=session n=200000 cpu_ns=93963506 wall_ns=93969094 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=7 event=read arm=ts n=200000 cpu_ns=100950116 wall_ns=100950343 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=7 event=read arm=count n=200000 cpu_ns=94179590 wall_ns=94179316 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=7 event=read arm=end_rec n=200000 cpu_ns=117112632 wall_ns=117112862 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=7 event=read arm=ts_rec n=200000 cpu_ns=123910713 wall_ns=123912128 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+nullsys round=8 calls=1000000 total_ns=136704838
+row round=8 event=read arm=none2 n=200000 cpu_ns=29289481 wall_ns=29280004 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=8 event=read arm=session n=200000 cpu_ns=58621038 wall_ns=58618266 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=8 event=read arm=ts n=200000 cpu_ns=108656576 wall_ns=108655328 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=8 event=read arm=count n=200000 cpu_ns=97153128 wall_ns=97151020 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=8 event=read arm=end_rec n=200000 cpu_ns=107988049 wall_ns=109025824 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=8 event=read arm=ts_rec n=200000 cpu_ns=120094793 wall_ns=120093804 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=8 event=read arm=none n=200000 cpu_ns=41370914 wall_ns=41376107 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=9 calls=1000000 total_ns=110288023
+row round=9 event=read arm=session n=200000 cpu_ns=89596820 wall_ns=89595932 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=9 event=read arm=ts n=200000 cpu_ns=107972445 wall_ns=107973045 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=9 event=read arm=count n=200000 cpu_ns=108506741 wall_ns=109775225 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=9 event=read arm=end_rec n=200000 cpu_ns=114408512 wall_ns=114406722 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=9 event=read arm=ts_rec n=200000 cpu_ns=92372847 wall_ns=92371498 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=9 event=read arm=none n=200000 cpu_ns=40535254 wall_ns=40540114 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=9 event=read arm=none2 n=200000 cpu_ns=27129673 wall_ns=27130347 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=10 calls=1000000 total_ns=96383204
+row round=10 event=read arm=ts n=200000 cpu_ns=107019260 wall_ns=107017364 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=10 event=read arm=count n=200000 cpu_ns=113393362 wall_ns=113393841 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=10 event=read arm=end_rec n=200000 cpu_ns=119478422 wall_ns=119476433 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=10 event=read arm=ts_rec n=200000 cpu_ns=130074190 wall_ns=130228433 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=10 event=read arm=none n=200000 cpu_ns=50944015 wall_ns=51143009 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=10 event=read arm=none2 n=200000 cpu_ns=52162775 wall_ns=52159865 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=10 event=read arm=session n=200000 cpu_ns=97564868 wall_ns=97563954 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=11 calls=1000000 total_ns=121202693
+row round=11 event=read arm=count n=200000 cpu_ns=96837788 wall_ns=96835830 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=11 event=read arm=end_rec n=200000 cpu_ns=103231713 wall_ns=103229679 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=11 event=read arm=ts_rec n=200000 cpu_ns=80866777 wall_ns=80863396 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=11 event=read arm=none n=200000 cpu_ns=45893234 wall_ns=45900895 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=11 event=read arm=none2 n=200000 cpu_ns=26915704 wall_ns=26915653 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=11 event=read arm=session n=200000 cpu_ns=55177017 wall_ns=55174278 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=11 event=read arm=ts n=200000 cpu_ns=110159122 wall_ns=110159329 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=12 calls=1000000 total_ns=122473795
+row round=12 event=read arm=end_rec n=200000 cpu_ns=118235596 wall_ns=118234959 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=12 event=read arm=ts_rec n=200000 cpu_ns=117864781 wall_ns=117863676 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=12 event=read arm=none n=200000 cpu_ns=32647499 wall_ns=33531606 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=12 event=read arm=none2 n=200000 cpu_ns=55295701 wall_ns=55537291 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=12 event=read arm=session n=200000 cpu_ns=81519177 wall_ns=81518735 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=12 event=read arm=ts n=200000 cpu_ns=109837274 wall_ns=109837464 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=12 event=read arm=count n=200000 cpu_ns=108769737 wall_ns=108769345 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=13 calls=1000000 total_ns=120054991
+row round=13 event=read arm=ts_rec n=200000 cpu_ns=108656936 wall_ns=108655780 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=13 event=read arm=none n=200000 cpu_ns=43078448 wall_ns=43082979 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=13 event=read arm=none2 n=200000 cpu_ns=51728640 wall_ns=51727752 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=13 event=read arm=session n=200000 cpu_ns=82694167 wall_ns=82692327 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=13 event=read arm=ts n=200000 cpu_ns=100049403 wall_ns=100048814 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=13 event=read arm=count n=200000 cpu_ns=108771224 wall_ns=108770737 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=13 event=read arm=end_rec n=200000 cpu_ns=121495462 wall_ns=121493805 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+nullsys round=14 calls=1000000 total_ns=121988185
+row round=14 event=read arm=none n=200000 cpu_ns=39008424 wall_ns=38997702 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=14 event=read arm=none2 n=200000 cpu_ns=44772985 wall_ns=44770505 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=14 event=read arm=session n=200000 cpu_ns=89068477 wall_ns=89067035 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=14 event=read arm=ts n=200000 cpu_ns=106310048 wall_ns=106309077 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=14 event=read arm=count n=200000 cpu_ns=103074047 wall_ns=103074234 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=14 event=read arm=end_rec n=200000 cpu_ns=84337223 wall_ns=84333843 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=14 event=read arm=ts_rec n=200000 cpu_ns=126267395 wall_ns=126268451 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+nullsys round=15 calls=1000000 total_ns=117296024
+row round=15 event=read arm=none2 n=200000 cpu_ns=39803850 wall_ns=39794020 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=15 event=read arm=session n=200000 cpu_ns=56660167 wall_ns=56656814 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=15 event=read arm=ts n=200000 cpu_ns=103498462 wall_ns=103496061 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=15 event=read arm=count n=200000 cpu_ns=91332690 wall_ns=91332262 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=15 event=read arm=end_rec n=200000 cpu_ns=117126694 wall_ns=117125939 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=15 event=read arm=ts_rec n=200000 cpu_ns=128460796 wall_ns=128458815 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=15 event=read arm=none n=200000 cpu_ns=50183269 wall_ns=50187207 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=16 calls=1000000 total_ns=117687224
+row round=16 event=read arm=session n=200000 cpu_ns=97179084 wall_ns=97175952 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=16 event=read arm=ts n=200000 cpu_ns=103100212 wall_ns=103099282 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=16 event=read arm=count n=200000 cpu_ns=71991520 wall_ns=71988008 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=16 event=read arm=end_rec n=200000 cpu_ns=120602555 wall_ns=120602000 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=16 event=read arm=ts_rec n=200000 cpu_ns=133725400 wall_ns=133724465 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=16 event=read arm=none n=200000 cpu_ns=53224146 wall_ns=53528951 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=16 event=read arm=none2 n=200000 cpu_ns=50298687 wall_ns=50294853 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=17 calls=1000000 total_ns=122337009
+row round=17 event=read arm=ts n=200000 cpu_ns=88292860 wall_ns=88292110 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=17 event=read arm=count n=200000 cpu_ns=113514487 wall_ns=113512936 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=17 event=read arm=end_rec n=200000 cpu_ns=125889957 wall_ns=125889187 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=17 event=read arm=ts_rec n=200000 cpu_ns=135080194 wall_ns=135080045 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=17 event=read arm=none n=200000 cpu_ns=39670260 wall_ns=39667992 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=17 event=read arm=none2 n=200000 cpu_ns=56270067 wall_ns=56268727 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=17 event=read arm=session n=200000 cpu_ns=81610174 wall_ns=81609188 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=18 calls=1000000 total_ns=119486071
+row round=18 event=read arm=count n=200000 cpu_ns=115106819 wall_ns=115513283 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=18 event=read arm=end_rec n=200000 cpu_ns=88054463 wall_ns=88050290 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=18 event=read arm=ts_rec n=200000 cpu_ns=129571919 wall_ns=129572706 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=18 event=read arm=none n=200000 cpu_ns=47871360 wall_ns=47876088 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=18 event=read arm=none2 n=200000 cpu_ns=47275548 wall_ns=47272611 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=18 event=read arm=session n=200000 cpu_ns=210178558 wall_ns=210183238 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=18 event=read arm=ts n=200000 cpu_ns=111841681 wall_ns=111839476 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+nullsys round=19 calls=1000000 total_ns=97280303
+row round=19 event=read arm=end_rec n=200000 cpu_ns=103424338 wall_ns=103422281 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=19 event=read arm=ts_rec n=200000 cpu_ns=108387669 wall_ns=108385674 hits=200000 lost=0 drained=200000 refused=0 rmiss=0 lmiss=0
+row round=19 event=read arm=none n=200000 cpu_ns=43941777 wall_ns=43970778 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=19 event=read arm=none2 n=200000 cpu_ns=41667697 wall_ns=41668060 hits=0 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=19 event=read arm=session n=200000 cpu_ns=67396219 wall_ns=67395663 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=19 event=read arm=ts n=200000 cpu_ns=105459113 wall_ns=105443899 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+row round=19 event=read arm=count n=200000 cpu_ns=69908747 wall_ns=71434693 hits=200000 lost=0 drained=0 refused=0 rmiss=0 lmiss=0
+flow_cost: ok
+python3 bench/flow_cost/summarize.py build/flow_cost.txt
+# flow_cost: step 2b's read hook and FLOW's start time (decision waiting 13)
+
+Null syscall (getppid), median over rounds: 117.5 ns.
+
+## cpu time per read (primary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 228.0 ns | 206.9 ns to 251.1 ns |
+| none2 | 247.0 ns | 199.0 ns to 254.0 ns |
+| session | 420.2 ns | 362.8 ns to 469.8 ns |
+| ts | 516.5 ns | 448.8 ns to 535.1 ns |
+| count | 479.2 ns | 412.1 ns to 543.3 ns |
+| end_rec | 553.0 ns | 516.2 ns to 585.6 ns |
+| ts_rec | 610.0 ns | 543.3 ns to 633.8 ns |
+
+- **session against none:** overhead +87.14 %, 95 % interval +64.93 % to +110.55 %, Wilcoxon p = 1.91e-06
+  - added per read 199.8 ns (95 % interval 151.5 ns to 235.9 ns), 1.70 null syscalls; ratio of medians 1.8428; effect p = 1.91e-06
+- **ts against none:** overhead +116.25 %, 95 % interval +99.28 % to +136.09 %, Wilcoxon p = 1.91e-06
+  - added per read 263.8 ns (95 % interval 228.3 ns to 296.2 ns), 2.25 null syscalls; ratio of medians 2.2650; effect p = 1.91e-06
+- **count against none:** overhead +106.62 %, 95 % interval +83.22 % to +136.07 %, Wilcoxon p = 1.91e-06
+  - added per read 242.3 ns (95 % interval 195.4 ns to 293.7 ns), 2.06 null syscalls; ratio of medians 2.1013; effect p = 1.91e-06
+- **end_rec against none:** overhead +137.23 %, 95 % interval +117.98 % to +167.17 %, Wilcoxon p = 1.91e-06
+  - added per read 317.2 ns (95 % interval 277.3 ns to 354.3 ns), 2.70 null syscalls; ratio of medians 2.4250; effect p = 1.91e-06
+- **ts_rec against none:** overhead +158.86 %, 95 % interval +139.35 % to +189.49 %, Wilcoxon p = 1.91e-06
+  - added per read 371.5 ns (95 % interval 323.9 ns to 402.4 ns), 3.16 null syscalls; ratio of medians 2.6751; effect p = 1.91e-06
+- **ts against session:** overhead +13.14 %, 95 % interval +0.64 % to +33.52 %, Wilcoxon p = 0.0362
+  - added per read 58.2 ns (95 % interval 8.0 ns to 118.8 ns), 0.50 null syscalls; ratio of medians 1.2291; effect p = 0.0362
+- **ts_rec against end_rec:** not resolved on this host (A/A interval -15.74 % to +9.50 %)
+  - added per read 44.1 ns (95 % interval 0.7 ns to 89.5 ns), 0.38 null syscalls; ratio of medians 1.1031; effect p = 0.0532
+- **end_rec against session:** overhead +32.53 %, 95 % interval +12.78 % to +50.55 %, Wilcoxon p = 0.00271
+  - added per read 130.6 ns (95 % interval 60.6 ns to 182.3 ns), 1.11 null syscalls; ratio of medians 1.3160; effect p = 0.00271
+- **count against ts:** not resolved on this host (A/A interval -15.74 % to +9.50 %)
+  - added per read -20.2 ns (95 % interval -62.1 ns to 22.7 ns), -0.17 null syscalls; ratio of medians 0.9277; effect p = 0.312
+
+## wall time per read (secondary; 20 rounds)
+
+| arm | median | 95 % interval |
+|---|---|---|
+| none | 228.1 ns | 206.9 ns to 251.4 ns |
+| none2 | 247.0 ns | 199.0 ns to 254.0 ns |
+| session | 421.4 ns | 362.8 ns to 469.8 ns |
+| ts | 516.5 ns | 448.7 ns to 535.1 ns |
+| count | 479.2 ns | 412.1 ns to 543.8 ns |
+| end_rec | 553.0 ns | 516.1 ns to 585.6 ns |
+| ts_rec | 610.0 ns | 543.3 ns to 633.8 ns |
+
+- **session against none:** overhead +86.38 %, 95 % interval +64.90 % to +109.37 %, Wilcoxon p = 1.91e-06
+  - added per read 199.6 ns (95 % interval 151.6 ns to 235.7 ns), 1.70 null syscalls; ratio of medians 1.8477; effect p = 1.91e-06
+- **ts against none:** overhead +115.95 %, 95 % interval +98.29 % to +135.98 %, Wilcoxon p = 1.91e-06
+  - added per read 263.6 ns (95 % interval 227.9 ns to 296.1 ns), 2.24 null syscalls; ratio of medians 2.2646; effect p = 1.91e-06
+- **count against none:** overhead +107.44 %, 95 % interval +83.32 % to +136.14 %, Wilcoxon p = 1.91e-06
+  - added per read 242.2 ns (95 % interval 196.0 ns to 293.6 ns), 2.06 null syscalls; ratio of medians 2.1009; effect p = 1.91e-06
+- **end_rec against none:** overhead +137.20 %, 95 % interval +117.46 % to +166.43 %, Wilcoxon p = 1.91e-06
+  - added per read 317.6 ns (95 % interval 276.9 ns to 354.2 ns), 2.70 null syscalls; ratio of medians 2.4246; effect p = 1.91e-06
+- **ts_rec against none:** overhead +158.37 %, 95 % interval +139.20 % to +188.01 %, Wilcoxon p = 1.91e-06
+  - added per read 371.1 ns (95 % interval 322.6 ns to 401.8 ns), 3.16 null syscalls; ratio of medians 2.6746; effect p = 1.91e-06
+- **ts against session:** overhead +13.10 %, 95 % interval +0.64 % to +33.53 %, Wilcoxon p = 0.0362
+  - added per read 58.2 ns (95 % interval 6.9 ns to 118.8 ns), 0.50 null syscalls; ratio of medians 1.2256; effect p = 0.0362
+- **ts_rec against end_rec:** not resolved on this host (A/A interval -15.75 % to +8.88 %)
+  - added per read 44.3 ns (95 % interval 0.7 ns to 88.9 ns), 0.38 null syscalls; ratio of medians 1.1031; effect p = 0.0532
+- **end_rec against session:** overhead +32.63 %, 95 % interval +12.78 % to +50.92 %, Wilcoxon p = 0.00271
+  - added per read 130.6 ns (95 % interval 60.5 ns to 183.9 ns), 1.11 null syscalls; ratio of medians 1.3122; effect p = 0.00271
+- **count against ts:** not resolved on this host (A/A interval -15.75 % to +8.88 %)
+  - added per read -19.7 ns (95 % interval -61.8 ns to 22.7 ns), -0.17 null syscalls; ratio of medians 0.9277; effect p = 0.349
+
+## Kernel skip counters, all rounds
+
+| arm | recursion_misses | kprobe_multi.missed |
+|---|---|---|
+| none | 0 | 0 |
+| none2 | 0 | 0 |
+| session | 0 | 0 |
+| ts | 0 | 0 |
+| count | 0 | 0 |
+| end_rec | 0 | 0 |
+| ts_rec | 0 | 0 |
+
+## Option A's start times against each read's bracket
+
+- 20000 reads, 20000 FLOWs, 0 outside their read, 0 lost, 0 creations failed: ok
+

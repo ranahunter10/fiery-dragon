@@ -1,0 +1,62 @@
+# open_cost: what capture adds to an open and a close (decision 22a.4)
+
+Run: kernel=7.0.0-38-generic cpus=3 rounds=20 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=--flow.
+
+20 rounds. Null syscall (getppid) without capture, median: 91.5 ns; with p15d: 87.2 ns.
+
+## same: one file opened again and again (steady state); thread CPU time, primary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 963.4 ns | 931.1 ns to 984.8 ns |
+| none2 | 962.3 ns | 931.1 ns to 986.6 ns |
+| p15d | 2,069.6 ns | 2,052.8 ns to 2,100.5 ns |
+
+- **p15d against none:** overhead +117.74 %, 95 % interval +110.21 % to +124.51 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,112.1 ns (95 % interval 1,079.7 ns to 1,167.1 ns), 12.16 null syscalls; ratio of medians 2.1482; effect p = 1.91e-06
+
+## same: one file opened again and again (steady state); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 969.3 ns | 931.1 ns to 989.2 ns |
+| none2 | 964.6 ns | 931.1 ns to 992.1 ns |
+| p15d | 2,118.3 ns | 2,084.9 ns to 2,150.5 ns |
+
+- **p15d against none:** overhead +120.76 %, 95 % interval +113.45 % to +129.96 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,163.0 ns (95 % interval 1,111.6 ns to 1,209.2 ns), 12.71 null syscalls; ratio of medians 2.1854; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); thread CPU time, primary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,263.7 ns | 1,220.5 ns to 1,287.1 ns |
+| none2 | 1,257.2 ns | 1,231.2 ns to 1,319.7 ns |
+| p15d | 2,730.4 ns | 2,598.3 ns to 2,755.7 ns |
+
+- **p15d against none:** overhead +112.80 %, 95 % interval +104.21 % to +119.22 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,425.0 ns (95 % interval 1,357.7 ns to 1,492.1 ns), 15.58 null syscalls; ratio of medians 2.1606; effect p = 1.91e-06
+
+## distinct: every open a first sighting (facts in the record); wall time, secondary
+
+| arm | median per open+close | 95 % interval |
+|---|---|---|
+| none | 1,264.2 ns | 1,222.9 ns to 1,287.0 ns |
+| none2 | 1,257.1 ns | 1,231.1 ns to 1,319.6 ns |
+| p15d | 2,748.9 ns | 2,707.4 ns to 2,856.7 ns |
+
+- **p15d against none:** overhead +117.47 %, 95 % interval +108.48 % to +125.45 %, Wilcoxon p = 1.91e-06
+  - added per open+close 1,488.7 ns (95 % interval 1,417.5 ns to 1,559.1 ns), 16.27 null syscalls; ratio of medians 2.1744; effect p = 1.91e-06
+
+## What the capture wrote and what it cost p15d
+
+- opens expected 4,400,000; OPEN records with their path 4,400,000; PATH_MISSING records of the workload 0; CLOSE records 4,400,000; lost to the ring 0
+- records per open+close: 2.000; bytes per open+close in the WAL: 171.6 (OPEN 115.6, CLOSE 56.0)
+- opens carrying the object's facts: 9.1%
+- opens by other processes during the traced arms: 533
+- p15d idle: 2.70 ms of CPU per second (mean; median 2.55)
+- p15d per open+close of the workload: 264.1 ns of CPU in the window (mean), 254.7 ns after the idle rate is taken off (median 234.6 ns)
+- p15d's thread switches: 0.4 per 1,000 open+close in the window (median), 19.0 per second idle (median)
+- agent overhead of the opens (p15d's CPU above its idle rate / the two open events' CPU time without capture): mean 25.9%, median 23.6%, range 20.3% to 45.6%
+- agent overhead of the whole workload, as eAudit defines it (all of p15d's CPU in the window / the workload's CPU time without capture, null syscalls included): mean 18.9%, median 17.2%
+

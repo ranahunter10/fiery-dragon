@@ -9,6 +9,7 @@
 | none, none2 | nothing attached: untraced, and its A/A control | — |
 | session | the cookie | count (E-0138's anchor, as `rw_hook_cost`'s session arm) |
 | ts | the cookie; task storage {file, `bpf_ktime_get_boot_ns`} | look up task storage, compare the file, count |
+| count | as ts, and an atomic add of the task's open-call count | as ts, and a compare-and-exchange taking the call off the count (the end's count of open calls, `bpf/include/p15_flow.h`; its cost is count against ts) |
 | end_rec | the cookie | a 96-byte FLOW (`schema/records.toml`): end time only, `START_UNKNOWN` |
 | ts_rec | as ts | the FLOW with `first_ts` from task storage |
 
@@ -27,6 +28,7 @@
 **Report.** [`summarize.py`](summarize.py) uses [`bench/quant/paired.py`](../quant/paired.py) and the comparison lines of [`rw_hook_cost`'s summarize](../rw_hook_cost/summarize.py). Timings are reported only if every book closes and the check passes. The questions:
 - **ts against session:** task storage's cost on its own;
 - **ts_rec against end_rec:** what A adds to a record, the number that decides;
+- **count against ts:** what the end's count of open calls adds to every call (decision waiting 110);
 - **end_rec against session:** what writing the record costs.
 
 An overhead is quoted only if ADR-0018 rule 2.4 allows it.

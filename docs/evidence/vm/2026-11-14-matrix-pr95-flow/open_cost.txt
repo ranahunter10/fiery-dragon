@@ -1,0 +1,211 @@
+config kernel=7.0.0-38-generic cpus=3 rounds=20 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=--flow
+row round=-1 arm=none2 event=nullsys n=1000000 cpu_ns=88853259 wall_ns=88847400
+row round=-1 arm=none2 event=same n=200000 cpu_ns=171735135 wall_ns=171737853
+row round=-1 arm=none2 event=distinct n=20000 cpu_ns=29210522 wall_ns=29208039
+row round=-1 arm=none event=nullsys n=1000000 cpu_ns=90435759 wall_ns=90428023
+row round=-1 arm=none event=same n=200000 cpu_ns=185254200 wall_ns=185256845
+row round=-1 arm=none event=distinct n=20000 cpu_ns=29074788 wall_ns=29072276
+capture round=-1 pid=7255 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=3741420 idle_wall_ns=1001007248 agent_cpu_ns=205834707 agent_wall_ns=802185706 idle_switches=19 agent_switches=85 ok
+row round=-1 arm=p15d event=nullsys n=1000000 cpu_ns=89413097 wall_ns=89427741
+row round=-1 arm=p15d event=same n=200000 cpu_ns=444933794 wall_ns=449545246
+row round=-1 arm=p15d event=distinct n=20000 cpu_ns=57284700 wall_ns=58280218
+row round=0 arm=none event=nullsys n=1000000 cpu_ns=83992913 wall_ns=83986281
+row round=0 arm=none event=same n=200000 cpu_ns=174141925 wall_ns=174142988
+row round=0 arm=none event=distinct n=20000 cpu_ns=24410728 wall_ns=24407892
+capture round=0 pid=7262 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=4816738 idle_wall_ns=1002731222 agent_cpu_ns=91288883 agent_wall_ns=781040283 idle_switches=29 agent_switches=85 ok
+row round=0 arm=p15d event=nullsys n=1000000 cpu_ns=84859903 wall_ns=84859263
+row round=0 arm=p15d event=same n=200000 cpu_ns=425714642 wall_ns=428000418
+row round=0 arm=p15d event=distinct n=20000 cpu_ns=60491746 wall_ns=61524630
+row round=0 arm=none2 event=nullsys n=1000000 cpu_ns=86091146 wall_ns=86084607
+row round=0 arm=none2 event=same n=200000 cpu_ns=175476747 wall_ns=175477222
+row round=0 arm=none2 event=distinct n=20000 cpu_ns=24201182 wall_ns=24197963
+capture round=1 pid=7269 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2179152 idle_wall_ns=1001895765 agent_cpu_ns=49227616 agent_wall_ns=785920913 idle_switches=18 agent_switches=86 ok
+row round=1 arm=p15d event=nullsys n=1000000 cpu_ns=89502542 wall_ns=89599973
+row round=1 arm=p15d event=same n=200000 cpu_ns=419667797 wall_ns=437444335
+row round=1 arm=p15d event=distinct n=20000 cpu_ns=51810152 wall_ns=54435190
+row round=1 arm=none2 event=nullsys n=1000000 cpu_ns=87556842 wall_ns=87663546
+row round=1 arm=none2 event=same n=200000 cpu_ns=181424100 wall_ns=181426529
+row round=1 arm=none2 event=distinct n=20000 cpu_ns=24267087 wall_ns=24263637
+row round=1 arm=none event=nullsys n=1000000 cpu_ns=87758101 wall_ns=87768457
+row round=1 arm=none event=same n=200000 cpu_ns=175784628 wall_ns=176558858
+row round=1 arm=none event=distinct n=20000 cpu_ns=23352383 wall_ns=23350209
+row round=2 arm=none2 event=nullsys n=1000000 cpu_ns=103475070 wall_ns=103476732
+row round=2 arm=none2 event=same n=200000 cpu_ns=257837377 wall_ns=257840534
+row round=2 arm=none2 event=distinct n=20000 cpu_ns=37745691 wall_ns=37741798
+row round=2 arm=none event=nullsys n=1000000 cpu_ns=117844624 wall_ns=117837740
+row round=2 arm=none event=same n=200000 cpu_ns=170678667 wall_ns=170677999
+row round=2 arm=none event=distinct n=20000 cpu_ns=23045894 wall_ns=23042765
+capture round=2 pid=7279 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=27 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2421526 idle_wall_ns=1000497091 agent_cpu_ns=49740239 agent_wall_ns=763136936 idle_switches=18 agent_switches=84 ok
+row round=2 arm=p15d event=nullsys n=1000000 cpu_ns=86445886 wall_ns=87095892
+row round=2 arm=p15d event=same n=200000 cpu_ns=398360689 wall_ns=417312740
+row round=2 arm=p15d event=distinct n=20000 cpu_ns=51966248 wall_ns=54148089
+row round=3 arm=none event=nullsys n=1000000 cpu_ns=89892718 wall_ns=89927899
+row round=3 arm=none event=same n=200000 cpu_ns=193979152 wall_ns=193980408
+row round=3 arm=none event=distinct n=20000 cpu_ns=25053902 wall_ns=25050546
+capture round=3 pid=7288 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=25 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1802733 idle_wall_ns=1000946562 agent_cpu_ns=48655048 agent_wall_ns=775874402 idle_switches=14 agent_switches=85 ok
+row round=3 arm=p15d event=nullsys n=1000000 cpu_ns=84736915 wall_ns=84883268
+row round=3 arm=p15d event=same n=200000 cpu_ns=410515337 wall_ns=428901387
+row round=3 arm=p15d event=distinct n=20000 cpu_ns=52887062 wall_ns=57134135
+row round=3 arm=none2 event=nullsys n=1000000 cpu_ns=87320334 wall_ns=87318092
+row round=3 arm=none2 event=same n=200000 cpu_ns=181668624 wall_ns=181669928
+row round=3 arm=none2 event=distinct n=20000 cpu_ns=25222227 wall_ns=25220282
+capture round=4 pid=7298 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=25 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=1923938 idle_wall_ns=1000536380 agent_cpu_ns=48732814 agent_wall_ns=765331745 idle_switches=19 agent_switches=86 ok
+row round=4 arm=p15d event=nullsys n=1000000 cpu_ns=85326425 wall_ns=85320861
+row round=4 arm=p15d event=same n=200000 cpu_ns=394372268 wall_ns=421378695
+row round=4 arm=p15d event=distinct n=20000 cpu_ns=51651679 wall_ns=54020664
+row round=4 arm=none2 event=nullsys n=1000000 cpu_ns=87615640 wall_ns=87609789
+row round=4 arm=none2 event=same n=200000 cpu_ns=202359662 wall_ns=202363153
+row round=4 arm=none2 event=distinct n=20000 cpu_ns=24624312 wall_ns=24622015
+row round=4 arm=none event=nullsys n=1000000 cpu_ns=85504738 wall_ns=85509818
+row round=4 arm=none event=same n=200000 cpu_ns=178836056 wall_ns=179535244
+row round=4 arm=none event=distinct n=20000 cpu_ns=28714049 wall_ns=28710667
+row round=5 arm=none2 event=nullsys n=1000000 cpu_ns=84220635 wall_ns=84214258
+row round=5 arm=none2 event=same n=200000 cpu_ns=173551575 wall_ns=173553277
+row round=5 arm=none2 event=distinct n=20000 cpu_ns=24806927 wall_ns=24803942
+row round=5 arm=none event=nullsys n=1000000 cpu_ns=89048383 wall_ns=89064314
+row round=5 arm=none event=same n=200000 cpu_ns=190119257 wall_ns=190230487
+row round=5 arm=none event=distinct n=20000 cpu_ns=25712676 wall_ns=25711412
+capture round=5 pid=7308 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2788121 idle_wall_ns=1000912185 agent_cpu_ns=100601873 agent_wall_ns=760466665 idle_switches=19 agent_switches=411 ok
+row round=5 arm=p15d event=nullsys n=1000000 cpu_ns=87126951 wall_ns=87872759
+row round=5 arm=p15d event=same n=200000 cpu_ns=410569681 wall_ns=411423788
+row round=5 arm=p15d event=distinct n=20000 cpu_ns=56974137 wall_ns=56973980
+row round=6 arm=none event=nullsys n=1000000 cpu_ns=88831917 wall_ns=88828466
+row round=6 arm=none event=same n=200000 cpu_ns=187638734 wall_ns=188944314
+row round=6 arm=none event=distinct n=20000 cpu_ns=25126222 wall_ns=25124748
+capture round=6 pid=7318 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=67 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=3652254 idle_wall_ns=1001230725 agent_cpu_ns=46768706 agent_wall_ns=730683122 idle_switches=26 agent_switches=88 ok
+row round=6 arm=p15d event=nullsys n=1000000 cpu_ns=87036895 wall_ns=87040712
+row round=6 arm=p15d event=same n=200000 cpu_ns=386659162 wall_ns=386682411
+row round=6 arm=p15d event=distinct n=20000 cpu_ns=51697944 wall_ns=51697086
+row round=6 arm=none2 event=nullsys n=1000000 cpu_ns=88560957 wall_ns=88557487
+row round=6 arm=none2 event=same n=200000 cpu_ns=193242383 wall_ns=194153901
+row round=6 arm=none2 event=distinct n=20000 cpu_ns=24776905 wall_ns=24774345
+capture round=7 pid=7325 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2656939 idle_wall_ns=1000816567 agent_cpu_ns=58053843 agent_wall_ns=783553749 idle_switches=18 agent_switches=84 ok
+row round=7 arm=p15d event=nullsys n=1000000 cpu_ns=94016094 wall_ns=94869163
+row round=7 arm=p15d event=same n=200000 cpu_ns=421913163 wall_ns=425929670
+row round=7 arm=p15d event=distinct n=20000 cpu_ns=55113468 wall_ns=57938393
+row round=7 arm=none2 event=nullsys n=1000000 cpu_ns=91042650 wall_ns=91575516
+row round=7 arm=none2 event=same n=200000 cpu_ns=188283808 wall_ns=188286999
+row round=7 arm=none2 event=distinct n=20000 cpu_ns=26774879 wall_ns=26771910
+row round=7 arm=none event=nullsys n=1000000 cpu_ns=95785115 wall_ns=95820370
+row round=7 arm=none event=same n=200000 cpu_ns=194033402 wall_ns=194035265
+row round=7 arm=none event=distinct n=20000 cpu_ns=23927142 wall_ns=23924445
+row round=8 arm=none2 event=nullsys n=1000000 cpu_ns=89318586 wall_ns=89335146
+row round=8 arm=none2 event=same n=200000 cpu_ns=194644836 wall_ns=195537414
+row round=8 arm=none2 event=distinct n=20000 cpu_ns=26807141 wall_ns=27038941
+row round=8 arm=none event=nullsys n=1000000 cpu_ns=94613591 wall_ns=94652646
+row round=8 arm=none event=same n=200000 cpu_ns=207273351 wall_ns=210266390
+row round=8 arm=none event=distinct n=20000 cpu_ns=28492697 wall_ns=29534868
+capture round=8 pid=7335 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=3051458 idle_wall_ns=1000993702 agent_cpu_ns=54402157 agent_wall_ns=769898781 idle_switches=19 agent_switches=88 ok
+row round=8 arm=p15d event=nullsys n=1000000 cpu_ns=93840718 wall_ns=93842007
+row round=8 arm=p15d event=same n=200000 cpu_ns=414165826 wall_ns=416228474
+row round=8 arm=p15d event=distinct n=20000 cpu_ns=54942476 wall_ns=54941281
+row round=9 arm=none event=nullsys n=1000000 cpu_ns=88582081 wall_ns=88590815
+row round=9 arm=none event=same n=200000 cpu_ns=200381956 wall_ns=200382239
+row round=9 arm=none event=distinct n=20000 cpu_ns=27588910 wall_ns=27585619
+capture round=9 pid=7342 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=25 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2751786 idle_wall_ns=1000456665 agent_cpu_ns=57984803 agent_wall_ns=817093730 idle_switches=19 agent_switches=87 ok
+row round=9 arm=p15d event=nullsys n=1000000 cpu_ns=92565829 wall_ns=92571416
+row round=9 arm=p15d event=same n=200000 cpu_ns=460962074 wall_ns=462004687
+row round=9 arm=p15d event=distinct n=20000 cpu_ns=57531727 wall_ns=57898591
+row round=9 arm=none2 event=nullsys n=1000000 cpu_ns=93507664 wall_ns=93509453
+row round=9 arm=none2 event=same n=200000 cpu_ns=202175508 wall_ns=203076204
+row round=9 arm=none2 event=distinct n=20000 cpu_ns=26393762 wall_ns=26391705
+capture round=10 pid=7349 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2564023 idle_wall_ns=1000639088 agent_cpu_ns=53624922 agent_wall_ns=770136115 idle_switches=19 agent_switches=85 ok
+row round=10 arm=p15d event=nullsys n=1000000 cpu_ns=89424689 wall_ns=89421823
+row round=10 arm=p15d event=same n=200000 cpu_ns=416176548 wall_ns=418195604
+row round=10 arm=p15d event=distinct n=20000 cpu_ns=55814707 wall_ns=58265257
+row round=10 arm=none2 event=nullsys n=1000000 cpu_ns=94574518 wall_ns=95455018
+row round=10 arm=none2 event=same n=200000 cpu_ns=197312099 wall_ns=198602089
+row round=10 arm=none2 event=distinct n=20000 cpu_ns=25859325 wall_ns=25856522
+row round=10 arm=none event=nullsys n=1000000 cpu_ns=89854943 wall_ns=90154768
+row round=10 arm=none event=same n=200000 cpu_ns=188777352 wall_ns=191565476
+row round=10 arm=none event=distinct n=20000 cpu_ns=30477255 wall_ns=30474458
+row round=11 arm=none2 event=nullsys n=1000000 cpu_ns=91291617 wall_ns=91318411
+row round=11 arm=none2 event=same n=200000 cpu_ns=194381207 wall_ns=194382870
+row round=11 arm=none2 event=distinct n=20000 cpu_ns=25612960 wall_ns=25610716
+row round=11 arm=none event=nullsys n=1000000 cpu_ns=91395077 wall_ns=91388231
+row round=11 arm=none event=same n=200000 cpu_ns=196173584 wall_ns=196175565
+row round=11 arm=none event=distinct n=20000 cpu_ns=25607092 wall_ns=25604147
+capture round=11 pid=7359 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2615783 idle_wall_ns=1000601583 agent_cpu_ns=50131698 agent_wall_ns=777741703 idle_switches=16 agent_switches=84 ok
+row round=11 arm=p15d event=nullsys n=1000000 cpu_ns=85986156 wall_ns=86798023
+row round=11 arm=p15d event=same n=200000 cpu_ns=412367779 wall_ns=430093583
+row round=11 arm=p15d event=distinct n=20000 cpu_ns=54577177 wall_ns=56707207
+row round=12 arm=none event=nullsys n=1000000 cpu_ns=91564767 wall_ns=92325679
+row round=12 arm=none event=same n=200000 cpu_ns=186210582 wall_ns=186212648
+row round=12 arm=none event=distinct n=20000 cpu_ns=25429425 wall_ns=25426669
+capture round=12 pid=7366 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2503803 idle_wall_ns=1001044629 agent_cpu_ns=49193804 agent_wall_ns=774013244 idle_switches=19 agent_switches=84 ok
+row round=12 arm=p15d event=nullsys n=1000000 cpu_ns=86682530 wall_ns=87197734
+row round=12 arm=p15d event=same n=200000 cpu_ns=411200393 wall_ns=429313026
+row round=12 arm=p15d event=distinct n=20000 cpu_ns=51222563 wall_ns=52830413
+row round=12 arm=none2 event=nullsys n=1000000 cpu_ns=89011015 wall_ns=89018030
+row round=12 arm=none2 event=same n=200000 cpu_ns=196215037 wall_ns=196924161
+row round=12 arm=none2 event=distinct n=20000 cpu_ns=26413808 wall_ns=26412296
+capture round=13 pid=7373 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=3239137 idle_wall_ns=1001047360 agent_cpu_ns=54616397 agent_wall_ns=765167823 idle_switches=19 agent_switches=90 ok
+row round=13 arm=p15d event=nullsys n=1000000 cpu_ns=87190561 wall_ns=87197394
+row round=13 arm=p15d event=same n=200000 cpu_ns=413687592 wall_ns=417831312
+row round=13 arm=p15d event=distinct n=20000 cpu_ns=55013424 wall_ns=55013521
+row round=13 arm=none2 event=nullsys n=1000000 cpu_ns=91449984 wall_ns=91456699
+row round=13 arm=none2 event=same n=200000 cpu_ns=198417093 wall_ns=198419194
+row round=13 arm=none2 event=distinct n=20000 cpu_ns=25733559 wall_ns=25730902
+row round=13 arm=none event=nullsys n=1000000 cpu_ns=94964440 wall_ns=94972635
+row round=13 arm=none event=same n=200000 cpu_ns=196966799 wall_ns=197832019
+row round=13 arm=none event=distinct n=20000 cpu_ns=24249069 wall_ns=24247621
+row round=14 arm=none2 event=nullsys n=1000000 cpu_ns=88484242 wall_ns=88504719
+row round=14 arm=none2 event=same n=200000 cpu_ns=187188028 wall_ns=187190657
+row round=14 arm=none2 event=distinct n=20000 cpu_ns=24510104 wall_ns=24507461
+row round=14 arm=none event=nullsys n=1000000 cpu_ns=91625650 wall_ns=91633652
+row round=14 arm=none event=same n=200000 cpu_ns=219956320 wall_ns=221509174
+row round=14 arm=none event=distinct n=20000 cpu_ns=25296343 wall_ns=25316861
+capture round=14 pid=7383 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2885932 idle_wall_ns=1001234479 agent_cpu_ns=52144518 agent_wall_ns=786666417 idle_switches=18 agent_switches=89 ok
+row round=14 arm=p15d event=nullsys n=1000000 cpu_ns=87381579 wall_ns=87443705
+row round=14 arm=p15d event=same n=200000 cpu_ns=420095805 wall_ns=439598532
+row round=14 arm=p15d event=distinct n=20000 cpu_ns=52372780 wall_ns=54727896
+row round=15 arm=none event=nullsys n=1000000 cpu_ns=91591388 wall_ns=91592113
+row round=15 arm=none event=same n=200000 cpu_ns=196132343 wall_ns=197033855
+row round=15 arm=none event=distinct n=20000 cpu_ns=24375114 wall_ns=24458584
+capture round=15 pid=7391 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2361121 idle_wall_ns=1000793158 agent_cpu_ns=50391989 agent_wall_ns=766026698 idle_switches=19 agent_switches=87 ok
+row round=15 arm=p15d event=nullsys n=1000000 cpu_ns=93282352 wall_ns=93373830
+row round=15 arm=p15d event=same n=200000 cpu_ns=411354206 wall_ns=415062024
+row round=15 arm=p15d event=distinct n=20000 cpu_ns=51579254 wall_ns=52275100
+row round=15 arm=none2 event=nullsys n=1000000 cpu_ns=90263452 wall_ns=90998204
+row round=15 arm=none2 event=same n=200000 cpu_ns=191689313 wall_ns=191694027
+row round=15 arm=none2 event=distinct n=20000 cpu_ns=26884258 wall_ns=26882990
+capture round=16 pid=7398 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=28 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2501475 idle_wall_ns=1001318125 agent_cpu_ns=55321038 agent_wall_ns=759150735 idle_switches=19 agent_switches=137 ok
+row round=16 arm=p15d event=nullsys n=1000000 cpu_ns=86988045 wall_ns=87007716
+row round=16 arm=p15d event=same n=200000 cpu_ns=409625973 wall_ns=411330853
+row round=16 arm=p15d event=distinct n=20000 cpu_ns=55036647 wall_ns=55035809
+row round=16 arm=none2 event=nullsys n=1000000 cpu_ns=94392673 wall_ns=94405890
+row round=16 arm=none2 event=same n=200000 cpu_ns=190771171 wall_ns=190773545
+row round=16 arm=none2 event=distinct n=20000 cpu_ns=23371061 wall_ns=23368357
+row round=16 arm=none event=nullsys n=1000000 cpu_ns=92155849 wall_ns=92170190
+row round=16 arm=none event=same n=200000 cpu_ns=200572102 wall_ns=201850920
+row round=16 arm=none event=distinct n=20000 cpu_ns=25741735 wall_ns=25740247
+row round=17 arm=none2 event=nullsys n=1000000 cpu_ns=94738878 wall_ns=94749111
+row round=17 arm=none2 event=same n=200000 cpu_ns=186217946 wall_ns=186219464
+row round=17 arm=none2 event=distinct n=20000 cpu_ns=24607656 wall_ns=24605744
+row round=17 arm=none event=nullsys n=1000000 cpu_ns=91758041 wall_ns=91763798
+row round=17 arm=none event=same n=200000 cpu_ns=198955378 wall_ns=199948166
+row round=17 arm=none event=distinct n=20000 cpu_ns=26439969 wall_ns=26437378
+capture round=17 pid=7409 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2486050 idle_wall_ns=1001299169 agent_cpu_ns=81009217 agent_wall_ns=763067072 idle_switches=18 agent_switches=296 ok
+row round=17 arm=p15d event=nullsys n=1000000 cpu_ns=88578086 wall_ns=88574726
+row round=17 arm=p15d event=same n=200000 cpu_ns=416610945 wall_ns=416976960
+row round=17 arm=p15d event=distinct n=20000 cpu_ns=53150561 wall_ns=53158014
+row round=18 arm=none event=nullsys n=1000000 cpu_ns=97201881 wall_ns=97954697
+row round=18 arm=none event=same n=200000 cpu_ns=191386924 wall_ns=193734296
+row round=18 arm=none event=distinct n=20000 cpu_ns=24753645 wall_ns=24751067
+capture round=18 pid=7416 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2305662 idle_wall_ns=1001415861 agent_cpu_ns=56754835 agent_wall_ns=788975035 idle_switches=17 agent_switches=101 ok
+row round=18 arm=p15d event=nullsys n=1000000 cpu_ns=87373873 wall_ns=88131638
+row round=18 arm=p15d event=same n=200000 cpu_ns=441354773 wall_ns=441398454
+row round=18 arm=p15d event=distinct n=20000 cpu_ns=54638142 wall_ns=54637257
+row round=18 arm=none2 event=nullsys n=1000000 cpu_ns=95780050 wall_ns=96530935
+row round=18 arm=none2 event=same n=200000 cpu_ns=181007687 wall_ns=181008186
+row round=18 arm=none2 event=distinct n=20000 cpu_ns=25049196 wall_ns=25046569
+capture round=19 pid=7423 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=24 lost=0 end=1 state=0 invariant=1 stops=0 exit=0 idle_cpu_ns=2534855 idle_wall_ns=1000502040 agent_cpu_ns=53580392 agent_wall_ns=794416449 idle_switches=19 agent_switches=87 ok
+row round=19 arm=p15d event=nullsys n=1000000 cpu_ns=86223504 wall_ns=86220975
+row round=19 arm=p15d event=same n=200000 cpu_ns=425832683 wall_ns=444436881
+row round=19 arm=p15d event=distinct n=20000 cpu_ns=56226462 wall_ns=59202930
+row round=19 arm=none2 event=nullsys n=1000000 cpu_ns=93323854 wall_ns=93908607
+row round=19 arm=none2 event=same n=200000 cpu_ns=200300857 wall_ns=201144904
+row round=19 arm=none2 event=distinct n=20000 cpu_ns=25065059 wall_ns=25063527
+row round=19 arm=none event=nullsys n=1000000 cpu_ns=86981331 wall_ns=86994952
+row round=19 arm=none event=same n=200000 cpu_ns=179454680 wall_ns=179455550
+row round=19 arm=none event=distinct n=20000 cpu_ns=25253027 wall_ns=25250462

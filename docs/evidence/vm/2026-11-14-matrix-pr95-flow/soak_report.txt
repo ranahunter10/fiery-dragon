@@ -1,0 +1,43 @@
+# soak: p15d under real programs (gate 4)
+
+Planned 10.0 min of workload, sampled every 60 s; p15d options: --flow; 3 CPUs.
+End: exit 0, state 0, invariant 1; 527,153 records read in 10 s.
+
+| over the run | median | max | first | last |
+|---|---|---|---|---|
+| p15d CPU, ms/s | 4.93 | 5.68 | 4.97 | 0.04 |
+| drain thread, ms/s | 3.22 | 3.70 | | |
+| writer thread, ms/s | 1.76 | 1.98 | | |
+| resident memory, MiB | 26.2 | 26.4 | 25.7 | 26.4 |
+| longest poll gap, s | 0.204 | 0.205 | | |
+
+WAL: 47.0 MiB, 41.7 KiB/s. Spine records drained: 39,343; bulk-ring records written (NET and file identity): 442,609; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+
+STALL: the sample at t=1096 s came 496 s after the one before it (planned every 60 s): about 436 s of the run lost to a stall. The rates above are not quotable (E-0249).
+
+| step | steps | items expected | found | recall |
+|---|---|---|---|---|
+| archive | 76 | 1,976 | 1,976 | 100.00% |
+| compile | 76 | 2,128 | 2,128 | 100.00% |
+| git | 76 | 988 | 988 | 100.00% |
+| http | 76 | 228 | 228 | 100.00% |
+| memfd | 75 | 75 | 75 | 100.00% |
+| pyfiles | 76 | 912 | 912 | 100.00% |
+| shell | 75 | 150 | 150 | 100.00% |
+
+File identity: 143,988 OPEN from the path program, 0 from the session return (0 walked, 0 raced, 0 without a path); fentry skips 0; lost: OPEN 0, CLOSE 0; most open files 615, objects 2,797.
+
+Graph build: 156 s per hour of workload, target under 60 s: over (not judged before gate 10).
+Graph: built in 26 s, 42.8 MiB; edge_ACCEPT 608, edge_BIND 81, edge_CLONE 9,307, edge_CONNECT 669, edge_CONNECT_failed 8, edge_EXECUTE 9,279, edge_HELD 767, edge_LISTEN 78, edge_OPEN 143,987, edge_OPEN_failed 5, edge_proc_end_without_image 22, edge_without_node 0, node_file 20,628, node_proc 9,441, node_sock 1,366.
+
+| graph check | found | expected |
+|---|---|---|
+| dropper_chain | 76 | 76 |
+| sock_pairs | 608 | 608 |
+| memfd_exec | 75 | 75 |
+
+## Verdict
+
+- PASS
+- note: a stall touched the soak (about 436 s): its rates are not quotable
+

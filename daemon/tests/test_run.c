@@ -146,7 +146,7 @@ int main(void)
 	test_poll_next();
 	test_writer_wait();
 	test_drain_room();
-	char why[200];
+	char why[256];
 
 	reset();
 	EXPECT(p15_run_exit_code(&r) == P15_EXIT_OK, "fresh run: exit 0");
@@ -265,6 +265,16 @@ int main(void)
 	r.flowc[P15_FLC_V_EXCL_SELF] = 3;
 	r.flowc[P15_FLC_V_EXCL_KTHREAD] = 2;
 	r.flowc[P15_FLC_V_OWNED_BY_SOCK] = 3;
+	/* ... and the end's terms (p15_flow.h): 34 + returned after the count 2 + release failed 1 +
+	 * no-slot returns 1 = 26 + 3 + 2 + 3 + gated 1 + open at end 2 + no-slot entries 1 */
+	r.flowc[P15_FLC_V_GATED] = 1;
+	r.flowc[P15_FLC_OPEN_AT_END] = 2;
+	r.flowc[P15_FLC_RETURNED_AFTER_COUNT] = 2;
+	r.flowc[P15_FLC_V_RELEASE_FAILED] = 1;
+	r.flowc[P15_FLC_V_NO_SLOT_ENTRY] = 1;
+	r.flowc[P15_FLC_V_NO_SLOT_RETURN] = 1;
+	r.flowc[P15_FLC_V_ENTRY_WHILE_OPEN] = 5;   /* reported only: no term of any book */
+	r.flowc[P15_FLC_V_CLAIM_RACE] = 4;         /* reported only */
 	r.flowc[P15_FLC_SESS_RETURN] = 26;     /* B2: returns = empty + failed + no inode + emit attempts */
 	r.flowc[P15_FLC_V_EMPTY] = 4;
 	r.flowc[P15_FLC_V_FAILED] = 1;
@@ -290,6 +300,12 @@ int main(void)
 	r.net_written += 29;                   /* the bulk ring carries the 29 drained flow records too */
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "file and flow books close together");
 	BREAKS(flowc[P15_FLC_V_EXCL_SELF], 1, "vfs entries", "B1: a vfs entry unaccounted");
+	BREAKS(flowc[P15_FLC_V_GATED], 1, "vfs entries", "B1: an entry after the gate is a term");
+	BREAKS(flowc[P15_FLC_OPEN_AT_END], 1, "vfs entries", "B1: a call open at the end is a term");
+	BREAKS(flowc[P15_FLC_RETURNED_AFTER_COUNT], 1, "vfs entries", "B1: a counted call that returned is taken back");
+	BREAKS(flowc[P15_FLC_V_RELEASE_FAILED], 1, "vfs entries", "B1: a failed release is a term");
+	BREAKS(flowc[P15_FLC_V_NO_SLOT_ENTRY], 1, "vfs entries", "B1: a slot-less entry is a term");
+	BREAKS(flowc[P15_FLC_V_NO_SLOT_RETURN], 1, "vfs entries", "B1: a slot-less return is a term");
 	BREAKS(flowc[P15_FLC_V_EMPTY], 1, "vfs returns", "B2: a vfs return unaccounted");
 	BREAKS(flowc[P15_FLC_S_NO_FILE], 1, "sock events", "B3: a sock event unaccounted");
 	BREAKS(flowc[P15_FLC_V_OWNED_BY_SOCK], 1, "vfs entries", "B1: a socket's vfs entry unaccounted");

@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import summarize as S  # noqa: E402
 
-FACS = {"session": 1.5, "ts": 1.6, "end_rec": 2.0, "ts_rec": 2.1}
+FACS = {"session": 1.5, "ts": 1.6, "count": 1.7, "end_rec": 2.0, "ts_rec": 2.1}
 
 
 def synth(rounds=12, seed=1, check="ok", break_=None, drop=None):
@@ -55,6 +55,7 @@ class Report(unittest.TestCase):
         # the medians of none are ~300 ns; the factors give the added costs
         self.assertAlmostEqual(added(text, "ts against session"), 30, delta=6)
         self.assertAlmostEqual(added(text, "ts_rec against end_rec"), 30, delta=6)
+        self.assertAlmostEqual(added(text, "count against ts"), 30, delta=6)      # 1.7 against 1.6 of 300 ns
         self.assertAlmostEqual(added(text, "end_rec against session"), 150, delta=25)
         self.assertAlmostEqual(added(text, "session against none"), 150, delta=25)
         self.assertIn("## cpu time per read (primary; 12 rounds)", text)

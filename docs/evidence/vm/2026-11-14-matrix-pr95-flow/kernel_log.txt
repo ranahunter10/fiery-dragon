@@ -1,0 +1,69 @@
+1794595356.012019 p15-dev kernel: NOTICE: Automounting of tracing to debugfs is deprecated and will be removed in 2030
+1794595369.898020 p15-dev kernel: clocksource: Long readout interval, skipping watchdog check: cs_nsec: 1497118212 wd_nsec: 1497117875
+1794595548.570080 p15-dev kernel: clocksource: Long readout interval, skipping watchdog check: cs_nsec: 5734448806 wd_nsec: 5734447416
+1794597106.850912 p15-dev kernel: watchdog: BUG: soft lockup - CPU#2 stuck for 458s! [snapd:1135]
+1794597106.851384 p15-dev kernel: Modules linked in: qrtr nfnetlink cfg80211 binfmt_misc nls_iso8859_1 intel_rapl_msr intel_rapl_common intel_uncore_frequency_common intel_pmc_core pmt_telemetry pmt_discovery pmt_class intel_pmc_ssram_telemetry intel_vsec rapl joydev vmwgfx drm_ttm_helper i2c_piix4 vboxguest ttm i2c_smbus input_leds mac_hid sch_fq_codel efi_pstore dm_multipath vsock_loopback vmw_vsock_virtio_transport_common vmw_vsock_vmci_transport vsock vmw_vmci video ahci libahci psmouse ghash_clmulni_intel wmi e1000 serio_raw msr dmi_sysfs autofs4 aesni_intel
+1794597106.855878 p15-dev kernel: CPU: 2 UID: 0 PID: 1135 Comm: snapd Kdump: loaded Not tainted 7.0.0-38-generic #38-Ubuntu PREEMPT(lazy) 
+1794597106.855949 p15-dev kernel: Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+1794597106.856000 p15-dev kernel: RIP: 0010:irqentry_exit+0x140/0x6f0
+1794597106.856038 p15-dev kernel: Code: e0 01 0f 85 c5 00 00 00 fa 0f 1f 44 00 00 0f 1f 44 00 00 4d 8b 04 24 41 f7 c0 37 03 00 00 0f 84 47 01 00 00 fb 0f 1f 44 00 00 <41> f6 c0 30 75 9b 41 f7 c0 00 01 00 00 74 ae e9 16 01 00 00 e8 c7
+1794597106.856212 p15-dev kernel: RSP: 0000:ffffcfca804d7ed8 EFLAGS: 00010202
+1794597106.856265 p15-dev kernel: RAX: 0000000000000000 RBX: ffffcfca804d7f48 RCX: 0000000000000000
+1794597106.856312 p15-dev kernel: RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffffcfca804d7f48
+1794597106.856377 p15-dev kernel: RBP: ffffcfca804d7f10 R08: 0000000000000020 R09: 0000000000000000
+1794597106.856400 p15-dev kernel: R10: 0000000000000000 R11: 0000000000000000 R12: ffff8cc98af88000
+1794597106.856438 p15-dev kernel: R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+1794597106.856458 p15-dev kernel: FS:  000070376a51a6c0(0000) GS:ffff8ccb066fb000(0000) knlGS:0000000000000000
+1794597106.856475 p15-dev kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+1794597106.856512 p15-dev kernel: CR2: 00007037b3c1d000 CR3: 0000000106970001 CR4: 00000000000706f0
+1794597106.856551 p15-dev kernel: Call Trace:
+1794597106.856587 p15-dev kernel:  <TASK>
+1794597106.856622 p15-dev kernel:  ? __irq_exit_rcu+0x45/0x120
+1794597106.856637 p15-dev kernel:  ? generic_smp_call_function_single_interrupt+0x13/0x20
+1794597106.856659 p15-dev kernel:  sysvec_call_function_single+0x54/0xd0
+1794597106.856725 p15-dev kernel:  ? clear_bhb_loop+0x70/0xc0
+1794597106.856743 p15-dev kernel:  asm_sysvec_call_function_single+0x1b/0x20
+1794597106.856796 p15-dev kernel: RIP: 0033:0x5c01ecaed917
+1794597106.856811 p15-dev kernel: Code: e5 48 83 ec 50 49 8b 4e 30 8b 91 08 01 00 00 0f 1f 40 00 85 d2 0f 8c d3 03 00 00 ff c2 89 91 08 01 00 00 b9 01 00 00 00 86 08 <f6> c1 01 74 3b 48 89 44 24 60 4c 89 74 24 40 4c 89 f1 84 01 83 3d
+1794597106.856844 p15-dev kernel: RSP: 002b:00003899a20656f8 EFLAGS: 00010202
+1794597106.856894 p15-dev kernel: RAX: 00005c01eea8f690 RBX: 0000000000000000 RCX: 0000000000000000
+1794597106.856912 p15-dev kernel: RDX: 0000000000000001 RSI: 0000000000c00000 RDI: ffffffffffffffff
+1794597106.856961 p15-dev kernel: RBP: 00003899a2065748 R08: 0000000000000000 R09: 0000000000000040
+1794597106.856996 p15-dev kernel: R10: 0000000000000007 R11: 0000000000000004 R12: 0000003000000000
+1794597106.857030 p15-dev kernel: R13: 0000000000000003 R14: 00003899a20052c0 R15: 00005c01eea35500
+1794597106.857066 p15-dev kernel:  </TASK>
+1794597106.857080 p15-dev kernel: clocksource: Long readout interval, skipping watchdog check: cs_nsec: 490253404539 wd_nsec: 490253287027
+1794597106.857118 p15-dev systemd[1]: systemd-resolved.service: Watchdog timeout (limit 3min)!
+1794597106.857233 p15-dev systemd[1]: systemd-resolved.service: Killing process 523 (systemd-resolve) with signal SIGABRT.
+1794597106.857284 p15-dev systemd[1]: systemd-networkd.service: Watchdog timeout (limit 3min)!
+1794597106.857321 p15-dev systemd[1]: systemd-networkd.service: Killing process 801 (systemd-network) with signal SIGABRT.
+1794597106.857372 p15-dev systemd[1]: snapd.service: Watchdog timeout (limit 5min)!
+1794597106.857392 p15-dev systemd[1]: snapd.service: Killing process 1039 (snapd) with signal SIGABRT.
+1794597106.857426 p15-dev systemd[1]: Starting sysstat-collect.service - system activity accounting tool...
+1794597106.857504 p15-dev systemd[1]: Stopping systemd-networkd-persistent-storage.service - Enable Persistent Storage in systemd-networkd...
+1794597106.857537 p15-dev systemd[1]: systemd-networkd-wait-online.service: Deactivated successfully.
+1794597106.857589 p15-dev systemd[1]: Stopped systemd-networkd-wait-online.service - Wait for Network to be Online.
+1794597106.857638 p15-dev systemd[1]: snapd.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+1794597106.857686 p15-dev systemd[1]: snapd.service: Failed with result 'watchdog'.
+1794597106.857735 p15-dev systemd[1]: snapd.service: Scheduled restart job, restart counter is at 1.
+1794597106.857773 p15-dev systemd[1]: netplan-ovs-cleanup.service - OpenVSwitch configuration for cleanup skipped, unmet condition check ConditionFileIsExecutable=/usr/bin/ovs-vsctl
+1794597106.857824 p15-dev systemd[1]: Starting snapd.service - Snap Daemon...
+1794597106.857891 p15-dev systemd[1]: sysstat-collect.service: Deactivated successfully.
+1794597106.857905 p15-dev systemd[1]: Finished sysstat-collect.service - system activity accounting tool.
+1794597106.857936 p15-dev systemd[1]: systemd-resolved.service: Main process exited, code=dumped, status=6/ABRT
+1794597106.857954 p15-dev systemd[1]: systemd-resolved.service: Failed with result 'watchdog'.
+1794597106.858003 p15-dev systemd[1]: systemd-resolved.service: Scheduled restart job, restart counter is at 1.
+1794597106.858039 p15-dev systemd[1]: Starting systemd-resolved.service - Network Name Resolution...
+1794597106.858082 p15-dev systemd[1]: systemd-networkd.service: Main process exited, code=dumped, status=6/ABRT
+1794597106.858096 p15-dev systemd[1]: systemd-networkd.service: Failed with result 'watchdog'.
+1794597106.858109 p15-dev systemd[1]: systemd-networkd.service: Scheduled restart job, restart counter is at 1.
+1794597106.858164 p15-dev systemd[1]: systemd-journald.service: Main process exited, code=dumped, status=6/ABRT
+1794597106.858178 p15-dev systemd[1]: systemd-journald.service: Failed with result 'watchdog'.
+1794597106.858228 p15-dev systemd[1]: systemd-journald.service: Scheduled restart job, restart counter is at 2.
+1794597106.858262 p15-dev systemd[1]: Starting systemd-journald.service - Journal Service...
+1794597106.858296 p15-dev systemd[1]: netplan-ovs-cleanup.service - OpenVSwitch configuration for cleanup skipped, unmet condition check ConditionFileIsExecutable=/usr/bin/ovs-vsctl
+1794597106.858331 p15-dev systemd[1]: Starting systemd-networkd.service - Network Management...
+1794597106.858476 p15-dev systemd-journald[17697]: Collecting audit messages is disabled.
+1794597106.861257 p15-dev systemd[1]: Started systemd-journald.service - Journal Service.
+1794597107.026415 p15-dev kernel: loop4: detected capacity change from 0 to 8
+1794597107.165016 p15-dev kernel: audit: type=1400 audit(1794597107.161:197): apparmor="STATUS" operation="profile_replace" info="same as current profile, skipping" profile="unconfined" name="/usr/lib/snapd/snap-confine" pid=17758 comm="apparmor_parser"

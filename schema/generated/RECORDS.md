@@ -920,7 +920,7 @@ Fixed part 456 bytes; at most 456 bytes with its variable fields.
 
 The data-flow programs' health (ADR-0005, STATE decisions 18 and 47), written with every STATS record: the counters of bpf/include/p15_flow.h since the run's start, their books' drain side, and the kernel's skips. The books close as p15_flow.h states (B1 to B5); a lost FLOW or FILE, or a skipped flow program, makes the run DEGRADED.
 
-Fixed part 272 bytes; at most 272 bytes with its variable fields.
+Fixed part 336 bytes; at most 336 bytes with its variable fields.
 
 | Offset | Field | Type | Meaning |
 |---:|---|---|---|
@@ -952,9 +952,17 @@ Fixed part 272 bytes; at most 272 bytes with its variable fields.
 | 224 | `file_emitted` | u64 | FILE records for a file first seen at a transfer (ADR-0015 rule 5); cumulative |
 | 232 | `file_lost` | u64 | ... lost to a full bulk ring (run DEGRADED; the open-file entry is removed so the next transfer retries); cumulative |
 | 240 | `file_map_full` | u64 | a pseudo file the files map was too full to register (its FLOW is UNREGISTERED); cumulative |
-| 248 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
-| 256 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
-| 264 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
+| 248 | `v_gated` | u64 | a vfs entry after the gate shut at the run's end: no slot opened, no return (p15_flow.h); cumulative |
+| 256 | `v_no_slot_entry` | u64 | a vfs entry whose task slot could not be made: marked in the session's cookie; cumulative |
+| 264 | `v_no_slot_return` | u64 | ... and its return; the difference is the slot-less calls still open; cumulative |
+| 272 | `open_at_end` | u64 | vfs calls the end's task iterator found open and claimed: entered in the run, not returned at its count; cumulative |
+| 280 | `returned_after_count` | u64 | ... of which these returned before the detach (their FLOW is written); cumulative |
+| 288 | `v_release_failed` | u64 | a return that could not take its call off its task's count (expected 0); cumulative |
+| 296 | `v_entry_while_open` | u64 | an entry by a task with a call already open: a nested call, or an earlier return of that task was lost (reported, not a book term); cumulative |
+| 304 | `v_claim_race` | u64 | tasks whose slot the end's iterator gave up on after its tries (expected 0; reported); cumulative |
+| 312 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
+| 320 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
+| 328 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
 
 ## FLOW (type 10, version 1, class FLOW)
 
