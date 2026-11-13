@@ -20,6 +20,7 @@ So that no session re-reads the repo to find its place (the maintainer's request
    - the dev container's kernel never shows pid 1 to a task iterator (E-0105; the VM and CI do): run `it_p15d.sh` there with `P15_IT_PID1=0`;
    - the VM's `/tmp` is a tmpfs with a per-user quota: a test killed mid-write leaves its files there (E-0107);
    - measure on the VM with the host on its charger, in Best performance mode: on battery it ran about 2-4 times slower (E-0108).
+   - the VM's host can stop the guest for minutes (E-0088, E-0250): `summary.md`'s Stalls section names every matrix step a stall touched, and the soak's report says STALL; those steps' rates are not quotable (E-0252).
 
 ## Phase 0 gate
 
@@ -329,3 +330,17 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 28. **The capture watches itself** (note I4, F6). Today nothing notices another process detaching p15d's links, and the books still close. Recommendation: check the links each stats tick and record others' `bpf()` commands, as a phase D item.
 29. **An FPGA audit device as the WAL's out-of-host anchor** (note F3, I3; HARDLOG, R-055). Recommendation: put it on the FPGA layer's agenda to study, not to build now.
 30. **Plan the evaluation around Bilot et al.'s metrics** (node-level, per attack; note F4, R-054). Recommendation: read R-053 and R-054 in full first, then fix what capture must log for them.
+
+### Decisions waiting from Dragon's design review (2026-11-13; numbered from 101)
+
+Each is set out with its options and evidence in [the review](audits/2026-11-13-design-review-dragon.md) §8; none is confirmed by a run (E-0300, E-0301).
+
+101. **The shared bulk ring under a flood** (F-01). Recommendation: run V-1; if confirmed, a design note for FLOW on its own ring and a per-process loss count.
+102. **A full disk ends capture** (F-02). Recommendation: a free-space reserve that sheds FLOW first, and a supervisor; a new ADR beside ADR-0007.
+103. **The open-file map can be filled by one process** (F-04). Recommendation: size it from the host; `file_map_full` makes the run DEGRADED.
+104. **The canary of ADR-0019 G4.4 is not built** (F-05). Recommendation: build it, extended to an open and a transfer.
+105. **A coverage table in an ADR** (F-06): each data path planned in a step or declared out of scope. AIO and the reflink ioctls are in neither today.
+106. **The read path's cost on the shipped program** (F-07), by `prog_stats.py`, before criterion P2's per-read figure is set.
+107. **Processes that share an address space** (F-09): FORK version 2 says so; the graph adds the child → parent edge.
+108. **ADR-0013, the threat model, before the ceiling gate** (F-10).
+109. **The order:** the detach fault first, then runs V-1 to V-3, then 101 to 104 by what they show.
