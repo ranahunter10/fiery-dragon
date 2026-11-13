@@ -16,6 +16,7 @@
 #include "p15_file.h"
 #include "p15_flow.h"
 #include "selftest_file.h"
+#include "selftest_flow.h"
 #include "selftest_net.h"
 #include "spine.skel.h"
 
@@ -44,7 +45,8 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 	}
 	if (bpf_map__set_max_entries(l->file->maps.bulk_rb, o->bulk_ring_bytes) ||
 	    bpf_map__set_max_entries(l->file->maps.files, o->file_map_entries) ||
-	    bpf_map__set_max_entries(l->file->maps.objs, o->obj_map_entries)) {
+	    bpf_map__set_max_entries(l->file->maps.objs, o->obj_map_entries) ||
+	    bpf_map__set_max_entries(l->file->maps.flow_test_tried, o->test_flow_file_fail_first ? 65536 : 1)) {
 		snprintf(err, errlen, "file: bulk ring %u or map sizes %u/%u refused", o->bulk_ring_bytes, o->file_map_entries,
 			 o->obj_map_entries);
 		return P15_EXIT_CONFIG;
@@ -56,6 +58,7 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 		return P15_EXIT_LOAD;
 	}
 	l->file->rodata->flow_self_tgid = (__u32)getpid();   /* decision 47.1: p15d's own transfers are excluded */
+	l->file->rodata->flow_test_file_fail_first = o->test_flow_file_fail_first ? 1 : 0;
 	if (o->test_no_path_fentry)
 		bpf_program__set_autoattach(l->file->progs.file_open_path, false);
 	bpf_program__set_autoattach(l->file->progs.file_fd_iter, false);   /* the snapshot's FD pass: below */
@@ -269,16 +272,12 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 			return P15_EXIT_SELFTEST;
 		}
 	}
-	/* The self-tests threw away every record they took, facts included: a new facts epoch makes the
-	 * programs write each object's facts again, into the WAL this time (file.bpf.c, E-0151). The
-	 * .data map is mapped: this is a store, not a system call (ADR-0026). */
-	if (l->file)
-		l->file->data->facts_epoch++;
 	/* Now the flow programs (ADR-0005): the self-tests are done, so from here a transfer is a real
 	 * one the books account for. Attached last so a verifier or attach failure is reported before
-	 * p15d claims the capture is up. Opt-in with --flow until step 2b part 3 is complete (the
-	 * self-test and the VM dry run); the programs still load with the object, so the verifier
-	 * checks them whether or not they attach. */
+	 * p15d claims the capture is up, then checked by their own self-test (selftest_flow.h).
+	 * Opt-in with --flow until a full --flow matrix passes on the VM (STATE decision waiting 25);
+	 * the programs still load with the object, so the verifier checks them whether or not they
+	 * attach. */
 	if (l->file && o->flow) {
 		struct bpf_program *const flow[] = {
 			l->file->progs.flow_read, l->file->progs.flow_write, l->file->progs.flow_readv,
@@ -294,7 +293,36 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 			}
 			l->flow_links[l->n_flow_links++] = lk;
 		}
+		{
+			unsigned long long flc = 0, fc = 0, nc = 0;
+			char *text = NULL;
+			size_t text_len = 0;
+			FILE *mem = open_memstream(&text, &text_len);
+
+			l->flow_selftest_failed = p15_selftest_flow(bpf_map__fd(l->file->maps.bulk_rb),
+								    o->test_flow_file_fail_first, mem ? mem : stderr, &flc,
+								    &fc, &nc);
+			if (mem)
+				fclose(mem);
+			if (l->flow_selftest_failed != 0 && text)
+				fputs(text, stderr);   /* which check failed: needed to diagnose it */
+			free(text);
+			l->flow_consumed += flc;
+			l->file_consumed += fc;
+			l->net_consumed += nc;
+			if (l->flow_selftest_failed != 0) {
+				snprintf(err, errlen, "flow self-test %s (%d)",
+					 l->flow_selftest_failed < 0 ? "could not run" : "failed", l->flow_selftest_failed);
+				return P15_EXIT_SELFTEST;
+			}
+		}
 	}
+	/* The self-tests threw away every record they took, facts included (the flow self-test's FILE
+	 * records too): a new facts epoch makes the programs write each object's facts again, into the
+	 * WAL this time (file.bpf.c, E-0151). The .data map is mapped: this is a store, not a system
+	 * call (ADR-0026). */
+	if (l->file)
+		l->file->data->facts_epoch++;
 	return 0;
 }
 

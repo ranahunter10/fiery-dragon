@@ -429,7 +429,54 @@ print(k(1, 12345), k(2, 12345), k(2, 7, g.FF_VECTORED), k(1, 7, g.FF_VECTORED), 
     check "[ \"${f_io:-0}\" -ge 2 ] && [ \"${f_net:-0}\" -ge 1 ]" "FILE records for the pipe's two ends (first I/O) and the sockets (network)"
     check "[ \"$rev\" = 0 ] && [ \"$unk\" = 0 ]" "every FLOW starts before it ends, and no start time was lost"
     check "[ \"$inv\" = 0 ] && [ \"$flost\" = 0 ] && [ \"$filost\" = 0 ] && [ \"$miss\" = 0 ]" "FLOW_STATS: none refused, none lost to the ring, no kernel skips"
+    st13=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+print(wal.read_run(Path(sys.argv[1])).segments[0].meta.get('selftest.result', ''))" "$(ls -d "$T"/c13/*/ | head -1)")
+    check "case \"$st13\" in *flow*) true;; *) false;; esac" "the flow self-test ran at load and passed (selftest.result: $st13)"
     rm -rf "$D13"
+else
+    echo "  SKIP (file identity not loadable here; CI and the VM run it)"
+fi
+
+echo "case 14: --flow with the first FILE of every file lost (--test-flow-file-fail-first): counted, DEGRADED, retried [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    "$B/p15d" --wal-dir "$T/c14" --flow --test-flow-file-fail-first --duration 4 --stats-ms 200 2>"$T/c14.err" &
+    pid=$!
+    if started "$T/c14.err"; then
+        # three transfers on each end of a pipe and of a socketpair: the first finds its FILE lost,
+        # the second registers the end again and writes its FILE, the third reuses it
+        wl=$("$PY" - <<'WL'
+import os, socket
+r, w = os.pipe()
+a, b = socket.socketpair()
+for _ in range(3):
+    assert os.write(w, b"p" * 100) == 100
+    assert len(os.read(r, 100)) == 100
+    assert a.send(b"s" * 50) == 50
+    assert len(b.recv(50, socket.MSG_WAITALL)) == 50
+print(os.getpid())
+WL
+)
+    fi
+    wait $pid; rc=$?
+    RUN=$T/c14; inspect >"$T/c14.txt"; irc=$?
+    c14=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+run = wal.read_run(Path(sys.argv[1])); me = int(sys.argv[2] or 0)
+bulk = list(run.ring_records(1))
+filed = {r.f['fid'] for r in bulk if r.name == 'FILE'}
+out = []
+for kind in (2, 1, 4, 3):   # the pipe's write and read ends, the socketpair's send and receive ends
+    fl = sorted((r for r in bulk if r.name == 'FLOW' and r.h['tgid'] == me and r.f['kind'] == kind), key=lambda r: r.f['last_ts'])
+    f = [r.f['fid'] for r in fl]
+    out.append(int(len(f) == 3 and f[0] not in filed and f[1] == f[2] and f[1] != f[0] and f[1] in filed))
+st = [r for r in run.ring_records(2) if r.name == 'FLOW_STATS'][-1].f
+print(*out, st['file_lost'], st['flow_lost'], st['flow_invalid'])" "$(ls -d "$T"/c14/*/ | head -1)" "${wl:-0}")
+    read -r e_pw e_pr e_ss e_sr filost flost inv <<<"$c14"
+    echo "  workload pid ${wl:-?}: lost-then-retried ends: pipe write $e_pw, read $e_pr, send $e_ss, receive $e_sr; FILE lost $filost"
+    check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c14.txt" "a lost FILE: exit 3, the run DEGRADED, the books still closed, the WAL valid (rc $rc)"
+    check "[ \"$e_pw\" = 1 ] && [ \"$e_pr\" = 1 ] && [ \"$e_ss\" = 1 ] && [ \"$e_sr\" = 1 ]" "each end: its first FLOW names an id with no FILE; its next two name a new id, whose FILE was written (the retry, review V3)"
+    check "[ \"${filost:-0}\" -ge 4 ] && [ \"$flost\" = 0 ] && [ \"$inv\" = 0 ]" "FLOW_STATS: the four planted losses (and others') counted as file_lost, no FLOW lost, none refused"
 else
     echo "  SKIP (file identity not loadable here; CI and the VM run it)"
 fi

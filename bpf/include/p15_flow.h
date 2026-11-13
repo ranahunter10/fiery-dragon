@@ -74,7 +74,9 @@ enum p15_flc {
 #define P15_SEEN_MMAP 4
 #define P15_SEEN_NET  5
 
-#define MSG_PEEK 2    /* include/linux/socket.h: a receive that left the data queued */
+#ifndef MSG_PEEK        /* include/linux/socket.h: a receive that left the data queued */
+#define MSG_PEEK 2
+#endif
 
 #ifndef S_IFMT          /* include/uapi/linux/stat.h; vmlinux.h carries no macros */
 #define S_IFMT   00170000

@@ -43,7 +43,7 @@ _Static_assert(16 * 1024 >= P15_RECORD_MAX_SIZE, "--batch-kb's minimum is smalle
 
 void p15_config_usage(FILE *f)
 {
-	fprintf(f, "usage: p15d --wal-dir DIR [--textfile PATH] [--no-rt] [--no-net] [--no-files] [--flow] [--test-no-path-fentry]");
+	fprintf(f, "usage: p15d --wal-dir DIR [--textfile PATH] [--no-rt] [--no-net] [--no-files] [--flow] [--test-no-path-fentry] [--test-flow-file-fail-first]");
 	for (size_t i = 0; i < NOPTS; i++)
 		fprintf(f, " [%s N]", OPTS[i].flag);
 	fprintf(f, "\n");
@@ -96,6 +96,10 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 			c->test_no_path_fentry = 1;
 			continue;
 		}
+		if (!strcmp(f, "--test-flow-file-fail-first")) {
+			c->test_flow_file_fail_first = 1;
+			continue;
+		}
 		if (!strcmp(f, "--wal-dir") || !strcmp(f, "--textfile")) {
 			if (a + 1 >= argc || !argv[a + 1][0]) {
 				snprintf(err, errlen, "%s needs a value", f);
@@ -139,6 +143,10 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 	}
 	if (c->flow && !c->files) {
 		snprintf(err, errlen, "--flow needs file identity: do not pass --no-files with it (ADR-0005)");
+		return -EINVAL;
+	}
+	if (c->test_flow_file_fail_first && !c->flow) {
+		snprintf(err, errlen, "--test-flow-file-fail-first needs --flow");
 		return -EINVAL;
 	}
 	return 0;
@@ -187,6 +195,12 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 	if (n < max) {
 		snprintf(vals[n], 24, "%s", c->test_no_path_fentry ? "yes" : "no");
 		kv[n].key = "config.test_no_path_fentry";
+		kv[n].value = vals[n];
+		n++;
+	}
+	if (n < max) {
+		snprintf(vals[n], 24, "%s", c->test_flow_file_fail_first ? "yes" : "no");
+		kv[n].key = "config.test_flow_file_fail_first";
 		kv[n].value = vals[n];
 		n++;
 	}

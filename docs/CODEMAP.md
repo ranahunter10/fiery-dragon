@@ -222,6 +222,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
 | [`selftest_file.c`](../daemon/selftest_file.c) | The file-identity self-test (ADR-0015 confirmation 1). |  |
 | [`selftest_file.h`](../daemon/selftest_file.h) | Load-time self-test of the file-identity programs (ADR-0015 confirmation 1, ADR-0003). |  |
+| [`selftest_flow.c`](../daemon/selftest_flow.c) | The data-flow self-test (ADR-0005, ADR-0003). |  |
+| [`selftest_flow.h`](../daemon/selftest_flow.h) | Load-time self-test of the data-flow programs (ADR-0005, ADR-0003), run once they are attached. |  |
 | [`selftest_net.c`](../daemon/selftest_net.c) | The network-intent self-test (ADR-0004 rule 6). | `p15_selftest_net` |
 | [`selftest_net.h`](../daemon/selftest_net.h) | Load-time self-test of the network-intent programs (ADR-0004 rule 6, ADR-0003). |  |
 | [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_set_fd`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
