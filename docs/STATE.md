@@ -325,3 +325,17 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 14. **FLOW's size** (E-0226). 96 bytes as ADR-0005 rule 8 asks, against 88 if the rare unregistered transfer went as a FILE before its FLOW (an ADR superseding rule 8). Recommendation: keep 96 and let step 2b's ceiling decide, with bytes per second reported beside records per second.
 15. **Padding of the records before FLOW and FILE is not checked** by `p15_rec_check` or the reader (E-0226). A program that builds a record in reused memory could carry old bytes in `_pad`. Recommendation: check every type's padding, after a matrix run on the VM shows that no program writes non-zero padding today.
 16. **The socket tracepoints' edges in 2b** (E-0227, design checks §3). Recommendation: a send or receive on a socket without a file (kernel code using a kernel socket from a user task) is counted `no_file` and not written (ADR-0005 rule 11). Sends inside splice and sendfile are written as SEND until step 2d's SPLICE records exist; then they follow rule 11's `inside_splice`.
+
+### Decisions waiting from Dragon's design review (2026-11-13; numbered from 101)
+
+Each is set out with its options and evidence in [the review](audits/2026-11-13-design-review-dragon.md) §8; none is confirmed by a run (E-0300, E-0301).
+
+101. **The shared bulk ring under a flood** (F-01). Recommendation: run V-1; if confirmed, a design note for FLOW on its own ring and a per-process loss count.
+102. **A full disk ends capture** (F-02). Recommendation: a free-space reserve that sheds FLOW first, and a supervisor; a new ADR beside ADR-0007.
+103. **The open-file map can be filled by one process** (F-04). Recommendation: size it from the host; `file_map_full` makes the run DEGRADED.
+104. **The canary of ADR-0019 G4.4 is not built** (F-05). Recommendation: build it, extended to an open and a transfer.
+105. **A coverage table in an ADR** (F-06): each data path planned in a step or declared out of scope. AIO and the reflink ioctls are in neither today.
+106. **The read path's cost on the shipped program** (F-07), by `prog_stats.py`, before criterion P2's per-read figure is set.
+107. **Processes that share an address space** (F-09): FORK version 2 says so; the graph adds the child → parent edge.
+108. **ADR-0013, the threat model, before the ceiling gate** (F-10).
+109. **The order:** the detach fault first, then runs V-1 to V-3, then 101 to 104 by what they show.
