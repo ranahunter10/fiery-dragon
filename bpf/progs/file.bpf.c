@@ -859,19 +859,20 @@ static const __u32 flow_emit_slot[5] = {   /* FLOW.kind -> its EMITTED counter *
 
 /* One FILE record (ADR-0015 rule 5) for a file first seen at a transfer: its facts (always, since
  * this is the object's first record unless it raced) and the dentry's own short name, which the
- * reader turns into pipe:[ino] / socket:[ino] / the protocol from the facts. Written before the
- * FLOW that found the file. */
-static __always_inline void write_file_rec(struct file *file, __u64 fid, __u64 obj,
-					   const struct p15_part_objfacts *f, int carry, __u32 seen)
+ * reader turns into pipe:[ino] / socket:[ino] / the protocol from the facts. Written before this
+ * program's FLOW; another thread's FLOW on the same file can reach the ring first (review V5), so
+ * readers join by fid. Returns 0 if the record was lost to a full ring (counted FILE_LOST). */
+static __always_inline int write_file_rec(struct file *file, __u64 fid, __u64 obj,
+					  const struct p15_part_objfacts *f, int carry, __u32 seen)
 {
 	struct p15_file *r = bpf_ringbuf_reserve(&bulk_rb, P15_FILE_MAX_SIZE, 0);
 	const unsigned char *dname;
-	__u32 off = sizeof(*r);
+	__u32 off = sizeof(*r), full;
 	long m;
 
 	if (!r) {
 		flow_count(P15_FLC_FILE_LOST);
-		return;
+		return 0;
 	}
 	__builtin_memset(r, 0, P15_FILE_MAX_SIZE);
 	fill_hdr(&r->h, P15_T_FILE, P15_FILE_VERSION);
@@ -886,16 +887,29 @@ static __always_inline void write_file_rec(struct file *file, __u64 fid, __u64 o
 		r->facts_len = r->facts_full = sizeof(*f);
 		off += sizeof(*f);
 	}
+	/* The dentry's own name: at most NAME_MAX bytes, read with room for the helper's NUL (the
+	 * reservation's padding holds it). Its length is the helper's count less the NUL, never
+	 * masked: a mask would drop the last byte of an odd-length name and leave it behind the
+	 * field, which p15_rec_check refuses. A longer name is cut and flagged TRUNCATED, with its
+	 * full length from d_name.len; a failed read leaves the name empty, flagged READ_FAILED. */
 	dname = BPF_CORE_READ(file, f_path.dentry, d_name.name);
-	m = bpf_probe_read_kernel_str((__u8 *)r + off, P15_FILE_V1_NAME_MAX, dname);
-	if (m > 0) {
-		r->name_len = (__u16)(m - 1) & (P15_FILE_V1_NAME_MAX - 1);
-		r->name_full = r->name_len;        /* a longer name would set TRUNCATED; d_name is short here */
+	full = BPF_CORE_READ(file, f_path.dentry, d_name.len);
+	m = bpf_probe_read_kernel_str((__u8 *)r + off, P15_FILE_V1_NAME_MAX + 1, dname);
+	if (m > 0 && m <= P15_FILE_V1_NAME_MAX + 1) {
+		r->name_len = (__u16)(m - 1);
+		r->name_full = full > 0xffff ? 0xffff : (__u16)full;
+		if (r->name_full < r->name_len)
+			r->name_full = r->name_len;   /* d_name.len raced a rename: the bytes read are what holds */
+		if (r->name_full != r->name_len)
+			r->h.flags |= P15_F_TRUNCATED;
 		off += r->name_len;
+	} else {
+		r->h.flags |= P15_F_READ_FAILED;
 	}
 	r->h.len = (off + 7) & ~7u;
 	bpf_ringbuf_submit(r, wake());
 	flow_count(P15_FLC_FILE_EMITTED);
+	return 1;
 }
 
 /* Resolve the transfer's file to (fid, obj), registering a pseudo file and its FILE record on first
@@ -918,8 +932,31 @@ static __always_inline void emit_flow(struct file *file, struct inode *inode, __
 	obj = obj_of(inode, &f, &oe, &carry);
 	fe = file_ent_get_key(key, inode, obj, &created);
 	if (fe && created) {
-		write_file_rec(file, fe->fid, obj, &f, carry, seen);
-		facts_done(oe, carry);   /* the FILE record carried the object's facts */
+		if (write_file_rec(file, fe->fid, obj, &f, carry, seen)) {
+			facts_done(oe, carry);   /* the FILE record carried the object's facts */
+		} else {
+			/* the FILE was lost (counted FILE_LOST): undo the registration so the next
+			 * transfer on this file registers it again and writes its FILE, and leave the
+			 * object's facts unsent. This FLOW still names the fid; the reader counts a FLOW
+			 * whose fid has no FILE (graph: openfile_flow). */
+			__u64 fid = fe->fid;
+
+			if (!bpf_map_delete_elem(&files, &key))
+				count_add(P15_FC_FILES_LIVE, (__u64)-1);
+			r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
+			if (!r) {
+				flow_count(P15_FLC_FLOW_LOST);
+				return;
+			}
+			__builtin_memset(r, 0, sizeof(*r));
+			fill_hdr(&r->h, P15_T_FLOW, P15_FLOW_VERSION);
+			r->fid = fid;
+			r->obj = obj;
+			r->fflags = extra;
+			r->reason = P15_FLOWR_SINGLE;
+			r->h.len = sizeof(*r);
+			goto fill;
+		}
 	}
 
 	if (!fe) {
@@ -987,6 +1024,18 @@ static __always_inline int rw_entry(struct pt_regs *ctx)
 		flow_count(P15_FLC_V_EXCL_KTHREAD);
 		return 1;
 	}
+	{
+		/* a read() or write() on a socket reaches sock_recvmsg/sock_sendmsg, whose tracepoint
+		 * writes the RECV or SEND (ADR-0005 rule 11): the vfs hook leaves it, so it is not
+		 * recorded twice (review V2) */
+		struct file *file = bpf_core_cast((void *)key, struct file);
+		struct inode *inode = file->f_inode;
+
+		if (inode && (inode->i_mode & S_IFMT) == S_IFSOCK) {
+			flow_count(P15_FLC_V_OWNED_BY_SOCK);
+			return 1;
+		}
+	}
 	*cookie = key;
 	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, BPF_LOCAL_STORAGE_GET_F_CREATE);
 	if (st) {
@@ -1016,6 +1065,12 @@ static __always_inline int rw_return(struct pt_regs *ctx, __u16 kind, __u32 vect
 		flow_count(P15_FLC_V_FAILED);
 		return 0;
 	}
+	file = bpf_core_cast((void *)file_key, struct file);
+	inode = file->f_inode;
+	if (!inode) {
+		flow_count(P15_FLC_V_NO_INODE);
+		return 0;
+	}
 	flow_count(P15_FLC_V_ATTEMPT);
 	now = bpf_ktime_get_boot_ns();
 	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, 0);
@@ -1026,10 +1081,6 @@ static __always_inline int rw_return(struct pt_regs *ctx, __u16 kind, __u32 vect
 		first = now;
 		extra |= P15_FF_START_UNKNOWN;
 	}
-	file = bpf_core_cast((void *)file_key, struct file);
-	inode = file->f_inode;
-	if (!inode)
-		return 0;   /* a vfs_read file always has an inode; counted in the attempt, no record */
 	emit_flow(file, inode, kind, (__u64)ret, first, now, extra);
 	return 0;
 }
@@ -1107,10 +1158,12 @@ static __always_inline int sock_flow(__u64 sk_addr, long ret, int msg_flags, __u
 		flow_count(P15_FLC_S_FAILED);
 		return 0;
 	}
-	flow_count(P15_FLC_S_ATTEMPT);
 	inode = file->f_inode;
-	if (!inode)
+	if (!inode) {
+		flow_count(P15_FLC_S_NO_INODE);
 		return 0;
+	}
+	flow_count(P15_FLC_S_ATTEMPT);
 	if (kind == P15_FLOWK_RECV && (msg_flags & MSG_PEEK))
 		extra |= P15_FF_PEEK;
 	now = bpf_ktime_get_boot_ns();

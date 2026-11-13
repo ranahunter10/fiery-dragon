@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "0615f0cb9636842e909d2513ac8d58721a2ab8d446870101edd4d3093ae63936"
+#define P15_SCHEMA_HASH "131e161bd94c51177f31961a8a66a8188f47396a8b6ee9cc983294844c015150"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -1122,7 +1122,7 @@ P15_ASSERT(P15_OFFSETOF(struct p15_close_v1, f_mode) == 52, "p15_close_v1.f_mode
 
 #define P15_CLOSE_V1_MAX_SIZE 56
 
-/* FILE v1 (OPEN): An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id, before the FLOW that found it, by the program that found it. The header names that task. */
+/* FILE v1 (OPEN): An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id by the program that registered the open file, before that program's FLOW; another thread's FLOW on the same file can reach the ring first, so a reader joins by fid, not by order. If it is lost to a full ring the registration is undone and the next transfer writes it. The header names the task that registered it. */
 struct p15_file_v1 {
 	struct p15_hdr h;
 	__u64 fid;
@@ -1417,8 +1417,10 @@ struct p15_flow_stats_v1 {
 	__u64 sess_return;
 	__u64 v_excl_self;
 	__u64 v_excl_kthread;
+	__u64 v_owned_by_sock;
 	__u64 v_empty;
 	__u64 v_failed;
+	__u64 v_no_inode;
 	__u64 v_attempt;
 	__u64 sock_seen;
 	__u64 s_excl_self;
@@ -1426,6 +1428,7 @@ struct p15_flow_stats_v1 {
 	__u64 s_no_file;
 	__u64 s_empty;
 	__u64 s_failed;
+	__u64 s_no_inode;
 	__u64 s_attempt;
 	__u64 read_emitted;
 	__u64 write_emitted;
@@ -1441,37 +1444,40 @@ struct p15_flow_stats_v1 {
 	__u64 flow_invalid;
 	__u64 flow_missed;
 } __attribute__((aligned(8)));
-P15_ASSERT(sizeof(struct p15_flow_stats_v1) == 248, "p15_flow_stats_v1 size");
+P15_ASSERT(sizeof(struct p15_flow_stats_v1) == 272, "p15_flow_stats_v1 size");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, h) == 0, "p15_flow_stats_v1.h offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, sess_entry) == 32, "p15_flow_stats_v1.sess_entry offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, sess_return) == 40, "p15_flow_stats_v1.sess_return offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_excl_self) == 48, "p15_flow_stats_v1.v_excl_self offset");
 P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_excl_kthread) == 56, "p15_flow_stats_v1.v_excl_kthread offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_empty) == 64, "p15_flow_stats_v1.v_empty offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_failed) == 72, "p15_flow_stats_v1.v_failed offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_attempt) == 80, "p15_flow_stats_v1.v_attempt offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, sock_seen) == 88, "p15_flow_stats_v1.sock_seen offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_excl_self) == 96, "p15_flow_stats_v1.s_excl_self offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_excl_kthread) == 104, "p15_flow_stats_v1.s_excl_kthread offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_no_file) == 112, "p15_flow_stats_v1.s_no_file offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_empty) == 120, "p15_flow_stats_v1.s_empty offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_failed) == 128, "p15_flow_stats_v1.s_failed offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_attempt) == 136, "p15_flow_stats_v1.s_attempt offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, read_emitted) == 144, "p15_flow_stats_v1.read_emitted offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, write_emitted) == 152, "p15_flow_stats_v1.write_emitted offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, send_emitted) == 160, "p15_flow_stats_v1.send_emitted offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, recv_emitted) == 168, "p15_flow_stats_v1.recv_emitted offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_lost) == 176, "p15_flow_stats_v1.flow_lost offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, start_unknown) == 184, "p15_flow_stats_v1.start_unknown offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, unregistered) == 192, "p15_flow_stats_v1.unregistered offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_emitted) == 200, "p15_flow_stats_v1.file_emitted offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_lost) == 208, "p15_flow_stats_v1.file_lost offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_map_full) == 216, "p15_flow_stats_v1.file_map_full offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_drained) == 224, "p15_flow_stats_v1.flow_drained offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_invalid) == 232, "p15_flow_stats_v1.flow_invalid offset");
-P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_missed) == 240, "p15_flow_stats_v1.flow_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_owned_by_sock) == 64, "p15_flow_stats_v1.v_owned_by_sock offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_empty) == 72, "p15_flow_stats_v1.v_empty offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_failed) == 80, "p15_flow_stats_v1.v_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_no_inode) == 88, "p15_flow_stats_v1.v_no_inode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, v_attempt) == 96, "p15_flow_stats_v1.v_attempt offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, sock_seen) == 104, "p15_flow_stats_v1.sock_seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_excl_self) == 112, "p15_flow_stats_v1.s_excl_self offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_excl_kthread) == 120, "p15_flow_stats_v1.s_excl_kthread offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_no_file) == 128, "p15_flow_stats_v1.s_no_file offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_empty) == 136, "p15_flow_stats_v1.s_empty offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_failed) == 144, "p15_flow_stats_v1.s_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_no_inode) == 152, "p15_flow_stats_v1.s_no_inode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, s_attempt) == 160, "p15_flow_stats_v1.s_attempt offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, read_emitted) == 168, "p15_flow_stats_v1.read_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, write_emitted) == 176, "p15_flow_stats_v1.write_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, send_emitted) == 184, "p15_flow_stats_v1.send_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, recv_emitted) == 192, "p15_flow_stats_v1.recv_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_lost) == 200, "p15_flow_stats_v1.flow_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, start_unknown) == 208, "p15_flow_stats_v1.start_unknown offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, unregistered) == 216, "p15_flow_stats_v1.unregistered offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_emitted) == 224, "p15_flow_stats_v1.file_emitted offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_lost) == 232, "p15_flow_stats_v1.file_lost offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, file_map_full) == 240, "p15_flow_stats_v1.file_map_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_drained) == 248, "p15_flow_stats_v1.flow_drained offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_invalid) == 256, "p15_flow_stats_v1.flow_invalid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_missed) == 264, "p15_flow_stats_v1.flow_missed offset");
 
-#define P15_FLOW_STATS_V1_MAX_SIZE 248
+#define P15_FLOW_STATS_V1_MAX_SIZE 272
 
 /* FLOW v1 (FLOW): Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here. */
 struct p15_flow_v1 {

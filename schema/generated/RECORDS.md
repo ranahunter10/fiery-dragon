@@ -744,7 +744,7 @@ Fixed part 56 bytes; at most 56 bytes with its variable fields.
 
 ## FILE (type 11, version 1, class OPEN)
 
-An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id, before the FLOW that found it, by the program that found it. The header names that task.
+An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id by the program that registered the open file, before that program's FLOW; another thread's FLOW on the same file can reach the ring first, so a reader joins by fid, not by order. If it is lost to a full ring the registration is undone and the next transfer writes it. The header names the task that registered it.
 
 Fixed part 80 bytes; at most 184 bytes with its variable fields.
 
@@ -920,7 +920,7 @@ Fixed part 456 bytes; at most 456 bytes with its variable fields.
 
 The data-flow programs' health (ADR-0005, STATE decisions 18 and 47), written with every STATS record: the counters of bpf/include/p15_flow.h since the run's start, their books' drain side, and the kernel's skips. The books close as p15_flow.h states (B1 to B5); a lost FLOW or FILE, or a skipped flow program, makes the run DEGRADED.
 
-Fixed part 248 bytes; at most 248 bytes with its variable fields.
+Fixed part 272 bytes; at most 272 bytes with its variable fields.
 
 | Offset | Field | Type | Meaning |
 |---:|---|---|---|
@@ -929,29 +929,32 @@ Fixed part 248 bytes; at most 248 bytes with its variable fields.
 | 40 | `sess_return` | u64 | ... and its return ran; cumulative |
 | 48 | `v_excl_self` | u64 | a vfs entry in p15d itself (no return); cumulative |
 | 56 | `v_excl_kthread` | u64 | a vfs entry in a kernel thread (no return); cumulative |
-| 64 | `v_empty` | u64 | a vfs return with ret == 0 (no record); cumulative |
-| 72 | `v_failed` | u64 | a vfs return with ret < 0 (no record); cumulative |
-| 80 | `v_attempt` | u64 | a vfs return that reached the emit path (ret > 0); cumulative |
-| 88 | `sock_seen` | u64 | a sock tracepoint fired; cumulative |
-| 96 | `s_excl_self` | u64 | ... in p15d itself (no record); cumulative |
-| 104 | `s_excl_kthread` | u64 | ... in a kernel thread (no record); cumulative |
-| 112 | `s_no_file` | u64 | ... on a socket with no struct file (D6; no record); cumulative |
-| 120 | `s_empty` | u64 | ... with ret == 0 (no record); cumulative |
-| 128 | `s_failed` | u64 | ... with ret < 0 (no record); cumulative |
-| 136 | `s_attempt` | u64 | ... that reached the emit path (ret > 0); cumulative |
-| 144 | `read_emitted` | u64 | FLOW records of kind READ submitted; cumulative |
-| 152 | `write_emitted` | u64 | ... WRITE; cumulative |
-| 160 | `send_emitted` | u64 | ... SEND; cumulative |
-| 168 | `recv_emitted` | u64 | ... RECV; cumulative |
-| 176 | `flow_lost` | u64 | FLOW records lost to a full bulk ring (run DEGRADED); cumulative |
-| 184 | `start_unknown` | u64 | vfs FLOWs whose entry time was not kept (START_UNKNOWN); a sub-count of the emitted; cumulative |
-| 192 | `unregistered` | u64 | FLOWs on a file with no entry, facts inline (UNREGISTERED, reason MAP_FULL); a sub-count of the emitted; cumulative |
-| 200 | `file_emitted` | u64 | FILE records for a file first seen at a transfer (ADR-0015 rule 5); cumulative |
-| 208 | `file_lost` | u64 | ... lost to a full bulk ring (run DEGRADED); cumulative |
-| 216 | `file_map_full` | u64 | a pseudo file the files map was too full to register (its FLOW is UNREGISTERED); cumulative |
-| 224 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
-| 232 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
-| 240 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
+| 64 | `v_owned_by_sock` | u64 | a vfs entry on a socket, left to the sock tracepoints (ADR-0005 rule 11; no return); cumulative |
+| 72 | `v_empty` | u64 | a vfs return with ret == 0 (no record); cumulative |
+| 80 | `v_failed` | u64 | a vfs return with ret < 0 (no record); cumulative |
+| 88 | `v_no_inode` | u64 | a vfs return whose file has no inode (no record); cumulative |
+| 96 | `v_attempt` | u64 | a vfs return that reached the emit path (ret > 0); cumulative |
+| 104 | `sock_seen` | u64 | a sock tracepoint fired; cumulative |
+| 112 | `s_excl_self` | u64 | ... in p15d itself (no record); cumulative |
+| 120 | `s_excl_kthread` | u64 | ... in a kernel thread (no record); cumulative |
+| 128 | `s_no_file` | u64 | ... on a socket with no struct file (D6; no record); cumulative |
+| 136 | `s_empty` | u64 | ... with ret == 0 (no record); cumulative |
+| 144 | `s_failed` | u64 | ... with ret < 0 (no record); cumulative |
+| 152 | `s_no_inode` | u64 | ... whose socket file has no inode (no record); cumulative |
+| 160 | `s_attempt` | u64 | ... that reached the emit path (ret > 0); cumulative |
+| 168 | `read_emitted` | u64 | FLOW records of kind READ submitted; cumulative |
+| 176 | `write_emitted` | u64 | ... WRITE; cumulative |
+| 184 | `send_emitted` | u64 | ... SEND; cumulative |
+| 192 | `recv_emitted` | u64 | ... RECV; cumulative |
+| 200 | `flow_lost` | u64 | FLOW records lost to a full bulk ring (run DEGRADED); cumulative |
+| 208 | `start_unknown` | u64 | vfs FLOWs whose entry time was not kept (START_UNKNOWN); a sub-count of the emitted; cumulative |
+| 216 | `unregistered` | u64 | FLOWs on a file with no entry, facts inline (UNREGISTERED, reason MAP_FULL); a sub-count of the emitted; cumulative |
+| 224 | `file_emitted` | u64 | FILE records for a file first seen at a transfer (ADR-0015 rule 5); cumulative |
+| 232 | `file_lost` | u64 | ... lost to a full bulk ring (run DEGRADED; the open-file entry is removed so the next transfer retries); cumulative |
+| 240 | `file_map_full` | u64 | a pseudo file the files map was too full to register (its FLOW is UNREGISTERED); cumulative |
+| 248 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
+| 256 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
+| 264 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
 
 ## FLOW (type 10, version 1, class FLOW)
 

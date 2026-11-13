@@ -49,17 +49,19 @@ static int flow_books(struct p15_run *r, char *why, size_t n)
 	uint64_t emitted = L(READ_EMITTED) + L(WRITE_EMITTED) + L(SEND_EMITTED) + L(RECV_EMITTED);
 	uint64_t taken = atomic_load(&r->flow_drained) + r->flow_selftest_consumed + atomic_load(&r->flow_invalid);
 
-	if (L(SESS_ENTRY) != L(SESS_RETURN) + L(V_EXCL_SELF) + L(V_EXCL_KTHREAD)) {
-		snprintf(why, n, "FLOW: vfs entries %llu != returns + excluded self + excluded kthread",
+	if (L(SESS_ENTRY) != L(SESS_RETURN) + L(V_EXCL_SELF) + L(V_EXCL_KTHREAD) + L(V_OWNED_BY_SOCK)) {
+		snprintf(why, n, "FLOW: vfs entries %llu != returns + excluded self + excluded kthread + owned by a socket",
 			 (unsigned long long)L(SESS_ENTRY));
 		return -1;
 	}
-	if (L(SESS_RETURN) != L(V_EMPTY) + L(V_FAILED) + L(V_ATTEMPT)) {
-		snprintf(why, n, "FLOW: vfs returns %llu != empty + failed + emit attempts", (unsigned long long)L(SESS_RETURN));
+	if (L(SESS_RETURN) != L(V_EMPTY) + L(V_FAILED) + L(V_NO_INODE) + L(V_ATTEMPT)) {
+		snprintf(why, n, "FLOW: vfs returns %llu != empty + failed + no inode + emit attempts",
+			 (unsigned long long)L(SESS_RETURN));
 		return -1;
 	}
-	if (L(SOCK_SEEN) != L(S_EXCL_SELF) + L(S_EXCL_KTHREAD) + L(S_NO_FILE) + L(S_EMPTY) + L(S_FAILED) + L(S_ATTEMPT)) {
-		snprintf(why, n, "FLOW: sock events %llu != excluded + no-file + empty + failed + emit attempts",
+	if (L(SOCK_SEEN) != L(S_EXCL_SELF) + L(S_EXCL_KTHREAD) + L(S_NO_FILE) + L(S_EMPTY) + L(S_FAILED) + L(S_NO_INODE) +
+				    L(S_ATTEMPT)) {
+		snprintf(why, n, "FLOW: sock events %llu != excluded + no-file + empty + failed + no inode + emit attempts",
 			 (unsigned long long)L(SOCK_SEEN));
 		return -1;
 	}
@@ -445,8 +447,10 @@ static void flow_stats(struct p15_writer *w)
 	F(sess_return, P15_FLC_SESS_RETURN)
 	F(v_excl_self, P15_FLC_V_EXCL_SELF)
 	F(v_excl_kthread, P15_FLC_V_EXCL_KTHREAD)
+	F(v_owned_by_sock, P15_FLC_V_OWNED_BY_SOCK)
 	F(v_empty, P15_FLC_V_EMPTY)
 	F(v_failed, P15_FLC_V_FAILED)
+	F(v_no_inode, P15_FLC_V_NO_INODE)
 	F(v_attempt, P15_FLC_V_ATTEMPT)
 	F(sock_seen, P15_FLC_SOCK_SEEN)
 	F(s_excl_self, P15_FLC_S_EXCL_SELF)
@@ -454,6 +458,7 @@ static void flow_stats(struct p15_writer *w)
 	F(s_no_file, P15_FLC_S_NO_FILE)
 	F(s_empty, P15_FLC_S_EMPTY)
 	F(s_failed, P15_FLC_S_FAILED)
+	F(s_no_inode, P15_FLC_S_NO_INODE)
 	F(s_attempt, P15_FLC_S_ATTEMPT)
 	F(read_emitted, P15_FLC_READ_EMITTED)
 	F(write_emitted, P15_FLC_WRITE_EMITTED)

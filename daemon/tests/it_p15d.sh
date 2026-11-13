@@ -368,6 +368,72 @@ else
     echo "  SKIP (file identity not loadable here; CI and the VM run it)"
 fi
 
+echo "case 13: --flow: a known workload's reads, writes, sends and receives become FLOW records (ADR-0005, step 2b) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    D13=$(mktemp -d /tmp/p15d-it13-XXXXXX); D13=$(realpath "$D13")
+    "$B/p15d" --wal-dir "$T/c13" --flow --duration 5 --stats-ms 200 2>"$T/c13.err" &
+    pid=$!
+    if started "$T/c13.err"; then
+        # one process, known sizes: a 12345-byte write and read of a file, a 7-byte writev and
+        # readv, 3331 bytes through a pipe, and over a TCP loopback pair 321 bytes by write() (a vfs
+        # call on a socket: the tracepoint's SEND alone), 222 by send(), received with MSG_WAITALL,
+        # and one MSG_PEEK receive. It prints its pid for the checks.
+        wl=$("$PY" - "$D13" <<'WL'
+import os, socket, sys
+d = sys.argv[1]
+fd = os.open(d + "/w", os.O_CREAT | os.O_RDWR, 0o600)
+assert os.write(fd, b"x" * 12345) == 12345
+os.lseek(fd, 0, 0); assert len(os.read(fd, 12345)) == 12345
+assert os.writev(fd, [b"abc", b"defg"]) == 7
+os.lseek(fd, 12345, 0); assert os.readv(fd, [bytearray(3), bytearray(4)]) == 7
+os.close(fd)
+r, w = os.pipe(); assert os.write(w, b"p" * 3331) == 3331; assert len(os.read(r, 3331)) == 3331
+srv = socket.socket(); srv.bind(("127.0.0.1", 0)); srv.listen(1)
+c = socket.create_connection(srv.getsockname()); s, _ = srv.accept()
+assert os.write(c.fileno(), b"s" * 321) == 321
+assert c.send(b"t" * 222) == 222
+assert len(s.recv(10, socket.MSG_PEEK)) > 0
+assert len(s.recv(543, socket.MSG_WAITALL)) == 543
+print(os.getpid())
+WL
+)
+    fi
+    wait $pid; rc=$?
+    RUN=$T/c13; inspect >"$T/c13.txt"; irc=$?
+    c13=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+from p15 import records as R
+g = R.gen
+run = wal.read_run(Path(sys.argv[1])); me = int(sys.argv[2] or 0)
+bulk = list(run.ring_records(1))
+fl = [r for r in bulk if r.name == 'FLOW' and r.h['tgid'] == me]
+k = lambda kind, n, ff=0: sum(1 for r in fl if r.f['kind'] == kind and r.f['bytes'] == n and (r.f['fflags'] & ff) == ff)
+files = [r for r in bulk if r.name == 'FILE' and r.h['tgid'] == me]
+st = [r for r in run.ring_records(2) if r.name == 'FLOW_STATS'][-1].f
+print(k(1, 12345), k(2, 12345), k(2, 7, g.FF_VECTORED), k(1, 7, g.FF_VECTORED), k(2, 3331), k(1, 3331),
+      k(4, 321), k(4, 222), sum(r.f['bytes'] for r in fl if r.f['kind'] == 3 and not r.f['fflags'] & g.FF_PEEK),
+      sum(1 for r in fl if r.f['kind'] == 3 and r.f['fflags'] & g.FF_PEEK), k(2, 321),
+      sum(1 for r in files if r.f['seen'] == 3), sum(1 for r in files if r.f['seen'] == 5),
+      sum(1 for r in fl if r.f['first_ts'] > r.f['last_ts']), sum(1 for r in fl if r.f['fflags'] & g.FF_START_UNKNOWN),
+      st['v_owned_by_sock'], st['flow_invalid'], st['flow_lost'], st['file_lost'], st['flow_missed'])" \
+      "$(ls -d "$T"/c13/*/ | head -1)" "${wl:-0}")
+    read -r rd12 wr12 wv7 rv7 pw99 pr99 snd321 snd222 rcvb peek wr321 f_io f_net rev unk own inv flost filost miss <<<"$c13"
+    echo "  workload pid ${wl:-?}: READ/WRITE 12345 $rd12/$wr12, readv/writev 7 $rv7/$wv7, pipe 3331 $pr99/$pw99; SEND 321 $snd321, 222 $snd222; RECV bytes $rcvb, PEEK $peek; FILE seen io $f_io, net $f_net; vfs on a socket $own"
+    check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c13.txt" "--flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc $rc)"
+    check "[ -n \"${wl:-}\" ] && [ \"$rd12\" = 1 ] && [ \"$wr12\" = 1 ]" "the 12345-byte write and read are one WRITE and one READ"
+    check "[ \"$wv7\" = 1 ] && [ \"$rv7\" = 1 ]" "writev and readv are one WRITE and one READ each, flagged VECTORED"
+    check "[ \"$pw99\" = 1 ] && [ \"$pr99\" = 1 ]" "the pipe's 3331 bytes are one WRITE and one READ"
+    check "[ \"$snd321\" = 1 ] && [ \"$snd222\" = 1 ] && [ \"$wr321\" = 0 ]" "the socket's write() is one SEND, not also a WRITE (review V2); send() is one SEND"
+    check "[ \"${own:-0}\" -ge 1 ]" "  ... the vfs hook counted the socket call as owned by the socket ($own)"
+    check "[ \"$rcvb\" = 543 ] && [ \"${peek:-0}\" -ge 1 ]" "the receiver's RECVs add up to the 543 bytes sent, and the peek is flagged PEEK"
+    check "[ \"${f_io:-0}\" -ge 2 ] && [ \"${f_net:-0}\" -ge 1 ]" "FILE records for the pipe's two ends (first I/O) and the sockets (network)"
+    check "[ \"$rev\" = 0 ] && [ \"$unk\" = 0 ]" "every FLOW starts before it ends, and no start time was lost"
+    check "[ \"$inv\" = 0 ] && [ \"$flost\" = 0 ] && [ \"$filost\" = 0 ] && [ \"$miss\" = 0 ]" "FLOW_STATS: none refused, none lost to the ring, no kernel skips"
+    rm -rf "$D13"
+else
+    echo "  SKIP (file identity not loadable here; CI and the VM run it)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

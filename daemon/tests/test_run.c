@@ -261,14 +261,17 @@ int main(void)
 
 	/* data-flow books (bpf/include/p15_flow.h, B1 to B5), added to the same closed file-identity run.
 	 * FLOW and FILE records share the bulk ring, so they add to the writer side (net_written). */
-	r.flowc[P15_FLC_SESS_ENTRY] = 30;      /* B1: entries = returns + excluded self + excluded kthread */
+	r.flowc[P15_FLC_SESS_ENTRY] = 34;      /* B1: entries = returns + excluded self, kthread + owned by a socket */
 	r.flowc[P15_FLC_V_EXCL_SELF] = 3;
 	r.flowc[P15_FLC_V_EXCL_KTHREAD] = 2;
-	r.flowc[P15_FLC_SESS_RETURN] = 25;     /* B2: returns = empty + failed + emit attempts */
+	r.flowc[P15_FLC_V_OWNED_BY_SOCK] = 3;
+	r.flowc[P15_FLC_SESS_RETURN] = 26;     /* B2: returns = empty + failed + no inode + emit attempts */
 	r.flowc[P15_FLC_V_EMPTY] = 4;
 	r.flowc[P15_FLC_V_FAILED] = 1;
+	r.flowc[P15_FLC_V_NO_INODE] = 1;
 	r.flowc[P15_FLC_V_ATTEMPT] = 20;
-	r.flowc[P15_FLC_SOCK_SEEN] = 18;       /* B3: sock = excluded + no-file + empty + failed + attempts */
+	r.flowc[P15_FLC_SOCK_SEEN] = 19;       /* B3: sock = excluded + no-file + empty + failed + no inode + attempts */
+	r.flowc[P15_FLC_S_NO_INODE] = 1;
 	r.flowc[P15_FLC_S_EXCL_SELF] = 2;
 	r.flowc[P15_FLC_S_EXCL_KTHREAD] = 1;
 	r.flowc[P15_FLC_S_NO_FILE] = 3;
@@ -289,6 +292,9 @@ int main(void)
 	BREAKS(flowc[P15_FLC_V_EXCL_SELF], 1, "vfs entries", "B1: a vfs entry unaccounted");
 	BREAKS(flowc[P15_FLC_V_EMPTY], 1, "vfs returns", "B2: a vfs return unaccounted");
 	BREAKS(flowc[P15_FLC_S_NO_FILE], 1, "sock events", "B3: a sock event unaccounted");
+	BREAKS(flowc[P15_FLC_V_OWNED_BY_SOCK], 1, "vfs entries", "B1: a socket's vfs entry unaccounted");
+	BREAKS(flowc[P15_FLC_V_NO_INODE], 1, "vfs returns", "B2: a vfs return without an inode unaccounted");
+	BREAKS(flowc[P15_FLC_S_NO_INODE], 1, "sock events", "B3: a sock event without an inode unaccounted");
 	BREAKS(flowc[P15_FLC_FLOW_LOST], 1, "emit attempts", "B4: attempts != written + lost");
 	BREAKS(flowc[P15_FLC_FILE_EMITTED], 1, "FLOW: written", "B5: a FILE record off the drain side");
 	BREAKS(flow_selftest_consumed, 1, "FLOW: written", "B5: a record the self-test took, uncounted");
