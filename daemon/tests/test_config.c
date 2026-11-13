@@ -59,10 +59,12 @@ int main(void)
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
 	n = p15_config_meta(&c, kv, vals, 32);
-	EXPECT(n == 26, "every setting echoed");
+	EXPECT(n == 28, "every setting echoed");
 	EXPECT(!strcmp(kv[17].key, "config.flow_stop_wait_ms") && !strcmp(kv[17].value, "200") &&
 	       !strcmp(kv[18].key, "config.test_flow_cut_pause_ms") && !strcmp(kv[18].value, "0") &&
-	       !strcmp(kv[19].key, "config.test_barrier_fail") && !strcmp(kv[19].value, "0"),
+	       !strcmp(kv[19].key, "config.test_barrier_fail") && !strcmp(kv[19].value, "0") &&
+	       !strcmp(kv[20].key, "config.test_open_end_mode") && !strcmp(kv[20].value, "0") &&
+	       !strcmp(kv[21].key, "config.test_open_end_tgid") && !strcmp(kv[21].value, "0"),
 	       "the end's wait and its two test switches echoed, with their defaults");
 	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "200"), "the poll maximum echoed, its default 200 (ADR-0030)");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");

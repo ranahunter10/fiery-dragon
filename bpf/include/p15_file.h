@@ -6,7 +6,9 @@
  * 19.4). Every early return of a program has a slot. At quiescence they close:
  *
  *   FENTRY_RUN     = OPEN_EMITTED + OPEN_LOST + BACKING_EMITTED + BACKING_LOST + FENTRY_NO_INODE
- *   SESSION_ENTRY  = SESSION_RETURN + SESSION_NO_INODE
+ *   SESSION_ENTRY  = SESSION_RETURN + SESSION_NO_INODE + SESSION_GATED
+ *                    + (SESSION_OPEN_AT_END - SESSION_RETURNED_AFTER_COUNT)
+ *                    + (SESSION_NOSLOT_ENTRY - SESSION_NOSLOT_RETURN)
  *   SESSION_RETURN = SESSION_COMMON + MISSING_EMITTED + MISSING_LOST + VERDICT_EMITTED + VERDICT_LOST
  *                    + RET_BACKING + SESSION_NO_COOKIE + SESSION_NO_ENTRY
  *   MISSING_EMITTED = WALKED + WALK_UNNAMED     (the return's OPENs: walked, or without a path; ADR-0029)
@@ -20,6 +22,28 @@
  *   = drained + taken by the self-tests + invalid.
  * FILES_LIVE and OBJS_LIVE are gauges: +1 per insert, -1 (as u64) per delete; their sum over the
  * rows is the live count (u64 arithmetic wraps back to it).
+ *
+ * Opens in flight at the end (docs/research/2026-11-14-open-session-end-count.md). On 7.0 a call
+ * that is inside security_file_open when the session is detached never runs its return
+ * (fprobe_return skips an unregistered probe; E-0303), so its entry has no return to match. The
+ * call is marked in the open-file entry it registered, which both ends of the session already
+ * hold: the entry sets ST_SESSION_ENTRY, the return sets ST_SESSION_RETURNED. p15d ends a run as
+ * for the flow programs (p15_flow.h), in one pass with them:
+ *   1. it shuts file_gate: an entry after that is counted SESSION_GATED and registers nothing;
+ *   2. an RCU grace period: every entry that read the gate open has set its mark;
+ *   3. a bounded wait;
+ *   4. the map iterator file_open_iter claims every entry marked entered and not returned
+ *      (ST_SESSION_CLAIMED, by compare-and-exchange) and counts it SESSION_OPEN_AT_END;
+ *   5. detach. A return between 4 and 5 finds its entry claimed and counts
+ *      SESSION_RETURNED_AFTER_COUNT (its records are still written).
+ * An entry that got no open-file entry (the map was full) cannot be marked: it sets the low bit of
+ * the session's cookie and counts SESSION_NOSLOT_ENTRY, its return SESSION_NOSLOT_RETURN; the
+ * difference is such calls still open, which nothing observes directly. SESSION_CLAIM_RACE (the
+ * iterator gave up on an entry) and SESSION_REENTERED (an entry found the marks of an earlier
+ * open on its open-file entry: a free that was not seen) are reported, expected 0, not terms.
+ * What the mark cannot do: tell an open still in flight from a return lost earlier in the run on a
+ * file that is still open. Both are SESSION_OPEN_AT_END. A lost return on a file since freed is in
+ * no count, and breaks the book, as before.
  */
 #ifndef P15_FILE_H
 #define P15_FILE_H
@@ -71,6 +95,13 @@ enum p15_fc {
 	P15_FC_RET_BACKING_LOST,
 	P15_FC_RET_BACKING_VERDICT_EMITTED,   /* OPEN_VERDICT after such a BACKING */
 	P15_FC_RET_BACKING_VERDICT_LOST,
+	P15_FC_SESSION_GATED,        /* a session entry after the gate shut (the run is ending): nothing registered, no return */
+	P15_FC_SESSION_NOSLOT_ENTRY, /* a session entry that got no open-file entry (map full): marked in the cookie */
+	P15_FC_SESSION_NOSLOT_RETURN, /* ... and its return */
+	P15_FC_SESSION_OPEN_AT_END,  /* entries the end's iterator found entered, not returned, and claimed */
+	P15_FC_SESSION_RETURNED_AFTER_COUNT, /* ... of which these returned before the detach (their records are written) */
+	P15_FC_SESSION_CLAIM_RACE,   /* the iterator gave up on an entry after its tries (expected 0; reported) */
+	P15_FC_SESSION_REENTERED,    /* an entry found an earlier open's marks on its open-file entry (expected 0; reported) */
 	P15_FC__N,
 };
 
@@ -91,5 +122,19 @@ enum p15_fc {
  * --obj-map-entries, echoed in the WAL header's config.* keys. */
 #define P15_FILE_MAP_DEFAULT 65536u
 #define P15_OBJ_MAP_DEFAULT 131072u
+
+/* The session's cookie holds the struct file pointer, which is at least 8-aligned: its low bit
+ * marks a call that got no open-file entry, so is in no count. */
+#define P15_FILE_COOKIE_NOSLOT 1ull
+#define P15_FILE_CAS_TRIES 4
+
+/* TEST ONLY (--test-open-end-mode, with --test-open-end-tgid): what the session does for that
+ * process's opens, to stage states no test can time (no task can be held inside
+ * security_file_open from user space):
+ *   1  the entry marks its open and asks for no return, as a detach in flight leaves it;
+ *   2  the entry marks its open as already claimed and counts it SESSION_OPEN_AT_END, as the
+ *      end's iterator would have; its return then runs the returned-after-the-count branch. */
+#define P15_TEST_OPEN_LOSE_RETURN 1u
+#define P15_TEST_OPEN_PRECLAIM 2u
 
 #endif /* P15_FILE_H */

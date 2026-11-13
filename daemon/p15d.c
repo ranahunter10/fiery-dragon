@@ -30,6 +30,7 @@
 #include "drain.h"
 #include "exitcodes.h"
 #include "loader.h"
+#include "p15_file.h"
 #include "p15_flow.h"
 #include "p15_records.h"
 #include "run.h"
@@ -116,6 +117,16 @@ static uint64_t flow_open_now(struct p15_run *r)
 	return in > out ? in - out : 0;
 }
 
+/* The same for the open path's session (bpf/include/p15_file.h): opens inside security_file_open. */
+static uint64_t file_open_now(struct p15_run *r)
+{
+#define A(slot) atomic_load(&r->filec[P15_FC_##slot])
+	uint64_t in = A(SESSION_ENTRY) + A(SESSION_NOSLOT_RETURN);
+	uint64_t out = A(SESSION_RETURN) + A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_NOSLOT_ENTRY);
+#undef A
+	return in > out ? in - out : 0;
+}
+
 /* A grace period, or the run says its end counts are not exact (barrier.h): never a silent sleep. */
 static void barrier_or_degrade(struct p15_run *r, const char *what)
 {
@@ -131,27 +142,29 @@ static void barrier_or_degrade(struct p15_run *r, const char *what)
 }
 
 /*
- * The end of the flow programs' run (bpf/include/p15_flow.h; the design note of 2026-11-13). A
- * call inside vfs_read or vfs_write when its session is detached never runs its return, so the
- * open calls are counted while the sessions are still attached: the gate, a grace period, a
- * bounded wait in which the short calls return and are recorded as usual, then the task iterator.
- * This thread keeps draining throughout. Returns 0, or -ETIMEDOUT if the writer stood still.
+ * The end of the sessions' run (bpf/include/p15_flow.h and p15_file.h; the design notes of
+ * 2026-11-13 and 2026-11-14). A call inside vfs_read, vfs_write or security_file_open when its
+ * session is detached never runs its return, so the calls in flight are counted while the sessions
+ * are still attached: the gates, one grace period, a bounded wait in which the short calls return
+ * and are recorded as usual, then the two iterators. This thread keeps draining throughout.
+ * Returns 0, or -ETIMEDOUT if the writer stood still.
  */
-static int flow_cut(struct p15_run *r, struct p15_loader *l, struct p15_drain *d)
+static int end_cut(struct p15_run *r, struct p15_loader *l, struct p15_drain *d)
 {
 	struct p15_watch wd = { 0 };
 	uint64_t end;
 	int rc;
 
 	p15_loader_flow_gate(l);
-	barrier_or_degrade(r, "after the flow gate");
+	p15_loader_file_gate(l);
+	barrier_or_degrade(r, "after the gates");
 	end = p15_mono_ns() + (uint64_t)r->cfg.flow_stop_wait_ms * 1000000ull;
 	do {
 		if (p15_drain_poll(d, 10))
 			p15_fail(r, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
 		if (p15_writer_stalled(r, &wd, p15_mono_ns()))
 			return -ETIMEDOUT;
-	} while (flow_open_now(r) && p15_mono_ns() < end && !atomic_load(&r->fatal_code));
+	} while ((flow_open_now(r) || file_open_now(r)) && p15_mono_ns() < end && !atomic_load(&r->fatal_code));
 	rc = p15_loader_flow_count(l);
 	if (rc) {
 		char msg[128];
@@ -159,8 +172,15 @@ static int flow_cut(struct p15_run *r, struct p15_loader *l, struct p15_drain *d
 		snprintf(msg, sizeof(msg), "flow: the count of open calls failed: %s", strerror(-rc));
 		p15_fail(r, P15_EXIT_INTERNAL, msg);
 	}
+	rc = p15_loader_file_count(l);
+	if (rc) {
+		char msg[128];
+
+		snprintf(msg, sizeof(msg), "file: the count of opens in flight failed: %s", strerror(-rc));
+		p15_fail(r, P15_EXIT_INTERNAL, msg);
+	}
 	if (r->cfg.flow_cut_pause_ms) {
-		/* TEST ONLY (config.test_flow_cut_pause_ms in the header): the window between the count and
+		/* TEST ONLY (config.test_flow_cut_pause_ms in the header): the window between the counts and
 		 * the detach, held open so a test can let a counted call return in it */
 		uint64_t until = p15_mono_ns() + (uint64_t)r->cfg.flow_cut_pause_ms * 1000000ull;
 
@@ -216,6 +236,7 @@ int main(int argc, char **argv)
 	/* The snapshot object first: loading it writes its .bss with a map update, which holds
 	 * bpf_prog_active while preemptible, so it must happen before any program is attached. From
 	 * the spine's attach on, p15d makes no map syscall (ADR-0026). */
+	p15_loader_test_open_end(run.cfg.open_end_mode, run.cfg.open_end_tgid);   /* TEST ONLY; 0, 0 otherwise */
 	code = p15_snapshot_init(&snap, &run, err, sizeof(err));
 	if (code) {
 		logline("error", "load", err);
@@ -390,7 +411,7 @@ int main(int argc, char **argv)
 				return stuck(&run, &ld, "the closing snapshot");
 		}
 	}
-	if (run.flow_attached && !atomic_load(&run.fatal_code) && flow_cut(&run, &ld, &d))
+	if ((run.flow_attached || run.files) && !atomic_load(&run.fatal_code) && end_cut(&run, &ld, &d))
 		return stuck(&run, &ld, "the count of open flow calls");
 	p15_loader_detach(&ld);
 	/* a program run that began before the detach may still be counting: the books are read after it */

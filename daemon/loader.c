@@ -21,6 +21,15 @@
 #include "selftest_net.h"
 #include "spine.skel.h"
 
+/* TEST ONLY: see p15_loader_test_open_end in loader.h */
+static uint32_t test_open_mode, test_open_tgid;
+
+void p15_loader_test_open_end(uint32_t mode, uint32_t tgid)
+{
+	test_open_mode = mode;
+	test_open_tgid = tgid;
+}
+
 static int manifest_add(struct p15_loader *l, struct bpf_object *o, size_t *off)
 {
 	struct bpf_program *p;
@@ -60,9 +69,12 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 	}
 	l->file->rodata->flow_self_tgid = (__u32)getpid();   /* decision 47.1: p15d's own transfers are excluded */
 	l->file->rodata->flow_test_file_fail_first = o->test_flow_file_fail_first ? 1 : 0;
+	l->file->rodata->file_test_open_mode = test_open_mode;
+	l->file->rodata->file_test_open_tgid = test_open_tgid;
 	if (o->test_no_path_fentry)
 		bpf_program__set_autoattach(l->file->progs.file_open_path, false);
 	bpf_program__set_autoattach(l->file->progs.file_fd_iter, false);   /* the snapshot's FD pass: below */
+	bpf_program__set_autoattach(l->file->progs.file_open_iter, false); /* the end's count of opens in flight: below */
 	if (file_bpf__load(l->file)) {
 		snprintf(err, errlen, "file: load failed: %s (fentry or kprobe.session unavailable? --no-files runs without "
 			 "file identity)", strerror(errno));
@@ -93,6 +105,22 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 	if (!l->fd_iter_link) {
 		snprintf(err, errlen, "file: the FD pass's task_file iterator could not be made: %s", strerror(errno));
 		return P15_EXIT_LOAD;
+	}
+	/* The end's count of opens in flight (p15_file.h): an iterator over the open-file map. A link
+	 * only: nothing runs until p15_loader_file_count. */
+	{
+		union bpf_iter_link_info linfo;
+		DECLARE_LIBBPF_OPTS(bpf_iter_attach_opts, iopts);
+
+		memset(&linfo, 0, sizeof(linfo));
+		linfo.map.map_fd = (__u32)bpf_map__fd(l->file->maps.files);
+		iopts.link_info = &linfo;
+		iopts.link_info_len = sizeof(linfo);
+		l->file_open_link = bpf_program__attach_iter(l->file->progs.file_open_iter, &iopts);
+		if (!l->file_open_link) {
+			snprintf(err, errlen, "file: the open-file map's iterator could not be made: %s", strerror(errno));
+			return P15_EXIT_LOAD;
+		}
 	}
 	return 0;
 }
@@ -343,18 +371,17 @@ void p15_loader_flow_gate(struct p15_loader *l)
 		__atomic_store_n(&l->file->bss->flow_gate, 1, __ATOMIC_SEQ_CST);   /* mapped: a store, no system call (ADR-0026) */
 }
 
-int p15_loader_flow_count(struct p15_loader *l)
+/* Run an iterator program to its end. It prints nothing: reading to the end is what runs it over
+ * every task, or every map entry. */
+static int run_iter(struct bpf_link *link)
 {
 	char buf[64];
 	ssize_t r;
 	int fd;
 
-	if (!l->file || !l->n_flow_links || !l->flow_open_link)
-		return 0;
-	fd = bpf_iter_create(bpf_link__fd(l->flow_open_link));
+	fd = bpf_iter_create(bpf_link__fd(link));
 	if (fd < 0)
 		return fd;
-	/* the program prints nothing: reading to the end is what runs it over every task */
 	while ((r = read(fd, buf, sizeof(buf))) > 0 || (r < 0 && errno == EINTR))
 		;
 	if (r < 0) {
@@ -365,6 +392,26 @@ int p15_loader_flow_count(struct p15_loader *l)
 	}
 	close(fd);
 	return 0;
+}
+
+int p15_loader_flow_count(struct p15_loader *l)
+{
+	if (!l->file || !l->n_flow_links || !l->flow_open_link)
+		return 0;
+	return run_iter(l->flow_open_link);
+}
+
+void p15_loader_file_gate(struct p15_loader *l)
+{
+	if (l->file)
+		__atomic_store_n(&l->file->bss->file_gate, 1, __ATOMIC_SEQ_CST);   /* mapped: a store, no system call */
+}
+
+int p15_loader_file_count(struct p15_loader *l)
+{
+	if (!l->file || !l->file_open_link)
+		return 0;
+	return run_iter(l->file_open_link);
 }
 
 void p15_loader_detach(struct p15_loader *l)
@@ -390,6 +437,8 @@ void p15_loader_free(struct p15_loader *l)
 	l->fd_iter_link = NULL;
 	bpf_link__destroy(l->flow_open_link);
 	l->flow_open_link = NULL;
+	bpf_link__destroy(l->file_open_link);
+	l->file_open_link = NULL;
 	file_bpf__destroy(l->file);
 	l->spine = NULL;
 	l->net = NULL;

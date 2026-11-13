@@ -215,7 +215,16 @@ int main(void)
 	r.filec[P15_FC_OPEN_LOST] = 1;
 	r.filec[P15_FC_BACKING_EMITTED] = 2;
 	r.filec[P15_FC_BACKING_LOST] = 1;
-	r.filec[P15_FC_SESSION_ENTRY] = 22;
+	/* session entries: 25 + returned after the count 1 + no-slot returns 1
+	 * = returns 21 + no inode 1 + gated 1 + open at the end 2 + no-slot entries 2 */
+	r.filec[P15_FC_SESSION_ENTRY] = 25;
+	r.filec[P15_FC_SESSION_GATED] = 1;
+	r.filec[P15_FC_SESSION_OPEN_AT_END] = 2;
+	r.filec[P15_FC_SESSION_RETURNED_AFTER_COUNT] = 1;
+	r.filec[P15_FC_SESSION_NOSLOT_ENTRY] = 2;
+	r.filec[P15_FC_SESSION_NOSLOT_RETURN] = 1;
+	r.filec[P15_FC_SESSION_CLAIM_RACE] = 3;   /* reported only: no term of any book */
+	r.filec[P15_FC_SESSION_REENTERED] = 2;    /* reported only */
 	r.filec[P15_FC_SESSION_NO_INODE] = 1;
 	r.filec[P15_FC_SESSION_RETURN] = 21;
 	r.filec[P15_FC_SESSION_COMMON] = 14;
@@ -245,9 +254,19 @@ int main(void)
 	BREAKS(filec[P15_FC_OPEN_LOST], 1, "fentry runs", "a fentry run unaccounted: broken");
 	BREAKS(filec[P15_FC_FENTRY_NO_INODE], 1, "fentry runs", "the no-inode return is on the fentry books");
 	BREAKS(filec[P15_FC_SESSION_NO_INODE], 1, "session entries", "session entry side broken");
-	BREAKS(filec[P15_FC_SESSION_NO_COOKIE], 1, "session entries", "session return side broken");
-	BREAKS(filec[P15_FC_MISSING_LOST], 1, "session entries", "a lost PATH_MISSING open is on the session books");
-	BREAKS(filec[P15_FC_RET_BACKING], 1, "session entries", "the return's BACKING branch is on the session books");
+	BREAKS(filec[P15_FC_SESSION_GATED], 1, "session entries", "an entry after the gate is a term");
+	BREAKS(filec[P15_FC_SESSION_OPEN_AT_END], 1, "session entries", "an open in flight at the end is a term");
+	BREAKS(filec[P15_FC_SESSION_RETURNED_AFTER_COUNT], 1, "session entries", "a counted open that returned is taken back");
+	BREAKS(filec[P15_FC_SESSION_NOSLOT_ENTRY], 1, "session entries", "an entry without an open-file entry is a term");
+	BREAKS(filec[P15_FC_SESSION_NOSLOT_RETURN], 1, "session entries", "... and its return");
+	r.filec[P15_FC_SESSION_ENTRY] += 1;
+	r.state = P15_RUN_RUNNING;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN &&
+	       strstr(why, "entry 26 rac 1 nsret 1 != ret 21 noino 1 gated 1 open 2 nsent 2"), "the message prints every term");
+	r.filec[P15_FC_SESSION_ENTRY] -= 1;
+	BREAKS(filec[P15_FC_SESSION_NO_COOKIE], 1, "session returns", "session return side broken");
+	BREAKS(filec[P15_FC_MISSING_LOST], 1, "session returns", "a lost PATH_MISSING open is on the session books");
+	BREAKS(filec[P15_FC_RET_BACKING], 1, "session returns", "the return's BACKING branch is on the session books");
 	BREAKS(filec[P15_FC_WALKED], 1, "walked", "the return's OPENs = walked + without a path");
 	BREAKS(filec[P15_FC_WALK_UNNAMED], 1, "walked", "... both terms");
 	BREAKS(filec[P15_FC_RET_BACKING_LOST], 1, "BACKING", "the return's BACKING written + lost");

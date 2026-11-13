@@ -66,6 +66,8 @@ volatile __u32 facts_epoch = 1;
 
 #define ST_SESSION_ENTRY (1u << 0)
 #define ST_FENTRY_RAN (1u << 1)
+#define ST_SESSION_RETURNED (1u << 2)   /* the session's return ran for this open (p15_file.h, opens in flight) */
+#define ST_SESSION_CLAIMED (1u << 3)    /* the end's iterator counted this open as in flight */
 
 struct file_ent {
 	__u64 fid;
@@ -671,13 +673,22 @@ static __always_inline void write_verdict(struct file_ent *fe, int verdict, __u3
 	count(emitted);
 }
 
+/* Shut by p15d when the run ends (a store through the mapped .bss): a session entry that reads it
+ * shut registers nothing and has no return. p15d then waits an RCU grace period, so every entry
+ * that read it open has set its mark before the iterator below counts (p15_file.h). */
+volatile __u32 file_gate;
+
+/* TEST ONLY (p15_file.h P15_TEST_OPEN_*). Off (mode 0), the verifier removes the branches. */
+const volatile __u32 file_test_open_mode;
+const volatile __u32 file_test_open_tgid;
+
 SEC("kprobe.session/security_file_open")
 int file_open_session(struct pt_regs *ctx)
 {
 	__u64 *cookie = bpf_session_cookie(ctx);
 	struct file_ent *fe;
 	struct file *file;
-	__u64 key;
+	__u64 key, ck;
 	int ret;
 
 	if (!bpf_session_is_return(ctx)) {
@@ -686,6 +697,10 @@ int file_open_session(struct pt_regs *ctx)
 
 		PROF_T(t_sess);
 		count(P15_FC_SESSION_ENTRY);
+		if (file_gate) {
+			count(P15_FC_SESSION_GATED);   /* the run is ending: nothing registered, no return */
+			return 1;
+		}
 		key = PT_REGS_PARM1(ctx);
 		*cookie = key;
 		file = bpf_core_cast((void *)key, struct file);
@@ -699,14 +714,41 @@ int file_open_session(struct pt_regs *ctx)
 		PROF_T(t_sfile);
 		fe = file_ent_get_key(key, inode, 0, &created);
 		PROF_ADD(P15_PROF_SESS_FILE, t_sfile);
-		if (fe)
-			__sync_fetch_and_or(&fe->state, ST_SESSION_ENTRY);
+		if (!fe) {
+			/* no open-file entry to mark (the map is full, counted there): the call is in
+			 * no count, and says so to its return in the cookie */
+			count(P15_FC_SESSION_NOSLOT_ENTRY);
+			*cookie = key | P15_FILE_COOKIE_NOSLOT;
+			PROF_ADD(P15_PROF_SESS_ENTRY, t_sess);
+			return 0;
+		}
+		if (fe->state & (ST_SESSION_RETURNED | ST_SESSION_CLAIMED)) {
+			/* an earlier open's marks: its file was freed unseen and this one has its
+			 * address and inode. Cleared, so this open is counted as its own. */
+			count(P15_FC_SESSION_REENTERED);
+			__sync_fetch_and_and(&fe->state, ~(ST_SESSION_RETURNED | ST_SESSION_CLAIMED));
+		}
+		if (file_test_open_mode && (__u32)(bpf_get_current_pid_tgid() >> 32) == file_test_open_tgid) {
+			if (file_test_open_mode == P15_TEST_OPEN_LOSE_RETURN) {
+				__sync_fetch_and_or(&fe->state, ST_SESSION_ENTRY);
+				return 1;   /* TEST: marked, and no return, as a detach in flight leaves it */
+			}
+			/* TEST: as if the end's iterator had counted this open already */
+			__sync_fetch_and_or(&fe->state, ST_SESSION_ENTRY | ST_SESSION_CLAIMED);
+			count(P15_FC_SESSION_OPEN_AT_END);
+			return 0;
+		}
+		__sync_fetch_and_or(&fe->state, ST_SESSION_ENTRY);
 		PROF_ADD(P15_PROF_SESS_ENTRY, t_sess);
 		return 0;
 	}
 	PROF_T(t_ret);
 	count(P15_FC_SESSION_RETURN);
-	key = *cookie;
+	ck = *cookie;
+	key = ck & ~P15_FILE_COOKIE_NOSLOT;
+	/* every return, before any of the early ones below, settles its entry's place in the book */
+	if (ck & P15_FILE_COOKIE_NOSLOT)
+		count(P15_FC_SESSION_NOSLOT_RETURN);
 	if (!key) {
 		count(P15_FC_SESSION_NO_COOKIE);
 		return 0;
@@ -716,6 +758,9 @@ int file_open_session(struct pt_regs *ctx)
 		count(P15_FC_SESSION_NO_ENTRY);
 		return 0;
 	}
+	if (!(ck & P15_FILE_COOKIE_NOSLOT) &&
+	    (__sync_fetch_and_or(&fe->state, ST_SESSION_RETURNED) & ST_SESSION_CLAIMED))
+		count(P15_FC_SESSION_RETURNED_AFTER_COUNT);
 	ret = (int)PT_REGS_RC(ctx);
 	if (!(fe->state & ST_FENTRY_RAN)) {
 		file = bpf_core_cast((void *)key, struct file);
@@ -733,6 +778,38 @@ int file_open_session(struct pt_regs *ctx)
 	else
 		count(P15_FC_SESSION_COMMON);
 	PROF_ADD(P15_PROF_SESS_RETURN, t_ret);
+	return 0;
+}
+
+/* The end's count of opens in flight (p15_file.h): run once by p15d after the gate and the grace
+ * period, while the session is still attached, over every open-file entry. An entry marked
+ * entered and not returned is claimed and counted. A return racing with this either set its mark
+ * first (then the entry is not counted here) or finds the claim. The key is copied and looked up
+ * again so the compare-and-exchange is on a map value, where the verifier allows it. */
+SEC("iter/bpf_map_elem")
+int file_open_iter(struct bpf_iter__bpf_map_elem *ctx)
+{
+	__u64 *kp = ctx->key, k;
+	struct file_ent *fe;
+	int i;
+
+	if (!kp)
+		return 0;
+	k = *kp;
+	fe = bpf_map_lookup_elem(&files, &k);
+	if (!fe)
+		return 0;
+	for (i = 0; i < P15_FILE_CAS_TRIES; i++) {
+		__u32 s = fe->state;
+
+		if ((s & (ST_SESSION_ENTRY | ST_SESSION_RETURNED | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)
+			return 0;
+		if (__sync_val_compare_and_swap(&fe->state, s, s | ST_SESSION_CLAIMED) == s) {
+			count(P15_FC_SESSION_OPEN_AT_END);
+			return 0;
+		}
+	}
+	count(P15_FC_SESSION_CLAIM_RACE);
 	return 0;
 }
 

@@ -18,7 +18,7 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 UNIT = ("make -s build/test_queue build/test_config build/test_run build/test_counters && build/test_queue && "
         "build/test_config && build/test_run && build/test_counters")
-IT = "make -s build/p15d build/p15w-inspect && daemon/tests/it_p15d.sh build"
+IT = "make -s build/p15d build/p15w-inspect build/test_open_iter && daemon/tests/it_p15d.sh build"
 
 M = [
     # counters (ADR-0026): the row sum, configure and verify; the drain's mapped read; the loader;
@@ -66,7 +66,7 @@ M = [
      "atomic_fetch_add(&d->run->net_drained, 1);", IT),
     ("writer.c", "\tif (r->files) {\n\t\tif (file_books(r, why, n))", "\tif (0) {\n\t\tif (file_books(r, why, n))", UNIT),
     ("writer.c", "A(BACKING_LOST) + A(FENTRY_NO_INODE)) {", "A(BACKING_LOST)) {", UNIT),
-    ("writer.c", "if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||", "if (", UNIT),
+    ("writer.c", "if (A(SESSION_ENTRY) + A(SESSION_RETURNED_AFTER_COUNT) + A(SESSION_NOSLOT_RETURN) !=\n\t    A(SESSION_RETURN) + A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_OPEN_AT_END) + A(SESSION_NOSLOT_ENTRY)) {", "if (0) {", UNIT),
     ("writer.c", "A(RET_BACKING) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {", "A(RET_BACKING) + A(SESSION_NO_ENTRY)) {", UNIT),
     ("writer.c", "A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED)", "A(MISSING_EMITTED) + A(VERDICT_EMITTED)", UNIT),
     # gate 3: the drain's adaptive poll and the writer's wait until its next deadline
@@ -121,15 +121,28 @@ M = [
      "if (L(SESS_ENTRY) + L(RETURNED_AFTER_COUNT) + L(V_RELEASE_FAILED) !=", UNIT),
     ("writer.c", "	    L(V_NO_SLOT_ENTRY)) {", "	    0) {", UNIT),
     ("barrier.c", "	if (test_fail)\n		return -ENOSYS;", "	(void)test_fail;", IT),
-    ("p15d.c", "	p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n}\n\n/*\n * The end of the flow", "}\n\n/*\n * The end of the flow", IT),
+    ("p15d.c", "	p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n}\n\n/*\n * The end of the sessions", "}\n\n/*\n * The end of the sessions", IT),
     ("p15d.c", "	rc = p15_loader_flow_count(l);\n", "	rc = 0;\n", IT),
-    ("p15d.c", "	p15_loader_flow_gate(l);\n	barrier_or_degrade(r, \"after the flow gate\");", "	barrier_or_degrade(r, \"after the flow gate\");", IT),
+    ("p15d.c", "	p15_loader_flow_gate(l);\n", "", IT),
     ("../bpf/progs/file.bpf.c", "	if (__sync_fetch_and_add(&st->open, 1) & P15_FLOW_OPEN_MASK)", "	if (0)", IT),
     ("../bpf/progs/file.bpf.c", "		if (st)\n			rw_release(st);\n		else", "		if (st)\n			(void)rw_release;\n		else", IT),
     ("../bpf/progs/file.bpf.c", "		if (claimed)\n			nw = w - P15_FLOW_CLAIM_ONE;\n		else if", "		if (0)\n			nw = w - P15_FLOW_CLAIM_ONE;\n		else if", IT),
     ("../bpf/progs/file.bpf.c", "	if (flow_gate) {", "	if (0) {", IT),
     # a return that never finds its call in the count: V_RELEASE_NONE moves (case 13's check)
     ("../bpf/progs/file.bpf.c", "		else if (w & P15_FLOW_OPEN_MASK)\n			nw = w - 1;", "		else if (0)\n			nw = w - 1;", IT),
+    # the open path's session at the end (bpf/include/p15_file.h; it_p15d cases 18 and 19): the book's
+    # terms, then the gate, the count, the return's claimed branch and the iterator's claim
+    ("writer.c", "if (A(SESSION_ENTRY) + A(SESSION_RETURNED_AFTER_COUNT) + A(SESSION_NOSLOT_RETURN) !=", "if (A(SESSION_ENTRY) + A(SESSION_NOSLOT_RETURN) !=", UNIT),
+    ("writer.c", "if (A(SESSION_ENTRY) + A(SESSION_RETURNED_AFTER_COUNT) + A(SESSION_NOSLOT_RETURN) !=", "if (A(SESSION_ENTRY) + A(SESSION_RETURNED_AFTER_COUNT) !=", UNIT),
+    ("writer.c", "A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_OPEN_AT_END) + A(SESSION_NOSLOT_ENTRY)) {", "A(SESSION_NO_INODE) + A(SESSION_OPEN_AT_END) + A(SESSION_NOSLOT_ENTRY)) {", UNIT),
+    ("writer.c", "A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_OPEN_AT_END) + A(SESSION_NOSLOT_ENTRY)) {", "A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_NOSLOT_ENTRY)) {", UNIT),
+    ("writer.c", "A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_OPEN_AT_END) + A(SESSION_NOSLOT_ENTRY)) {", "A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_OPEN_AT_END)) {", UNIT),
+    ("p15d.c", "	p15_loader_file_gate(l);\n", "", IT),
+    ("p15d.c", "	rc = p15_loader_file_count(l);\n", "	rc = 0;\n", IT),
+    ("../bpf/progs/file.bpf.c", "		if (file_gate) {", "		if (0) {", IT),
+    ("../bpf/progs/file.bpf.c", "	    (__sync_fetch_and_or(&fe->state, ST_SESSION_RETURNED) & ST_SESSION_CLAIMED))", "	    (__sync_fetch_and_or(&fe->state, ST_SESSION_RETURNED) & 0))", IT),
+    ("../bpf/progs/file.bpf.c", "		if (__sync_val_compare_and_swap(&fe->state, s, s | ST_SESSION_CLAIMED) == s) {\n			count(P15_FC_SESSION_OPEN_AT_END);", "		if (__sync_val_compare_and_swap(&fe->state, s, s | ST_SESSION_CLAIMED) == s) {", IT),
+    ("../bpf/progs/file.bpf.c", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_RETURNED | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", IT),
 ]
 
 

@@ -49,6 +49,8 @@ struct p15_config {
 	uint32_t flow_cut_pause_ms;  /* --test-flow-cut-pause-ms: TEST ONLY, wait between the count of open calls
 				      * and the detach, so a test can release one in that window */
 	uint32_t barrier_fail;       /* --test-barrier-fail 1: TEST ONLY, the grace-period barrier reports failure */
+	uint32_t open_end_mode;      /* --test-open-end-mode 1|2: TEST ONLY, what the open session does for the opens of */
+	uint32_t open_end_tgid;      /* --test-open-end-tgid: ... this process (bpf/include/p15_file.h P15_TEST_OPEN_*) */
 	uint32_t poll_max_ms;        /* --poll-max-ms: the drain's longest poll timeout, 10..1000, default 200; 10 ms
 				      * after a poll that took records, doubled after each empty one (ADR-0030) */
 };
