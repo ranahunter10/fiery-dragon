@@ -279,7 +279,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`graph.sql`](../python/p15/graph/graph.sql) | Graph v0 (ADR-0028): the provenance graph of one run, built from the raw record tables (schema/generated/p15_records.sql) and the process tree (`proc_src`, filled by build.py fr... | `clock`, `fact_row`, `obj_facts`, `fid_row`, `openfile`, `exec_file`, `file_src`, `exec_name`, `sock_src`, `node`, `proc`, `proc_image` (+9) |
 | [`pidsmaker.py`](../python/p15/graph/pidsmaker.py) | Export a graph file to the tables PIDSMaker reads (ADR-0028 rule 7). | `export` |
 | [`raw.py`](../python/p15/graph/raw.py) | every record of a run, one DuckDB table per record type. | `row`, `column`, `insert_rows`, `Loader`, `create`, `load` |
-| [`track.py`](../python/p15/graph/track.py) | Backward and forward tracking on a graph file (BackTracker's rule, King and Chen SOSP'03, R-046). | `prepare`, `backward`, `forward`, `resolve`, `describe` |
+| [`track.py`](../python/p15/graph/track.py) | Backward and forward tracking on a graph file (BackTracker's rule, King and Chen SOSP'03, R-046). | `prepare`, `backward`, `forward`, `span`, `resolve`, `describe` |
 
 ## python/tests
 
@@ -288,12 +288,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`it_wal_c.py`](../python/tests/it_wal_c.py) | decode, field by field, the run that daemon/tests/wal_fixture.c wrote through daemon/wal.c. | `CWriterRun` |
 | [`p15w_build.py`](../python/tests/p15w_build.py) | build P15W segments and ADR-0008 records in memory, with every field open to being broken on purpose. | `rec`, `batch`, `header`, `meta_for`, `write_run` |
 | [`scenario.py`](../python/tests/scenario.py) | a small synthetic p15d run with a known story, for the process tree, the port query and the reports. | `fork`, `exe`, `ren`, `ex`, `net`, `proc`, `snapshot`, `build` |
-| [`test_graph.py`](../python/tests/test_graph.py) | Graph v0 (ADR-0028): the raw tables, the node rules (ADR-0009, ADR-0015 rule 3, ADR-0027), the edges, the books and the PIDSMaker export, on synthetic runs whose every value is ... | `facts`, `hdr`, `opn`, `fd`, `close`, `run_of`, `Base`, `Profile`, `InsertRows`, `RawTables`, `FileNodes`, `OpenEdges` (+4) |
+| [`test_graph.py`](../python/tests/test_graph.py) | Graph v0 (ADR-0028): the raw tables, the node rules (ADR-0009, ADR-0015 rule 3, ADR-0027), the edges, the books and the PIDSMaker export, on synthetic runs whose every value is ... | `facts`, `hdr`, `opn`, `fd`, `close`, `flow`, `filerec`, `run_of`, `Base`, `Profile`, `InsertRows`, `RawTables` (+7) |
 | [`test_provenance.py`](../python/tests/test_provenance.py) | Code-provenance derivation (python/p15/provenance.py, ADR-0025): the classes computed from the raw EXEC v2 / PROC v2 facts. | `dec`, `exe`, `Backing`, `Streams`, `Writable`, `Unusual`, `Pipes` |
 | [`test_reconcile.py`](../python/tests/test_reconcile.py) | Tests for the process snapshots (snapshot.py), the tree's use of the opening one (proctree.py) and the ADR-0023 reconciliation (reconcile.py), on scenario.py's run with snapshots. | `Base`, `Snapshots`, `FdPass`, `TreeFromSnapshot`, `Reconcile` |
 | [`test_records.py`](../python/tests/test_records.py) | Tests for the record decoder (python/p15/records.py): every refusal p15_rec_check makes (daemon/records.c, same wording), no defaults, and the field helpers. | `dec`, `facts`, `Refusals`, `FileIdentity`, `SnapDoneV2`, `Decoding`, `flow`, `DataFlow`, `Helpers` |
 | [`test_trace.py`](../python/tests/test_trace.py) | Tests for the process tree (proctree.py), the port query (net.py) and p15-trace's two reports (trace.py, report_html.py), on the synthetic run of scenario.py, whose story is known. | `Base`, `Tree`, `Port`, `TextReport`, `Html`, `Checker`, `Cli` |
-| [`test_track.py`](../python/tests/test_track.py) | the USING KEY queries against a plain-Python BackTracker on hand-made and random graphs, and on built graphs: a TCP connection crossed by its exact pairing, an overlay file and ... | `ref_backward`, `ref_forward`, `db_of`, `HandMade`, `Random`, `Built` |
+| [`test_track.py`](../python/tests/test_track.py) | the USING KEY queries against a plain-Python BackTracker on hand-made and random graphs (events at one moment and transfers over an interval), and on built graphs: a TCP connect... | `spans`, `ref_backward`, `ref_forward`, `db_of`, `HandMade`, `Random`, `Built` |
 | [`test_wal.py`](../python/tests/test_wal.py) | Tests for the P15W reader (python/p15/wal.py) against docs/formats/p15w-v1.md: every header check, every §4 stop cause and its torn/corrupt verdict, the run rules, and random da... | `Tmp`, `Crc`, `Header`, `Batches`, `Runs`, `BadRecords`, `Damage` |
 
 ## schema

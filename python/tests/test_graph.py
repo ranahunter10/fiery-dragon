@@ -26,10 +26,12 @@ from p15.graph import __main__ as CLI  # noqa: E402
 from p15.graph import build as B  # noqa: E402
 from p15.graph import pidsmaker as PM  # noqa: E402
 from p15.graph import raw as RAW  # noqa: E402
+from p15.graph import track as TRK  # noqa: E402
 
 S = SC.S
 T0 = SC.START
 EXT4, TMPFS, BTRFS, PIPEFS, ANON, OVL = 0xEF53, 0x01021994, 0x9123683E, 0x50495045, 0x09041934, 0x794C7630
+SOCKFS, SOCK = 0x534F434B, 0o140777
 DEV = (8 << 20) | 1
 REG, FIFO = 0o100644, 0o010600
 A, B2 = (700, T0 + 10), (710, T0 + 20)          # two processes
@@ -62,6 +64,25 @@ def fd(t, p, fid, obj, n, f, path=b"", mode=3):
 
 def close(t, p, fid, obj, fflags=0):
     return rec("CLOSE", **hdr(t, p), fid=fid, obj=obj, fflags=fflags)
+
+
+def flow(t, p, fid, obj, kind, first, last, nbytes=1, f=None, fflags=0, count=1):
+    """A FLOW written at t for a transfer over [first, last] (ADR-0005 rule 8)."""
+    var = {}
+    if f is not None:
+        var["facts"] = f
+        fflags |= FF.FF_OBJ_NEW
+    return rec("FLOW", var=var, **hdr(t, p), fid=fid, obj=obj, kind=getattr(FF, f"FLOW_KIND_{kind}"), first_ts=first,
+               last_ts=last, bytes=nbytes, count=count, fflags=fflags, reason=FF.FLOW_REASON_SINGLE)
+
+
+def filerec(t, p, fid, obj, f=None, name=b"", mode=3):
+    """A FILE: an open file first seen at a transfer (ADR-0015 rule 5)."""
+    var = {"name": name}
+    if f is not None:
+        var["facts"] = f
+    return rec("FILE", var=var, **hdr(t, p), fid=fid, obj=obj, f_mode=mode, seen=3,
+               fflags=FF.FF_OBJ_NEW if f is not None else 0)
 
 
 def run_of(d: Path, spine=(), bulk=(), daemon=()) -> Path:
@@ -351,6 +372,124 @@ class OpenEdges(Base):
                        daemon=[fd(T0 + 5, A, 1, 10, 3, f, b"/a"), fd(T0 + 8, A, 1, 10, 3, f, b"/a")])
         self.assertEqual(self.q(c, "SELECT how, opener_tgid, first_ns FROM openfile"), [("open", 700, T0 + 1)])
         self.assertEqual(self.q(c, "SELECT op, ts_ns FROM edge ORDER BY edge_id"), [("OPEN", T0 + 1), ("HELD", T0 + 5)])
+
+
+class FlowEdges(Base):
+    """FLOW records are the edges that carry data (ADR-0005 rule 8; ADR-0028 rule 6)."""
+    F = dict(dev=DEV, gen=9, mode=REG, fs_magic=EXT4)
+
+    def proc(self, c, tgid):
+        return self.q(c, "SELECT node_id FROM proc WHERE tgid = ?", tgid)[0][0]
+
+    def test_a_write_points_into_the_file_and_a_read_out_of_it_over_their_intervals(self):
+        c = self.graph(bulk=[opn(T0 + 1, A, 1, 10, b"/data", facts(ino=1, **self.F), mode=2),
+                             flow(T0 + 5, A, 1, 10, "WRITE", T0 + 2, T0 + 4, nbytes=100),
+                             opn(T0 + 6, B2, 2, 10, b"/data", mode=1),
+                             flow(T0 + 9, B2, 2, 10, "READ", T0 + 7, T0 + 8, nbytes=60)])
+        f = self.node_of_fid(c, 1)[0]
+        a, b = self.proc(c, 700), self.proc(c, 710)
+        self.assertEqual(self.node_of_fid(c, 2)[0], f)
+        e = self.q(c, "SELECT op, src, dst, ts_ns, end_ns, bytes, n, ok, fid FROM edge WHERE op IN ('READ', 'WRITE') "
+                      "ORDER BY edge_id")
+        # an edge is timed by the transfer (first_ts, last_ts), not by when its record was written
+        self.assertEqual(e, [("WRITE", a, f, T0 + 2, T0 + 4, 100, 1, True, 1), ("READ", f, b, T0 + 7, T0 + 8, 60, 1, True, 2)])
+        # an event is one moment and moves no measured bytes
+        self.assertEqual(self.q(c, "SELECT DISTINCT end_ns = ts_ns, bytes, n FROM edge WHERE op = 'OPEN'"),
+                         [(True, None, None)])
+        for name in ("edge_without_node", "flow_interval_reversed", "flow_unregistered",
+                     "flow_start_unknown", "flow_sock_not_joined"):
+            self.assertEqual(self.res.counts[name], 0, name)
+        self.assertEqual((self.res.counts["edge_READ"], self.res.counts["edge_WRITE"]), (1, 1))
+        # the question open-level edges could not answer: who wrote what this process read
+        self.assertEqual(TRK.backward(c, b, T0 + 100), {b: T0 + 100, f: T0 + 8, a: T0 + 4})
+        # forward: the write carries A into the file; the file reaches B at B's open (an open-level edge
+        # points file -> process whatever the access, ADR-0028 rule 6), before B's read began
+        self.assertEqual(TRK.forward(c, a, 0), {a: 0, f: T0 + 2, b: T0 + 6})
+        # before B's read began, B reaches the file by its open alone, and the writer through it
+        self.assertEqual(TRK.backward(c, b, T0 + 7), {b: T0 + 7, f: T0 + 6, a: T0 + 4})
+        self.assertEqual(TRK.backward(c, b, T0 + 6), {b: T0 + 6})                     # before the open: nothing
+        self.assertEqual(set(TRK.backward(c, a, T0 + 100)), {a, f})                   # its own open of the file
+
+    def test_a_read_that_ended_before_the_write_began_does_not_reach_the_writer(self):
+        c = self.graph(bulk=[opn(T0 + 1, B2, 2, 10, b"/data", facts(ino=1, **self.F), mode=1),
+                             flow(T0 + 4, B2, 2, 10, "READ", T0 + 2, T0 + 3),
+                             opn(T0 + 5, A, 1, 10, b"/data", mode=2),
+                             flow(T0 + 8, A, 1, 10, "WRITE", T0 + 6, T0 + 7)])
+        a, b = self.proc(c, 700), self.proc(c, 710)
+        self.assertNotIn(a, TRK.backward(c, b, T0 + 100))
+        self.assertNotIn(b, TRK.forward(c, a, 0))
+
+    def test_a_pipe_first_seen_at_a_transfer_is_one_node_from_writer_to_reader(self):
+        pf = facts(ino=77, dev=12, mode=FIFO, fs_magic=PIPEFS, seen=3)
+        c = self.graph(bulk=[filerec(T0 + 2, A, 5, 20, pf, mode=2),
+                             flow(T0 + 3, A, 5, 20, "WRITE", T0 + 1, T0 + 2, nbytes=9),
+                             filerec(T0 + 5, B2, 6, 20, mode=1),
+                             flow(T0 + 6, B2, 6, 20, "READ", T0 + 4, T0 + 5, nbytes=9)])
+        self.assertEqual(self.q(c, "SELECT fid, how, opener_tgid, path FROM openfile ORDER BY fid"),
+                         [(5, "file", 700, None), (6, "file", 710, None)])
+        self.assertEqual(self.node_of_fid(c, 5), self.node_of_fid(c, 6))
+        self.assertEqual(self.q(c, "SELECT kind, path, n_objs FROM file"), [("pipe", None, 1)])
+        a, b = self.proc(c, 700), self.proc(c, 710)
+        self.assertEqual(sorted(TRK.backward(c, b, T0 + 100)), sorted([a, b, self.node_of_fid(c, 5)[0]]))
+        self.assertEqual(self.res.counts["openfile_file"], 2)
+
+    def test_a_file_opened_before_the_capture_keeps_its_own_name_apart_from_a_path(self):
+        c = self.graph(bulk=[filerec(T0 + 2, A, 5, 20, facts(ino=4, seen=3, **self.F), name=b"passwd", mode=1),
+                             flow(T0 + 3, A, 5, 20, "READ", T0 + 1, T0 + 2)])
+        self.assertEqual(self.q(c, "SELECT name, path FROM openfile"), [("passwd", None)])
+        self.assertEqual(self.q(c, "SELECT name, path, path_from FROM file"), [("passwd", None, None)])
+        self.assertIn("passwd", TRK.describe(c, [self.node_of_fid(c, 5)[0]])[self.node_of_fid(c, 5)[0]])
+
+    def test_an_unregistered_transfer_names_its_own_open_file_and_joins_the_file_by_its_facts(self):
+        c = self.graph(bulk=[opn(T0 + 1, A, 1, 10, b"/data", facts(ino=1, **self.F), mode=2),
+                             flow(T0 + 5, B2, 99, 55, "READ", T0 + 3, T0 + 4, f=facts(ino=1, seen=3, **self.F),
+                                  fflags=FF.FF_UNREGISTERED),
+                             flow(T0 + 6, A, 1, 10, "WRITE", T0 + 6, T0 + 6, fflags=FF.FF_START_UNKNOWN),
+                             flow(T0 + 7, A, 1, 10, "WRITE", T0 + 7, T0 + 7, fflags=FF.FF_START_UNKNOWN)])
+        self.assertEqual(self.q(c, "SELECT how, rule, opener_tgid FROM openfile WHERE fid = 99"), [("flow", "tuple", None)])
+        self.assertEqual(self.node_of_fid(c, 99)[0], self.node_of_fid(c, 1)[0])      # ext4: one file by its tuple
+        self.assertEqual(self.q(c, "SELECT count(*) FROM edge WHERE op = 'READ'"), [(1,)])
+        self.assertEqual((self.res.counts["flow_unregistered"], self.res.counts["flow_start_unknown"],
+                          self.res.counts["openfile_flow"]), (1, 2, 1))
+
+    def test_a_transfer_whose_open_is_not_in_the_run_is_still_an_edge(self):
+        c = self.graph(bulk=[flow(T0 + 5, A, 7, 30, "WRITE", T0 + 3, T0 + 4)])
+        self.assertEqual(self.q(c, "SELECT how, rule FROM openfile"), [("flow", "obj-no-facts")])
+        self.assertEqual(self.q(c, "SELECT op, src, dst FROM edge"), [("WRITE", self.proc(c, 700), self.node_of_fid(c, 7)[0])])
+        self.assertEqual(self.res.counts["edge_without_node"], 0)
+
+    def test_a_socket_transfer_is_an_edge_to_the_sockets_file_object_counted_as_not_joined(self):
+        sf = facts(ino=900, dev=8, mode=SOCK, fs_magic=SOCKFS, seen=5)
+        c = self.graph(bulk=[SC.net(T0 + 1, A, "CONNECT", 4242, "10.0.0.2:5000", "10.0.0.1:80"),
+                             filerec(T0 + 2, A, 5, 20, sf),
+                             flow(T0 + 2, A, 5, 20, "SEND", T0 + 2, T0 + 2, nbytes=40),
+                             flow(T0 + 3, A, 5, 20, "RECV", T0 + 3, T0 + 3, nbytes=10, fflags=FF.FF_PEEK)])
+        f = self.node_of_fid(c, 5)[0]
+        a = self.proc(c, 700)
+        self.assertEqual(self.q(c, "SELECT op, src, dst, bytes FROM edge WHERE op IN ('SEND', 'RECV') ORDER BY edge_id"),
+                         [("SEND", a, f, 40), ("RECV", f, a, 10)])
+        self.assertEqual(self.q(c, "SELECT kind FROM file WHERE node_id = ?", f), [("socket",)])
+        # the connection's socket node (by cookie) is another node until NET names the object (step 2e)
+        self.assertEqual(self.q(c, "SELECT count(*) FROM sock"), [(1,)])
+        self.assertEqual(self.res.counts["flow_sock_not_joined"], 2)
+        s = self.q(c, "SELECT node_id FROM sock")[0][0]
+        self.assertNotIn(s, TRK.backward(c, f, T0 + 100))
+
+    def test_what_must_be_zero_is_counted_and_an_unknown_kind_is_refused_by_the_record_check(self):
+        self.graph(bulk=[flow(T0 + 5, A, 7, 30, "READ", T0 + 4, T0 + 3),                 # ends before it starts
+                         rec("FLOW", **hdr(T0 + 6, A), fid=8, obj=31, kind=9, first_ts=T0 + 5, last_ts=T0 + 6,
+                             bytes=1, count=1, reason=FF.FLOW_REASON_SINGLE)])           # a kind with no direction
+        self.assertEqual(self.res.counts["flow_interval_reversed"], 1)
+        self.assertEqual((self.res.raw_rows["FLOW"], self.res.raw_rows["record_error"]), (1, 1))
+        self.assertEqual(self.res.counts["edge_READ"], 1)
+
+    def test_transfers_are_not_exported_until_their_rule_is_decided(self):
+        self.graph(bulk=[opn(T0 + 1, A, 1, 10, b"/data", facts(ino=1, **self.F), mode=3),
+                         flow(T0 + 5, A, 1, 10, "WRITE", T0 + 2, T0 + 4), flow(T0 + 8, A, 1, 10, "READ", T0 + 6, T0 + 7)])
+        m = PM.export(self.d / "g.duckdb", self.d / "pm")
+        self.assertEqual(m["events_exported"], {"EVENT_OPEN": 1})
+        why = "a transfer: not exported until the export's rule for FLOW is decided"
+        self.assertEqual(m["edges_not_exported"], {f"READ ({why})": 1, f"WRITE ({why})": 1})
 
 
 class ExecEdges(Base):

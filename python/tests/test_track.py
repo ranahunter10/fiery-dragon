@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MIT
 """p15.graph.track: the USING KEY queries against a plain-Python BackTracker on hand-made and random
-graphs, and on built graphs: a TCP connection crossed by its exact pairing, an overlay file and its
-real file, and edges that did not happen never followed."""
+graphs (events at one moment and transfers over an interval), and on built graphs: a TCP connection
+crossed by its exact pairing, an overlay file and its real file, a file crossed from its reader to
+its writer by FLOW records, and edges that did not happen never followed."""
 
 import contextlib
 import heapq
@@ -24,22 +25,27 @@ from p15.graph import build as B  # noqa: E402
 from p15.graph import track as T  # noqa: E402
 
 
+def spans(edges):
+    """(src, dst, t0, t1) from (src, dst, ts or None) or (src, dst, t0, t1)."""
+    return [(e[0], e[1], e[2], e[2]) if len(e) == 3 else e for e in edges]
+
+
 def ref_backward(edges, start, t):
-    """BackTracker by hand: a widest-path search. edges: (src, dst, ts or None)."""
+    """BackTracker by hand: a widest-path search. edges: (src, dst, ts or None) or (src, dst, t0, t1)."""
     into: dict[int, list] = {}
-    for s, d, ts in edges:
-        into.setdefault(d, []).append((s, ts))
+    for s, d, t0, t1 in spans(edges):
+        into.setdefault(d, []).append((s, t0, t1))
     best = {start: t}
     heap = [(-t, start)]
     while heap:
         nt, v = heapq.heappop(heap)
         if -nt != best[v]:
             continue
-        for u, ts in into.get(v, ()):
-            if ts is None:
+        for u, t0, t1 in into.get(v, ()):
+            if t0 is None:
                 cand = best[v]
-            elif ts < best[v]:
-                cand = min(best[v], ts)
+            elif t0 < best[v]:
+                cand = min(best[v], t1)
             else:
                 continue
             if cand > best.get(u, -1):
@@ -50,19 +56,19 @@ def ref_backward(edges, start, t):
 
 def ref_forward(edges, start, t):
     out: dict[int, list] = {}
-    for s, d, ts in edges:
-        out.setdefault(s, []).append((d, ts))
+    for s, d, t0, t1 in spans(edges):
+        out.setdefault(s, []).append((d, t0, t1))
     best = {start: t}
     heap = [(t, start)]
     while heap:
         bt, u = heapq.heappop(heap)
         if bt != best[u]:
             continue
-        for v, ts in out.get(u, ()):
-            if ts is None:
+        for v, t0, t1 in out.get(u, ()):
+            if t0 is None:
                 cand = best[u]
-            elif ts > best[u]:
-                cand = ts
+            elif t1 > best[u]:
+                cand = max(best[u], t0)
             else:
                 continue
             if cand < best.get(v, 1 << 62):
@@ -74,10 +80,11 @@ def ref_forward(edges, start, t):
 def db_of(edges, pairs=(), backing=(), failed=()):
     """A graph with only what track reads: edge, sock_pair, file_backing, and proc (empty here)."""
     con = duckdb.connect()
-    con.execute("CREATE TABLE edge (src BIGINT, dst BIGINT, ts_ns UBIGINT, op VARCHAR, ok BOOLEAN)")
-    rows = [(s, d, ts, "X", True) for s, d, ts in edges] + [(s, d, ts, "X", False) for s, d, ts in failed]
+    con.execute("CREATE TABLE edge (src BIGINT, dst BIGINT, ts_ns UBIGINT, end_ns UBIGINT, op VARCHAR, ok BOOLEAN)")
+    rows = [(s, d, t0, t1, "X", True) for s, d, t0, t1 in spans(edges)] + \
+           [(s, d, t0, t1, "X", False) for s, d, t0, t1 in spans(failed)]
     if rows:
-        con.executemany("INSERT INTO edge VALUES (?, ?, ?, ?, ?)", rows)
+        con.executemany("INSERT INTO edge VALUES (?, ?, ?, ?, ?, ?)", rows)
     con.execute("CREATE TABLE sock_pair (client_node BIGINT, server_node BIGINT)")
     if pairs:
         con.executemany("INSERT INTO sock_pair VALUES (?, ?)", list(pairs))
@@ -113,9 +120,31 @@ class HandMade(unittest.TestCase):
         got = T.backward(con, 13, 100)
         self.assertEqual(got, {13: 100, 12: 6, 11: 6, 10: 5, 21: 7, 20: 7})
         self.assertEqual(T.forward(con, 10, 0), {10: 0, 11: 5, 12: 5, 13: 6})
-        # the pairing is one way: a server's reply has no edge before FLOW records (step 2b)
+        # the pairing is one way: a server's reply needs its SEND joined to the socket node (step 2e)
         self.assertEqual(T.forward(con, 13, 0), {13: 0})
         self.assertEqual(T.backward(con, 10, 100), {10: 100})
+
+    def test_a_transfer_is_followed_by_its_interval(self):
+        # W wrote F over [10, 35]; R read F over [30, 40]: the write began before the read ended
+        W, F, R, LATE, EARLY = 1, 2, 3, 4, 5
+        e = [(W, F, 10, 35), (F, R, 30, 40), (LATE, F, 41, 50), (EARLY, W, 5, 5)]
+        con = db_of(e)
+        # backward from R at 100: F by the read's end, W by its write's end (earlier than F's
+        # threshold), EARLY by its moment; LATE began after the read had ended
+        self.assertEqual(T.backward(con, R, 100), {R: 100, F: 40, W: 35, EARLY: 5})
+        # a threshold inside the read: only what began before it
+        self.assertEqual(T.backward(con, R, 31), {R: 31, F: 31, W: 31, EARLY: 5})
+        self.assertEqual(T.backward(con, R, 30), {R: 30})                 # the read had not begun
+        self.assertEqual(T.backward(con, F, 10), {F: 10})                 # nor the write
+        # forward from W affected at 20: the write was still running, so F from 20 and R from its read's start
+        self.assertEqual(T.forward(con, W, 20), {W: 20, F: 20, R: 30})
+        self.assertEqual(T.forward(con, W, 35), {W: 35})                  # the write had ended
+        self.assertEqual(T.forward(con, EARLY, 0), {EARLY: 0, W: 5, F: 10, R: 30})
+        self.assertEqual(T.forward(con, LATE, 0), {LATE: 0, F: 41})       # the read ended at 40
+        self.assertEqual(T.span(con), (5, 50))                            # the last edge's end, not its start
+        for v, t in ((R, 100), (R, 31), (F, 36), (W, 7)):
+            self.assertEqual(T.backward(con, v, t), ref_backward(e, v, t))
+            self.assertEqual(T.forward(con, v, t), ref_forward(e, v, t))
 
     def test_a_cycle_ends(self):
         e = [(1, 2, 10), (2, 1, 20), (2, 3, 30), (3, 2, 40)]
@@ -134,7 +163,8 @@ class Random(unittest.TestCase):
             for _ in range(rnd.randint(0, 8 * n)):
                 s = rnd.choice(hubs) if rnd.random() < 0.3 else rnd.randrange(n)
                 d = rnd.choice(hubs) if rnd.random() < 0.3 else rnd.randrange(n)
-                edges.append((s, d, rnd.randint(1, 1000)))
+                t0 = rnd.randint(1, 1000)                 # half are events, half transfers over an interval
+                edges.append((s, d, t0, t0 if rnd.random() < 0.5 else t0 + rnd.randint(0, 200)))
             pairs = [(rnd.randrange(n), rnd.randrange(n)) for _ in range(rnd.randint(0, 3))]
             backing = [(rnd.randrange(n), rnd.randrange(n)) for _ in range(rnd.randint(0, 2))]
             rel = [(a, b, None) for a, b in pairs] + [(a, b, None) for a, b in backing] + \

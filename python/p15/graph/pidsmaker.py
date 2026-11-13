@@ -31,8 +31,10 @@ import duckdb
 
 OPS = {"CLONE": "EVENT_CLONE", "EXECUTE": "EVENT_EXECUTE", "OPEN": "EVENT_OPEN", "CONNECT": "EVENT_CONNECT",
        "ACCEPT": "EVENT_ACCEPT"}
+FLOW_WAITS = "a transfer: not exported until the export's rule for FLOW is decided"
 NOT_EXPORTED = {"HELD": "a descriptor already open at a snapshot: a state, not an event",
-                "LISTEN": "no flow", "BIND": "no flow"}
+                "LISTEN": "no flow", "BIND": "no flow",
+                "READ": FLOW_WAITS, "WRITE": FLOW_WAITS, "RECV": FLOW_WAITS, "SEND": FLOW_WAITS}
 NULL = "null"      # PIDSMaker's loaders write the string 'null' for an attribute they do not have
 
 QUERIES = {

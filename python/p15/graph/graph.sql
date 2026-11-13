@@ -10,6 +10,7 @@
 --   anonymous-inode file node = the open file (fid)                    ADR-0027
 --   socket node  = the socket cookie                                   ADR-0004 rule 5
 --   an edge points the way information can flow; `ok` says whether the kernel let the operation happen
+--   a transfer is an edge over [ts_ns, end_ns] with its bytes and count          ADR-0005 rule 8
 -- Nothing is dropped without a row in `graph_count`.
 --
 -- Needs two scalar functions registered by build.py: p15_text(BLOB) -> VARCHAR (UTF-8 with
@@ -66,7 +67,15 @@ FROM raw_backing WHERE facts_len > 0
 UNION ALL
 SELECT user_obj, ts_ns, ring, seq, user_facts_ino, user_facts_subvol, user_facts_dev, user_facts_gen, user_facts_mode,
        user_facts_fs_magic, user_facts_nlink, user_facts_seen, user_facts_oflags
-FROM raw_backing WHERE user_facts_len > 0;
+FROM raw_backing WHERE user_facts_len > 0
+UNION ALL
+SELECT obj, ts_ns, ring, seq, facts_ino, facts_subvol, facts_dev, facts_gen, facts_mode, facts_fs_magic, facts_nlink,
+       facts_seen, facts_oflags
+FROM raw_file WHERE facts_len > 0
+UNION ALL
+SELECT obj, ts_ns, ring, seq, facts_ino, facts_subvol, facts_dev, facts_gen, facts_mode, facts_fs_magic, facts_nlink,
+       facts_seen, facts_oflags
+FROM raw_flow WHERE facts_len > 0;
 
 CREATE TABLE obj_facts AS
 SELECT * EXCLUDE (ring, seq) FROM fact_row
@@ -81,7 +90,15 @@ UNION ALL
 SELECT fid, obj, ts_ns, ring, seq, NULL, NULL, f_flags, f_mode, path, 'snapshot', 2 FROM raw_fd
 UNION ALL
 -- obj 0 in a CLOSE: neither open program computed it (counted in the kernel: E-0190); not an object id
-SELECT fid, nullif(obj, 0), ts_ns, ring, seq, NULL, NULL, NULL, f_mode, NULL, 'close-only', 3 FROM raw_close;
+SELECT fid, nullif(obj, 0), ts_ns, ring, seq, NULL, NULL, NULL, f_mode, NULL, 'close-only', 3 FROM raw_close
+UNION ALL
+-- a file first seen at a transfer (ADR-0015 rule 5): a pipe, socket, memfd or anonymous inode, or a
+-- file opened before the capture. Its record holds the dentry's own name, not a path (`name` below).
+SELECT fid, obj, ts_ns, ring, seq, tgid, start_ns, f_flags, f_mode, NULL, 'file', 1 FROM raw_file
+UNION ALL
+-- a transfer's own naming of its open file: the only row of an UNREGISTERED transfer (its fid is
+-- fresh, ADR-0015 rule 9) and of one whose OPEN or FILE record is not in the run
+SELECT fid, obj, first_ts, ring, seq, NULL, NULL, NULL, NULL, NULL, 'flow', 4 FROM raw_flow;
 
 CREATE TABLE openfile AS
 WITH first AS (
@@ -89,6 +106,9 @@ WITH first AS (
 ), path AS (
     SELECT fid, p15_text(path) AS path FROM fid_row WHERE octet_length(path) > 0
     QUALIFY row_number() OVER (PARTITION BY fid ORDER BY pri, ts_ns, ring, seq) = 1
+), name AS (                         -- the dentry's own name of a file first seen at a transfer
+    SELECT fid, p15_text(name) AS name FROM raw_file WHERE octet_length(name) > 0
+    QUALIFY row_number() OVER (PARTITION BY fid ORDER BY ts_ns, ring, seq) = 1
 ), closed AS (
     SELECT fid, min(ts_ns) AS closed_ns, bool_or((fflags & 32) <> 0) AS never_opened FROM raw_close GROUP BY fid
 ), denied AS (
@@ -97,13 +117,14 @@ WITH first AS (
         UNION ALL SELECT fid, verdict FROM raw_open WHERE verdict < 0) GROUP BY fid
 )
 SELECT f.fid, f.obj, f.how, f.ts_ns AS first_ns, f.tgid AS opener_tgid, f.start_ns AS opener_start_ns,
-       f.f_flags, f.f_mode, p.path, c.closed_ns, coalesce(c.never_opened, false) AS never_opened,
+       f.f_flags, f.f_mode, p.path, nm.name, c.closed_ns, coalesce(c.never_opened, false) AS never_opened,
        coalesce(d.verdict, 0) AS verdict,
        CASE WHEN f.obj IS NULL THEN 'obj-unknown' ELSE file_rule(f.fid, o.fs_magic, o.oflags) END AS rule,
        CASE WHEN f.obj IS NULL THEN 'u:' || f.fid      -- no object id at all: a node of its own, never merged
             ELSE file_key(f.fid, f.obj, o.fs_magic, o.oflags, o.dev, o.subvol, o.ino, o.gen) END AS file_key
 FROM first f
 LEFT JOIN path p USING (fid)
+LEFT JOIN name nm USING (fid)
 LEFT JOIN closed c USING (fid)
 LEFT JOIN denied d USING (fid)
 LEFT JOIN obj_facts o ON o.obj = f.obj;
@@ -215,6 +236,12 @@ FROM sock_src s JOIN node n ON n.key = s.key LEFT JOIN node ln ON ln.key = 's:' 
 ALTER TABLE openfile ADD COLUMN file_node BIGINT;
 UPDATE openfile SET file_node = n.node_id FROM node n WHERE n.key = openfile.file_key;
 
+-- the dentry's own name of a file node first seen at a transfer: a last component, never a path
+ALTER TABLE file ADD COLUMN name VARCHAR;
+UPDATE file SET name = x.name
+FROM (SELECT file_node, arg_min(name, first_ns) AS name FROM openfile WHERE name IS NOT NULL GROUP BY file_node) x
+WHERE x.file_node = file.node_id;
+
 -- an overlay file and the real file that stands for it (ADR-0015 rule 4): a relation, not a flow
 CREATE TABLE file_backing AS
 SELECT DISTINCT fo.file_node AS real_node, un.node_id AS user_node
@@ -235,7 +262,11 @@ JOIN node cn ON cn.key = 's:' || c.sock_cookie
 JOIN node sn ON sn.key = 's:' || a.sock_cookie;
 
 -- ---- edges: src -> dst is the way information can flow ----
+-- An event that happens at one moment has end_ns = ts_ns. A transfer (FLOW) covers [ts_ns, end_ns]:
+-- the start of its first event to the end of its last (ADR-0005 rule 8), with the bytes moved and
+-- the number of events folded into it (1 until step 2c).
 CREATE TABLE edge_src AS
+SELECT *, ts_ns AS end_ns, NULL::UBIGINT AS bytes, NULL::UINTEGER AS n FROM (
 -- a parent's state goes to its child
 SELECT ts_ns, 'p:' || tgid || ':' || start_ns AS src, 'p:' || child_tgid || ':' || child_start_ns AS dst,
        'CLONE' AS op, true AS ok, 0 AS ret, NULL::UBIGINT AS fid, NULL AS access, ring, seq
@@ -266,11 +297,21 @@ FROM raw_net WHERE op = 2
 UNION ALL
 SELECT ts_ns, 'p:' || tgid || ':' || start_ns, 's:' || sock_cookie, CASE op WHEN 3 THEN 'LISTEN' ELSE 'BIND' END,
        ret = 0, ret, NULL, NULL, ring, seq
-FROM raw_net WHERE op IN (3, 4);
+FROM raw_net WHERE op IN (3, 4))
+UNION ALL
+-- a transfer: READ and RECV carry the object's data to the process, WRITE and SEND the process's
+-- data to the object (FLOW.kind; ADR-0005 rule 2; the reader's record check refuses any other
+-- kind). Only transfers that moved data are recorded (rule 1), so every one happened. The process
+-- is the thread group of the first event.
+SELECT w.first_ts, CASE WHEN w.kind IN (1, 3) THEN f.file_key ELSE 'p:' || w.tgid || ':' || w.start_ns END,
+       CASE WHEN w.kind IN (1, 3) THEN 'p:' || w.tgid || ':' || w.start_ns ELSE f.file_key END,
+       CASE w.kind WHEN 1 THEN 'READ' WHEN 2 THEN 'WRITE' WHEN 3 THEN 'RECV' WHEN 4 THEN 'SEND' END,
+       true, 0, w.fid, NULL, w.ring, w.seq, w.last_ts, w.bytes, w.count
+FROM raw_flow w JOIN openfile f USING (fid);
 
 CREATE TABLE edge_plain AS
 SELECT (row_number() OVER (ORDER BY e.ts_ns, e.ring, e.seq, e.op))::BIGINT AS edge_id, e.ts_ns,
-       s.node_id AS src, d.node_id AS dst, e.op, e.ok, e.ret, e.fid, e.access, e.ring, e.seq
+       s.node_id AS src, d.node_id AS dst, e.op, e.ok, e.ret, e.fid, e.access, e.ring, e.seq, e.end_ns, e.bytes, e.n
 FROM edge_src e JOIN node s ON s.key = e.src JOIN node d ON d.key = e.dst;
 
 -- each end's program at the edge's time (ADR-0031): the image whose valid_from is the latest at or
@@ -319,6 +360,14 @@ UNION ALL SELECT 'image_exec_without_edge', (SELECT count(*) FROM proc_image WHE
 UNION ALL SELECT 'edge_proc_end_without_image', (SELECT count(*) FROM edge e JOIN node n ON n.node_id = e.dst
         WHERE n.kind = 'proc' AND e.dst_image IS NULL),
        'edges into a process that had no known program at their time (ADR-0031)'
+UNION ALL SELECT 'flow_interval_reversed', (SELECT count(*) FROM raw_flow WHERE last_ts < first_ts),
+       'transfers that end before they start: must be 0 (ADR-0005 rule 8)'
+UNION ALL SELECT 'flow_unregistered', (SELECT count(*) FROM raw_flow WHERE (fflags & 512) <> 0),
+       'transfers on a file with no open-file entry (UNREGISTERED): each names an open file of its own'
+UNION ALL SELECT 'flow_start_unknown', (SELECT count(*) FROM raw_flow WHERE (fflags & 4096) <> 0),
+       'transfers whose start time was not kept (START_UNKNOWN): their edge starts at its end'
+UNION ALL SELECT 'flow_sock_not_joined', (SELECT count(*) FROM raw_flow WHERE kind IN (3, 4)),
+       'transfers on a socket: their node is the socket''s file object, not the socket node of its NET records, until NET carries the object id (step 2e)'
 UNION ALL SELECT 'thread_rename', (SELECT count(*) FROM thread_name), 'renames of a thread that is not its process''s leader';
 
 DROP TABLE fact_row;
