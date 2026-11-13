@@ -39,6 +39,9 @@ static const struct opt OPTS[] = {
 	{ "--test-barrier-fail",   U32(barrier_fail),     0,    1,       0,      0 },
 	{ "--test-open-end-mode",  U32(open_end_mode),    0,    2,       0,      0 },
 	{ "--test-open-end-tgid",  U32(open_end_tgid),    0,    4194304, 0,      0 },
+	{ "--canary-s",            U32(canary_s),         0,    3600,    0,      0 },   /* ADR-0019 G4.4: 10 once its matrix has passed */
+	{ "--test-canary-blind",   U32(canary_blind),     0,    127,     0,      0 },
+	{ "--test-link-close",     U32(link_close),       0,    64,      0,      0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
@@ -166,7 +169,7 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.test_start_pause_ms", "config.stop_stall_s", "config.test_writer_stall_ms",
 		"config.test_writer_batch_ms", "config.poll_max_ms", "config.flow_stop_wait_ms",
 		"config.test_flow_cut_pause_ms", "config.test_barrier_fail", "config.test_open_end_mode",
-		"config.test_open_end_tgid",
+		"config.test_open_end_tgid", "config.canary_s", "config.test_canary_blind", "config.test_link_close",
 	};
 	size_t n = 0;
 

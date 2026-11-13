@@ -1024,6 +1024,59 @@ fields = [
   { name = "flow_invalid",   c = "u64", doc = "FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative" },
   { name = "flow_missed",    c = "u64", doc = "runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative" },
 ]
+
+
+[[record]]
+name = "SELF_STATS"
+type = 42
+version = 1
+class = "STATS"
+doc = "p15d watching itself (ADR-0019 G4.4; daemon/canary.h, daemon/selfcheck.h), written with every STATS record while the canary is on or p15d has links to check: the canary's counts and the link check's. A reader that sees canary_runs stand still for longer than canary_interval_s knows the canary itself stopped."
+fields = [
+  { name = "canary_runs",         c = "u64", doc = "canaries that got a verdict; cumulative" },
+  { name = "canary_missed",       c = "u64", doc = "... of which something wanted was never seen (run DEGRADED; a CANARY_MISS record says what); cumulative" },
+  { name = "canary_late",         c = "u64", doc = "... of which everything was seen, later than 1 s after the start (run DEGRADED; CANARY_MISS); cumulative" },
+  { name = "canary_spawn_failed", c = "u64", doc = "canaries that could not be started (fork failed): no verdict; cumulative" },
+  { name = "canary_exec_failed",  c = "u64", doc = "canaries whose /bin/true could not be executed: judged without their EXEC; cumulative" },
+  { name = "canary_unfinished",   c = "u64", doc = "canaries still in flight when the run stopped: no verdict; cumulative" },
+  { name = "canary_stalled",      c = "u64", doc = "times a canary's deadline was started again because two polls were more than 5 s apart (the guest was not scheduled, E-0250); cumulative" },
+  { name = "link_checks",         c = "u64", doc = "checks of one link's descriptor made (every link, every stats tick); cumulative" },
+  { name = "links_missing",       c = "u64", doc = "p15d's links found gone or replaced (run DEGRADED; a CANARY_MISS record of kind LINK names each); cumulative" },
+  { name = "links",               c = "u32", doc = "the links p15d holds and checks" },
+  { name = "canary_interval_s",   c = "u32", doc = "the canary's interval (--canary-s); 0: off" },
+  { name = "canary_want",         c = "u32", doc = "what every canary must cause, a mask: 1 FORK, 2 EXEC, 4 EXIT; with file identity 8 OPEN, 32 the open session ran, 64 the file-free program ran; with the flow programs 16 FLOW" },
+]
+
+[[enum]]
+name = "CANARY_MISS_KIND"
+field = "CANARY_MISS.kind"
+doc = "what the self-check found (ADR-0019 G4.4)"
+values = [
+  { name = "RECORD", value = 1, doc = "a canary: something it had to cause was not seen; want and seen say what" },
+  { name = "LATE",   value = 2, doc = "a canary: everything was seen, late_ms after its 1 s deadline (the pipeline stood still)" },
+  { name = "LINK",   value = 3, doc = "one of p15d's links is gone or is no longer the link it attached; link_index and link_name say which" },
+]
+
+[[record]]
+name = "CANARY_MISS"
+type = 43
+version = 1
+class = "STATS"
+doc = "The self-check found capture blind, late or changed (ADR-0019 G4.4): one record per failed canary seen at a stats tick (n > 1 when several failed within one tick: the fields are the last one's) and one per link found gone. Each also raises a counter in SELF_STATS, logs an error and makes the run DEGRADED."
+fields = [
+  { name = "canary_n",   c = "u64", doc = "RECORD, LATE: which canary of the run, counted from 1" },
+  { name = "spawn_ts",   c = "u64", doc = "RECORD, LATE: the canary's start, CLOCK_BOOTTIME ns" },
+  { name = "kind",       c = "u32", doc = "CANARY_MISS_KIND" },
+  { name = "n",          c = "u32", doc = "the failures this record stands for (1, or more when several canaries failed within one stats tick)" },
+  { name = "canary_pid", c = "u32", doc = "RECORD, LATE: the canary's process id (the tgid of its records)" },
+  { name = "want",       c = "u32", doc = "RECORD, LATE: what it had to cause (SELF_STATS.canary_want's mask, without EXEC when its exec failed)" },
+  { name = "seen",       c = "u32", doc = "RECORD, LATE: what was seen, the same mask; RECORD has seen != want" },
+  { name = "late_ms",    c = "u32", doc = "RECORD: how long after the deadline the verdict was taken; LATE: how long after it the last thing was seen" },
+  { name = "link_index", c = "u32", doc = "LINK: the link's place in p15d's list (the order of its code=links log line at the start), from 0" },
+  { name = "link_err",   c = "u32", doc = "LINK: errno of the info call on its descriptor, or 0 when the descriptor now names another link or program" },
+  { name = "link_name",  c = "char[32]", doc = "LINK: the program the link attached, NUL padded" },
+]
+
 # ---- data flow (ADR-0005; STATE decision 18): FLOW class, on the bulk ring, counted loss ----
 [[enum]]
 name = "FLOW_KIND"

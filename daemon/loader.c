@@ -324,6 +324,7 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 					 bpf_program__name(flow[i]), strerror(errno));
 				return P15_EXIT_LOAD;
 			}
+			l->flow_link_names[l->n_flow_links] = bpf_program__name(flow[i]);
 			l->flow_links[l->n_flow_links++] = lk;
 		}
 		/* the end's count of open calls: a link only, nothing runs until p15_loader_flow_count */
@@ -412,6 +413,45 @@ int p15_loader_file_count(struct p15_loader *l)
 	if (!l->file || !l->file_open_link)
 		return 0;
 	return run_iter(l->file_open_link);
+}
+
+static int each_skel_link(const struct bpf_object_skeleton *sk,
+			  int (*fn)(void *arg, const struct bpf_link *link, const char *name), void *arg)
+{
+	for (int i = 0; sk && i < sk->prog_cnt; i++) {
+		const struct bpf_prog_skeleton *p = (const struct bpf_prog_skeleton *)((const char *)sk->progs +
+										    (size_t)i * (size_t)sk->prog_skel_sz);
+		int rc;
+
+		if (!p->link || !*p->link)
+			continue;                /* not attached (an iterator, a program a test switch left out) */
+		rc = fn(arg, *p->link, p->name);
+		if (rc)
+			return rc;
+	}
+	return 0;
+}
+
+int p15_loader_each_link(const struct p15_loader *l, int (*fn)(void *arg, const struct bpf_link *link, const char *name),
+			 void *arg)
+{
+	const struct { const struct bpf_link *link; const char *name; } own[] = {
+		{ l->fd_iter_link, "file_fd_iter" }, { l->flow_open_link, "flow_open_iter" },
+		{ l->file_open_link, "file_open_iter" },
+	};
+	int rc;
+
+	rc = each_skel_link(l->spine ? l->spine->skeleton : NULL, fn, arg);
+	if (!rc)
+		rc = each_skel_link(l->net ? l->net->skeleton : NULL, fn, arg);
+	if (!rc)
+		rc = each_skel_link(l->file ? l->file->skeleton : NULL, fn, arg);
+	for (int i = 0; !rc && i < l->n_flow_links; i++)
+		rc = fn(arg, l->flow_links[i], l->flow_link_names[i]);
+	for (size_t i = 0; !rc && i < sizeof(own) / sizeof(own[0]); i++)
+		if (own[i].link)
+			rc = fn(arg, own[i].link, own[i].name);
+	return rc;
 }
 
 void p15_loader_detach(struct p15_loader *l)

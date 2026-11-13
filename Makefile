@@ -59,7 +59,7 @@ SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitc
          $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/test_open_iter $(OUT)/rw_hook_cost $(OUT)/flow_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
-P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/barrier.c \
+P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/barrier.c daemon/canary.c daemon/selfcheck.c \
             daemon/selftest_net.c daemon/selftest_file.c daemon/selftest_flow.c daemon/snapshot.c daemon/snapshot_frame.c \
             $(DAEMON_COMMON) $(WAL_SRC)
 # provenance for the WAL header (ADR-0007): the daemon's commit and the vendored bpftool's tag
@@ -147,9 +147,12 @@ $(OUT)/test_queue: daemon/tests/test_queue.c daemon/queue.c daemon/queue.h | $(O
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_queue.c daemon/queue.c -lpthread -o $@
 
 $(OUT)/test_run: daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c daemon/config.c \
-                 daemon/records.c daemon/counters.c $(WAL_SRC) daemon/*.h $(LIBBPF_A) | $(OUT)
+                 daemon/records.c daemon/counters.c daemon/canary.c daemon/selfcheck.c $(WAL_SRC) daemon/*.h $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
-	  daemon/config.c daemon/records.c daemon/counters.c $(WAL_SRC) $(LDLIBS) -lpthread -o $@
+	  daemon/config.c daemon/records.c daemon/counters.c daemon/canary.c daemon/selfcheck.c $(WAL_SRC) $(LDLIBS) -lpthread -o $@
+
+$(OUT)/test_canary: daemon/tests/test_canary.c daemon/canary.c daemon/run.c daemon/queue.c daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A) | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_canary.c daemon/canary.c daemon/run.c daemon/queue.c $(LDLIBS) -lpthread -o $@
 
 # Root: loads the shipped object's map iterator alone and runs it over planted entries (it_p15d case 20).
 $(OUT)/test_open_iter: daemon/tests/test_open_iter.c daemon/counters.c daemon/*.h bpf/include/*.h $(OUT)/file.skel.h $(LIBBPF_A) | $(OUT)
@@ -192,7 +195,7 @@ it-pyreader: $(OUT)/wal_fixture
 	P15_WAL_FIXTURE=$(OUT)/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
 
 test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records $(OUT)/test_queue \
-        $(OUT)/test_config $(OUT)/test_run $(OUT)/test_snapshot $(OUT)/test_counters must-check-test
+        $(OUT)/test_config $(OUT)/test_run $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/test_canary must-check-test
 	$(OUT)/test_selftest
 	$(OUT)/test_wal
 	$(OUT)/test_exitcodes
@@ -202,6 +205,7 @@ test-c: $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_r
 	$(OUT)/test_run
 	$(OUT)/test_snapshot
 	$(OUT)/test_counters
+	$(OUT)/test_canary
 
 # The queue's producer and consumer threads under ThreadSanitizer (ADR-0017 layer 2, ADR-0019 G3.4).
 test-c-tsan: | $(OUT)
@@ -229,6 +233,8 @@ test-c-asan: $(LIBBPF_A) $(OUT)/spine.skel.h | $(OUT)
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_snapshot.c daemon/snapshot_frame.c daemon/records.c \
 	  -o $(OUT)/asan/test_snapshot
 	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_counters.c daemon/counters.c $(LDLIBS) -o $(OUT)/asan/test_counters
+	$(CC) $(CFLAGS) $(ASAN) $(LDFLAGS) daemon/tests/test_canary.c daemon/canary.c daemon/run.c daemon/queue.c $(LDLIBS) -lpthread \
+	  -o $(OUT)/asan/test_canary
 	$(OUT)/asan/test_queue
 	$(OUT)/asan/test_config
 	$(OUT)/asan/test_wal
@@ -237,6 +243,7 @@ test-c-asan: $(LIBBPF_A) $(OUT)/spine.skel.h | $(OUT)
 	$(OUT)/asan/test_records
 	$(OUT)/asan/test_snapshot
 	$(OUT)/asan/test_counters
+	$(OUT)/asan/test_canary
 
 # ADR-0019 G2.2: no exit(), _exit() or abort() in daemon/ outside the sites marked "exit-ok".
 exit-check:

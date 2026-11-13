@@ -96,6 +96,7 @@ static int on_spine(void *ctx, void *data, size_t size)
 	}
 	atomic_fetch_add(&d->run->drained[h->type], 1);
 	atomic_fetch_add(&d->run->spine_seq_next, 1);
+	p15_canary_see(&d->canary, h);
 	return 0;
 }
 
@@ -129,6 +130,7 @@ static int on_bulk(void *ctx, void *data, size_t size)
 		return 0;
 	}
 	atomic_fetch_add(is_net ? &d->run->net_drained : is_flow ? &d->run->flow_drained : &d->run->file_drained, 1);
+	p15_canary_see(&d->canary, h);
 	return 0;
 }
 
@@ -428,7 +430,8 @@ static int after_poll_file(struct p15_drain *d)
 }
 
 /* The data-flow counters after a poll (ADR-0005): a lost FLOW or FILE, or a skipped flow program,
- * makes the run DEGRADED. START_UNKNOWN, UNREGISTERED and FILE_MAP_FULL are reported, not losses. */
+ * makes the run DEGRADED, and so does a full open-file map met at a transfer (as at an open:
+ * after_poll_file). START_UNKNOWN and UNREGISTERED are reported, not losses. */
 static int after_poll_flow(struct p15_drain *d)
 {
 	static const int lost[] = { P15_FLC_FLOW_LOST, P15_FLC_FILE_LOST };
@@ -571,6 +574,8 @@ int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 	if (n < 0)
 		return n;
 	d->last_taken = n;
+	/* the rings count as empty for the canary only when this poll took nothing and left nothing behind */
+	p15_canary_tick(&d->canary, p15_mono_ns(), d->last_taken || d->queue_full_now);
 	n = after_poll(d);
 	if (d->queue_full_now)
 		usleep(1000);               /* the writer is behind: let it release batches (counted in q.full) */

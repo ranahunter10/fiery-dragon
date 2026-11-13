@@ -16,8 +16,8 @@ import sys
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-UNIT = ("make -s build/test_queue build/test_config build/test_run build/test_counters && build/test_queue && "
-        "build/test_config && build/test_run && build/test_counters")
+UNIT = ("make -s build/test_queue build/test_config build/test_run build/test_counters build/test_canary && build/test_queue && "
+        "build/test_config && build/test_run && build/test_counters && build/test_canary 2>/dev/null")
 IT = "make -s build/p15d build/p15w-inspect build/test_open_iter && daemon/tests/it_p15d.sh build"
 
 M = [
@@ -143,6 +143,18 @@ M = [
     ("../bpf/progs/file.bpf.c", "	    (__sync_fetch_and_or(&fe->state, ST_SESSION_RETURNED) & ST_SESSION_CLAIMED))", "	    (__sync_fetch_and_or(&fe->state, ST_SESSION_RETURNED) & 0))", IT),
     ("../bpf/progs/file.bpf.c", "		if (__sync_val_compare_and_swap(&fe->state, s, s | ST_SESSION_CLAIMED) == s) {\n			count(P15_FC_SESSION_OPEN_AT_END);", "		if (__sync_val_compare_and_swap(&fe->state, s, s | ST_SESSION_CLAIMED) == s) {", IT),
     ("../bpf/progs/file.bpf.c", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_RETURNED | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", IT),
+    # the self-check (ADR-0019 G4.4; canary.c, selfcheck.c; test_canary and it_p15d cases 21 to 25)
+    ("canary.c", "		if (now - c->last_poll_ns > P15_CANARY_STALL_NS) {", "		if (0) {", UNIT),
+    ("canary.c", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->deadline_ns && !took &&", UNIT),
+    ("canary.c", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !(took && 0) &&", UNIT),
+    ("canary.c", "			finish(c, c->all_seen_ns > c->deadline_ns ? P15_CANARY_MISS_KIND_LATE : 0,", "			finish(c, 0,", UNIT),
+    ("canary.c", "				c->cur_want &= ~P15_CANARY_EXEC;\n", "", UNIT),
+    ("canary.c", "		p15_run_set_state(c->run, P15_RUN_DEGRADED, msg);\n		publish_bad(c, kind, late_ns);", "		publish_bad(c, kind, late_ns);", IT),
+    ("canary.c", "		p15_run_set_state(c->run, P15_RUN_DEGRADED, msg);\n		publish_bad(c, kind, late_ns);", "		p15_run_set_state(c->run, P15_RUN_DEGRADED, msg);\n		(void)publish_bad;\n		(void)late_ns;", IT),
+    ("selfcheck.c", "		if (!err && info.id == r->links[i].id && info.prog_id == r->links[i].prog_id)", "		if (1)", IT),
+    ("writer.c", "		p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n		memset(&m, 0, sizeof(m));\n		m.kind = P15_CANARY_MISS_KIND_LINK;", "		memset(&m, 0, sizeof(m));\n		m.kind = P15_CANARY_MISS_KIND_LINK;", IT),
+    ("p15d.c", "	rc = p15_loader_each_link(&ld, link_add, &run);\n", "	rc = 0;\n	(void)link_add;\n", IT),
+    ("drain.c", "	atomic_fetch_add(&d->run->spine_seq_next, 1);\n	p15_canary_see(&d->canary, h);", "	atomic_fetch_add(&d->run->spine_seq_next, 1);", IT),
 ]
 
 

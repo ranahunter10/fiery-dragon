@@ -571,6 +571,60 @@ else
     bad "test_open_iter: $(grep -m3 FAIL "$T/c20.txt" | tr '\n' ' ')"
 fi
 
+# The self-check (ADR-0019 G4.4; canary.h, selfcheck.h). selfrec prints, from a run's daemon ring:
+#   <SELF_STATS: runs missed late unfinished links link_checks links_missing want> then one word per
+#   CANARY_MISS: R:<want>:<seen> (a record missing), L:<late_ms> (late), K:<index>:<name> (a link)
+selfrec() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+d = list(wal.read_run(Path(sys.argv[1])).ring_records(2))
+s = [r for r in d if r.name == 'SELF_STATS']
+out = [str(s[-1].f[k]) for k in ('canary_runs', 'canary_missed', 'canary_late', 'canary_unfinished', 'links', 'link_checks', 'links_missing', 'canary_want')] if s else ['-'] * 8
+for r in d:
+    if r.name == 'CANARY_MISS':
+        f = r.f
+        out.append({1: f'R:{f[\"want\"]}:{f[\"seen\"]}', 2: f'L:{f[\"late_ms\"]}'}.get(f['kind'], 'K:%d:%s' % (f['link_index'], bytes(f['link_name']).rstrip(b'\\0').decode())))
+print(' '.join(out))" "$(ls -d "$1"/*/ | head -1)"; }
+selfrun() { local name=$1; shift; "$B/p15d" --wal-dir "$T/$name" $NET "$@" 2>"$T/$name.err"; rc=$?; RUN=$T/$name; inspect >"$T/$name.txt" 2>&1; irc=$?
+    read -r s_runs s_missed s_late s_unf s_links s_checks s_gone s_want s_miss <<<"$(selfrec "$T/$name")"; }
+
+echo "case 21: the canary every second for 5 s: each one's records arrive, and every link is checked every tick (ADR-0019 G4.4) [t+${SECONDS}s]"
+selfrun c21 --canary-s 1 --duration 5
+echo "  canaries $s_runs (missed $s_missed, late $s_late, unfinished $s_unf), want mask $s_want; links $s_links, checks $s_checks, gone $s_gone"
+check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c21.txt" "exit 0, WAL valid, RUNNING (p15d $rc, inspect $irc)"
+check "[ \"\${s_runs:-0}\" -ge 2 ] && [ \"$s_missed\" = 0 ] && [ \"$s_late\" = 0 ] && [ -z \"$s_miss\" ]" "at least two canaries got a verdict, none missed, none late, no CANARY_MISS record"
+check "[ \"\${s_links:-0}\" -ge 4 ] && [ \"\${s_checks:-0}\" -ge \"\${s_links:-1}\" ] && [ \"$s_gone\" = 0 ]" "every link checked, none gone"
+if [ "$NET_OK" = 1 ]; then
+    check "[ \"$s_want\" = 111 ]" "with file identity on, a canary must also cause its OPEN and runs of the open session and of file free (want 111 = 0x6f)"
+else
+    check "[ \"$s_want\" = 7 ]" "spine only: a canary must cause its FORK, EXEC and EXIT (want 7)"
+fi
+
+echo "case 22: a canary whose EXEC is never seen (--test-canary-blind 2): counted, logged, CANARY_MISS, DEGRADED [t+${SECONDS}s]"
+selfrun c22 --canary-s 1 --test-canary-blind 2 --duration 4
+check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c22.txt" "exit 3 (DEGRADED), WAL valid, the books still close: only the canary sees it (p15d $rc)"
+check "[ \"\${s_missed:-0}\" -ge 1 ] && case \" $s_miss \" in *' R:'*) true;; *) false;; esac" "SELF_STATS counts the miss and a CANARY_MISS record of kind RECORD is written ($s_miss)"
+check "PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(':')[1:]); sys.exit(0 if w & ~s == 2 else 1)\" \"\$(printf '%s\\n' $s_miss | grep -m1 '^R:')\"" "  ... whose masks say it is the EXEC that is missing"
+check "grep -q 'code=canary_miss' $T/c22.err && grep -q 'records missing, mask 0x2' $T/c22.txt" "  ... the log has the error and END's reason names the mask"
+
+echo "case 23: a stuck drain (1.5 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+${SECONDS}s]"
+selfrun c23 --canary-s 1 --test-drain-pause-ms 1500 --duration 6
+check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c23.txt" "exit 3 (DEGRADED), WAL valid, nothing lost (p15d $rc)"
+check "[ \"\${s_late:-0}\" -ge 1 ] && [ \"$s_missed\" = 0 ] && case \" $s_miss \" in *' L:'*) true;; *) false;; esac" "counted late, not missed, with a CANARY_MISS record of kind LATE ($s_miss)"
+
+echo "case 24: one of p15d's links closed behind its back (--test-link-close 1): found at the next stats tick [t+${SECONDS}s]"
+selfrun c24 --test-link-close 1 --duration 3
+first=$(sed -n 's/.*code=links n=[0-9]* names=\([^,]*\).*/\1/p' "$T/c24.err")
+check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1' $T/c24.txt" "exit 3 (DEGRADED), WAL valid (p15d $rc)"
+check "[ \"$s_gone\" = 1 ] && [ -n \"$first\" ] && [ \"$s_miss\" = \"K:0:$first\" ]" "SELF_STATS counts one link gone, and one CANARY_MISS of kind LINK names it ($s_miss)"
+check "grep -q 'code=link_gone' $T/c24.err" "  ... and the log has the error"
+
+echo "case 25: the exec program's link closed with the canary on: the link check names it, and the canary misses its EXEC [t+${SECONDS}s]"
+k=$(sed -n 's/.*code=links n=[0-9]* names=//p' "$T/c24.err" | tr ',' '\n' | grep -n -m1 '^spine_exec$' | cut -d: -f1)
+selfrun c25 --canary-s 1 --test-link-close "${k:-0}" --duration 4
+check "[ -n \"$k\" ] && [ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c25.txt" "exit 3 (DEGRADED) with every book closed: a detached program breaks no book (F-05)"
+check "case \" $s_miss \" in *\" K:$((${k:-1} - 1)):spine_exec \"*) true;; *) false;; esac" "the link check names spine_exec ($s_miss)"
+check "[ \"\${s_missed:-0}\" -ge 1 ] && PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(':')[1:]); sys.exit(0 if w & ~s == 2 else 1)\" \"\$(printf '%s\\n' $s_miss | grep -m1 '^R:')\"" "and the canary, on its own evidence, misses exactly its EXEC"
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

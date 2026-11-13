@@ -41,6 +41,12 @@ Common header of every record, 32 bytes (ADR-0008).
 - bit 11 `VECTORED`: FLOW of kind READ or WRITE: the transfer was vfs_readv or vfs_writev; part of the aggregate's key
 - bit 12 `START_UNKNOWN`: FLOW of kind READ or WRITE: the first event's start time was not kept, so first_ts is that event's end (counted in FLOW_STATS)
 
+**CANARY_MISS_KIND** (values of `CANARY_MISS.kind`): what the self-check found (ADR-0019 G4.4)
+
+- 1 `RECORD`: a canary: something it had to cause was not seen; want and seen say what
+- 2 `LATE`: a canary: everything was seen, late_ms after its 1 s deadline (the pipeline stood still)
+- 3 `LINK`: one of p15d's links is gone or is no longer the link it attached; link_index and link_name say which
+
 **FLOW_KIND** (values of `FLOW.kind`): the transfer's direction and hook family (ADR-0005 rule 2)
 
 - 1 `READ`: vfs_read, vfs_readv: object -> process
@@ -1035,6 +1041,50 @@ Fixed part 344 bytes; at most 344 bytes with its variable fields.
 | 320 | `flow_drained` | u64 | FLOW and FILE records the drain copied into a batch; cumulative |
 | 328 | `flow_invalid` | u64 | FLOW or FILE records refused by p15_rec_check, never written (run DEGRADED); cumulative |
 | 336 | `flow_missed` | u64 | runs of the flow programs the kernel skipped (their recursion_misses summed; run DEGRADED); cumulative |
+
+## SELF_STATS (type 42, version 1, class STATS)
+
+p15d watching itself (ADR-0019 G4.4; daemon/canary.h, daemon/selfcheck.h), written with every STATS record while the canary is on or p15d has links to check: the canary's counts and the link check's. A reader that sees canary_runs stand still for longer than canary_interval_s knows the canary itself stopped.
+
+Fixed part 120 bytes; at most 120 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `canary_runs` | u64 | canaries that got a verdict; cumulative |
+| 40 | `canary_missed` | u64 | ... of which something wanted was never seen (run DEGRADED; a CANARY_MISS record says what); cumulative |
+| 48 | `canary_late` | u64 | ... of which everything was seen, later than 1 s after the start (run DEGRADED; CANARY_MISS); cumulative |
+| 56 | `canary_spawn_failed` | u64 | canaries that could not be started (fork failed): no verdict; cumulative |
+| 64 | `canary_exec_failed` | u64 | canaries whose /bin/true could not be executed: judged without their EXEC; cumulative |
+| 72 | `canary_unfinished` | u64 | canaries still in flight when the run stopped: no verdict; cumulative |
+| 80 | `canary_stalled` | u64 | times a canary's deadline was started again because two polls were more than 5 s apart (the guest was not scheduled, E-0250); cumulative |
+| 88 | `link_checks` | u64 | checks of one link's descriptor made (every link, every stats tick); cumulative |
+| 96 | `links_missing` | u64 | p15d's links found gone or replaced (run DEGRADED; a CANARY_MISS record of kind LINK names each); cumulative |
+| 104 | `links` | u32 | the links p15d holds and checks |
+| 108 | `canary_interval_s` | u32 | the canary's interval (--canary-s); 0: off |
+| 112 | `canary_want` | u32 | what every canary must cause, a mask: 1 FORK, 2 EXEC, 4 EXIT; with file identity 8 OPEN, 32 the open session ran, 64 the file-free program ran; with the flow programs 16 FLOW |
+| 116 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+## CANARY_MISS (type 43, version 1, class STATS)
+
+The self-check found capture blind, late or changed (ADR-0019 G4.4): one record per failed canary seen at a stats tick (n > 1 when several failed within one tick: the fields are the last one's) and one per link found gone. Each also raises a counter in SELF_STATS, logs an error and makes the run DEGRADED.
+
+Fixed part 112 bytes; at most 112 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `canary_n` | u64 | RECORD, LATE: which canary of the run, counted from 1 |
+| 40 | `spawn_ts` | u64 | RECORD, LATE: the canary's start, CLOCK_BOOTTIME ns |
+| 48 | `kind` | u32 | CANARY_MISS_KIND |
+| 52 | `n` | u32 | the failures this record stands for (1, or more when several canaries failed within one stats tick) |
+| 56 | `canary_pid` | u32 | RECORD, LATE: the canary's process id (the tgid of its records) |
+| 60 | `want` | u32 | RECORD, LATE: what it had to cause (SELF_STATS.canary_want's mask, without EXEC when its exec failed) |
+| 64 | `seen` | u32 | RECORD, LATE: what was seen, the same mask; RECORD has seen != want |
+| 68 | `late_ms` | u32 | RECORD: how long after the deadline the verdict was taken; LATE: how long after it the last thing was seen |
+| 72 | `link_index` | u32 | LINK: the link's place in p15d's list (the order of its code=links log line at the start), from 0 |
+| 76 | `link_err` | u32 | LINK: errno of the info call on its descriptor, or 0 when the descriptor now names another link or program |
+| 80 | `link_name` | char[32] | LINK: the program the link attached, NUL padded |
 
 ## FLOW (type 10, version 1, class FLOW)
 

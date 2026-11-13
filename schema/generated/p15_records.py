@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "74ff064771bf5538be0e99ca60eb8fbd0bb5d4a201f26b28cdb1ae3128087ee2"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "7f17c2d7e1a905d39c351bd266c6a6b6c99be5ace05a2d9b70c676b7d9eecae0"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -30,6 +30,10 @@ FF_UNREGISTERED = 1 << 9
 FF_PEEK = 1 << 10
 FF_VECTORED = 1 << 11
 FF_START_UNKNOWN = 1 << 12
+CANARY_MISS_KIND = {1: 'RECORD', 2: 'LATE', 3: 'LINK'}   # CANARY_MISS.kind
+CANARY_MISS_KIND_RECORD = 1
+CANARY_MISS_KIND_LATE = 2
+CANARY_MISS_KIND_LINK = 3
 FLOW_KIND = {1: 'READ', 2: 'WRITE', 3: 'RECV', 4: 'SEND'}   # FLOW.kind
 FLOW_KIND_READ = 1
 FLOW_KIND_WRITE = 2
@@ -90,6 +94,8 @@ TYPES = {
     'FD': 39,
     'FILE_STATS': 40,
     'FLOW_STATS': 41,
+    'SELF_STATS': 42,
+    'CANARY_MISS': 43,
 }
 
 RECORDS = {
@@ -183,6 +189,12 @@ RECORDS = {
     (41, 1): Layout('FLOW_STATS', 41, 1, 'STATS',
         np.dtype({'names': ['h', 'sess_entry', 'sess_return', 'v_excl_self', 'v_excl_kthread', 'v_owned_by_sock', 'v_empty', 'v_failed', 'v_no_inode', 'v_attempt', 'sock_seen', 's_excl_self', 's_excl_kthread', 's_no_file', 's_empty', 's_failed', 's_no_inode', 's_attempt', 'read_emitted', 'write_emitted', 'send_emitted', 'recv_emitted', 'flow_lost', 'start_unknown', 'unregistered', 'file_emitted', 'file_lost', 'file_map_full', 'v_gated', 'v_no_slot_entry', 'v_no_slot_return', 'open_at_end', 'returned_after_count', 'v_release_failed', 'v_entry_while_open', 'v_claim_race', 'v_release_none', 'flow_drained', 'flow_invalid', 'flow_missed'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272, 280, 288, 296, 304, 312, 320, 328, 336], 'itemsize': 344}),
         344, 344, ()),
+    (42, 1): Layout('SELF_STATS', 42, 1, 'STATS',
+        np.dtype({'names': ['h', 'canary_runs', 'canary_missed', 'canary_late', 'canary_spawn_failed', 'canary_exec_failed', 'canary_unfinished', 'canary_stalled', 'link_checks', 'links_missing', 'links', 'canary_interval_s', 'canary_want', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u4', 'S4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 108, 112, 116], 'itemsize': 120}),
+        120, 120, ()),
+    (43, 1): Layout('CANARY_MISS', 43, 1, 'STATS',
+        np.dtype({'names': ['h', 'canary_n', 'spawn_ts', 'kind', 'n', 'canary_pid', 'want', 'seen', 'late_ms', 'link_index', 'link_err', 'link_name'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', 'S32'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 72, 76, 80], 'itemsize': 112}),
+        112, 112, ()),
     (10, 1): Layout('FLOW', 10, 1, 'FLOW',
         np.dtype({'names': ['h', 'fid', 'obj', 'first_ts', 'last_ts', 'bytes', 'count', 'fflags', 'kind', 'reason', 'facts_full', 'facts_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u2', '<u2', '<u4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 76, 80, 82, 84, 88, 90], 'itemsize': 96}),
         96, 136, (('facts', 40),), (('facts', 'OBJFACTS'),)),
@@ -808,6 +820,49 @@ SQL_COLUMNS = {
         ('flow_drained', 'UBIGINT'),
         ('flow_invalid', 'UBIGINT'),
         ('flow_missed', 'UBIGINT'),
+    ),
+    'SELF_STATS': (
+        ('ring', 'UTINYINT'),
+        ('seq', 'UBIGINT'),
+        ('version', 'USMALLINT'),
+        ('flags', 'USMALLINT'),
+        ('ts_ns', 'UBIGINT'),
+        ('tgid', 'UINTEGER'),
+        ('tid', 'UINTEGER'),
+        ('start_ns', 'UBIGINT'),
+        ('canary_runs', 'UBIGINT'),
+        ('canary_missed', 'UBIGINT'),
+        ('canary_late', 'UBIGINT'),
+        ('canary_spawn_failed', 'UBIGINT'),
+        ('canary_exec_failed', 'UBIGINT'),
+        ('canary_unfinished', 'UBIGINT'),
+        ('canary_stalled', 'UBIGINT'),
+        ('link_checks', 'UBIGINT'),
+        ('links_missing', 'UBIGINT'),
+        ('links', 'UINTEGER'),
+        ('canary_interval_s', 'UINTEGER'),
+        ('canary_want', 'UINTEGER'),
+    ),
+    'CANARY_MISS': (
+        ('ring', 'UTINYINT'),
+        ('seq', 'UBIGINT'),
+        ('version', 'USMALLINT'),
+        ('flags', 'USMALLINT'),
+        ('ts_ns', 'UBIGINT'),
+        ('tgid', 'UINTEGER'),
+        ('tid', 'UINTEGER'),
+        ('start_ns', 'UBIGINT'),
+        ('canary_n', 'UBIGINT'),
+        ('spawn_ts', 'UBIGINT'),
+        ('kind', 'UINTEGER'),
+        ('n', 'UINTEGER'),
+        ('canary_pid', 'UINTEGER'),
+        ('want', 'UINTEGER'),
+        ('seen', 'UINTEGER'),
+        ('late_ms', 'UINTEGER'),
+        ('link_index', 'UINTEGER'),
+        ('link_err', 'UINTEGER'),
+        ('link_name', 'BLOB'),
     ),
     'FLOW': (
         ('ring', 'UTINYINT'),

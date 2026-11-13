@@ -12,6 +12,7 @@
 #include "p15_file.h"
 #include "p15_flow.h"
 #include "p15_records.h"
+#include "selfcheck.h"
 #include "writer.h"
 
 /* A NET counter since the run's start (run.h). */
@@ -515,6 +516,75 @@ static void flow_stats(struct p15_writer *w)
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 }
 
+/* p15d watching itself (ADR-0019 G4.4; canary.h, selfcheck.h), at every stats tick: the links are
+ * checked, a CANARY_MISS record is written for each link found gone and for the canaries that
+ * failed since the last tick, then SELF_STATS with the counts. The drain publishes a failed canary
+ * under a sequence counter; several within one tick are one record with the last one's fields and
+ * their number in n. */
+static void self_check(struct p15_writer *w)
+{
+	struct p15_run *r = w->run;
+	struct p15_link_gone gone[P15_LINKS_MAX];
+	struct p15_canary_miss_v1 m;
+	struct p15_self_stats_v1 s;
+	uint64_t seq, bad;
+	int n;
+
+	if (!r->cfg.canary_s && !r->n_links)
+		return;
+	n = p15_links_check(r, gone, P15_LINKS_MAX);
+	for (int i = 0; i < n; i++) {
+		const struct p15_link_ref *ref = &r->links[gone[i].index];
+		char msg[160];
+
+		snprintf(msg, sizeof(msg), "link %d (%s) is gone or replaced: %s", gone[i].index, ref->name,
+			 gone[i].err ? strerror(gone[i].err) : "its descriptor names another link or program");
+		fprintf(stderr, "p15d level=error code=link_gone msg=\"%s\"\n", msg);
+		p15_run_set_state(r, P15_RUN_DEGRADED, msg);
+		memset(&m, 0, sizeof(m));
+		m.kind = P15_CANARY_MISS_KIND_LINK;
+		m.n = 1;
+		m.link_index = (uint32_t)gone[i].index;
+		m.link_err = (uint32_t)gone[i].err;
+		memcpy(m.link_name, ref->name, sizeof(m.link_name) < sizeof(ref->name) ? sizeof(m.link_name) : sizeof(ref->name));
+		p15_daemon_hdr(r, &m, P15_T_CANARY_MISS, P15_CANARY_MISS_VERSION, sizeof(m));
+		append(w, P15W_RING_DAEMON, 1, &m, sizeof(m));
+	}
+	do {
+		seq = atomic_load(&r->canary_seq);
+		memset(&m, 0, sizeof(m));
+		bad = atomic_load(&r->canary_missed) + atomic_load(&r->canary_late);
+		m.kind = atomic_load(&r->canary_bad_kind);
+		m.canary_n = atomic_load(&r->canary_bad_n);
+		m.spawn_ts = atomic_load(&r->canary_bad_spawn_ns);
+		m.canary_pid = atomic_load(&r->canary_bad_pid);
+		m.want = atomic_load(&r->canary_bad_want);
+		m.seen = atomic_load(&r->canary_bad_seen);
+		m.late_ms = atomic_load(&r->canary_bad_late_ms);
+	} while ((seq & 1) || seq != atomic_load(&r->canary_seq));
+	if (bad != w->canary_bad_written) {
+		m.n = (uint32_t)(bad - w->canary_bad_written);
+		p15_daemon_hdr(r, &m, P15_T_CANARY_MISS, P15_CANARY_MISS_VERSION, sizeof(m));
+		append(w, P15W_RING_DAEMON, 1, &m, sizeof(m));
+		w->canary_bad_written = bad;
+	}
+	memset(&s, 0, sizeof(s));
+	s.canary_runs = atomic_load(&r->canary_runs);
+	s.canary_missed = atomic_load(&r->canary_missed);
+	s.canary_late = atomic_load(&r->canary_late);
+	s.canary_spawn_failed = atomic_load(&r->canary_spawn_failed);
+	s.canary_exec_failed = atomic_load(&r->canary_exec_failed);
+	s.canary_unfinished = atomic_load(&r->canary_unfinished);
+	s.canary_stalled = atomic_load(&r->canary_stalled);
+	s.link_checks = atomic_load(&r->link_checks);
+	s.links_missing = atomic_load(&r->link_missing);
+	s.links = (uint32_t)r->n_links;
+	s.canary_interval_s = r->cfg.canary_s;
+	s.canary_want = r->cfg.canary_s ? r->canary_want : 0;
+	p15_daemon_hdr(r, &s, P15_T_SELF_STATS, P15_SELF_STATS_VERSION, sizeof(s));
+	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
+}
+
 static void stats(struct p15_writer *w, uint64_t now)
 {
 	struct p15_stats s;
@@ -527,6 +597,7 @@ static void stats(struct p15_writer *w, uint64_t now)
 		file_stats(w);
 		flow_stats(w);
 	}
+	self_check(w);
 	textfile(w, &s);
 	w->prev_stats_ns = now;
 	if (++w->stats_written % 10 == 0)

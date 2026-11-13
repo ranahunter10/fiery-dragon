@@ -17,6 +17,7 @@
 
 #include "compiler.h"
 #include "counters.h"
+#include "canary.h"
 #include "run.h"
 
 struct ring_buffer;
@@ -38,6 +39,7 @@ struct p15_drain {
 	uint64_t prev_read_ns, last_poll_ns;
 	int queue_full_now;              /* the last poll left records in a ring for want of a batch */
 	int last_taken;                  /* records the last poll took from the rings */
+	struct p15_canary_state canary;        /* ADR-0019 G4.4: off until p15_canary_init (p15d.c) */
 };
 
 /* bulk_rb_fd is -1 without network capture and file identity; bulk_ctr_fd (NET) and file_ctr_fd are -1
