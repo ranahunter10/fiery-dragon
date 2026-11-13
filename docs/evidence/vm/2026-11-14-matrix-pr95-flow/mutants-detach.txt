@@ -1,0 +1,9 @@
+baseline: the unit tests pass in 3 s; a mutant gets 120 s
+baseline: the end-to-end test pass in 158 s; a mutant gets 632 s
+killed   74 p15d.c rc = p15_loader_flow_count(l); (161 s)
+killed   75 p15d.c p15_loader_flow_gate(l); (159 s)
+killed   76 ../bpf/progs/file.bpf.c if (__sync_fetch_and_add(&st->open, 1) & P15_FLOW_OPEN_MASK) (165 s)
+NO BUILD 77 ../bpf/progs/file.bpf.c if (st) (1 s)
+killed   78 ../bpf/progs/file.bpf.c if (claimed) (174 s)
+killed   79 ../bpf/progs/file.bpf.c if (flow_gate) { (164 s)
+mutation sweep: 5/6 killed (mutants [74, 75, 76, 77, 78, 79] only)

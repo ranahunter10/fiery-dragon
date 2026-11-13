@@ -1,0 +1,241 @@
+network capture and file identity: on
+case 1: an 8 s run with 200 short processes, started once p15d is ready [t+0s]
+p15d level=info code=start run_dir=/tmp/p15d-it-njHgsi/c1/20261113T184239Z-ac7efdd9 sched="SCHED_FIFO 1" spine_ring=4194304 net=on files=on crc32c=sse4.2
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-njHgsi/c1/20261113T184239Z-ac7efdd9//seg-00000000.p15w: segment 0, 583160 bytes, 238 batches, 4712 records, valid to the end
+  run.id = 20261113T184239Z-ac7efdd9
+  kernel.release = 7.0.0-38-generic
+  schema.hash = f737b88a76c85db99013bf0477b0e1433085aedd70fd3e93ccba33d5f6d3ca0e
+records: spine 819, bulk 2149, daemon 1744; invalid 0
+  FORK       205
+  EXEC       204
+  EXIT       205
+  RENAME     205
+  OPEN       1066
+  CLOSE      1083
+  CLOCK_SYNC 5
+  STATS      41
+  END        1
+  NET_STATS  41
+  PROC       277
+  SNAP_DONE  2
+  FD         1295
+  FILE_STATS 41
+  FLOW_STATS 41
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 41)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:139:1 closing:138:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+  ok   pid 1 is in the opening snapshot
+case 2: stop by SIGTERM [t+15s]
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes) [t+20s]
+p15d level=info code=start run_dir=/tmp/p15d-it-njHgsi/c3/20261113T184257Z-ac7efdd9 sched="normal (--no-rt)" spine_ring=4096 net=on files=on crc32c=sse4.2
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 84, bulk 4071, daemon 1604; invalid 0
+  FORK       23
+  EXEC       20
+  EXIT       17
+  RENAME     24
+  OPEN       2027
+  CLOSE      2044
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        2
+  END        1
+  NET_STATS  6
+  PROC       279
+  SNAP_DONE  2
+  FD         1295
+  FILE_STATS 6
+  FLOW_STATS 6
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)", closing snapshot 1
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+  reconciliation: repaired 0 12 381 387 opening:140:1 closing:139:1
+  ok   ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss (repaired)
+  ok   unexplained forks 0 <= counted 381, exits 12 <= counted 387
+case 5: network intent (ADR-0004): a TCP server on a port, two clients, a refused connect [t+30s]
+[1] NET    ts=118538428727 tgid=2515 tid=2515 start=118521175616 flags=0x0 op=BIND proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4102 peer=0 netns=4026531833
+[1] NET    ts=118538433484 tgid=2515 tid=2515 start=118521175616 flags=0x0 op=LISTEN proto=tcp ret=0 local=127.0.0.1:18077 remote=0.0.0.0:0 cookie=4102 peer=0 netns=4026531833
+[1] NET    ts=119057218660 tgid=2517 tid=2517 start=119032034626 flags=0x4 op=CONNECT proto=tcp ret=0 local=127.0.0.1:49902 remote=127.0.0.1:18077 cookie=15 peer=0 netns=4026531833 isn=46068201
+[1] NET    ts=119057647586 tgid=2515 tid=2515 start=118521175616 flags=0x4 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:49902 cookie=16 peer=4102 netns=4026531833 isn=46068201
+[1] NET    ts=119083626885 tgid=2518 tid=2518 start=119061612930 flags=0x4 op=CONNECT proto=tcp ret=0 local=127.0.0.1:49916 remote=127.0.0.1:18077 cookie=4103 peer=0 netns=4026531833 isn=286351280
+[1] NET    ts=119083634922 tgid=2515 tid=2515 start=118521175616 flags=0x4 op=ACCEPT proto=tcp ret=0 local=127.0.0.1:18077 remote=127.0.0.1:49916 cookie=4104 peer=4102 netns=4026531833 isn=286351280
+[1] NET    ts=119104600097 tgid=2519 tid=2519 start=119088631007 flags=0x0 op=CONNECT proto=tcp ret=-111 local=0.0.0.0:0 remote=127.0.0.1:18078 cookie=17 peer=0 netns=4026531833
+records: spine 35, bulk 392, daemon 1631; invalid 0
+  FORK       9
+  EXEC       8
+  EXIT       9
+  RENAME     9
+  NET        7
+  OPEN       184
+  CLOSE      201
+  CLOCK_SYNC 2
+  STATS      13
+  END        1
+  NET_STATS  13
+  PROC       279
+  SNAP_DONE  2
+  FD         1295
+  FILE_STATS 13
+  FLOW_STATS 13
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   the server's LISTEN on port 18077, with its socket cookie (4102)
+  ok   two ACCEPTs whose peer cookie is the listener's
+  ok   two CONNECTs to port 18077, ret 0
+  ok   the refused connect, ret -111 (ECONNREFUSED)
+  ok   NET_STATS records written
+Summary: 1 listener(s); 2 connection(s) accepted, 2 of them from a process on this host; 2 connect(s) to the port, 0 refused or failed
+
+Listeners on port 18077
+  127.0.0.1:18077 tcp  cookie 4102  listening from 18:43:08.460 (t+0.052s)  by python3 (2515) ← bash (1454) ← bash (1432) ← sudo (1431) ← sudo (1429) ← bash (1354) ← sshd-session (1353) ← sshd-session (1248) ← sshd (1245) ← systemd (1) [started before the capture]
+
+Connections accepted on port 18077
+  18:43:08.979 (t+0.571s)  127.0.0.1:49902 -> 127.0.0.1:18077  accepted by python3 (pid 2515)  (listener cookie 4102)
+      client: python3 (2517) ← bash (1454) ← bash (1432) ← sudo (1431) ← sudo (1429) ← bash (1354) ← sshd-session (1353) ← sshd-session (1248) ← sshd (1245) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+0.571s)
+  18:43:09.005 (t+0.597s)  127.0.0.1:49916 -> 127.0.0.1:18077  accepted by python3 (pid 2515)  (listener cookie 4102)
+      client: python3 (2518) ← bash (1454) ← bash (1432) ← sudo (1431) ← sudo (1429) ← bash (1354) ← sshd-session (1353) ← sshd-session (1248) ← sshd (1245) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+0.597s)
+
+Connects to port 18077
+  18:43:08.978 (t+0.571s)  127.0.0.1:49902 -> 127.0.0.1:18077 tcp  ok                      by python3 (2517) ← bash (1454) ← bash (1432) ← sudo (1431) ← sudo (1429) ← bash (1354) ← sshd-session (1353) ← sshd-session (1248) ← sshd (1245) ← systemd (1) [started before the capture]
+  18:43:09.005 (t+0.597s)  127.0.0.1:49916 -> 127.0.0.1:18077 tcp  ok                      by python3 (2518) ← bash (1454) ← bash (1432) ← sudo (1431) ← sudo (1429) ← bash (1354) ← sshd-session (1353) ← sshd-session (1248) ← sshd (1245) ← systemd (1) [started before the capture]
+  ok   p15-trace: text and HTML reports made
+  ok   p15-trace: 1 listener, 2 accepts, both clients found on this host
+  ok   p15-trace: the listener is the server process (2515), cookie 4102
+  ok   p15-trace: each accept joined to its client process and that process's parent
+  ok   p15-trace: both clients joined exactly, by the TCP client sequence number (ADR-0022)
+  ok   p15-trace: 2 exact joins, 0 set aside, every TCP record carries its ISN
+  ok   p15-trace: the refused connect to port 18078, with its process
+case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2 [t+42s]
+  ok   exit 0, WAL valid
+  ok   the memfd program ran (exit 0, vm.memfd_noexec=0)
+  ok   exactly one EXEC of p15-it-memfd (found 1)
+  ok     ... exe_name is the memfd's name (b'memfd:p15-it')
+  ok     ... nlink 0 on tmpfs (nlink 0, magic 0x1021994)
+  ok     ... the reader classes it 'runs from memory' (['runs from memory (no file on disk)', 'executable is writable by its runner'])
+  ok   the streams program ran
+  ok   exactly one EXEC of p15-it-streams (found 1)
+  ok     ... stdin is the pipe the workload opened (record {'ino': 17604, 'dev': 16, 'mode': 4480}, fstat {'ino': 17604, 'dev': 16, 'mode': 4480})
+  ok     ... stdout is the file the workload opened (record {'ino': 106, 'dev': 42, 'mode': 33188}, fstat {'ino': 106, 'dev': 42, 'mode': 33188})
+  ok     ... stderr is the socket the workload opened (record {'ino': 17605, 'dev': 10, 'mode': 49663}, fstat {'ino': 17605, 'dev': 10, 'mode': 49663})
+  ok   the pipeline ran
+  ok   one EXEC each of p15-it-writer and p15-it-reader (found 1, 1)
+  ok     ... joined writer -> reader by their shared pipe inode
+  ok     ... p15-trace's provenance block shows that pipe
+  ok     ... and the process that ran from memory
+  ok   one EXEC of p15-it-live, pid 2663
+  ok   one closing snapshot (found 1)
+  ok     ... it lists p15-it-live under the same process key as its EXEC
+  ok     ... PROC v2 and EXEC v2 agree on all 17 shared facts
+case 7: no map syscall once a program is attached (ADR-0026), traced with strace [t+53s]
+  ok   exit 0 under strace
+  ok   after the first event attach: 0 map lookups, updates or deletes (got: 0)
+  ok     ... while p15d did read the kernel's skip counters by info call (465 calls): the trace saw the run
+case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open [t+59s]
+[1] OPEN   ts=149111034000 tgid=1454 tid=1454 start=83467268131 flags=0x0 fid=11220 obj=11221 fflags=0x1 f_flags=0101101 f_mode=0x4118002 verdict=0 path_err=0 path="/tmp/p15d-it8-nGHqNt/f1"(23) dev=0:42 ino=127 gen=3281263377 mode=0100644 magic=0x1021994 nlink=1 subvol=0 oflags=0
+[1] OPEN   ts=149115588565 tgid=3473 tid=3473 start=149111133277 flags=0x0 fid=11236 obj=11221 fflags=0x0 f_flags=0100000 f_mode=0x4008001 verdict=0 path_err=0 path="/tmp/p15d-it8-nGHqNt/f1"(23)
+[1] OPEN   ts=149136666349 tgid=3475 tid=3475 start=149124428094 flags=0x0 fid=11292 obj=11293 fflags=0x1 f_flags=0104001 f_mode=0x4000002 verdict=0 path_err=0 path="/tmp/p15d-it8-nGHqNt/fifo"(25) dev=0:42 ino=128 gen=4098420361 mode=010644 magic=0x1021994 nlink=1 subvol=0 oflags=0
+  ok   exit 0, WAL valid, the FIFO open failed with ENXIO
+  ok   an OPEN with its path for the create and the read of f1
+  ok     ... the first one carries the object's facts
+  ok   a file first opened while p15d was starting has its facts in the WAL (facts epoch)
+  ok     ... and every open of it names one object
+  ok   a CLOSE for f1's first open file (fid 11220), opened
+  ok   the FIFO open ends with CLOSE NEVER_OPENED (fid 11292)
+  ok   FILE_STATS records written, no OPEN lost
+  ok   END: exit 0, RUNNING, the books close with file identity in them
+case 9: files already open at start (ADR-0015 rule 7, the snapshot's FD pass) [t+70s]
+[2] FD     ts=158450631448 tgid=3527 tid=3527 start=153661460429 flags=0x0 snap=0 fd=3 fid=1419 obj=1418 pos=0 fflags=0x0 path="/tmp/p15d-it9-yPkg0o/held"(25)
+  ok   exit 0, WAL valid
+  ok   an FD row for the holder's fd 3, with the file's path (fid 1419, obj 1418)
+  ok     ... and for its fds 0, 1 and 2 (the streams of a process older than capture)
+  ok   a later open of the same file names the FD row's object
+  ok   the holder's exit ends that open file: CLOSE fid 1419
+  ok   SNAP_DONE carries the FD pass's books, nothing lost
+  ok   every segment's opening snapshot has an FD pass (5 segments)
+  ok   a file opened in two segments carries its facts in both (the facts epoch)
+  ok   END: exit 0, RUNNING, the books close
+case 10: the stop's watchdog (E-0162): a writer that stands still, and one that is only slow [t+80s]
+  ok   a writer stuck in the closing snapshot: exit 75 (STUCK), got 75
+  ok     ... within the watchdog's bound, not the writer's 30 s (4 s)
+  ok     ... the log names the phase
+  ok     ... the WAL is valid and has no END
+  ok   a writer slow for 0.8 s, under the 2 s bound: an orderly stop, END written
+case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes, spine only [t+89s]
+  queue_full 517, spine reserve failures 0; EXEC of /bin/true: 2000; END: exit 0, state 0, invariant 1, signal 15, reason 
+  ok   the queue was full during the run (the path under test ran: queue_full 517)
+  ok   the spine ring absorbed the backlog: no reserve failed
+  ok   exit 0, RUNNING, the invariant closed: no record was taken and dropped (rc 0)
+  ok   every one of the 2000 children's EXEC is in the WAL (got 2000)
+  with file identity and NET: queue_full 157, spine reserve failures 0, bulk records lost to the ring 0; END: exit 0, state 0, invariant 1, signal 15, reason 
+  ok     ... the queue was full during the run (queue_full 157)
+  ok     ... the invariant closed with the bulk ring flooded: every record written or counted (rc 0)
+  ok     ... and a DEGRADED end only with a counted loss (lost 0)
+case 12: the path program left unattached: the session return writes every open, walked, with its object (E-0190, ADR-0029) [t+107s]
+  ok   the self-test's no-path checks passed; exit 0, RUNNING, the invariant closed (rc 0)
+  OPEN 5 (PATH_WALKED 5, 5 with a path; PATH_MISSING 0, by fs magic -); CLOSE of those 3, naming the OPEN's object 3; last FILE_STATS walked 1
+  ok   every OPEN came from the session return (PATH_WALKED or PATH_MISSING)
+  ok   every walked OPEN has a path, rooted or made as the filesystem names it
+  ok   FILE_STATS counts walked opens, never more than the WAL holds
+  ok   every CLOSE of those opens names the OPEN's object, not 0
+case 13: --flow: a known workload's reads, writes, sends and receives become FLOW records (ADR-0005, step 2b) [t+111s]
+  workload pid 6642: READ/WRITE 12345 1/1, readv/writev 7 1/1, pipe 3331 1/1; SEND 321 1, 222 1; RECV bytes 543, PEEK 1; FILE seen io 5, net 2; vfs on a socket 1
+  ok   --flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc 0)
+  ok   the 12345-byte write and read are one WRITE and one READ
+  ok   writev and readv are one WRITE and one READ each, flagged VECTORED
+  ok   the pipe's 3331 bytes are one WRITE and one READ
+  ok   the socket's write() is one SEND, not also a WRITE (review V2); send() is one SEND
+  ok     ... the vfs hook counted the socket call as owned by the socket (1)
+  ok   the receiver's RECVs add up to the 543 bytes sent, and the peek is flagged PEEK
+  ok   FILE records for the pipe's two ends (first I/O) and the sockets (network)
+  ok   every FLOW starts before it ends, and no start time was lost
+  ok   FLOW_STATS: none refused, none lost to the ring, no kernel skips
+  ok   the flow self-test ran at load and passed (selftest.result: pass (spine, files, net, flow))
+case 14: --flow with the first FILE of every file lost (--test-flow-file-fail-first): counted, DEGRADED, retried [t+121s]
+  workload pid 6768: lost-then-retried ends: pipe write 1, read 1, send 1, receive 1; FILE lost 8
+  ok   a lost FILE: exit 3, the run DEGRADED, the books still closed, the WAL valid (rc 3)
+  ok   each end: its first FLOW names an id with no FILE; its next two name a new id, whose FILE was written (the retry, review V3)
+  ok   FLOW_STATS: the four planted losses (and others') counted as file_lost, no FLOW lost, none refused
+case 15: no grace period at the end (--test-barrier-fail): the run says its end counts are not exact [t+130s]
+  ok   exit 3 (DEGRADED), WAL valid (p15d 3, inspect 0)
+  ok   END: DEGRADED, the books still close, the reason says the end counts are not exact
+  ok     ... and the log has the barrier's error, never a silent wait
+case 16: --flow with three calls held open across the detach: a read, a write and a readv (p15_flow.h) [t+134s]
+  ok   exit 0, WAL valid, the holder ran (p15d 0, inspect 0)
+  ok   END: exit 0, RUNNING, the books close with calls open at the detach
+  ok   FLOW_STATS records are written
+  ok   the end's count found the held calls open (open_at_end 3 >= 3)
+  ok   no release failed and the iterator gave up on no task (0, 0)
+  ok   every task had its slot (0 entries without one)
+  ok   the held read has no FLOW: it never returned in the run
+case 17: --flow with the held read released between the count and the detach (--test-flow-cut-pause-ms) [t+143s]
+  ok   exit 0, WAL valid, the holder ran (p15d 0, inspect 0)
+  ok   END: exit 0, RUNNING, the books close with calls open at the detach
+  ok   FLOW_STATS records are written
+  ok   the end's count found the held calls open (open_at_end 3 >= 3)
+  ok   no release failed and the iterator gave up on no task (0, 0)
+  ok   every task had its slot (0 entries without one)
+  ok   a call that entered after the gate is counted, and opens nothing (v_gated 116 >= 1)
+  ok   the call released after the count is counted (returned_after_count 1 >= 1)
+  ok     ... and its FLOW of 4201 bytes is in the WAL (1)
+  ok     ... with the start time of its entry, taken long before the count
+case 4: a bad flag [t+154s]
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)

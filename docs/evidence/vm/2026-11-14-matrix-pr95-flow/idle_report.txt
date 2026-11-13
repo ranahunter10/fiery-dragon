@@ -1,0 +1,14 @@
+# idle_cost: p15d's CPU on an idle host (gate 3)
+
+5 rounds of a 20 s window per arm, arms rotated each round. Budget (STATE decision 29): under 2 ms of CPU per second.
+
+| arm | CPU ms/s, median | cheapest .. dearest round | polls/s | load, records/s (spine + bulk) | first arm / this | under the budget |
+|---|---|---|---|---|---|---|
+| default | 1.997 | 1.656 .. 2.240 | 8.6 | 1.7 | 1.00x | no |
+
+Per thread, median ms/s over rounds:
+
+| arm | p15d | p15d-writer |
+|---|---|---|
+| default | 1.441 | 0.652 |
+

@@ -1,0 +1,43 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 97  of event 'task-clock:ppp'
+# Event count (approx.): 48524250
+#
+# Overhead  Shared Object      Symbol                         
+# ........  .................  ...............................
+#
+    23.71%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+    10.31%  p15d               [.] on_bulk
+     8.25%  p15d               [.] tiles
+     7.22%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     6.19%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+     6.19%  [kernel.kallsyms]  [k] fdget
+     5.15%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+     5.15%  p15d               [.] p15_rec_check
+     3.09%  [kernel.kallsyms]  [k] vbg_req_perform
+     3.09%  p15d               [.] after_poll
+     2.06%  [kernel.kallsyms]  [k] bpf_prog_get_stats
+     2.06%  [kernel.kallsyms]  [k] do_syscall_64
+     2.06%  [kernel.kallsyms]  [k] rep_movs_alternative
+     2.06%  p15d               [.] ringbuf_process_ring
+     1.03%  [kernel.kallsyms]  [k] __sys_bpf
+     1.03%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+     1.03%  [kernel.kallsyms]  [k] bpf_check_uarg_tail_zero
+     1.03%  [kernel.kallsyms]  [k] ep_poll
+     1.03%  [kernel.kallsyms]  [k] fprobe_fgraph_entry
+     1.03%  [kernel.kallsyms]  [k] fput
+     1.03%  [kernel.kallsyms]  [k] kernel_init_pages
+     1.03%  libc.so.6          [.] syscall
+     1.03%  libc.so.6          [.] 0x00000000000a0366
+     1.03%  p15d               [.] crc_hw
+     1.03%  p15d               [.] memcpy@plt
+     1.03%  p15d               [.] p15_counters_sum_rows
+     1.03%  p15d               [.] put
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
