@@ -1,0 +1,196 @@
+# Per-program cost while `build/open_cost /var/tmp/p15-open-cost 200000 20000` ran, 7 rounds (bpf_stats on: not an overhead measurement)
+
+Host speed: a null syscall cost 84.7 ns (median of 7 rounds; 83.9 to 86.2).
+
+| program | type | rounds | runs | ns per run (median) | cheapest to dearest round | runs per op | ns per op (median) |
+|---|---|---|---|---|---|---|---|
+| file_open_path | tracing | 7 | 1,540,365 | 270.6 | 262.1 to 295.2 | 1.000 | 270.6 |
+| file_free | kprobe | 7 | 1,541,075 | 179.3 | 169.7 to 186.6 | 1.001 | 179.5 |
+| file_open_session | kprobe | 7 | 3,080,730 | 82.7 | 79.8 to 84.5 | 2.000 | 165.5 |
+| file_fd_iter | tracing | 3 | 2,093 | 394.8 | 363.1 to 680.4 | 0.003 | 1.3 |
+| snap_task | tracing | 3 | 525 | 1427.3 | 1089.2 to 1760.0 | 0.001 | 1.1 |
+| flow_write | kprobe | 7 | 2,614 | 147.1 | 136.1 to 2391.0 | 0.002 | 0.4 |
+| flow_read | kprobe | 7 | 1,352 | 323.5 | 285.0 to 347.4 | 0.001 | 0.3 |
+| flow_writev | kprobe | 7 | 2,577 | 86.5 | 78.2 to 406.0 | 0.002 | 0.2 |
+| spine_exec | tracepoint | 7 | 14 | 3442.0 | 3300.0 to 3752.5 | 0.000 | 0.0 |
+| flow_send | tracepoint | 4 | 4 | 5153.0 | 3799.0 to 5487.0 | 0.000 | 0.0 |
+| flow_recv | tracepoint | 4 | 13 | 1378.6 | 923.2 to 1887.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 7 | 60 | 422.1 | 319.6 to 664.2 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 7 | 14 | 1382.0 | 1210.5 to 1517.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 7 | 14 | 1336.0 | 1220.0 to 1506.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 7 | 14 | 1134.0 | 984.0 to 1463.5 | 0.000 | 0.0 |
+| net_connect_dgram | tracing | 3 | 3 | 1821.0 | 1522.0 to 1895.0 | 0.000 | 0.0 |
+| **all** | | 7 | 6,171,467 | | | 4.007 | 621.4 |
+
+## Round 0
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,050 | 64.97 | 295.2 | 1.000 | 295.3 |
+| file_free | kprobe | 220,151 | 39.87 | 181.1 | 1.001 | 181.2 |
+| file_open_session | kprobe | 440,100 | 36.84 | 83.7 | 2.000 | 167.5 |
+| flow_write | kprobe | 82 | 0.06 | 746.5 | 0.000 | 0.3 |
+| flow_read | kprobe | 165 | 0.06 | 346.7 | 0.001 | 0.3 |
+| flow_writev | kprobe | 78 | 0.03 | 399.4 | 0.000 | 0.1 |
+| spine_exec | tracepoint | 2 | 0.01 | 3651.0 | 0.000 | 0.0 |
+| flow_send | tracepoint | 1 | 0.01 | 5123.0 | 0.000 | 0.0 |
+| flow_recv | tracepoint | 4 | 0.00 | 1150.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 9 | 0.00 | 397.0 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1281.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1230.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 984.0 | 0.000 | 0.0 |
+| net_connect_dgram | tracing | 1 | 0.00 | 1821.0 | 0.000 | 0.0 |
+| **all** | | 880,649 | 141.86 | | 4.003 | 644.8 |
+
+workload pid=20604 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=84627023 wall_ns=84623214
+row event=same n=200000 cpu_ns=419663643 wall_ns=437468337
+row event=distinct n=20000 cpu_ns=60268008 wall_ns=61920789
+
+## Round 1
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,051 | 61.57 | 279.8 | 1.000 | 279.9 |
+| file_free | kprobe | 220,154 | 37.37 | 169.7 | 1.001 | 169.9 |
+| file_open_session | kprobe | 440,102 | 37.19 | 84.5 | 2.000 | 169.1 |
+| file_fd_iter | tracing | 698 | 0.28 | 394.8 | 0.003 | 1.3 |
+| snap_task | tracing | 175 | 0.25 | 1427.3 | 0.001 | 1.1 |
+| flow_write | kprobe | 84 | 0.20 | 2391.0 | 0.000 | 0.9 |
+| flow_read | kprobe | 179 | 0.06 | 323.5 | 0.001 | 0.3 |
+| flow_writev | kprobe | 82 | 0.03 | 365.6 | 0.000 | 0.1 |
+| spine_exec | tracepoint | 2 | 0.01 | 3560.5 | 0.000 | 0.0 |
+| flow_send | tracepoint | 1 | 0.01 | 5183.0 | 0.000 | 0.0 |
+| flow_recv | tracepoint | 4 | 0.00 | 923.2 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 9 | 0.00 | 392.9 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1220.0 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1210.5 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1134.0 | 0.000 | 0.0 |
+| net_connect_dgram | tracing | 1 | 0.00 | 1895.0 | 0.000 | 0.0 |
+| **all** | | 881,548 | 136.98 | | 4.007 | 622.6 |
+
+workload pid=20607 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=84893703 wall_ns=84919088
+row event=same n=200000 cpu_ns=413117022 wall_ns=435419468
+row event=distinct n=20000 cpu_ns=52553394 wall_ns=54415258
+
+## Round 2
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,050 | 61.29 | 278.5 | 1.000 | 278.6 |
+| file_free | kprobe | 220,150 | 38.22 | 173.6 | 1.001 | 173.7 |
+| file_open_session | kprobe | 440,100 | 36.54 | 83.0 | 2.000 | 166.1 |
+| flow_write | kprobe | 85 | 0.07 | 794.4 | 0.000 | 0.3 |
+| flow_read | kprobe | 164 | 0.06 | 347.4 | 0.001 | 0.3 |
+| flow_writev | kprobe | 75 | 0.03 | 406.0 | 0.000 | 0.1 |
+| spine_exec | tracepoint | 2 | 0.01 | 3339.5 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 8 | 0.00 | 422.1 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1517.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1506.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1463.5 | 0.000 | 0.0 |
+| **all** | | 880,640 | 136.22 | | 4.003 | 619.2 |
+
+workload pid=20610 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=85580808 wall_ns=85615024
+row event=same n=200000 cpu_ns=414072332 wall_ns=433805013
+row event=distinct n=20000 cpu_ns=50197630 wall_ns=52433960
+
+## Round 3
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,051 | 59.54 | 270.6 | 1.000 | 270.6 |
+| file_free | kprobe | 220,153 | 40.05 | 181.9 | 1.001 | 182.1 |
+| file_open_session | kprobe | 440,102 | 36.11 | 82.0 | 2.000 | 164.1 |
+| file_fd_iter | tracing | 697 | 0.47 | 680.4 | 0.003 | 2.2 |
+| snap_task | tracing | 175 | 0.31 | 1760.0 | 0.001 | 1.4 |
+| flow_write | kprobe | 607 | 0.09 | 142.6 | 0.003 | 0.4 |
+| flow_read | kprobe | 216 | 0.06 | 285.0 | 0.001 | 0.3 |
+| flow_writev | kprobe | 607 | 0.05 | 81.8 | 0.003 | 0.2 |
+| spine_exec | tracepoint | 2 | 0.01 | 3338.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 8 | 0.01 | 664.2 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1430.0 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1399.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1253.0 | 0.000 | 0.0 |
+| **all** | | 882,624 | 136.70 | | 4.012 | 621.4 |
+
+workload pid=20613 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=86195208 wall_ns=86246303
+row event=same n=200000 cpu_ns=412179219 wall_ns=412194832
+row event=distinct n=20000 cpu_ns=51674220 wall_ns=51674594
+
+## Round 4
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,052 | 59.09 | 268.5 | 1.000 | 268.6 |
+| file_free | kprobe | 220,153 | 41.07 | 186.6 | 1.001 | 186.7 |
+| file_open_session | kprobe | 440,104 | 36.41 | 82.7 | 2.000 | 165.5 |
+| flow_write | kprobe | 552 | 0.08 | 147.1 | 0.003 | 0.4 |
+| flow_read | kprobe | 196 | 0.06 | 327.3 | 0.001 | 0.3 |
+| flow_writev | kprobe | 541 | 0.05 | 86.5 | 0.002 | 0.2 |
+| spine_exec | tracepoint | 2 | 0.01 | 3442.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 9 | 0.00 | 443.7 | 0.000 | 0.0 |
+| flow_send | tracepoint | 1 | 0.00 | 3799.0 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1463.0 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1443.5 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1087.0 | 0.000 | 0.0 |
+| flow_recv | tracepoint | 1 | 0.00 | 1887.0 | 0.000 | 0.0 |
+| **all** | | 881,617 | 136.79 | | 4.007 | 621.8 |
+
+workload pid=20616 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=83972815 wall_ns=83970533
+row event=same n=200000 cpu_ns=412821173 wall_ns=412870414
+row event=distinct n=20000 cpu_ns=54725922 wall_ns=54738888
+
+## Round 5
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,061 | 57.68 | 262.1 | 1.000 | 262.2 |
+| file_free | kprobe | 220,164 | 38.46 | 174.7 | 1.001 | 174.8 |
+| file_open_session | kprobe | 440,122 | 36.34 | 82.6 | 2.001 | 165.2 |
+| file_fd_iter | tracing | 698 | 0.25 | 363.1 | 0.003 | 1.2 |
+| snap_task | tracing | 175 | 0.19 | 1089.2 | 0.001 | 0.9 |
+| flow_write | kprobe | 610 | 0.09 | 144.0 | 0.003 | 0.4 |
+| flow_read | kprobe | 235 | 0.07 | 294.4 | 0.001 | 0.3 |
+| flow_writev | kprobe | 610 | 0.05 | 80.8 | 0.003 | 0.2 |
+| spine_exec | tracepoint | 2 | 0.01 | 3300.0 | 0.000 | 0.0 |
+| flow_recv | tracepoint | 4 | 0.01 | 1607.2 | 0.000 | 0.0 |
+| flow_send | tracepoint | 1 | 0.01 | 5487.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 9 | 0.00 | 535.9 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1382.0 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1334.0 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1213.0 | 0.000 | 0.0 |
+| net_connect_dgram | tracing | 1 | 0.00 | 1522.0 | 0.000 | 0.0 |
+| **all** | | 882,698 | 133.17 | | 4.012 | 605.3 |
+
+workload pid=20619 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=83856989 wall_ns=83864467
+row event=same n=200000 cpu_ns=406422122 wall_ns=406437643
+row event=distinct n=20000 cpu_ns=49669771 wall_ns=49676939
+
+## Round 6
+
+| program | type | runs | total ms | ns per run | runs per op | ns per op |
+|---|---|---|---|---|---|---|
+| file_open_path | tracing | 220,050 | 58.18 | 264.4 | 1.000 | 264.4 |
+| file_free | kprobe | 220,150 | 39.48 | 179.3 | 1.001 | 179.5 |
+| file_open_session | kprobe | 440,100 | 35.13 | 79.8 | 2.000 | 159.7 |
+| flow_write | kprobe | 594 | 0.08 | 136.1 | 0.003 | 0.4 |
+| flow_read | kprobe | 197 | 0.06 | 288.6 | 0.001 | 0.3 |
+| flow_writev | kprobe | 584 | 0.05 | 78.2 | 0.003 | 0.2 |
+| spine_exec | tracepoint | 2 | 0.01 | 3752.5 | 0.000 | 0.0 |
+| spine_exit | tracepoint | 2 | 0.00 | 1375.5 | 0.000 | 0.0 |
+| spine_rename | tracepoint | 2 | 0.00 | 1336.0 | 0.000 | 0.0 |
+| file_inode_free | kprobe | 8 | 0.00 | 319.6 | 0.000 | 0.0 |
+| spine_fork | tracing | 2 | 0.00 | 1130.5 | 0.000 | 0.0 |
+| **all** | | 881,691 | 132.99 | | 4.008 | 604.5 |
+
+workload pid=20622 cpu=2 same=200000 distinct=20000 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=84696932 wall_ns=84717222
+row event=same n=200000 cpu_ns=402959334 wall_ns=402988651
+row event=distinct n=20000 cpu_ns=49166147 wall_ns=49166760
+
+p15d exit 0; its log and WAL: /tmp/p15-prog-stats-m2rp9vew
