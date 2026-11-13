@@ -12,7 +12,7 @@ from .. import wal as W
 from . import build as B
 from . import pidsmaker as PM
 
-MUST_BE_ZERO = ("edge_without_node", "obj_facts_conflict", "fid_two_objs", "image_exec_without_edge")
+MUST_BE_ZERO = ("edge_without_node", "obj_facts_conflict", "fid_two_objs", "image_exec_without_edge", "sock_obj_two_cookies")
 
 
 def main(argv: list[str] | None = None) -> int:

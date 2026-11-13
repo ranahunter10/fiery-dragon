@@ -874,9 +874,10 @@ static const __u32 flow_emit_slot[5] = {   /* FLOW.kind -> its EMITTED counter *
  * this is the object's first record unless it raced) and the dentry's own short name, which the
  * reader turns into pipe:[ino] / socket:[ino] / the protocol from the facts. Written before this
  * program's FLOW; another thread's FLOW on the same file can reach the ring first (review V5), so
- * readers join by fid. Returns 0 if the record was lost to a full ring (counted FILE_LOST). */
+ * readers join by fid. sock_cookie is the socket's cookie as the kernel holds it, 0 for anything
+ * else (ADR-0032). Returns 0 if the record was lost to a full ring (counted FILE_LOST). */
 static __always_inline int write_file_rec(struct file *file, __u64 fid, __u64 obj,
-					  const struct p15_part_objfacts *f, int carry, __u32 seen)
+					  const struct p15_part_objfacts *f, int carry, __u32 seen, __u64 sock_cookie)
 {
 	struct p15_file *r;
 	const unsigned char *dname;
@@ -905,6 +906,7 @@ static __always_inline int write_file_rec(struct file *file, __u64 fid, __u64 ob
 	fill_hdr(&r->h, P15_T_FILE, P15_FILE_VERSION);
 	r->fid = fid;
 	r->obj = obj;
+	r->sock_cookie = sock_cookie;
 	r->f_flags = file->f_flags;
 	r->f_mode = file->f_mode;
 	r->seen = seen;
@@ -941,10 +943,10 @@ static __always_inline int write_file_rec(struct file *file, __u64 fid, __u64 ob
 
 /* Resolve the transfer's file to (fid, obj), registering a pseudo file and its FILE record on first
  * sight, and write one FLOW (schema/records.toml). kind is P15_FLOWK_*; extra holds the record's
- * fflags that the caller computed (VECTORED, PEEK, START_UNKNOWN). Counts the kind's EMITTED, or
- * FLOW_LOST. */
+ * fflags that the caller computed (VECTORED, PEEK, START_UNKNOWN); sock_cookie goes into the FILE
+ * record if one is written (ADR-0032). Counts the kind's EMITTED, or FLOW_LOST. */
 static __always_inline void emit_flow(struct file *file, struct inode *inode, __u16 kind, __u64 bytes,
-				      __u64 first_ts, __u64 last_ts, __u32 extra)
+				      __u64 first_ts, __u64 last_ts, __u32 extra, __u64 sock_cookie)
 {
 	struct p15_part_objfacts f;
 	struct obj_ent *oe = NULL;
@@ -959,7 +961,7 @@ static __always_inline void emit_flow(struct file *file, struct inode *inode, __
 	obj = obj_of(inode, &f, &oe, &carry);
 	fe = file_ent_get_key(key, inode, obj, &created);
 	if (fe && created) {
-		if (write_file_rec(file, fe->fid, obj, &f, carry, seen)) {
+		if (write_file_rec(file, fe->fid, obj, &f, carry, seen, sock_cookie)) {
 			facts_done(oe, carry);   /* the FILE record carried the object's facts */
 		} else {
 			/* the FILE was lost (counted FILE_LOST): undo the registration so the next
@@ -1108,7 +1110,7 @@ static __always_inline int rw_return(struct pt_regs *ctx, __u16 kind, __u32 vect
 		first = now;
 		extra |= P15_FF_START_UNKNOWN;
 	}
-	emit_flow(file, inode, kind, (__u64)ret, first, now, extra);
+	emit_flow(file, inode, kind, (__u64)ret, first, now, extra, 0);   /* not a socket: rule 11 */
 	return 0;
 }
 
@@ -1194,7 +1196,12 @@ static __always_inline int sock_flow(__u64 sk_addr, long ret, int msg_flags, __u
 	if (kind == P15_FLOWK_RECV && (msg_flags & MSG_PEEK))
 		extra |= P15_FF_PEEK;
 	now = bpf_ktime_get_boot_ns();
-	emit_flow(file, inode, kind, (__u64)ret, now, now, extra);   /* an instant (ADR-0005 rule 5) */
+	/* The socket's cookie as the kernel holds it (ADR-0032): NET's bpf_get_socket_cookie made it at
+	 * connect, accept, listen or bind and stored it in skc_cookie; a read of the field is no helper
+	 * call, so this classic tracepoint may make it. 0 if no program has made it yet. An aligned
+	 * 8-byte load: the kernel's own atomic64_read is the same load on x86-64. */
+	emit_flow(file, inode, kind, (__u64)ret, now, now, extra,
+		  (__u64)sk->__sk_common.skc_cookie.counter);   /* an instant (ADR-0005 rule 5) */
 	return 0;
 }
 

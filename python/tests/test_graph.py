@@ -76,13 +76,17 @@ def flow(t, p, fid, obj, kind, first, last, nbytes=1, f=None, fflags=0, count=1)
                last_ts=last, bytes=nbytes, count=count, fflags=fflags, reason=FF.FLOW_REASON_SINGLE)
 
 
-def filerec(t, p, fid, obj, f=None, name=b"", mode=3):
-    """A FILE: an open file first seen at a transfer (ADR-0015 rule 5)."""
+def filerec(t, p, fid, obj, f=None, name=b"", mode=3, cookie=0, version=None):
+    """A FILE: an open file first seen at a transfer (ADR-0015 rule 5); cookie, the socket's cookie
+    the kernel held then (FILE v2, ADR-0032)."""
     var = {"name": name}
     if f is not None:
         var["facts"] = f
+    kw = {} if version == 1 else {"sock_cookie": cookie}
+    if version is not None:
+        kw["version"] = version
     return rec("FILE", var=var, **hdr(t, p), fid=fid, obj=obj, f_mode=mode, seen=3,
-               fflags=FF.FF_OBJ_NEW if f is not None else 0)
+               fflags=FF.FF_OBJ_NEW if f is not None else 0, **kw)
 
 
 def run_of(d: Path, spine=(), bulk=(), daemon=()) -> Path:
@@ -458,7 +462,7 @@ class FlowEdges(Base):
         self.assertEqual(self.q(c, "SELECT op, src, dst FROM edge"), [("WRITE", self.proc(c, 700), self.node_of_fid(c, 7)[0])])
         self.assertEqual(self.res.counts["edge_without_node"], 0)
 
-    def test_a_socket_transfer_is_an_edge_to_the_sockets_file_object_counted_as_not_joined(self):
+    def test_a_socket_transfer_without_a_cookie_is_an_edge_to_the_sockets_file_object_counted_as_not_joined(self):
         sf = facts(ino=900, dev=8, mode=SOCK, fs_magic=SOCKFS, seen=5)
         c = self.graph(bulk=[SC.net(T0 + 1, A, "CONNECT", 4242, "10.0.0.2:5000", "10.0.0.1:80"),
                              filerec(T0 + 2, A, 5, 20, sf),
@@ -472,8 +476,73 @@ class FlowEdges(Base):
         # the connection's socket node (by cookie) is another node until NET names the object (step 2e)
         self.assertEqual(self.q(c, "SELECT count(*) FROM sock"), [(1,)])
         self.assertEqual(self.res.counts["flow_sock_not_joined"], 2)
+        self.assertEqual(self.res.counts["flow_sock_joined"], 0)
         s = self.q(c, "SELECT node_id FROM sock")[0][0]
         self.assertNotIn(s, TRK.backward(c, f, T0 + 100))
+
+    def test_a_socket_with_its_cookie_is_the_socket_node_of_its_net_records(self):
+        """ADR-0032: FILE v2's cookie joins the socket's file object to the NET socket node, so a
+        trace crosses a local TCP connection: server RECV <- server socket <- (ISN pair) client
+        socket <- client SEND <- the client's own input file."""
+        sf = lambda ino: facts(ino=ino, dev=8, mode=SOCK, fs_magic=SOCKFS, seen=5)
+        src = facts(ino=50, dev=DEV, gen=1, mode=REG, fs_magic=EXT4, seen=1)
+        c = self.graph(bulk=[
+            opn(T0 + 1, A, 3, 10, b"/home/u/secret", src, mode=1),
+            flow(T0 + 2, A, 3, 10, "READ", T0 + 2, T0 + 2, nbytes=99),
+            SC.net(T0 + 3, A, "CONNECT", 4242, "127.0.0.1:5000", "127.0.0.1:80", isn=7),
+            SC.net(T0 + 4, B2, "ACCEPT", 4343, "127.0.0.1:80", "127.0.0.1:5000", isn=7),
+            filerec(T0 + 5, A, 5, 20, sf(900), name=b"TCP", cookie=4242),
+            flow(T0 + 5, A, 5, 20, "SEND", T0 + 5, T0 + 5, nbytes=99),
+            filerec(T0 + 6, B2, 6, 21, sf(901), name=b"TCP", cookie=4343),
+            flow(T0 + 6, B2, 6, 21, "RECV", T0 + 6, T0 + 6, nbytes=99),
+            filerec(T0 + 7, A, 8, 22, sf(902), name=b"UDP", cookie=0),           # no cookie: its own node
+            flow(T0 + 7, A, 8, 22, "SEND", T0 + 7, T0 + 7, nbytes=1),
+            filerec(T0 + 8, A, 9, 23, sf(903), name=b"TCP", cookie=777),         # a cookie no NET names
+            flow(T0 + 8, A, 9, 23, "SEND", T0 + 8, T0 + 8, nbytes=1)])
+        sock = dict(self.q(c, "SELECT cookie, node_id FROM sock"))
+        a, b = self.proc(c, 700), self.proc(c, 710)
+        self.assertEqual(self.q(c, "SELECT op, src, dst FROM edge WHERE op IN ('SEND', 'RECV') AND bytes = 99 ORDER BY edge_id"),
+                         [("SEND", a, sock[4242]), ("RECV", sock[4343], b)])
+        self.assertEqual(self.q(c, "SELECT fid, rule FROM openfile WHERE fid IN (5, 6, 8, 9) ORDER BY fid"),
+                         [(5, "sock-cookie"), (6, "sock-cookie"), (8, "obj"), (9, "obj")])
+        self.assertEqual(self.q(c, "SELECT count(*) FROM file WHERE kind = 'socket'"), [(2,)])   # 902 and 903 only
+        cn = self.res.counts
+        self.assertEqual((cn["flow_sock_joined"], cn["flow_sock_not_joined"], cn["sock_obj_two_cookies"],
+                          cn["sock_cookie_without_net"], cn["edge_without_node"]), (2, 2, 0, 1, 0))
+        back = TRK.backward(c, b, T0 + 100)
+        self.assertIn(sock[4242], back)                                    # across the ISN pair
+        self.assertIn(a, back)                                             # the client process
+        self.assertIn(self.node_of_fid(c, 3)[0], back)                     # and the file it read first
+        self.assertIn(b, TRK.forward(c, self.node_of_fid(c, 3)[0], T0))
+
+    def test_one_object_with_two_cookies_is_not_joined_and_counted(self):
+        sf = facts(ino=900, dev=8, mode=SOCK, fs_magic=SOCKFS, seen=5)
+        c = self.graph(bulk=[SC.net(T0 + 1, A, "CONNECT", 1, "127.0.0.1:5000", "127.0.0.1:80"),
+                             SC.net(T0 + 1, A, "CONNECT", 2, "127.0.0.1:5001", "127.0.0.1:80"),
+                             filerec(T0 + 2, A, 5, 20, sf, cookie=1),
+                             filerec(T0 + 3, A, 6, 20, cookie=2),
+                             flow(T0 + 4, A, 5, 20, "SEND", T0 + 4, T0 + 4)])
+        self.assertEqual(self.q(c, "SELECT DISTINCT rule FROM openfile"), [("obj",)])
+        self.assertEqual((self.res.counts["sock_obj_two_cookies"], self.res.counts["flow_sock_not_joined"]), (1, 1))
+
+    def test_a_cookie_of_0_is_unknown_not_a_second_cookie(self):
+        """A FILE lost to a full ring is written again under a new fid (ADR-0015 rule 5): the first
+        try may have found no cookie yet and the second one the cookie. 0 is not a value (rule 2)."""
+        sf = facts(ino=900, dev=8, mode=SOCK, fs_magic=SOCKFS, seen=5)
+        c = self.graph(bulk=[SC.net(T0 + 1, A, "CONNECT", 4242, "127.0.0.1:5000", "127.0.0.1:80"),
+                             filerec(T0 + 2, A, 5, 20, sf, cookie=0),
+                             filerec(T0 + 3, A, 6, 20, cookie=4242),
+                             flow(T0 + 4, A, 6, 20, "SEND", T0 + 4, T0 + 4)])
+        self.assertEqual(self.q(c, "SELECT fid, rule FROM openfile ORDER BY fid"), [(5, "sock-cookie"), (6, "sock-cookie")])
+        self.assertEqual((self.res.counts["sock_obj_two_cookies"], self.res.counts["flow_sock_joined"]), (0, 1))
+
+    def test_a_file_v1_record_has_no_cookie_and_still_builds(self):
+        sf = facts(ino=900, dev=8, mode=SOCK, fs_magic=SOCKFS, seen=5)
+        c = self.graph(bulk=[SC.net(T0 + 1, A, "CONNECT", 4242, "127.0.0.1:5000", "127.0.0.1:80"),
+                             filerec(T0 + 2, A, 5, 20, sf, version=1),
+                             flow(T0 + 2, A, 5, 20, "SEND", T0 + 2, T0 + 2)])
+        self.assertEqual(self.q(c, "SELECT rule FROM openfile"), [("obj",)])
+        self.assertEqual(self.res.counts["flow_sock_not_joined"], 1)
 
     def test_what_must_be_zero_is_counted_and_an_unknown_kind_is_refused_by_the_record_check(self):
         self.graph(bulk=[flow(T0 + 5, A, 7, 30, "READ", T0 + 4, T0 + 3),                 # ends before it starts
@@ -721,6 +790,8 @@ class BuildFile(Base):
         broken[6] = 0x80                                                                          # an unknown header flag
         run_of(self.d / "err", bulk=[bytes(broken)])
         self.assertEqual(CLI.main([str(self.d / "err"), str(self.d / "err.duckdb")]), 1)
+        run_of(self.d / "two", bulk=[filerec(T0 + 2, A, 5, 20, cookie=1), filerec(T0 + 3, A, 6, 20, cookie=2)])
+        self.assertEqual(CLI.main([str(self.d / "two"), str(self.d / "two.duckdb")]), 1)          # ADR-0032 falsifier
 
     def test_text_and_addr(self):
         self.assertEqual(B.text(b"/a\xff"), "/a\\xff")

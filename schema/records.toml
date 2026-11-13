@@ -764,6 +764,27 @@ var = [
   { name = "name",  max = 63, doc = "file->f_path.dentry->d_name, without its NUL: 'memfd:<name>', an anonymous inode's '[eventfd]', a socket's protocol ('TCP', 'UNIX'), empty for a pipe; the reader builds pipe:[ino] and socket:[ino] from the facts. A longer name is cut at 63 bytes with header flag TRUNCATED, and name_full holds its length" },
 ]
 
+
+[[record]]
+name = "FILE"
+type = 11
+version = 2
+class = "OPEN"
+doc = "An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id by the program that registered the open file, before that program's FLOW; another thread's FLOW on the same file can reach the ring first, so a reader joins by fid, not by order. If it is lost to a full ring the registration is undone and the next transfer writes it. The header names the task that registered it. v2 adds the socket cookie, which joins a socket's file object to its NET records exactly (ADR-0032)."
+fields = [
+  { name = "fid",      c = "u64", doc = "the open-file id it registers (ADR-0015 rule 1)" },
+  { name = "obj",      c = "u64", doc = "the object id of the file's inode" },
+  { name = "sock_cookie", c = "u64", doc = "a socket's cookie as the kernel holds it in sk->__sk_common.skc_cookie when the FILE is written, the value NET's bpf_get_socket_cookie wrote there (ADR-0032); 0 when the file is not a socket or no program has made the cookie yet (counted by the reader, never guessed)" },
+  { name = "fflags",   c = "u32", doc = "P15_FF_OBJ_NEW or 0" },
+  { name = "f_flags",  c = "u32", doc = "file->f_flags" },
+  { name = "f_mode",   c = "u32", doc = "file->f_mode" },
+  { name = "seen",     c = "u32", doc = "where the open file was first seen, as OBJFACTS.seen: 3 first I/O (step 2b), 4 mmap (2d), 5 network (2e)" },
+]
+var = [
+  { name = "facts", part = "OBJFACTS", doc = "the object's facts, present exactly when fflags has OBJ_NEW" },
+  { name = "name",  max = 63, doc = "file->f_path.dentry->d_name, without its NUL: 'memfd:<name>', an anonymous inode's '[eventfd]', a socket's protocol ('TCP', 'UNIX'), empty for a pipe; the reader builds pipe:[ino] and socket:[ino] from the facts. A longer name is cut at 63 bytes with header flag TRUNCATED, and name_full holds its length" },
+]
+
 # ---- the snapshot's FD pass (ADR-0015 rule 7): written by the iter/task_file program into p15d's
 # daemon ring with the PROC records, MARKER class like them.
 [[record]]

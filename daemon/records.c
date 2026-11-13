@@ -27,7 +27,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_CLOSE:  return version == 1 ? sizeof(struct p15_close_v1) : 0;
 	case P15_T_FD:     return version == 1 ? sizeof(struct p15_fd_v1) : 0;
 	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : version == 2 ? sizeof(struct p15_file_stats_v2) : 0;
-	case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;
+	case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : version == 2 ? sizeof(struct p15_file_v2) : 0;
 	case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;
 	case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stats_v1) : 0;
 	}
@@ -189,33 +189,43 @@ static int check_file(const void *data, size_t fixed, const char **why)
 		return check_tail(data, fixed, (size_t)r->facts_len + r->path_len, 0, why);
 	}
 	case P15_T_FILE: {
-		const struct p15_file_v1 *r = data;
-		static const __u8 zero[sizeof(r->_pad)];
+		/* v2 (ADR-0032) is v1 with sock_cookie after obj: the same checks on the fields after it.
+		 * sock_cookie itself takes any value: 0 is "not a socket, or no cookie made yet". */
+		const struct p15_file_v1 *r1 = data;
+		const struct p15_file_v2 *r2 = data;
+		int v2 = h->version == 2;
+		__u32 fflags = v2 ? r2->fflags : r1->fflags, seen = v2 ? r2->seen : r1->seen;
+		__u32 name_full = v2 ? r2->name_full : r1->name_full, facts_full = v2 ? r2->facts_full : r1->facts_full;
+		__u16 name_len = v2 ? r2->name_len : r1->name_len, facts_len = v2 ? r2->facts_len : r1->facts_len;
+		const char *pad = v2 ? r2->_pad : r1->_pad;
+		static const __u8 zero[sizeof(r1->_pad)];
 
-		if (r->fflags & ~P15_FF_OBJ_NEW) {
+		_Static_assert(sizeof(r1->_pad) == sizeof(r2->_pad), "FILE v1 and v2 padding");
+		_Static_assert(P15_FILE_V1_NAME_MAX == P15_FILE_V2_NAME_MAX, "FILE v1 and v2 name");
+		if (fflags & ~P15_FF_OBJ_NEW) {
 			*why = "FILE: fflags bits this record never carries";
 			return -EINVAL;
 		}
-		if (r->seen < 3 || r->seen > 5) {
+		if (seen < 3 || seen > 5) {
 			*why = "FILE: unknown 'seen'";
 			return -EINVAL;
 		}
-		if (!!(h->flags & P15_F_TRUNCATED) != (r->name_full != r->name_len) || r->name_full < r->name_len) {
+		if (!!(h->flags & P15_F_TRUNCATED) != (name_full != name_len) || name_full < name_len) {
 			*why = "FILE: name_full differs from name_len without TRUNCATED, or the reverse";
 			return -EINVAL;
 		}
-		if (r->facts_len > P15_PART_OBJFACTS_SIZE || r->name_len > P15_FILE_V1_NAME_MAX ||
-		    fixed + r->facts_len + r->name_len > h->len) {
+		if (facts_len > P15_PART_OBJFACTS_SIZE || name_len > P15_FILE_V1_NAME_MAX ||
+		    fixed + facts_len + name_len > h->len) {
 			*why = "variable field beyond len";
 			return -EINVAL;
 		}
-		if (check_part(data, fixed, r->facts_len, r->facts_full, r->fflags & P15_FF_OBJ_NEW,
+		if (check_part(data, fixed, facts_len, facts_full, fflags & P15_FF_OBJ_NEW,
 			       "FILE: facts is neither absent nor a whole OBJFACTS",
 			       "FILE: facts present without its flag, or its flag without it", why))
 			return -EINVAL;
-		if (check_tail(data, fixed, (size_t)r->facts_len + r->name_len, 0, why))
+		if (check_tail(data, fixed, (size_t)facts_len + name_len, 0, why))
 			return -EINVAL;
-		if (memcmp(r->_pad, zero, sizeof(zero))) {
+		if (memcmp(pad, zero, sizeof(zero))) {
 			*why = "FILE: non-zero padding";
 			return -EINVAL;
 		}
@@ -739,6 +749,15 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 	case P15_T_FILE: {
 		const struct p15_file_v1 *r = data;
 
+		if (h->version == 2) {
+			const struct p15_file_v2 *q = data;
+
+			printable(a, sizeof(a), (const __u8 *)(q + 1) + q->facts_len, q->name_len);
+			return k + snprintf(buf + k, n - k, " fid=%llu obj=%llu sock_cookie=%llu fflags=0x%x f_flags=0%o f_mode=0x%x "
+					    "seen=%u name=\"%s\"(%u/%u)", (unsigned long long)q->fid, (unsigned long long)q->obj,
+					    (unsigned long long)q->sock_cookie, q->fflags, q->f_flags, q->f_mode, q->seen, a,
+					    q->name_len, q->name_full);
+		}
 		printable(a, sizeof(a), (const __u8 *)(r + 1) + r->facts_len, r->name_len);
 		return k + snprintf(buf + k, n - k, " fid=%llu obj=%llu fflags=0x%x f_flags=0%o f_mode=0x%x seen=%u name=\"%s\"(%u/%u)",
 				    (unsigned long long)r->fid, (unsigned long long)r->obj, r->fflags, r->f_flags, r->f_mode,

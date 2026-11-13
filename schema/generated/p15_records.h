@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "131e161bd94c51177f31961a8a66a8188f47396a8b6ee9cc983294844c015150"
+#define P15_SCHEMA_HASH "71dc3703503fcb6945d6642b1ec85f51adb9ac8e61de7ad0ae0657cfdec7d3e2"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -1155,6 +1155,41 @@ P15_ASSERT(P15_OFFSETOF(struct p15_file_v1, _pad) == 76, "p15_file_v1._pad offse
 #define P15_FILE_V1_FACTS_MAX 40
 #define P15_FILE_V1_NAME_MAX 63
 
+/* FILE v2 (OPEN): An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id by the program that registered the open file, before that program's FLOW; another thread's FLOW on the same file can reach the ring first, so a reader joins by fid, not by order. If it is lost to a full ring the registration is undone and the next transfer writes it. The header names the task that registered it. v2 adds the socket cookie, which joins a socket's file object to its NET records exactly (ADR-0032). */
+struct p15_file_v2 {
+	struct p15_hdr h;
+	__u64 fid;
+	__u64 obj;
+	__u64 sock_cookie;
+	__u32 fflags;
+	__u32 f_flags;
+	__u32 f_mode;
+	__u32 seen;
+	__u32 facts_full;   /* generated */
+	__u32 name_full;   /* generated */
+	__u16 facts_len;   /* generated */
+	__u16 name_len;   /* generated */
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_file_v2) == 88, "p15_file_v2 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, h) == 0, "p15_file_v2.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, fid) == 32, "p15_file_v2.fid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, obj) == 40, "p15_file_v2.obj offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, sock_cookie) == 48, "p15_file_v2.sock_cookie offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, fflags) == 56, "p15_file_v2.fflags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, f_flags) == 60, "p15_file_v2.f_flags offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, f_mode) == 64, "p15_file_v2.f_mode offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, seen) == 68, "p15_file_v2.seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, facts_full) == 72, "p15_file_v2.facts_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, name_full) == 76, "p15_file_v2.name_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, facts_len) == 80, "p15_file_v2.facts_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, name_len) == 82, "p15_file_v2.name_len offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_file_v2, _pad) == 84, "p15_file_v2._pad offset");
+
+#define P15_FILE_V2_MAX_SIZE 192
+#define P15_FILE_V2_FACTS_MAX 40
+#define P15_FILE_V2_NAME_MAX 63
+
 /* FD v1 (MARKER): One open descriptor of a thread-group leader in a process snapshot (ADR-0015 rule 7): the files already open when capture began, standard streams included, and again in every segment's opening snapshot. The header names the descriptor's process (ADR-0009). It carries the object's facts always (decision 19.2), so a segment can be read alone. */
 struct p15_fd_v1 {
 	struct p15_hdr h;
@@ -1572,11 +1607,11 @@ P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, _pad) == 90, "p15_flow_v1._pad offse
 #define P15_CLOSE_VERSION 1
 #define p15_close p15_close_v1
 #define P15_CLOSE_MAX_SIZE P15_CLOSE_V1_MAX_SIZE
-#define P15_FILE_VERSION 1
-#define p15_file p15_file_v1
-#define P15_FILE_MAX_SIZE P15_FILE_V1_MAX_SIZE
-#define P15_FILE_FACTS_MAX P15_FILE_V1_FACTS_MAX
-#define P15_FILE_NAME_MAX P15_FILE_V1_NAME_MAX
+#define P15_FILE_VERSION 2
+#define p15_file p15_file_v2
+#define P15_FILE_MAX_SIZE P15_FILE_V2_MAX_SIZE
+#define P15_FILE_FACTS_MAX P15_FILE_V2_FACTS_MAX
+#define P15_FILE_NAME_MAX P15_FILE_V2_NAME_MAX
 #define P15_FD_VERSION 1
 #define p15_fd p15_fd_v1
 #define P15_FD_MAX_SIZE P15_FD_V1_MAX_SIZE

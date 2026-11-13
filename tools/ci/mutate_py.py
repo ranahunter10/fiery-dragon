@@ -566,7 +566,7 @@ M = [
  (GSQL, "FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id AND x.ts_ns = proc_image.ts_ns", "FROM edge x WHERE x.op = 'EXECUTE' AND x.dst = proc_image.node_id"),
  (GSQL, "WHERE r.tid <> r.tgid\n", "WHERE true\n"),
  (GSQL, "WHERE n.kind = 'proc' AND e.dst_image IS NULL),", "WHERE e.dst_image IS NULL),"),
- (GCLI, '"fid_two_objs", "image_exec_without_edge")', '"fid_two_objs")'), # R2: backward and forward tracking
+ (GCLI, '"fid_two_objs", "image_exec_without_edge", "sock_obj_two_cookies")', '"fid_two_objs", "sock_obj_two_cookies")'), # R2: backward and forward tracking
  (GTRACK, "SELECT src, dst, ts_ns::BIGINT AS t0, end_ns::BIGINT AS t1, op FROM edge WHERE ok\n", "SELECT src, dst, ts_ns::BIGINT AS t0, end_ns::BIGINT AS t1, op FROM edge WHERE true\n"),
  (GTRACK, "UNION ALL SELECT client_node, server_node, NULL, NULL, 'PAIR' FROM sock_pair\n", ""),
  (GTRACK, "UNION ALL SELECT user_node, real_node, NULL, NULL, 'BACKING' FROM file_backing\n", ""),
@@ -613,7 +613,7 @@ M = [
  (GSQL, "FROM raw_flow WHERE last_ts < first_ts)", "FROM raw_flow WHERE false)"),
  (GSQL, "FROM raw_flow WHERE (fflags & 512) <> 0)", "FROM raw_flow WHERE (fflags & 4096) <> 0)"),
  (GSQL, "FROM raw_flow WHERE (fflags & 4096) <> 0)", "FROM raw_flow WHERE (fflags & 512) <> 0)"),
- (GSQL, "FROM raw_flow WHERE kind IN (3, 4))", "FROM raw_flow WHERE kind IN (1, 2))"),
+ (GSQL, "WHERE w.kind IN (3, 4) AND f.rule IS DISTINCT FROM", "WHERE w.kind IN (1, 2) AND f.rule IS DISTINCT FROM"),
  (GSQL, "UPDATE file SET name = x.name\n", "UPDATE file SET name = NULL\n"),
  (GPM, '"READ": FLOW_WAITS, "WRITE": FLOW_WAITS, "RECV": FLOW_WAITS, "SEND": FLOW_WAITS}', '"RECV": FLOW_WAITS, "SEND": FLOW_WAITS}'),
  (GTRACK, "THEN bt.thr ELSE least(bt.thr, e.t1) END)\n    FROM bt", "THEN bt.thr ELSE least(bt.thr, e.t0) END)\n    FROM bt"),
@@ -624,6 +624,16 @@ M = [
  (GTRACK, "THEN ft.thr ELSE greatest(ft.thr, e.t0) END)\n    FROM ft", "THEN ft.thr ELSE greatest(ft.thr, e.t1) END)\n    FROM ft"),
  (GTRACK, "end_ns::BIGINT AS t1, op FROM edge", "ts_ns::BIGINT AS t1, op FROM edge"),
  (GTRACK, "SELECT min(ts_ns), max(end_ns) FROM edge", "SELECT min(ts_ns), max(ts_ns) FROM edge"),
+ # ADR-0032: a socket's file object joins its NET socket node by FILE v2's cookie
+ (GSQL, "HAVING count(DISTINCT sock_cookie) = 1 AND min(sock_cookie)", "HAVING min(sock_cookie)"),
+ (GSQL, " AND min(sock_cookie) IN (SELECT sock_cookie FROM raw_net);", ";"),
+ (GSQL, "SELECT obj, min(sock_cookie) AS cookie FROM raw_file WHERE sock_cookie > 0 GROUP BY obj",
+  "SELECT obj, min(sock_cookie) AS cookie FROM raw_file WHERE sock_cookie >= 0 GROUP BY obj"),
+ (GSQL, "CASE WHEN so.cookie IS NOT NULL THEN 's:' || so.cookie", "CASE WHEN so.cookie IS NOT NULL THEN 'o:' || so.obj"),
+ (GSQL, "FROM openfile WHERE rule <> 'sock-cookie'", "FROM openfile"),
+ (GSQL, "WHERE w.kind IN (3, 4) AND f.rule IS DISTINCT FROM 'sock-cookie'", "WHERE w.kind IN (3, 4)"),
+ (GSQL, "GROUP BY obj HAVING count(DISTINCT sock_cookie) > 1)),", "GROUP BY obj HAVING count(DISTINCT sock_cookie) > 2)),"),
+ (GCLI, '"image_exec_without_edge", "sock_obj_two_cookies")', '"image_exec_without_edge")'),
 ]
 
 

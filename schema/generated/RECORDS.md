@@ -768,6 +768,33 @@ Variable-length fields, after the fixed part in this order:
 - `facts` (0 or 40 bytes, part OBJFACTS): the object's facts, present exactly when fflags has OBJ_NEW
 - `name` (at most 63 bytes): file->f_path.dentry->d_name, without its NUL: 'memfd:<name>', an anonymous inode's '[eventfd]', a socket's protocol ('TCP', 'UNIX'), empty for a pipe; the reader builds pipe:[ino] and socket:[ino] from the facts. A longer name is cut at 63 bytes with header flag TRUNCATED, and name_full holds its length
 
+## FILE (type 11, version 2, class OPEN)
+
+An open file first seen at its first transfer (ADR-0015 rule 5): one that never reached security_file_open (a pseudo file from alloc_file_pseudo: pipes, sockets, memfds, anonymous inodes) and was not in the snapshot, or a regular file whose open capture missed. Written once per open-file id by the program that registered the open file, before that program's FLOW; another thread's FLOW on the same file can reach the ring first, so a reader joins by fid, not by order. If it is lost to a full ring the registration is undone and the next transfer writes it. The header names the task that registered it. v2 adds the socket cookie, which joins a socket's file object to its NET records exactly (ADR-0032).
+
+Fixed part 88 bytes; at most 192 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `fid` | u64 | the open-file id it registers (ADR-0015 rule 1) |
+| 40 | `obj` | u64 | the object id of the file's inode |
+| 48 | `sock_cookie` | u64 | a socket's cookie as the kernel holds it in sk->__sk_common.skc_cookie when the FILE is written, the value NET's bpf_get_socket_cookie wrote there (ADR-0032); 0 when the file is not a socket or no program has made the cookie yet (counted by the reader, never guessed) |
+| 56 | `fflags` | u32 | P15_FF_OBJ_NEW or 0 |
+| 60 | `f_flags` | u32 | file->f_flags |
+| 64 | `f_mode` | u32 | file->f_mode |
+| 68 | `seen` | u32 | where the open file was first seen, as OBJFACTS.seen: 3 first I/O (step 2b), 4 mmap (2d), 5 network (2e) |
+| 72 | `facts_full` | u32 | full length of facts in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 76 | `name_full` | u32 | full length of name in bytes; P15_LEN_UNKNOWN if cut and not known *(generated)* |
+| 80 | `facts_len` | u16 | bytes of facts present in this record *(generated)* |
+| 82 | `name_len` | u16 | bytes of name present in this record *(generated)* |
+| 84 | `_pad` | char[4] | zero; pads the fixed part to 8 *(generated)* |
+
+Variable-length fields, after the fixed part in this order:
+
+- `facts` (0 or 40 bytes, part OBJFACTS): the object's facts, present exactly when fflags has OBJ_NEW
+- `name` (at most 63 bytes): file->f_path.dentry->d_name, without its NUL: 'memfd:<name>', an anonymous inode's '[eventfd]', a socket's protocol ('TCP', 'UNIX'), empty for a pipe; the reader builds pipe:[ino] and socket:[ino] from the facts. A longer name is cut at 63 bytes with header flag TRUNCATED, and name_full holds its length
+
 ## FD (type 39, version 1, class MARKER)
 
 One open descriptor of a thread-group leader in a process snapshot (ADR-0015 rule 7): the files already open when capture began, standard streams included, and again in every segment's opening snapshot. The header names the descriptor's process (ADR-0009). It carries the object's facts always (decision 19.2), so a segment can be read alone.
