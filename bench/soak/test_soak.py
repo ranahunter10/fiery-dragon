@@ -166,6 +166,21 @@ class Report(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("1 workload steps failed (not checked)", out)
 
+    def test_stall(self):
+        out, rc = S.report(soak_text())
+        self.assertNotIn("STALL", out)             # samples 60 s apart: no stall
+        # E-0249's samples: the first at t=454 with 60 s planned, then 60 s apart
+        txt = soak_text().replace("sample t=60 ", "sample t=454 ").replace("sample t=120 ", "sample t=514 ") \
+            .replace("sample t=180 ", "sample t=574 ")
+        out, rc = S.report(txt)
+        self.assertEqual(rc, 0, out)               # reported, not judged: recall and the books decide
+        self.assertIn("STALL: the sample at t=454 s came 454 s after the one before it (planned every 60 s): "
+                      "about 394 s of the run lost to a stall. The rates above are not quotable (E-0249).", out)
+        self.assertIn("- note: a stall touched the soak (about 394 s): its rates are not quotable", out)
+        # 1.5 times the plan is the threshold: 90 s is not a stall, 91 s is
+        self.assertNotIn("STALL", S.report(soak_text().replace("sample t=60 ", "sample t=90 "))[0])
+        self.assertIn("STALL", S.report(soak_text().replace("sample t=60 ", "sample t=91 "))[0])
+
     def test_malformed(self):
         for t, why in ((soak_text() + "hello\n", "unknown line"),
                        (soak_text().replace("config duration", "configx duration"), "unknown line"),

@@ -26,6 +26,11 @@
 #   8 soak       real programs for SECONDS: recall per step kind, names, graph checks, memory, WAL
 # A step that fails is recorded and the next one runs; the exit code is 1 if any step failed.
 # summary.md has one line per figure, taken from each step's own report.
+#
+# Stalls (E-0249, E-0250): the VM's host can stop running the guest for minutes. At the end, the
+# guest's kernel log for the run's window is kept (kernel_log.txt) and tools/vm/stalls.py names
+# every step a stall overlapped (stalls.txt, and "## Stalls" in summary.md). A stall does not fail
+# the run: it makes the touched steps' rates and timings not quotable.
 set -u
 
 QUICK=0
@@ -100,7 +105,8 @@ step() {   # name, command...: run, keep its output, time it
 	"$@" > "$OUT/$name.txt" 2> "$OUT/$name.err"
 	rc=$?
 	t1=$(date +%s.%N)
-	awk -v n="$name" -v r="$rc" -v a="$t0" -v b="$t1" 'BEGIN { printf "%s rc=%d seconds=%.1f\n", n, r, b - a }' >> "$OUT/steps.txt"
+	awk -v n="$name" -v r="$rc" -v a="$t0" -v b="$t1" \
+		'BEGIN { printf "%s rc=%d seconds=%.1f start=%.3f end=%.3f\n", n, r, b - a, a, b }' >> "$OUT/steps.txt"
 	[ "$rc" = 0 ] || FAILED=1
 	return 0
 }
@@ -115,6 +121,7 @@ step() {   # name, command...: run, keep its output, time it
 	sha256sum $B/p15d $B/p15w-inspect $B/open_cost $B/prim_cost $B/crc32c_bench
 } > "$OUT/manifest.txt"
 
+RUN_T0=$(date +%s)          # the kernel log is read from here (stalls.txt)
 export P15_PYTHON="$PY"     # it_p15d.sh reads the WAL with it; sudo's python3 lacks google_crc32c
 step it_p15d daemon/tests/it_p15d.sh "$B"
 step crc32c sh -c "$B/crc32c_bench 4096 9 && $B/crc32c_bench 120 9"
@@ -149,6 +156,13 @@ step idle_report "$PY" bench/idle_cost/summarize.py "$OUT/idle.txt"
 step soak "$PY" bench/soak/soak.py --p15d "$B/p15d" --work /var/tmp/p15-measure-soak --duration "$SOAK_S" --clean \
 	"${EXTRA[@]}"
 step soak_report "$PY" bench/soak/summarize.py "$OUT/soak.txt"
+if [ "$DRY" != 1 ]; then
+	# the guest's kernel log since the run began, and the stalls in it (not a step: it times nothing)
+	journalctl -k --since "@$((RUN_T0 - 1))" -o short-unix --no-pager > "$OUT/kernel_log.txt" 2> "$OUT/kernel_log.err"
+	python3 tools/vm/stalls.py "$OUT/kernel_log.txt" "$OUT/steps.txt" > "$OUT/stalls.txt" 2> "$OUT/stalls.err" ||
+		echo "stalls UNKNOWN (stalls.py failed: see stalls.err)" > "$OUT/stalls.txt"
+	[ -s "$OUT/kernel_log.txt" ] || echo "kernel_log EMPTY (journalctl gave nothing: see kernel_log.err)" >> "$OUT/stalls.txt"
+fi
 
 {
 	echo "# Capture measurement matrix, $STAMP"
@@ -159,6 +173,10 @@ step soak_report "$PY" bench/soak/summarize.py "$OUT/soak.txt"
 	echo
 	sed 's/^/- /' "$OUT/steps.txt"
 	echo
+	echo "## Stalls (tools/vm/stalls.py on the guest's kernel log)"
+	echo
+	if [ -f "$OUT/stalls.txt" ]; then sed 's/^/- /' "$OUT/stalls.txt"; else echo "- not checked (dry run)"; fi
+	echo
 	echo "## Figures (each from its step's own report)"
 	echo
 	grep -h -E "failures|PASS|FAIL" "$OUT/it_p15d.txt" 2>/dev/null | tail -3 | sed 's/^/- it_p15d: /'
@@ -168,7 +186,7 @@ step soak_report "$PY" bench/soak/summarize.py "$OUT/soak.txt"
 		"$OUT/open_cost_report.txt" 2>/dev/null | sed 's/^ *-* */- open_cost: /'
 	grep -h -E "^ +[0-9.]+%" "$OUT/profile.txt" 2>/dev/null | head -8 | sed 's/^ */- profile: /'
 	grep -h -E "^\| default|^- |ms/s" "$OUT/idle_report.txt" 2>/dev/null | grep -v "^| arm" | head -8 | sed 's/^/- idle: /'
-	grep -h -E "^\| [a-z]|PASS|FAIL|WAL:" "$OUT/soak_report.txt" 2>/dev/null | grep -v -E "^\| (step|graph check) " | head -30 | sed 's/^/- soak: /'
+	grep -h -E "^\| [a-z]|PASS|FAIL|WAL:|^STALL" "$OUT/soak_report.txt" 2>/dev/null | grep -v -E "^\| (step|graph check) " | head -30 | sed 's/^/- soak: /'
 } > "$OUT/summary.md"
 ( cd "$OUT" && find . -type f ! -name SHA256SUMS ! -path './perf/*' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS )
 chown -R "${SUDO_USER:-root}" "$OUT" 2>/dev/null
