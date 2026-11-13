@@ -11,7 +11,9 @@ compiled program a written-then-executed file node, each http connection paired,
 execution present); at most 10 % of the workload's steps failed. The graph's build time per hour of
 workload is reported against its target, GRAPH_S_PER_HOUR (STATE decision 34); it fails the run only
 with --strict-graph-time (the default once gate 10's streaming builder lands). Also reported, not judged: CPU,
-memory and WAL growth over the run, event rates, the walk's counters, the graph's books.
+memory and WAL growth over the run, event rates, the walk's counters, the graph's books, and in a --flow run
+every FLOW_STATS counter (a lost or refused FLOW, or a skipped flow program, makes the run DEGRADED, which
+the END state already fails; a non-zero counter p15_flow.h expects to be 0 is a note).
 
 A stalled VM (E-0249, E-0250) is reported, not judged: when a sample comes more than LATE times its
 planned interval after the one before it (the first, after the workload's start), the report says
@@ -28,6 +30,7 @@ from pathlib import Path
 KV = re.compile(r"(\w+)=(\S+)")
 MUST_BE_ZERO = ("edge_without_node", "obj_facts_conflict", "fid_two_objs")
 GRAPH_S_PER_HOUR = 60.0     # STATE decision 34: an hour's graph in under a minute
+FLOW_EXPECT_ZERO = ("v_release_failed", "v_claim_race")   # expected 0, reported, not book terms (FLOW_STATS docs)
 LATE = 1.5                  # a sample this many times its planned interval late marks a stall (E-0249)
 
 
@@ -40,7 +43,7 @@ def kv(line: str) -> dict:
 
 
 def parse(text: str) -> dict:
-    d = {"config": None, "samples": [], "end": None, "truth": [], "missing": [], "failed": [], "file_stats": None,
+    d = {"config": None, "samples": [], "end": None, "truth": [], "missing": [], "failed": [], "file_stats": None, "flow_stats": None,
          "graph_out": [], "graph": None, "graph_truth": [], "errors": [], "workload": None}
     for line in text.splitlines():
         if not line.strip():
@@ -66,6 +69,8 @@ def parse(text: str) -> dict:
             d["failed"].append(rest)
         elif tag == "file_stats":
             d["file_stats"] = {k: int(v) for k, v in kv(rest).items()}
+        elif tag == "flow_stats":
+            d["flow_stats"] = {k: int(v) for k, v in kv(rest).items()}
         elif tag == "graph_out":
             d["graph_out"].append(rest)
         elif tag == "graph":
@@ -100,6 +105,21 @@ def late_samples(samples: list[dict], planned: float) -> list[tuple[float, float
             out.append((x["t"], x["t"] - prev))
         prev = x["t"]
     return out
+
+
+def flow_lines(fl: dict[str, int]) -> list[str]:
+    """The data-flow programs' counters (FLOW_STATS, --flow runs only), every field printed."""
+    g = fl.get
+    shown = ("read_emitted", "write_emitted", "send_emitted", "recv_emitted", "flow_lost", "start_unknown",
+             "unregistered", "file_emitted", "file_lost", "file_map_full", "open_at_end", "returned_after_count",
+             "flow_missed", "flow_invalid")
+    rest = ", ".join(f"{k} {v:,}" for k, v in fl.items() if k not in shown)
+    return [f"Data flow: FLOW READ {g('read_emitted', 0):,}, WRITE {g('write_emitted', 0):,}, SEND "
+            f"{g('send_emitted', 0):,}, RECV {g('recv_emitted', 0):,}; lost {g('flow_lost', 0)}; START_UNKNOWN "
+            f"{g('start_unknown', 0):,}, UNREGISTERED {g('unregistered', 0):,}; FILE {g('file_emitted', 0):,} (lost "
+            f"{g('file_lost', 0)}, map full {g('file_map_full', 0)}); calls open at the end {g('open_at_end', 0):,} "
+            f"({g('returned_after_count', 0):,} returned after the count); kernel skips {g('flow_missed', 0)}; refused "
+            f"{g('flow_invalid', 0)}.", "", f"FLOW_STATS, the other counters: {rest}.", ""]
 
 
 def report(text: str, strict_graph_time: bool = False) -> tuple[str, int]:
@@ -178,6 +198,12 @@ def report(text: str, strict_graph_time: bool = False) -> tuple[str, int]:
                 f"the session return ({f.get('walked', 0):,} walked, {f.get('walk_raced', 0)} raced, {f.get('walk_unnamed', 0)} "
                 f"without a path); fentry skips {f.get('fentry_missed', 0):,}; lost: OPEN {f.get('open_lost', 0)}, CLOSE "
                 f"{f.get('close_lost', 0)}; most open files {f.get('files_live_max', 0):,}, objects {f.get('objs_live_max', 0):,}.", ""]
+    if d["flow_stats"]:
+        fl = d["flow_stats"]
+        out += flow_lines(fl)
+        for k in FLOW_EXPECT_ZERO:
+            if fl.get(k, 0):
+                notes.append(f"FLOW_STATS {k} = {fl[k]:,} (expected 0)")
     g = d["graph"]
     if g is None:
         fails.append("the graph was not built")
