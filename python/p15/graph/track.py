@@ -6,13 +6,19 @@
 
 NODE is a node_id or a node key (`p:TGID:START_NS`, a file key, `s:COOKIE`).
 
+An edge covers a time interval [t0, t1]: one moment for an event (t0 = t1 = its time), the start
+of the first transfer to the end of the last for a FLOW (`edge.ts_ns`, `edge.end_ns`; ADR-0005 rule 8).
+
 **Backward** from (node, t): which nodes could have affected node before t. Each reached node gets
-a threshold, the latest time at which it could still have passed something on:
-    thr(start) = t;  an edge u -> v at time ts with ts < thr(v) reaches u with min(thr(v), ts);
+a threshold, the latest time at which it could still have passed something on (BackTracker §2.3):
+    thr(start) = t;  an edge u -> v over [t0, t1] with t0 < thr(v) reaches u with min(thr(v), t1);
     u keeps the largest threshold any path gives it.
 **Forward** from (node, t), the mirror: which nodes node could have affected from t on, each with
 the earliest time it could have been affected:
-    thr(start) = t;  an edge u -> v at time ts with ts > thr(u) reaches v with ts;  v keeps the smallest.
+    thr(start) = t;  an edge u -> v over [t0, t1] with t1 > thr(u) reaches v with max(thr(u), t0);
+    v keeps the smallest.
+A transfer still running when its other end is read or written counts as a dependency: the walk
+never assumes an order inside an interval.
 
 Both are one recursive query, `WITH RECURSIVE ... USING KEY (node)` (DuckDB 2.0, R-045): the keyed
 table holds each node's best threshold so far, and an iteration passes on only the nodes whose
@@ -28,10 +34,13 @@ What a step may follow (`track_edge`, built once per connection as a temporary t
   not events: they have no time (NULL), so a step across one keeps the threshold it had.
 Edges that did not happen (a denied open, a refused connect) are never followed.
 
-Limits (ADR-0028's): open-level edges go file -> process whatever the access, so until step 2b's
-FLOW records a backward walk stops at every file it reaches (nothing points into a file) and a
-forward walk never leaves a process through a write. A server's reply to its client has no edge
-until then either (ACCEPT is socket -> server).
+Limits:
+- a run captured without the flow programs (before step 2b, or `--flow` off) holds open-level edges
+  only, file -> process whatever the access (ADR-0028): a backward walk then stops at every file it
+  reaches, and a forward walk never leaves a process through a write;
+- a transfer on a socket points at the socket's file object, which is not yet the socket node of
+  the NET records (`graph_count.flow_sock_not_joined`): until NET carries the object id (step 2e) a
+  walk does not pass from a SEND or RECV to the connection's other end.
 """
 
 from __future__ import annotations
@@ -44,23 +53,24 @@ import duckdb
 
 TRACK_EDGE = """
 CREATE TEMP TABLE IF NOT EXISTS track_edge AS
-SELECT src, dst, ts_ns, op FROM edge WHERE ok
-UNION ALL SELECT parent_node, node_id, start_ns, 'CLONE_BEFORE' FROM proc WHERE fork_ns IS NULL AND parent_node IS NOT NULL
-UNION ALL SELECT client_node, server_node, NULL::UBIGINT, 'PAIR' FROM sock_pair
-UNION ALL SELECT real_node, user_node, NULL::UBIGINT, 'BACKING' FROM file_backing
-UNION ALL SELECT user_node, real_node, NULL::UBIGINT, 'BACKING' FROM file_backing
+SELECT src, dst, ts_ns::BIGINT AS t0, end_ns::BIGINT AS t1, op FROM edge WHERE ok
+UNION ALL SELECT parent_node, node_id, start_ns::BIGINT, start_ns::BIGINT, 'CLONE_BEFORE' FROM proc
+          WHERE fork_ns IS NULL AND parent_node IS NOT NULL
+UNION ALL SELECT client_node, server_node, NULL, NULL, 'PAIR' FROM sock_pair
+UNION ALL SELECT real_node, user_node, NULL, NULL, 'BACKING' FROM file_backing
+UNION ALL SELECT user_node, real_node, NULL, NULL, 'BACKING' FROM file_backing
 """
 
-# a relation (ts NULL) keeps the threshold; an event narrows it to its own time (ts < thr, so
-# min(thr, ts) is ts)
+# a relation (t0 NULL) keeps the threshold; an edge over [t0, t1] is followed when it began before
+# the threshold and narrows it to its end, if that is earlier
 BACK = """
 WITH RECURSIVE bt(node, thr) USING KEY (node) AS (
     SELECT ?::BIGINT, ?::BIGINT
     UNION
-    SELECT e.src, max(CASE WHEN e.ts_ns IS NULL THEN bt.thr ELSE e.ts_ns END)
-    FROM bt JOIN track_edge e ON e.dst = bt.node AND (e.ts_ns IS NULL OR e.ts_ns < bt.thr)
+    SELECT e.src, max(CASE WHEN e.t0 IS NULL THEN bt.thr ELSE least(bt.thr, e.t1) END)
+    FROM bt JOIN track_edge e ON e.dst = bt.node AND (e.t0 IS NULL OR e.t0 < bt.thr)
     LEFT JOIN recurring.bt r ON r.node = e.src
-    WHERE r.thr IS NULL OR (CASE WHEN e.ts_ns IS NULL THEN bt.thr ELSE e.ts_ns END) > r.thr
+    WHERE r.thr IS NULL OR (CASE WHEN e.t0 IS NULL THEN bt.thr ELSE least(bt.thr, e.t1) END) > r.thr
     GROUP BY e.src
 )
 SELECT node, thr FROM bt ORDER BY node
@@ -70,10 +80,10 @@ FORWARD = """
 WITH RECURSIVE ft(node, thr) USING KEY (node) AS (
     SELECT ?::BIGINT, ?::BIGINT
     UNION
-    SELECT e.dst, min(CASE WHEN e.ts_ns IS NULL THEN ft.thr ELSE e.ts_ns END)
-    FROM ft JOIN track_edge e ON e.src = ft.node AND (e.ts_ns IS NULL OR e.ts_ns > ft.thr)
+    SELECT e.dst, min(CASE WHEN e.t0 IS NULL THEN ft.thr ELSE greatest(ft.thr, e.t0) END)
+    FROM ft JOIN track_edge e ON e.src = ft.node AND (e.t0 IS NULL OR e.t1 > ft.thr)
     LEFT JOIN recurring.ft r ON r.node = e.dst
-    WHERE r.thr IS NULL OR (CASE WHEN e.ts_ns IS NULL THEN ft.thr ELSE e.ts_ns END) < r.thr
+    WHERE r.thr IS NULL OR (CASE WHEN e.t0 IS NULL THEN ft.thr ELSE greatest(ft.thr, e.t0) END) < r.thr
     GROUP BY e.dst
 )
 SELECT node, thr FROM ft ORDER BY node
@@ -99,6 +109,11 @@ def forward(con: duckdb.DuckDBPyConnection, node: int, after_ns: int) -> dict[in
     return dict(con.execute(FORWARD, [node, after_ns]).fetchall())
 
 
+def span(con: duckdb.DuckDBPyConnection) -> tuple[int | None, int | None]:
+    """The start of the graph's first edge and the end of its last (a transfer ends after it starts)."""
+    return con.execute("SELECT min(ts_ns), max(end_ns) FROM edge").fetchone()
+
+
 def resolve(con: duckdb.DuckDBPyConnection, spec: str) -> int:
     """A node_id from a node_id or a node key; ValueError if there is no such node."""
     row = con.execute("SELECT node_id FROM node WHERE key = ? OR CAST(node_id AS VARCHAR) = ?", [spec, spec]).fetchone()
@@ -114,7 +129,7 @@ def describe(con: duckdb.DuckDBPyConnection, nodes: list[int]) -> dict[int, str]
     rows = con.execute("""
         SELECT a.node_id, CASE n.kind
             WHEN 'proc' THEN 'proc ' || p.tgid || ' ' || coalesce(p.comm, '?') || coalesce(' (' || p.cmd || ')', '')
-            WHEN 'file' THEN 'file ' || coalesce(f.path, f.key)
+            WHEN 'file' THEN 'file ' || coalesce(f.path, f.kind || ' ' || nullif(f.name, '') || ' ' || f.key, f.key)
             ELSE 'sock ' || coalesce(s.laddr || ':' || s.lport || ' -> ' || s.raddr || ':' || s.rport, n.key) END
         FROM unnest(?::BIGINT[]) a(node_id) JOIN node n USING (node_id) LEFT JOIN proc p USING (node_id)
         LEFT JOIN file f USING (node_id) LEFT JOIN sock s USING (node_id)""", [nodes]).fetchall()
@@ -136,7 +151,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     con = duckdb.connect(str(a.graph), read_only=True)
     try:
-        lo, hi = con.execute("SELECT min(ts_ns), max(ts_ns) FROM edge").fetchone()
+        lo, hi = span(con)
         try:
             start = resolve(con, a.back or a.forward)
         except ValueError as e:
