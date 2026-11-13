@@ -72,9 +72,18 @@ int main(void)
 	       "the end's wait and its two test switches echoed, with their defaults");
 	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "200"), "the poll maximum echoed, its default 200 (ADR-0030)");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
-	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "65536") &&
+	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "0") &&
 	       !strcmp(kv[11].key, "config.obj_map_entries") && !strcmp(kv[11].value, "131072"),
-	       "map sizes echoed with their defaults (decision 19.6)");
+	       "map sizes echoed; the open-file map's 0 is 'not given': p15d sets it from the host before the header is written");
+	/* the size from the host (decision 103): 4 x the files open now, floor 65,536, at most 1/128 of memory at 104 bytes */
+	EXPECT(p15_file_map_auto(0, 8ull << 30) == 65536, "nothing known about the host: the floor, the old fixed size");
+	EXPECT(p15_file_map_auto(10000, 8ull << 30) == 65536, "a quiet host: 40,000 wanted, the floor holds");
+	EXPECT(p15_file_map_auto(50000, 8ull << 30) == 200000, "a busy host: 4 x its open files");
+	EXPECT(p15_file_map_auto(400000, 8ull << 30) == (8ull << 30) / 128 / 104, "more than memory's share: the share (645,277 entries of 8 GiB)");
+	EXPECT(p15_file_map_auto(400000, 256ull << 20) == 65536, "a small host: the floor, even above memory's share");
+	EXPECT(p15_file_map_auto(5000000, 1ull << 40) == 4194304, "never more than the option's maximum");
+	EXPECT(p15_file_map_auto(UINT32_MAX, UINT64_MAX) == 4194304, "no overflow at the extremes");
+	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--file-map-entries", "0") != 0, "0 cannot be asked for: it only means 'not given'");
 	EXPECT(!strcmp(kv[n - 6].key, "config.realtime") && !strcmp(kv[n - 6].value, "yes"), "realtime echoed");
 	EXPECT(!strcmp(kv[n - 5].key, "config.net") && !strcmp(kv[n - 5].value, "yes"), "net echoed");
 	EXPECT(!strcmp(kv[n - 4].key, "config.files") && !strcmp(kv[n - 4].value, "yes"), "files echoed");

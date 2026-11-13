@@ -416,6 +416,13 @@ static int after_poll_file(struct p15_drain *d)
 			p15_run_set_state(d->run, P15_RUN_DEGRADED, "file-identity records lost to a full bulk ring");
 	if (km != d->prev_file_kprobe_missed)
 		p15_run_set_state(d->run, P15_RUN_DEGRADED, "file-identity events skipped by the kernel (recursion misses)");
+	/* A full open-file map loses no record, but from then on new open files are unregistered: a
+	 * CLOSE cannot be paired, and identity by open file, which ADR-0015 rule 1 and folding's key
+	 * rest on, is gone for them. One process can fill the map (the design review's F-04), so it is
+	 * a state of the run, not only a count. */
+	if (f[P15_FC_FILE_MAP_FULL] != d->prev_file[P15_FC_FILE_MAP_FULL])
+		p15_run_set_state(d->run, P15_RUN_DEGRADED,
+				  "the open-file map is full: new open files are unregistered (--file-map-entries)");
 	/* a gauge's rows are read one by one, so a delete seen before its insert can wrap it for one
 	 * read: such a value is not a high-water mark */
 	m = atomic_load(&d->run->files_live_max);
@@ -450,6 +457,9 @@ static int after_poll_flow(struct p15_drain *d)
 			p15_run_set_state(d->run, P15_RUN_DEGRADED, "data-flow records lost to a full bulk ring");
 	if (fm != d->prev_flow_missed)
 		p15_run_set_state(d->run, P15_RUN_DEGRADED, "data-flow events skipped by the kernel (recursion misses)");
+	if (f[P15_FLC_FILE_MAP_FULL] != d->prev_flow[P15_FLC_FILE_MAP_FULL])
+		p15_run_set_state(d->run, P15_RUN_DEGRADED,
+				  "the open-file map is full: new open files are unregistered (--file-map-entries)");
 	memcpy(d->prev_flow, f, sizeof(f));
 	d->prev_flow_missed = fm;
 	return 0;

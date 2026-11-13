@@ -194,6 +194,36 @@ static int end_cut(struct p15_run *r, struct p15_loader *l, struct p15_drain *d)
 	return 0;
 }
 
+/* The host's load, for the open-file map's size: struct files allocated now (the first field of
+ * /proc/sys/fs/file-nr) and MemTotal. Returns 1 if both were read; what was not read stays 0. */
+static int host_load(uint64_t *files, uint64_t *mem_bytes)
+{
+	unsigned long long v = 0;
+	char line[128];
+	int got = 0;
+	FILE *f;
+
+	f = fopen("/proc/sys/fs/file-nr", "r");
+	if (f) {
+		if (fscanf(f, "%llu", &v) == 1) {
+			*files = v;
+			got++;
+		}
+		fclose(f);
+	}
+	f = fopen("/proc/meminfo", "r");
+	if (f) {
+		while (fgets(line, sizeof(line), f))
+			if (sscanf(line, "MemTotal: %llu kB", &v) == 1) {
+				*mem_bytes = v * 1024ull;
+				got++;
+				break;
+			}
+		fclose(f);
+	}
+	return got == 2;
+}
+
 static int link_add(void *arg, const struct bpf_link *link, const char *name)
 {
 	return p15_links_add(arg, link, name);
@@ -214,6 +244,7 @@ static int stuck(struct p15_run *r, struct p15_loader *l, const char *phase)
 int main(int argc, char **argv)
 {
 	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
+	static char map_by[64] = "option";
 	static char cfg_vals[32][24];
 	struct p15w_kv meta[64];
 	struct p15_loader ld;
@@ -232,6 +263,16 @@ int main(int argc, char **argv)
 		logline("error", "usage", err);
 		p15_config_usage(stderr);
 		return P15_EXIT_USAGE;
+	}
+	if (!run.cfg.file_map_entries) {
+		/* decision 103: not given, so from the host (config.h). What it was computed from goes in
+		 * the header; a host that will not say gets the floor, and the header says that too. */
+		uint64_t files = 0, mem = 0;
+		int have = host_load(&files, &mem);
+
+		run.cfg.file_map_entries = p15_file_map_auto(files, mem);
+		snprintf(map_by, sizeof(map_by), have ? "host: %llu files open, %llu MiB" : "host unreadable (%llu, %llu): the floor",
+			 (unsigned long long)files, (unsigned long long)(mem >> 20));
 	}
 	run.q.efd = -1;
 	run.tgid = (uint32_t)getpid();
@@ -332,6 +373,7 @@ int main(int argc, char **argv)
 			      : run.files ? (run.cfg.flow ? "pass (spine, files, flow)" : "pass (spine, files)") : "pass (spine)");
 	KV("ring.spine.bytes", ring_b);
 	KV("ring.bulk.bytes", run.net || run.files ? bulk_b : "0 (--no-net --no-files: no bulk capture)");
+	KV("file_map.sized_by", map_by);   /* how config.file_map_entries, below, was chosen */
 	KV("tz", tz);
 	KV("drain.sched", sched);
 	KV("recovered.bytes_cut", cut);

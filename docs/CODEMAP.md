@@ -202,8 +202,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`canary.c`](../daemon/canary.c) | See canary.h. | `p15_canary_see`, `p15_canary_tick`, `p15_canary_stop` |
 | [`canary.h`](../daemon/canary.h) | a continuous self-test (ADR-0019 G4.4; docs/research/2026-11-14-canary-and-self-check.md). | `p15_canary_see`, `p15_canary_tick`, `p15_canary_stop` |
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
-| [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_config_meta` |
-| [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
+| [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_file_map_auto`, `p15_config_meta` |
+| [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_file_map_auto`, `p15_config_meta`, `p15_config_usage` |
 | [`counters.c`](../daemon/counters.c) | (no header comment) | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum_rows`, `p15_counters_sum` |
 | [`counters.h`](../daemon/counters.h) | The BPF loss counters, read without a bpf() map call (ADR-0026). | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum`, `p15_counters_sum_rows` |
 | [`crc32c.c`](../daemon/crc32c.c) | CRC32C (Castagnoli). | `p15_crc32c_table`, `p15_crc32c`, `p15_crc32c_impl` |
@@ -246,7 +246,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_open_end.py`](../daemon/tests/it_open_end.py) | opens in flight when the open path's session detaches (bpf/include/p15_file.h; docs/research/2026-11-14-open-session-end-count.md). | `hold`, `check` |
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` (+2) |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` (+3) |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |

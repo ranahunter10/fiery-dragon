@@ -27,7 +27,7 @@ static const struct opt OPTS[] = {
 	{ "--queue-batches",       U32(queue_batches),  4,   1024,       16,   0 },   /* STATE decision 46: 16 x 1 MiB, */
 	{ "--batch-kb",            U32(batch_kb),       16,  4096,       1024, 0 },   /* the same 16 MiB (E-0220, E-0223) */
 	{ "--test-drain-pause-ms", U32(drain_pause_ms), 0,   10000,      0,    0 },
-	{ "--file-map-entries",    U32(file_map_entries), 1024, 4194304, 65536,  0 },
+	{ "--file-map-entries",    U32(file_map_entries), 1024, 4194304, 0,      0 },   /* 0 (only as the default): from the host */
 	{ "--obj-map-entries",     U32(obj_map_entries),  1024, 4194304, 131072, 0 },
 	{ "--test-start-pause-ms", U32(start_pause_ms),   0,    10000,   0,      0 },
 	{ "--stop-stall-s",        U32(stop_stall_s),     1,    3600,    30,     0 },
@@ -158,6 +158,20 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 		return -EINVAL;
 	}
 	return 0;
+}
+
+uint32_t p15_file_map_auto(uint64_t files_now, uint64_t mem_total_bytes)
+{
+	uint64_t want = files_now * P15_FILE_MAP_HEADROOM;
+	uint64_t cap = mem_total_bytes / P15_FILE_MAP_MEM_DIV / P15_FILE_MAP_ENTRY_BYTES;
+
+	if (cap > P15_FILE_MAP_MAX)
+		cap = P15_FILE_MAP_MAX;
+	if (want > cap)
+		want = cap;                 /* never more than its share of memory, nor than the option allows */
+	if (want < P15_FILE_MAP_DEFAULT)
+		want = P15_FILE_MAP_DEFAULT; /* never fewer than the fixed size it replaces */
+	return (uint32_t)want;
 }
 
 size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*vals)[24], size_t max)

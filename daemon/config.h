@@ -14,6 +14,8 @@
 #include "compiler.h"
 #include "wal.h"
 
+#include "p15_file.h"   /* P15_FILE_MAP_DEFAULT */
+
 struct p15_config {
 	const char *wal_root;        /* --wal-dir DIR: the run directory is created under it (required) */
 	const char *textfile;        /* --textfile PATH: Prometheus text file, rewritten every stats interval */
@@ -30,7 +32,8 @@ struct p15_config {
 	int net;                     /* --no-net clears it: load the ADR-0004 network-intent programs */
 	int files;                   /* --no-files clears it: load the ADR-0015 file-identity programs */
 	int flow;                    /* --flow sets it: attach the ADR-0005 data-flow programs (needs files); default off until step 2b part 3 is complete */
-	uint32_t file_map_entries;   /* --file-map-entries: open-file map size (decision 19.6, E-0142) */
+	uint32_t file_map_entries;   /* --file-map-entries: open-file map size (decision 19.6, E-0142). Not given, it is 0
+				      * after the parse, and p15d sets it from the host (p15_file_map_auto) before the load */
 	uint32_t obj_map_entries;    /* --obj-map-entries: object map size */
 	int test_no_path_fentry;     /* --test-no-path-fentry: TEST ONLY, leave the path fentry unattached */
 	int test_flow_file_fail_first; /* --test-flow-file-fail-first: TEST ONLY (needs --flow), the first FILE record
@@ -65,6 +68,17 @@ struct p15_config {
 P15_MUST_CHECK int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, size_t errlen);
 
 /* The effective configuration as WAL header metadata (keys config.*). Returns the count written (<= max). */
+/* The open-file map's size when --file-map-entries is not given (decision 103; the design
+ * review's F-04): P15_FILE_MAP_HEADROOM times the files open on the host now, never fewer than
+ * P15_FILE_MAP_DEFAULT (the fixed size this replaces), never more than the option's maximum, and
+ * never more than 1/P15_FILE_MAP_MEM_DIV of the host's memory at P15_FILE_MAP_ENTRY_BYTES an entry
+ * (104 bytes measured for this key and value in a preallocated hash, E-0309). Below the floor the
+ * memory limit does not apply. */
+#define P15_FILE_MAP_HEADROOM 4u
+#define P15_FILE_MAP_MEM_DIV 128u
+#define P15_FILE_MAP_ENTRY_BYTES 104u
+#define P15_FILE_MAP_MAX 4194304u
+uint32_t p15_file_map_auto(uint64_t files_now, uint64_t mem_total_bytes);
 size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*vals)[24], size_t max);
 
 void p15_config_usage(FILE *f);
