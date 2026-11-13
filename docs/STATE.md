@@ -359,3 +359,12 @@ Each is set out with its options and evidence in [the review](audits/2026-11-13-
 107. **Processes that share an address space** (F-09): FORK version 2 says so; the graph adds the child → parent edge.
 108. **ADR-0013, the threat model, before the ceiling gate** (F-10).
 109. **The order:** the detach fault first, then runs V-1 to V-3, then 101 to 104 by what they show.
+
+From the detach fault's design note ([note](research/2026-11-13-detach-fault-design.md); E-0302, E-0303; read only, nothing run):
+
+110. **The detach fault's fix** (decision waiting 23). Options: A as the note examines it (an RCU barrier in place of the wait, a count per task in place of a mark, a cookie bit for a failed slot, a claim by compare-and-exchange), or B (the gate, the barrier, the remainder by subtraction; no cost per call). Recommendation: A, built behind a `flow_cost` arm's number; B if that number is refused.
+111. **`membarrier(MEMBARRIER_CMD_GLOBAL)` as p15d's barrier**, after the gate and again after detach; a failure makes the run DEGRADED with "end count not exact". Recommendation: yes.
+112. **The spine detaches last.** Recommendation: yes, with the fix.
+113. **The open path's session gets the same book term.** Recommendation: yes, after the flow fix has passed the VM matrix.
+114. **Calls in flight at attach are not recorded and not counted** (a blocked read's first transfer; a blocked `accept`). Recommendation: declare it in ADR-0005's limits now; a design check of marking such tasks in the opening snapshot later.
+115. **Sessions that ftrace skips are counted nowhere p15d reads.** Recommendation: state the limit beside "hooks that are not skipped"; ask upstream about fprobe's TODO.
