@@ -450,10 +450,10 @@ import os, socket
 r, w = os.pipe()
 a, b = socket.socketpair()
 for _ in range(3):
-    assert os.write(w, b"p" * 100) == 100
-    assert len(os.read(r, 100)) == 100
-    assert a.send(b"s" * 50) == 50
-    assert len(b.recv(50, socket.MSG_WAITALL)) == 50
+    assert os.write(w, b"p" * 1009) == 1009
+    assert len(os.read(r, 1009)) == 1009
+    assert a.send(b"s" * 503) == 503
+    assert len(b.recv(503, socket.MSG_WAITALL)) == 503
 print(os.getpid())
 WL
 )
@@ -466,8 +466,11 @@ run = wal.read_run(Path(sys.argv[1])); me = int(sys.argv[2] or 0)
 bulk = list(run.ring_records(1))
 filed = {r.f['fid'] for r in bulk if r.name == 'FILE'}
 out = []
-for kind in (2, 1, 4, 3):   # the pipe's write and read ends, the socketpair's send and receive ends
-    fl = sorted((r for r in bulk if r.name == 'FLOW' and r.h['tgid'] == me and r.f['kind'] == kind), key=lambda r: r.f['last_ts'])
+# the pipe's write and read ends (1009 bytes each), the socketpair's send and receive ends (503): by size
+# too, since the interpreter's own reads of its modules and its write of the pid are FLOWs of this pid
+for kind, n in ((2, 1009), (1, 1009), (4, 503), (3, 503)):
+    fl = sorted((r for r in bulk if r.name == 'FLOW' and r.h['tgid'] == me and r.f['kind'] == kind and r.f['bytes'] == n),
+                key=lambda r: r.f['last_ts'])
     f = [r.f['fid'] for r in fl]
     out.append(int(len(f) == 3 and f[0] not in filed and f[1] == f[2] and f[1] != f[0] and f[1] in filed))
 st = [r for r in run.ring_records(2) if r.name == 'FLOW_STATS'][-1].f
