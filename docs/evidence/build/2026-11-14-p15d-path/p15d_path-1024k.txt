@@ -1,0 +1,8 @@
+p15d_path: FLOW 96 B and CLOSE 56 B alternating, 13796 records a 1024 KiB batch, crc32c=sse4.2, 1048576 records a round
+check        6.6 ns/record  (min 6.1, max 8.1, 9 rounds)
+copy         2.6 ns/record  (min 2.3, max 3.6, 9 rounds)
+queue        0.0 ns/record  (min 0.0, max 0.0, 9 rounds)
+crc          8.9 ns/record  (min 8.6, max 10.0, 9 rounds)
+append      38.3 ns/record  (min 37.0, max 45.6, 9 rounds)
+pipe        82.5 ns/record  (min 76.0, max 92.3, 9 rounds)
+sum of the single-thread steps (check + copy + queue + append): 47.5 ns/record; pipe is CPU of both threads

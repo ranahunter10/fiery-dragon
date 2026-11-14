@@ -177,6 +177,11 @@ $(OUT)/test_wal: daemon/tests/test_wal.c $(WAL_SRC) daemon/wal.h daemon/crc32c.h
 $(OUT)/crc32c_bench: bench/crc32c/crc32c_bench.c daemon/crc32c.c daemon/crc32c.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) bench/crc32c/crc32c_bench.c daemon/crc32c.c -o $@
 
+# What each step of p15d's user-space path costs per record (bench/p15d_path/)
+$(OUT)/p15d_path: bench/p15d_path/p15d_path.c $(WAL_SRC) daemon/queue.c daemon/records.c daemon/wal.h daemon/queue.h \
+		daemon/records.h schema/generated/p15_records.h | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) bench/p15d_path/p15d_path.c $(WAL_SRC) daemon/queue.c daemon/records.c -lpthread -o $@
+
 $(OUT)/test_exitcodes: daemon/tests/test_exitcodes.c daemon/exitcodes.h | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
 
