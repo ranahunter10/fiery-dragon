@@ -254,7 +254,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_open_end.py`](../daemon/tests/it_open_end.py) | opens in flight when the open path's session detaches (bpf/include/p15_file.h; docs/research/2026-11-14-open-session-end-count.md). | `hold`, `check` |
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `stopwait`, `started`, `true_execs`, `skips`, `recon`, `pid1` (+9) |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `stopwait`, `started`, `true_execs`, `skips`, `recon`, `pid1` (+10) |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |

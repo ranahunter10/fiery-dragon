@@ -1,0 +1,30 @@
+baseline: the unit tests pass in 0 s; a mutant gets 120 s
+baseline: the end-to-end test pass in 291 s; a mutant gets 1163 s
+killed   121 writer.c if (!p15_space_allows(&w->space, ring)) { (283 s)
+           FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+           FAIL spine records were shed at the reserve (0), and the disk never had to refuse a batch
+           FAIL the shed FORKs (0) and EXITs (0) are counted by type, within the spine's shed (0)
+killed   122 writer.c p15_run_set_state(r, P15_RUN_DEGRADED, msg); (285 s)
+           FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+           FAIL the log says so, and END's reason names the low disk
+           FAIL exit 3 (DEGRADED), not INVALID; the WAL scans whole in both readers; books closed (p15d 0)
+killed   123 writer.c if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0) (409 s)
+           FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+           FAIL WAL_SPACE records the levels in order: shed bulk, shed all, then ok again (-)
+           FAIL spine records were shed at the reserve (0), and the disk never had to refuse a batch
+killed   124 writer.c forks += h->type == P15_T_FORK; (271 s)
+           FAIL exit 3 (DEGRADED), WAL valid, nothing lost (p15d 0)
+           FAIL counted late, not missed, with a CANARY_MISS record of kind LATE ()
+           FAIL the shed FORKs (0) and EXITs (303) are counted by type, within the spine's shed (1220)
+killed   125 drain.c !p15q_may_take(&d->run->q, keep)) { (268 s)
+           FAIL exit 3 (DEGRADED), WAL valid, nothing lost (p15d 0)
+           FAIL counted late, not missed, with a CANARY_MISS record of kind LATE ()
+           FAIL the drain left FLOWs in their ring to keep batches free for the other rings (0 polls)
+killed   126 drain.c atomic_fetch_add(&d->run->flow_drained, 1); (360 s)
+           FAIL --flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc 4)
+           FAIL a lost FILE: exit 3, the run DEGRADED, the books still closed, the WAL valid (rc 4)
+           FAIL exit 0, WAL valid, the holder ran (p15d 4, inspect 0)
+killed   131 canary.c c->last_poll_ns += want_ns; (3 s)
+           FAIL daemon/tests/test_canary.c:339 a 3 s pause woken 2.5 s late: late by 2.1 s (5.6 s less the 1 s deadline and the 2.5 s overshoot), not a stall
+           test_canary: 1 FAILED
+mutation sweep: 7/7 killed (mutants [121, 122, 123, 124, 125, 126, 131] only)

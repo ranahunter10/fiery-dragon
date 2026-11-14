@@ -1,0 +1,8 @@
+setup                  rc=0      PASS
+build                  rc=0      6s  PASS
+test-c                 rc=0      1s  PASS
+test-python            rc=0     50s  PASS
+it_p15d_1              rc=1    272s  FAIL
+it_p15d_2              rc=0    268s  PASS
+it_p15d_3              rc=0    272s  PASS
+mutants                rc=0   2177s  PASS
