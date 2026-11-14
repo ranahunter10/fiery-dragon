@@ -188,6 +188,14 @@ int main(void)
 	books(50, 45, 5, 45, 44);
 	r.spine_drain_lost = 4;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "drain_lost closes the last side");
+	/* F-02: records the disk could not take are a term of the same side, never silent */
+	r.spine_drain_lost = 1;
+	r.spine_shed = 3;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "shed records close the writer side too");
+	r.spine_shed = 2;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN && strstr(why, "shed 2"),
+	       "a shed record uncounted: broken, and the message names the shed term");
+	r.spine_shed = 3;
 	/* NET books (ADR-0004 rule 4): seen = emitted + reserve_failed + excluded; emitted = drained + self-test + invalid */
 	reset();
 	books(50, 45, 5, 45, 45);
@@ -245,8 +253,9 @@ int main(void)
 	r.file_selftest_consumed = 8;      /* emitted: 16 + 2 + 1 + 2 + 9 + 1 + 1 = 32 = 22 drained + 8 self-test + 2 invalid */
 	r.file_drained = 22;
 	r.file_invalid = 2;
-	r.net_written = 21;                /* the bulk ring's writer side: 22 drained = 21 written + 1 lost in the drain */
-	r.net_drain_lost = 1;
+	r.net_written = 19;                /* the bulk ring's writer side: 22 drained = 19 written + 1 lost in the drain */
+	r.net_drain_lost = 1;              /* + 2 shed for a full disk (F-02) */
+	r.net_shed = 2;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "file books close");
 #define BREAKS(field, delta, word, msg) do { r.field += (delta); r.state = P15_RUN_RUNNING; \
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_BROKEN && strstr(why, word), msg); \
@@ -275,6 +284,7 @@ int main(void)
 	BREAKS(file_selftest_consumed, 1, "FILE: emitted", "a record the self-test took, uncounted: broken");
 	BREAKS(file_invalid, 1, "FILE: emitted", "invalid records are on the drain side");
 	BREAKS(net_drain_lost, 1, "bulk ring", "the shared ring's writer side broken");
+	BREAKS(net_shed, 1, "shed", "shed bulk records are a term of the shared ring's writer side");
 	r.state = P15_RUN_RUNNING;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "restored: closed again");
 

@@ -1,0 +1,3 @@
+killed    191 reconcile.py fork_l += space.f["fork_shed"]
+killed    192 reconcile.py exit_l += space.f["exit_shed"]
+mutation sweep: 2/2 killed (a subset: not the gate)

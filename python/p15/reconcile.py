@@ -68,9 +68,13 @@ def _losses(stats, kind: str) -> int | None:
     return n
 
 
-def reconcile(tree: P.Tree, snapshots: list[S.Snapshot], stats, end) -> Reconciliation:
+def reconcile(tree: P.Tree, snapshots: list[S.Snapshot], stats, end, space=None) -> Reconciliation:
     """Check `tree` (built with the first opening snapshot) against the closing snapshot. `stats` is
-    the run's last STATS record and `end` its END record (or None). Repairs the tree in place."""
+    the run's last STATS record, `end` its END record and `space` its last WAL_SPACE record (each
+    or None). Repairs the tree in place.
+
+    A FORK or EXIT the WAL's free-space guard shed (daemon/space.h) is a counted loss like a full
+    ring's: WAL_SPACE's fork_shed and exit_shed are added to STATS's counts."""
     opening = next((s for s in snapshots if s.kind == "opening"), None)
     closing = next((s for s in reversed(snapshots) if s.kind == "closing"), None)
     why = []
@@ -91,6 +95,9 @@ def reconcile(tree: P.Tree, snapshots: list[S.Snapshot], stats, end) -> Reconcil
         return Reconciliation("not possible", why)
 
     fork_l, exit_l = _losses(stats, "fork"), _losses(stats, "exit")
+    if space is not None and fork_l is not None and exit_l is not None:
+        fork_l += space.f["fork_shed"]
+        exit_l += space.f["exit_shed"]
     rec = Reconciliation("complete", fork_losses=fork_l, exit_losses=exit_l)
     began = closing.start_ns
     for k, pr in closing.procs.items():

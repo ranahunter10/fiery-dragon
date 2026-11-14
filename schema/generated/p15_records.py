@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "7f17c2d7e1a905d39c351bd266c6a6b6c99be5ace05a2d9b70c676b7d9eecae0"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "7751fd894c109c253dd83d9b461a835dc405fac8801cb6424c559437306611d4"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -34,6 +34,10 @@ CANARY_MISS_KIND = {1: 'RECORD', 2: 'LATE', 3: 'LINK'}   # CANARY_MISS.kind
 CANARY_MISS_KIND_RECORD = 1
 CANARY_MISS_KIND_LATE = 2
 CANARY_MISS_KIND_LINK = 3
+WAL_SPACE_LEVEL = {1: 'OK', 2: 'SHED_BULK', 3: 'SHED_ALL'}   # WAL_SPACE.level
+WAL_SPACE_LEVEL_OK = 1
+WAL_SPACE_LEVEL_SHED_BULK = 2
+WAL_SPACE_LEVEL_SHED_ALL = 3
 FLOW_KIND = {1: 'READ', 2: 'WRITE', 3: 'RECV', 4: 'SEND'}   # FLOW.kind
 FLOW_KIND_READ = 1
 FLOW_KIND_WRITE = 2
@@ -96,6 +100,7 @@ TYPES = {
     'FLOW_STATS': 41,
     'SELF_STATS': 42,
     'CANARY_MISS': 43,
+    'WAL_SPACE': 44,
 }
 
 RECORDS = {
@@ -195,6 +200,9 @@ RECORDS = {
     (43, 1): Layout('CANARY_MISS', 43, 1, 'STATS',
         np.dtype({'names': ['h', 'canary_n', 'spawn_ts', 'kind', 'n', 'canary_pid', 'want', 'seen', 'late_ms', 'link_index', 'link_err', 'link_name'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', '<u4', 'S32'], 'offsets': [0, 32, 40, 48, 52, 56, 60, 64, 68, 72, 76, 80], 'itemsize': 112}),
         112, 112, ()),
+    (44, 1): Layout('WAL_SPACE', 44, 1, 'STATS',
+        np.dtype({'names': ['h', 'avail_bytes', 'total_bytes', 'low_bytes', 'reserve_bytes', 'spine_shed', 'bulk_shed', 'daemon_shed', 'nospace', 'refresh_errors', 'fork_shed', 'exit_shed', 'level', 'transitions'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 124], 'itemsize': 128}),
+        128, 128, ()),
     (10, 1): Layout('FLOW', 10, 1, 'FLOW',
         np.dtype({'names': ['h', 'fid', 'obj', 'first_ts', 'last_ts', 'bytes', 'count', 'fflags', 'kind', 'reason', 'facts_full', 'facts_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u2', '<u2', '<u4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 76, 80, 82, 84, 88, 90], 'itemsize': 96}),
         96, 136, (('facts', 40),), (('facts', 'OBJFACTS'),)),
@@ -863,6 +871,29 @@ SQL_COLUMNS = {
         ('link_index', 'UINTEGER'),
         ('link_err', 'UINTEGER'),
         ('link_name', 'BLOB'),
+    ),
+    'WAL_SPACE': (
+        ('ring', 'UTINYINT'),
+        ('seq', 'UBIGINT'),
+        ('version', 'USMALLINT'),
+        ('flags', 'USMALLINT'),
+        ('ts_ns', 'UBIGINT'),
+        ('tgid', 'UINTEGER'),
+        ('tid', 'UINTEGER'),
+        ('start_ns', 'UBIGINT'),
+        ('avail_bytes', 'UBIGINT'),
+        ('total_bytes', 'UBIGINT'),
+        ('low_bytes', 'UBIGINT'),
+        ('reserve_bytes', 'UBIGINT'),
+        ('spine_shed', 'UBIGINT'),
+        ('bulk_shed', 'UBIGINT'),
+        ('daemon_shed', 'UBIGINT'),
+        ('nospace', 'UBIGINT'),
+        ('refresh_errors', 'UBIGINT'),
+        ('fork_shed', 'UBIGINT'),
+        ('exit_shed', 'UBIGINT'),
+        ('level', 'UINTEGER'),
+        ('transitions', 'UINTEGER'),
     ),
     'FLOW': (
         ('ring', 'UTINYINT'),

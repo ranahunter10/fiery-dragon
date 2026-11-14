@@ -61,6 +61,8 @@ struct p15w_stats {
 	uint64_t oversize_batches;       /* larger than max_bytes: written alone in a segment */
 	uint64_t rejected_batches;       /* refused by p15w_append's checks (bad arguments, not I/O) */
 	uint64_t errors;                 /* write, sync, open or clock failures; the writer is then failed */
+	uint64_t nospace;                /* batches not written because the disk was full (ENOSPC or EDQUOT): the
+					  * part written was truncated away, and the writer stays usable (F-02) */
 	uint64_t next_seq[P15W_NRINGS];
 };
 
@@ -71,7 +73,9 @@ P15_MUST_CHECK int p15w_open(struct p15w **out, const struct p15w_opts *opts);
  * Append one batch: `count` records, `len` bytes, all from `ring`. The records must
  * tile the payload (docs/formats/p15w-v1.md §3.1). Assigns the ring's next sequence
  * numbers. Returns 0, -EINVAL (bad batch, counted, nothing written) or -errno from I/O.
- * After an I/O error every call returns -EIO: the run is invalid (ADR-0006 rule 6).
+ * -ENOSPC or -EDQUOT (the disk is full) leaves the writer usable: nothing of the batch stays in the
+ * segment, its sequence numbers are not used, and stats.nospace counts it. After any other I/O
+ * error every call returns -EIO: the run is invalid (ADR-0006 rule 6).
  */
 P15_MUST_CHECK int p15w_append(struct p15w *w, unsigned ring, uint32_t count, const void *payload, uint32_t len);
 
@@ -89,6 +93,9 @@ const struct p15w_stats *p15w_stats(const struct p15w *w);
 /* The slowest fdatasync since the previous call, then reset (STATS wal_fsync_max_ns, ADR-0017). */
 uint64_t p15w_take_fsync_max(struct p15w *w);
 unsigned p15w_segment_index(const struct p15w *w);
+/* While held, no segment is opened, by size or by age (a segment may then pass max_bytes): a new
+ * segment's header needs space the reserve keeps for the daemon ring (space.h). */
+void p15w_hold_rotation(struct p15w *w, int hold);
 int p15w_fd(const struct p15w *w);       /* diagnostics and tests only */
 
 /* ---- batch builder: records are copied at their own len, not the ring's reserved size ---- */

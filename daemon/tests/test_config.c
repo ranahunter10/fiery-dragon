@@ -28,8 +28,8 @@ int main(void)
 {
 	struct p15_config c;
 	char err[200];
-	struct p15w_kv kv[32];
-	char vals[32][24];
+	struct p15w_kv kv[48];
+	char vals[48][24];
 	size_t n;
 
 	EXPECT(parse(&c, err, 0) != 0 && strstr(err, "--wal-dir"), "--wal-dir is required");
@@ -58,8 +58,8 @@ int main(void)
 	EXPECT(parse(&c, err, 3, "--wal-dir", "/tmp/x", "--textfile") != 0, "--textfile needs a value");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
-	n = p15_config_meta(&c, kv, vals, 32);
-	EXPECT(n == 31, "every setting echoed");
+	n = p15_config_meta(&c, kv, vals, 48);
+	EXPECT(n == 34, "every setting echoed");
 	EXPECT(!strcmp(kv[22].key, "config.canary_s") && !strcmp(kv[22].value, "0") &&
 	       !strcmp(kv[23].key, "config.test_canary_blind") && !strcmp(kv[23].value, "0") &&
 	       !strcmp(kv[24].key, "config.test_link_close") && !strcmp(kv[24].value, "0") &&
@@ -70,6 +70,10 @@ int main(void)
 	       !strcmp(kv[20].key, "config.test_open_end_mode") && !strcmp(kv[20].value, "0") &&
 	       !strcmp(kv[21].key, "config.test_open_end_tgid") && !strcmp(kv[21].value, "0"),
 	       "the end's wait and its two test switches echoed, with their defaults");
+	EXPECT(!strcmp(kv[25].key, "config.wal_space_low_mb") && !strcmp(kv[25].value, "0") &&
+	       !strcmp(kv[26].key, "config.wal_space_reserve_mb") && !strcmp(kv[26].value, "0") &&
+	       !strcmp(kv[27].key, "config.wal_space_guard") && !strcmp(kv[27].value, "1"),
+	       "the free-space guard's settings echoed: auto sizes, guard on (F-02)");
 	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "200"), "the poll maximum echoed, its default 200 (ADR-0030)");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
 	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "0") &&

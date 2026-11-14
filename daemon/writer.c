@@ -13,6 +13,7 @@
 #include "p15_flow.h"
 #include "p15_records.h"
 #include "selfcheck.h"
+#include "space.h"
 #include "writer.h"
 
 /* A NET counter since the run's start (run.h). */
@@ -190,10 +191,10 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		return P15_INV_BROKEN;
 	}
 	drained -= r->spine_selftest_consumed;
-	if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost)) {
-		snprintf(why, n, "drained %llu != written %llu + drain_lost %llu", (unsigned long long)drained,
+	if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost) + atomic_load(&r->spine_shed)) {
+		snprintf(why, n, "drained %llu != written %llu + drain_lost %llu + shed %llu", (unsigned long long)drained,
 			 (unsigned long long)atomic_load(&r->spine_written),
-			 (unsigned long long)atomic_load(&r->spine_drain_lost));
+			 (unsigned long long)atomic_load(&r->spine_drain_lost), (unsigned long long)atomic_load(&r->spine_shed));
 		return P15_INV_BROKEN;
 	}
 	if (r->net) {
@@ -208,12 +209,12 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		}
 		if (em != nd + r->net_selftest_consumed + atomic_load(&r->net_invalid) ||
 		    nd + atomic_load(&r->file_drained) + atomic_load(&r->flow_drained) !=
-			    atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
-			snprintf(why, n, "NET: emitted %llu, drained %llu + %llu by the self-test, invalid %llu, written %llu, drain_lost %llu",
-				 (unsigned long long)em, (unsigned long long)nd, (unsigned long long)r->net_selftest_consumed,
+			    atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost) + atomic_load(&r->net_shed)) {
+			snprintf(why, n, "NET: emitted %llu, drained %llu + %llu by the self-test, invalid %llu, written %llu, drain_lost %llu, "
+				 "shed %llu", (unsigned long long)em, (unsigned long long)nd, (unsigned long long)r->net_selftest_consumed,
 				 (unsigned long long)atomic_load(&r->net_invalid),
 				 (unsigned long long)atomic_load(&r->net_written),
-				 (unsigned long long)atomic_load(&r->net_drain_lost));
+				 (unsigned long long)atomic_load(&r->net_drain_lost), (unsigned long long)atomic_load(&r->net_shed));
 			return P15_INV_BROKEN;
 		}
 	}
@@ -224,10 +225,10 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 		if (!r->net) {
 			uint64_t bulk = atomic_load(&r->file_drained) + atomic_load(&r->flow_drained);
 
-			if (bulk != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {
-				snprintf(why, n, "bulk ring: drained %llu != written %llu + drain_lost %llu",
+			if (bulk != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost) + atomic_load(&r->net_shed)) {
+				snprintf(why, n, "bulk ring: drained %llu != written %llu + drain_lost %llu + shed %llu",
 					 (unsigned long long)bulk, (unsigned long long)atomic_load(&r->net_written),
-					 (unsigned long long)atomic_load(&r->net_drain_lost));
+					 (unsigned long long)atomic_load(&r->net_drain_lost), (unsigned long long)atomic_load(&r->net_shed));
 				return P15_INV_BROKEN;
 			}
 		}
@@ -236,16 +237,112 @@ static int invariant(struct p15_run *r, char *why, size_t n)
 	return P15_INV_CLOSED;
 }
 
+static void space_changed(struct p15_writer *w);
+
+/* `count` records of `ring` (the batch buf, len bytes) not written because of the disk (space.h):
+ * counted in the books' shed term. A spine batch's FORKs and EXITs are counted by type too, so the
+ * reader's process-tree check can tell a shed FORK from an unexplained one (python/p15/reconcile.py).
+ * The drain checked every record's length (p15_rec_check), so the walk below stays in the batch. */
+static void shed(struct p15_writer *w, unsigned ring, uint32_t count, const void *buf, uint32_t len, int refused)
+{
+	struct p15_run *r = w->run;
+	char msg[160];
+
+	atomic_fetch_add(ring == P15W_RING_SPINE ? &r->spine_shed : ring == P15W_RING_BULK ? &r->net_shed : &r->daemon_shed,
+			 count);
+	if (ring == P15W_RING_SPINE) {
+		uint64_t forks = 0, exits = 0;
+		uint32_t off = 0;
+
+		while (off + sizeof(struct p15_hdr) <= len) {
+			const struct p15_hdr *h = (const void *)((const char *)buf + off);
+
+			if (h->len < sizeof(*h) || h->len > len - off) {
+				/* cannot happen after the drain's checks; never read past, and say so */
+				p15_run_set_state(r, P15_RUN_INVALID, "a shed spine batch did not parse (a writer bug)");
+				break;
+			}
+			forks += h->type == P15_T_FORK;
+			exits += h->type == P15_T_EXIT;
+			off += h->len;
+		}
+		atomic_fetch_add(&r->fork_shed, forks);
+		atomic_fetch_add(&r->exit_shed, exits);
+	}
+	if (refused)
+		snprintf(msg, sizeof(msg), "the WAL's disk is full: a batch was refused (ENOSPC) and its records shed");
+	else
+		snprintf(msg, sizeof(msg), "the WAL's disk is low (%llu MiB free): %s records shed (--wal-space-low-mb)",
+			 (unsigned long long)(w->space.avail >> 20), ring == P15W_RING_SPINE ? "spine and bulk" : "bulk");
+	p15_run_set_state(r, P15_RUN_DEGRADED, msg);
+}
+
 static void append(struct p15_writer *w, unsigned ring, uint32_t count, const void *buf, uint32_t len)
 {
-	int rc = p15w_append(w->wal, ring, count, buf, len);
+	int rc;
 
+	if (!p15_space_allows(&w->space, ring)) {
+		shed(w, ring, count, buf, len, 0);
+		return;
+	}
+	rc = p15w_append(w->wal, ring, count, buf, len);
+	if (rc == -ENOSPC || rc == -EDQUOT) {
+		/* the filesystem refused the batch: the WAL took back its part and stays valid (wal.h) */
+		shed(w, ring, count, buf, len, 1);
+		p15_space_full(&w->space);
+		space_changed(w);
+		return;
+	}
 	if (ring == P15W_RING_SPINE)
 		atomic_fetch_add(rc ? &w->run->spine_drain_lost : &w->run->spine_written, count);
 	else if (ring == P15W_RING_BULK)
 		atomic_fetch_add(rc ? &w->run->net_drain_lost : &w->run->net_written, count);
-	if (rc)
+	if (rc) {
 		p15_fail(w->run, P15_EXIT_IO, "WAL append failed");
+		return;
+	}
+	if (p15_space_wrote(&w->space, P15W_BATCH_HDR_LEN + (uint64_t)len))
+		space_changed(w);
+}
+
+/* WAL_SPACE (space.h): the guard's state and the shed counts, on the daemon ring. */
+static void space_record(struct p15_writer *w)
+{
+	struct p15_run *r = w->run;
+	struct p15_wal_space s;
+
+	memset(&s, 0, sizeof(s));
+	p15_daemon_hdr(r, &s, P15_T_WAL_SPACE, P15_WAL_SPACE_VERSION, sizeof(s));
+	s.avail_bytes = w->space.avail == UINT64_MAX ? 0 : w->space.avail;
+	s.total_bytes = w->space.total;
+	s.low_bytes = w->space.low;
+	s.reserve_bytes = w->space.reserve;
+	s.spine_shed = atomic_load(&r->spine_shed);
+	s.bulk_shed = atomic_load(&r->net_shed);
+	s.daemon_shed = atomic_load(&r->daemon_shed);
+	s.fork_shed = atomic_load(&r->fork_shed);
+	s.exit_shed = atomic_load(&r->exit_shed);
+	s.nospace = p15w_stats(w->wal)->nospace;
+	s.refresh_errors = w->space.refresh_errors;
+	s.level = (uint32_t)w->space.level + 1;   /* WAL_SPACE_LEVEL counts from 1 */
+	s.transitions = (uint32_t)w->space.transitions;
+	w->in_space_record = 1;    /* the record's own write may move the level: no second record from inside */
+	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
+	w->in_space_record = 0;
+}
+
+/* The guard's level changed: a log line, rotation held while only the daemon ring may be written,
+ * and a WAL_SPACE record saying so. */
+static void space_changed(struct p15_writer *w)
+{
+	if (w->in_space_record)
+		return;
+	fprintf(stderr, "p15d level=%s code=wal_space level=%s avail_mib=%llu low_mib=%llu reserve_mib=%llu\n",
+		w->space.level ? "warn" : "info", p15_space_level_name(w->space.level),
+		(unsigned long long)(w->space.avail == UINT64_MAX ? 0 : w->space.avail >> 20),
+		(unsigned long long)(w->space.low >> 20), (unsigned long long)(w->space.reserve >> 20));
+	p15w_hold_rotation(w->wal, w->space.level == P15_SPACE_SHED_ALL);
+	space_record(w);
 }
 
 static void clock_sync(struct p15_writer *w)
@@ -598,6 +695,9 @@ static void stats(struct p15_writer *w, uint64_t now)
 		flow_stats(w);
 	}
 	self_check(w);
+	if (w->space.level != P15_SPACE_OK || atomic_load(&w->run->spine_shed) || atomic_load(&w->run->net_shed) ||
+	    atomic_load(&w->run->daemon_shed))
+		space_record(w);
 	textfile(w, &s);
 	w->prev_stats_ns = now;
 	if (++w->stats_written % 10 == 0)
@@ -654,8 +754,14 @@ static void closing_snapshot(struct p15_writer *w)
 
 	drain_queue(w);
 	rc = w->closing ? w->closing(w->closing_ctx, w->wal) : -ENOSYS;
-	if (rc < 0 && rc != -ENOSYS)
+	if (rc == -ENOSPC || rc == -EDQUOT) {
+		/* the disk is full: the closing snapshot is not taken (END says so), the run goes on to its end */
+		p15_space_full(&w->space);
+		space_changed(w);
+		p15_run_set_state(w->run, P15_RUN_DEGRADED, "the WAL's disk is full: the closing snapshot was not written");
+	} else if (rc < 0 && rc != -ENOSYS) {
 		p15_fail(w->run, P15_EXIT_IO, "WAL append failed in the closing snapshot");
+	}
 	atomic_store(&w->run->closing_result, rc == 0 ? 1 : rc < 0 ? rc : -EPROTO);
 	atomic_store(&w->run->closing_req, P15_CLOSING_DONE);
 }
@@ -684,6 +790,8 @@ void *p15_writer_main(void *arg)
 		atomic_fetch_add(&r->writer_beats, 1);   /* the stop's watchdog (E-0162) */
 		if (p15q_wait(&r->q, p15_writer_wait_ms(w->prev_stats_ns + stats_ns, p15_boot_ns(), p15w_due_ns(w->wal))))
 			p15_fail(r, P15_EXIT_OSERR, "writer: wait on the queue failed");
+		if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0)
+			space_changed(w);
 		drain_queue(w);
 		if (atomic_load(&r->closing_req) == P15_CLOSING_ASKED)
 			closing_snapshot(w);

@@ -19,6 +19,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 UNIT = ("make -s build/test_queue build/test_config build/test_run build/test_counters build/test_canary && build/test_queue && "
         "build/test_config && build/test_run && build/test_counters && build/test_canary 2>/dev/null")
 IT = "make -s build/p15d build/p15w-inspect build/test_open_iter && daemon/tests/it_p15d.sh build"
+SPACE = "make -s build/test_space && build/test_space"
+WAL = "make -s build/test_wal && build/test_wal"
 
 M = [
     # counters (ADR-0026): the row sum, configure and verify; the drain's mapped read; the loader;
@@ -57,7 +59,7 @@ M = [
     ("writer.c", "\tdrained -= r->spine_selftest_consumed;", "", UNIT),
     ("writer.c", "\tuint64_t emitted = 0, drained = r->spine_selftest_consumed;", "\tuint64_t emitted = 0, drained = 0;", UNIT),
     ("writer.c", "\tif (inv == P15_INV_BROKEN)\n\t\tp15_run_set_state(r, P15_RUN_INVALID, why);", "", UNIT),
-    ("writer.c", "\tif (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost)) {", "\tif (0) {", UNIT),
+    ("writer.c", "\tif (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost) + atomic_load(&r->spine_shed)) {", "\tif (0) {", UNIT),
     ("writer.c", "\tif (emitted != drained + atomic_load(&r->spine_invalid)) {", "\tif (0) {", UNIT),
     ("writer.c", "\tbuf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);", "", IT),
     ("run.c", "\tcase P15_RUN_DEGRADED:\n\t\treturn P15_EXIT_DEGRADED;\n\tdefault:\n\t\treturn P15_EXIT_INVALID;", "\tdefault:\n\t\treturn P15_EXIT_OK;", IT),
@@ -162,6 +164,21 @@ M = [
     ("config.c", "	uint64_t want = files_now * P15_FILE_MAP_HEADROOM;", "	uint64_t want = files_now;", UNIT),
     ("p15d.c", "		run.cfg.file_map_entries = p15_file_map_auto(files, mem);\n", "", IT),
     ("drain.c", "	if (f[P15_FC_FILE_MAP_FULL] != d->prev_file[P15_FC_FILE_MAP_FULL])\n		p15_run_set_state(d->run, P15_RUN_DEGRADED,", "	if (0)\n		p15_run_set_state(d->run, P15_RUN_DEGRADED,", IT),
+    # the WAL's free-space guard (F-02; space.c, wal.c, writer.c; test_space, test_wal, test_run, it_p15d 28 and 29)
+    ("space.c", "	if (avail < s->reserve)\n		return P15_SPACE_SHED_ALL;", "	if (0)\n		return P15_SPACE_SHED_ALL;", SPACE),
+    ("space.c", "	if (lv == P15_SPACE_SHED_ALL && avail < up_res)", "	if (lv == P15_SPACE_SHED_ALL && avail < up_res - s->reserve / 8)", SPACE),
+    ("space.c", "	if (lv >= P15_SPACE_SHED_BULK && avail < up_low)", "	if (lv >= P15_SPACE_SHED_BULK && avail < up_low - s->low / 8)", SPACE),
+    ("space.c", "	s->avail = s->avail > bytes ? s->avail - bytes : 0;", "	(void)bytes;", SPACE),
+    ("space.c", "		return s->level < P15_SPACE_SHED_ALL;", "		return 1;", SPACE),
+    ("space.c", "	if (l < 2 * r)\n		l = 2 * r;", "	if (0)\n		l = 2 * r;", SPACE),
+    ("wal.c", "		if (ftruncate(w->fd, (off_t)w->seg_bytes) || lseek(w->fd, (off_t)w->seg_bytes, SEEK_SET) < 0)", "		if (lseek(w->fd, (off_t)w->seg_bytes, SEEK_SET) < 0)", WAL),
+    ("wal.c", "	if (rc == -ENOSPC || rc == -EDQUOT) {\n		/* the disk is full (F-02)", "	if (0) {\n		/* the disk is full (F-02)", WAL),
+    ("wal.c", "	if (!w->in_open && !w->hold_rotation && w->seg_batches > 0", "	if (!w->in_open && w->seg_batches > 0", WAL),
+    ("writer.c", "	if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost) + atomic_load(&r->spine_shed)) {", "	if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost)) {", UNIT),
+    ("writer.c", "	if (!p15_space_allows(&w->space, ring)) {\n		shed(w, ring, count, buf, len, 0);\n		return;\n	}", "", IT),
+    ("writer.c", "	p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n}\n\nstatic void append", "}\n\nstatic void append", IT),
+    ("writer.c", "		if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0)\n			space_changed(w);\n", "", IT),
+    ("writer.c", "			forks += h->type == P15_T_FORK;", "			forks += 0;", IT),   # 122: shed FORKs uncounted: the tree check goes INVALID
 ]
 
 
@@ -188,7 +205,9 @@ def main() -> int:
         # VirtualBox guest can stall for minutes, E-0088); a mutant that runs out of time is TIMEOUT and
         # is not counted as killed (E-0157).
         limit = {}
-        for name, test in (("unit tests", UNIT), ("end-to-end test", IT)):
+        names = {UNIT: "unit tests", IT: "end-to-end test", SPACE: "space-guard tests", WAL: "WAL tests"}
+        needed = [t for t in names if any(m[3] == t for i, m in enumerate(M) if not only or i in only)]
+        for name, test in ((names[t], t) for t in needed):
             t0 = time.monotonic()
             r = subprocess.run(f"timeout 900 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
             dt = time.monotonic() - t0

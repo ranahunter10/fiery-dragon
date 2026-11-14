@@ -235,8 +235,10 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`snapshot.c`](../daemon/snapshot.c) | the iterator, the read loop, the WAL (ADR-0007 rule 3). | `p15_snapshot_init`, `p15_snapshot_set_fd`, `p15_snapshot_free`, `p15_snapshot_take`, `p15_snapshot_on_open` |
 | [`snapshot.h`](../daemon/snapshot.h) | The process snapshot (ADR-0007 rule 3, ADR-0023). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_fd_books_fill`, `p15_snap_books_close`, `p15_snapshot_init`, `p15_snapshot_free`, `p15_snapshot_set_fd`, `p15_snapshot_take`, `p15_snapshot_on_open` |
 | [`snapshot_frame.c`](../daemon/snapshot_frame.c) | Framing and checking a process snapshot's output (ADR-0007 rule 3). | `p15_snap_frame_feed`, `p15_snap_frame_end`, `p15_snap_books_fill`, `p15_snap_fd_books_fill`, `p15_snap_books_close` |
+| [`space.c`](../daemon/space.c) | See space.h. | `p15_space_sizes`, `p15_space_init`, `p15_space_refresh`, `p15_space_wrote`, `p15_space_full`, `p15_space_allows`, `p15_space_level_name` |
+| [`space.h`](../daemon/space.h) | The WAL's free-space guard (the design review's F-02; docs/research/2026-11-14-full-disk.md). | `p15_space_sizes`, `p15_space_init`, `p15_space_refresh`, `p15_space_wrote`, `p15_space_full`, `p15_space_allows`, `p15_space_level_name` |
 | [`wal.c`](../daemon/wal.c) | P15W v1.0 writer, batch builder and scanner. | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_due_ns`, `p15w_close`, `p15w_take_fsync_max`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add`, `p15w_batch_flush`, `p15w_header_get`, `p15w_scan_buf` (+1) |
-| [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_due_ns`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free`, `p15w_batch_add` (+4) |
+| [`wal.h`](../daemon/wal.h) | writer, batch builder and scanner (ADR-0007). | `p15w_open`, `p15w_append`, `p15w_tick`, `p15w_due_ns`, `p15w_close`, `p15w_stats`, `p15w_take_fsync_max`, `p15w_segment_index`, `p15w_hold_rotation`, `p15w_fd`, `p15w_batch_init`, `p15w_batch_free` (+5) |
 | [`writer.c`](../daemon/writer.c) | The WAL writer thread (ADR-0017 layer 2, ADR-0019 G4.1). | `p15_invariant_check`, `p15_writer_wait_ms`, `p15_writer_main` |
 | [`writer.h`](../daemon/writer.h) | The WAL writer thread (ADR-0017 layer 2): the only code that touches the disk. | `p15_writer_main`, `p15_writer_wait_ms`, `p15_invariant_check` |
 
@@ -246,7 +248,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_open_end.py`](../daemon/tests/it_open_end.py) | opens in flight when the open path's session detaches (bpf/include/p15_file.h; docs/research/2026-11-14-open-session-end-count.md). | `hold`, `check` |
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` (+3) |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` (+7) |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
@@ -261,6 +263,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`test_run.c`](../daemon/tests/test_run.c) | Unit tests for the run state machine, the exit code and the accounting invariant (daemon/run.c, daemon/writer.c p15_invariant_check; ADR-0006 rule 6, ADR-0019 G2). |  |
 | [`test_selftest.c`](../daemon/tests/test_selftest.c) | Unit tests for the record checks and the self-test evaluation, on synthetic records. |  |
 | [`test_snapshot.c`](../daemon/tests/test_snapshot.c) | Unit tests for the snapshot's framing and books (daemon/snapshot_frame.c): records split across reads, a record that fails its check, one from another snapshot, a WAL that refus... |  |
+| [`test_space.c`](../daemon/tests/test_space.c) | The WAL's free-space guard (daemon/space.c, F-02), with an injected free-space reader: the sizes, the levels and what each lets through, the hysteresis, the estimate between rea... |  |
 | [`test_wal.c`](../daemon/tests/test_wal.c) | Unit tests for the P15W writer, batch builder, scanner and recovery (docs/formats/p15w-v1.md). |  |
 | [`wal_fixture.c`](../daemon/tests/wal_fixture.c) | write a small P15W run with one or more records of every type, through the C writer (daemon/wal.c), so the Python reader's test (python/tests/it_wal_c.py) can check that it deco... |  |
 
