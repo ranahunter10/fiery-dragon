@@ -120,9 +120,18 @@ class HandMade(unittest.TestCase):
         got = T.backward(con, 13, 100)
         self.assertEqual(got, {13: 100, 12: 6, 11: 6, 10: 5, 21: 7, 20: 7})
         self.assertEqual(T.forward(con, 10, 0), {10: 0, 11: 5, 12: 5, 13: 6})
-        # the pairing is one way: a server's reply needs its SEND joined to the socket node (step 2e)
+        # the server has no SEND here, so it reaches nothing; the client was affected by nothing
         self.assertEqual(T.forward(con, 13, 0), {13: 0})
         self.assertEqual(T.backward(con, 10, 100), {10: 100})
+
+    def test_a_server_reply_reaches_the_client(self):
+        # client 10 connects (11, at 5), server 13 accepts on 12 (at 6), SENDs to 12 at 8, and the
+        # client RECVs from 11 at 9: the reply crosses the pair server -> client (ADR-0032 joined the SEND)
+        con = db_of([(10, 11, 5), (12, 13, 6), (13, 12, 8), (11, 10, 9)], pairs=[(11, 12)])
+        self.assertEqual(T.forward(con, 13, 7), {13: 7, 12: 8, 11: 8, 10: 9})
+        self.assertEqual(T.backward(con, 10, 10), {10: 10, 11: 9, 12: 9, 13: 8})
+        # before the reply was sent the server could not have affected the client
+        self.assertEqual(T.forward(con, 13, 8), {13: 8})
 
     def test_a_transfer_is_followed_by_its_interval(self):
         # W wrote F over [10, 35]; R read F over [30, 40]: the write began before the read ended
@@ -167,8 +176,8 @@ class Random(unittest.TestCase):
                 edges.append((s, d, t0, t0 if rnd.random() < 0.5 else t0 + rnd.randint(0, 200)))
             pairs = [(rnd.randrange(n), rnd.randrange(n)) for _ in range(rnd.randint(0, 3))]
             backing = [(rnd.randrange(n), rnd.randrange(n)) for _ in range(rnd.randint(0, 2))]
-            rel = [(a, b, None) for a, b in pairs] + [(a, b, None) for a, b in backing] + \
-                  [(b, a, None) for a, b in backing]
+            rel = [(a, b, None) for a, b in pairs] + [(b, a, None) for a, b in pairs] + \
+                  [(a, b, None) for a, b in backing] + [(b, a, None) for a, b in backing]
             con = db_of(edges, pairs, backing)
             for _ in range(3):
                 v, t = rnd.randrange(n), rnd.randint(0, 1100)
