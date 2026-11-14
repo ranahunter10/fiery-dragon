@@ -1,0 +1,23 @@
+workload pid=1749 cpu=2 same=200000 distinct=0 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=91460772 wall_ns=91454478
+row event=same n=200000 cpu_ns=199880940 wall_ns=199883779
+row event=distinct n=0 cpu_ns=306 wall_ns=39
+workload pid=1750 cpu=2 same=200000 distinct=0 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=97698854 wall_ns=97692927
+row event=same n=200000 cpu_ns=197236531 wall_ns=197238190
+row event=distinct n=0 cpu_ns=336 wall_ns=42
+workload pid=1751 cpu=2 same=200000 distinct=0 nullsys=1000000
+row event=nullsys n=1000000 cpu_ns=100626980 wall_ns=100624803
+row event=same n=200000 cpu_ns=206971480 wall_ns=206974935
+row event=distinct n=0 cpu_ns=495 wall_ns=35
+
+ Performance counter stats for 'build/open_cost /var/tmp/p15-open-cost 200000 0' (3 runs):
+
+   <not supported>      cycles                                                                
+   <not supported>      instructions                                                          
+   <not supported>      L1-dcache-load-misses                                                 
+   <not supported>      LLC-load-misses                                                       
+                 1      context-switches                                                        ( +- 57.74% )
+
+       0.303213573 +- 0.003737549 seconds time elapsed  ( +-  1.23% )
+
