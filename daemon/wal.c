@@ -198,7 +198,9 @@ static int open_segment(struct p15w *w)
 	w->fd = openat(w->dirfd, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0640);
 	if (w->fd < 0)
 		return fail(w, errno);
-	if (fsync(w->dirfd))              /* the new name is durable too (§5) */
+	while ((rc = fsync(w->dirfd)) && errno == EINTR)   /* the new name is durable too (§5) */
+		;                             /* EINTR (fsync(2)): nothing was decided, ask again */
+	if (rc)
 		return fail(w, errno);
 	w->st.dir_fsyncs++;
 	w->st.segments++;
@@ -223,7 +225,11 @@ static int timed_sync(struct p15w *w)
 	int rc;
 
 	clock_gettime(CLOCK_MONOTONIC, &a);
-	rc = fdatasync(w->fd);
+	/* EINTR (fsync(2)) is retried: the call was interrupted before it decided anything. Any other
+	 * error fails the writer: after EIO or ENOSPC the kernel may have dropped the dirty pages and a
+	 * second call can succeed without the data, so the WAL cannot know what reached the disk. */
+	while ((rc = fdatasync(w->fd)) && errno == EINTR)
+		;
 	clock_gettime(CLOCK_MONOTONIC, &b);
 	d = (uint64_t)(b.tv_sec - a.tv_sec) * 1000000000ull + (uint64_t)b.tv_nsec - (uint64_t)a.tv_nsec;
 	if (d > w->st.fsync_max_ns)

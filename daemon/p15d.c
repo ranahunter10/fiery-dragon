@@ -461,10 +461,25 @@ int main(int argc, char **argv)
 		logline("error", "oserr", "cannot install signal handlers");
 		return P15_EXIT_OSERR;
 	}
-	if (pthread_create(&wt, NULL, p15_writer_main, &w)) {
-		logline("error", "oserr", "cannot start the writer thread");
-		return P15_EXIT_OSERR;
-	}	pthread_setname_np(wt, "p15d-writer");   /* per-thread CPU in /proc (bench/idle_cost) */
+	{
+		/* The writer starts with SIGTERM and SIGINT blocked, so a stop signal is delivered to this
+		 * thread only (it ends the current poll) and never interrupts the writer's own calls: the
+		 * handler has no SA_RESTART, and fsync(2) lists EINTR (man-pages 6.19). */
+		sigset_t stop, old;
+		int cr;
+
+		sigemptyset(&stop);
+		sigaddset(&stop, SIGTERM);
+		sigaddset(&stop, SIGINT);
+		pthread_sigmask(SIG_BLOCK, &stop, &old);
+		cr = pthread_create(&wt, NULL, p15_writer_main, &w);
+		pthread_sigmask(SIG_SETMASK, &old, NULL);
+		if (cr) {
+			logline("error", "oserr", "cannot start the writer thread");
+			return P15_EXIT_OSERR;
+		}
+	}
+	pthread_setname_np(wt, "p15d-writer");   /* per-thread CPU in /proc (bench/idle_cost) */
 
 	fprintf(stderr, "p15d level=info code=start run_dir=%s sched=\"%s\" spine_ring=%u net=%s files=%s crc32c=%s\n", run_dir,
 		sched, run.spine_ring_bytes, run.net ? "on" : "off (--no-net)",
