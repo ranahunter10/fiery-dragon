@@ -1,0 +1,8 @@
+rules: R1 dropper 3, R2 memfd-exec 1, R3 deleted-exec 1, R4 net-shell 2
+  +   3.726s  R4 net-shell    p:7344:1023144936962  pid 7320 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46328) started /bin/sh as pid 7344
+  +   6.551s  R4 net-shell    p:7352:1025969725064  pid 7320 python (network input from 127.0.0.1:8080 <- 127.0.0.1:57084) started /bin/sh as pid 7352
+  +   7.612s  R1 dropper      p:7358:1027030787080  wrote /tmp/.k (pid 7355 curl), ran it as pid 7358
+  +   7.662s  R1 dropper      p:7363:1027080355587  wrote /memfd:kworker (deleted) (pid 7362 python3), ran it as pid 7363
+  +   7.662s  R2 memfd-exec   p:7363:1027080355587  pid 7363 ran /proc/self/fd/3 as kworker
+  +   7.672s  R1 dropper      p:7364:1027090264370  wrote /var/tmp/.upd-p15demo (pid 7362 python3), ran it as pid 7364
+  +   7.672s  R3 deleted-exec p:7364:1027090264370  pid 7364 ran /proc/self/fd/4 as upd

@@ -1,0 +1,83 @@
+p15-trace: port 4442
+run 20261114T040915Z-ca5561c7 on p15-dev, kernel 7.0.0-38-generic, captured from 04:09:15.038 UTC
+
+Trust
+  capture RUNNING, accounting invariant closed, exit 0 (stop requested)
+  kernel-skipped events: none (every hook ran for every event)
+  process tree check (ADR-0023): complete: every process alive at the end is explained, and every one gone has its exit (0 fork(s) and 0 exit(s) unexplained; counted losses: fork 0, exit 0)
+  NET records: 30 captured, 0 lost to a full ring, 0 excluded by policy (failed accepts, non-IP sockets)
+
+Summary: 0 listener(s); 0 connection(s) accepted, 0 of them from a process on this host; 0 connect(s) to the port, 1 refused or failed
+
+Listeners on port 4442
+  none in this run
+
+Connections accepted on port 4442
+  none in this run
+
+Connects to port 4442
+  04:09:25.207 (t+10.169s)  0.0.0.0:0 -> 127.0.0.1:4442 tcp  ECONNREFUSED (-111)     by bash (7375) ← timeout (7374) ← bash (7254) ← sudo (7253) ← sudo (7251) ← bash (7239) ← bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+
+Processes involved (11, with their ancestors)
+  pid 7375    bash -c exec 3<>/dev/tcp/127.0.0.1/4442
+            started t+10.167s; exited 1 at t+10.169s
+            parent: timeout (7374) ← bash (7254) ← sudo (7253) ← sudo (7251) ← bash (7239) ← bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 7374    timeout 2 bash -c exec 3<>/dev/tcp/127.0.0.1/4442
+            started t+10.162s; exited 1 at t+10.170s
+            parent: bash (7254) ← sudo (7253) ← sudo (7251) ← bash (7239) ← bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 7254    bash tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sudo (7253) ← sudo (7251) ← bash (7239) ← bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 7253    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            unusual: runs as a different user (uid 1000 -> euid 0)
+            parent: sudo (7251) ← bash (7239) ← bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 7251    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            unusual: runs as a different user (uid 1000 -> euid 0)
+            parent: bash (7239) ← bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 7239    bash /home/ashu/fd-vm-test/vm_test.sh demo pack
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: bash (1338) ← sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 1338    -bash
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1337) ← sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 1337    sshd-session: ashu@pts/0                
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd-session (1232) ← sshd (1229) ← systemd (1) [started before the capture]
+  pid 1232    sshd-session: ashu [priv]               
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: sshd (1229) ← systemd (1) [started before the capture]
+  pid 1229    sshd: /usr/sbin/ss
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+            parent: systemd (1) [started before the capture]
+  pid 1       /usr/lib/systemd/systemd --switched-root --system --deserialize=50
+            started before the capture (parent and program from the opening snapshot); still running at the end of the run
+
+Code provenance (ADR-0025)
+  pid 7251    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo: runs as a different user (uid 1000 -> euid 0)
+  pid 7253    sudo env P15_PYTHON=/home/ashu/p15venv/bin/python P15D_FLAGS=--flow tools/demo/run_demo.sh /var/tmp/p15-demo: runs as a different user (uid 1000 -> euid 0)
+  pid 7318    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7322    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7326    cat: stdin is a pipe (fed by another process)
+  pid 7329    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7336    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7340    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7347    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7358    /tmp/.k: runs from a RAM filesystem
+  pid 7360    sh: stdin is a pipe (fed by another process)
+  pid 7362    python3 -: stdin is a pipe (fed by another process)
+  pid 7363    kworker: runs from memory (no file on disk); executable is writable by its runner; stdin is a pipe (fed by another process)
+  pid 7364    upd: runs a deleted binary; stdin is a pipe (fed by another process)
+  pid 7366    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7372    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7377    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7382    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pid 7387    tee -a /var/tmp/p15-demo/story.log: stdin is a pipe (fed by another process)
+  pipe: curl (pid 7359) -> dash (pid 7360) [same pipe inode 18097]
+
+How the joins were made
+  listener <- accept: by socket cookie (exact, ADR-0004 rule 5)
+  client -> accept: 0 exact, by the TCP client sequence number (ADR-0022); 0 inferred from endpoints on this host (0 of them with more than one candidate, the connect nearest in time taken, within 5 s either side); 0 whose connect returned after the accept; 0 same-endpoint connect(s) set aside as a different connection; 0 not found; 0 TCP record(s) without a sequence number
+  process tree: 204 processes, 129 started before the capture (128 with parent and program from the opening snapshot, 1 not in it), 0 with a missing FORK; ADR-0009 checks: 0 double exits, 0 double forks (must be 0)
+HTML report: /var/tmp/p15-demo/port-4442.html

