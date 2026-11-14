@@ -1,0 +1,10 @@
+baseline: the unit tests pass in 0 s; a mutant gets 120 s
+baseline: the end-to-end test pass in 242 s; a mutant gets 969 s
+killed   77 ../bpf/progs/file.bpf.c if (st) (243 s)
+killed   80 ../bpf/progs/file.bpf.c else if (w & P15_FLOW_OPEN_MASK) (247 s)
+killed   86 p15d.c p15_loader_file_gate(l); (263 s)
+killed   87 p15d.c rc = p15_loader_file_count(l); (554 s)
+killed   88 ../bpf/progs/file.bpf.c if (file_gate) { (258 s)
+killed   89 ../bpf/progs/file.bpf.c (__sync_fetch_and_or(&fe->state, ST_SESSION_RETURNED) & ST_SESSION_CLA (244 s)
+killed   108 drain.c if (f[P15_FC_FILE_MAP_FULL] != d->prev_file[P15_FC_FILE_MAP_FULL]) (236 s)
+mutation sweep: 7/7 killed (mutants [77, 80, 86, 87, 88, 89, 108] only)

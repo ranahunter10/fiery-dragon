@@ -1,0 +1,86 @@
+# Capture measurement matrix, 20261114T033035Z
+
+    stamp 20261114T033035Z
+    commit bb48c37fc7ba2951320dae703b86fb6cc7a1a139 clean
+    kernel 7.0.0-38-generic cpus 3
+    python /home/ashu/p15venv/bin/python
+    p15d_options --flow
+    quick 1 soak_seconds 600
+    bd9dbebd416ee0488552bf1ae526dfc44fb9254145551a44d9a2c813f68df659  build/p15d
+    dc96168b80103c799387df02a17398b7939b639ab94ba1ab16e86ff73e6e5ca9  build/p15w-inspect
+    35eb6a40dc8d36d028aeed6db7be036bb3f785b1b81b18134ccdf2a07ff6d32f  build/open_cost
+    173c8b06ef019e8422eb2bfd9bd8f9fe225cacbcbaea66bb2fb9c1303e8b5dda  build/prim_cost
+    138c1b21d7b3ddcd769db1750857a44ed18b200e349869c68aa677730fd0ec5e  build/crc32c_bench
+
+## Steps
+
+- it_p15d rc=0 seconds=224.2 start=1794627036.065 end=1794627260.239
+- crc32c rc=0 seconds=2.9 start=1794627260.249 end=1794627263.102
+- prog_stats rc=0 seconds=5.0 start=1794627263.111 end=1794627268.065
+- open_cost rc=0 seconds=99.3 start=1794627268.075 end=1794627367.326
+- open_cost_report rc=0 seconds=0.0 start=1794627367.336 end=1794627367.380
+- profile_run rc=0 seconds=62.5 start=1794627367.393 end=1794627429.851
+- profile rc=0 seconds=0.4 start=1794627429.862 end=1794627430.244
+- profile_callers rc=0 seconds=0.4 start=1794627430.254 end=1794627430.664
+- idle rc=0 seconds=87.2 start=1794627430.675 end=1794627517.902
+- idle_report rc=0 seconds=0.0 start=1794627517.912 end=1794627517.946
+- soak rc=0 seconds=704.2 start=1794627517.955 end=1794628222.196
+- soak_report rc=0 seconds=0.0 start=1794628222.206 end=1794628222.243
+
+## Stalls (tools/vm/stalls.py on the guest's kernel log)
+
+- stalls 0
+
+## Figures (each from its step's own report)
+
+- it_p15d:   queue_full 524, spine reserve failures 0; EXEC of /bin/true: 2000; END: exit 0, state 0, invariant 1, signal 15, reason 
+- it_p15d:   with file identity and NET: queue_full 193, spine reserve failures 0, bulk records lost to the ring 0; END: exit 0, state 0, invariant 1, signal 15, reason 
+- it_p15d: it_p15d: PASS (0 failed checks)
+- crc32c: table   2.2459 ns per byte (median; 2.0381 to 2.2763)
+- crc32c: sse4.2  0.1044 ns per byte (median; 0.0963 to 0.1227)
+- crc32c: speed-up 21.5x; same crc: yes
+- crc32c: table   2.2392 ns per byte (median; 2.2234 to 2.3535)
+- crc32c: sse4.2  0.1136 ns per byte (median; 0.1100 to 0.1182)
+- crc32c: speed-up 19.7x; same crc: yes
+- prog_stats: | file_open_path | tracing | 3 | 660,166 | 271.9 | 271.4 to 287.0 | 1.000 | 272.0 |
+- prog_stats: | file_free | kprobe | 3 | 660,501 | 216.0 | 209.3 to 223.9 | 1.001 | 216.2 |
+- prog_stats: | file_open_session | kprobe | 3 | 1,320,332 | 91.3 | 90.7 to 94.4 | 2.001 | 182.7 |
+- prog_stats: | file_fd_iter | tracing | 1 | 710 | 373.9 | 373.9 to 373.9 | 0.003 | 1.2 |
+- prog_stats: | file_inode_free | kprobe | 3 | 24 | 557.4 | 475.8 to 696.9 | 0.000 | 0.0 |
+- open_cost: added per open+close 1,157.8 ns (95 % interval 727.9 ns to 1,233.2 ns), 11.92 null syscalls; ratio of medians 2.1794; effect p = 0.0312
+- open_cost: added per open+close 1,179.1 ns (95 % interval 827.3 ns to 1,274.6 ns), 12.14 null syscalls; ratio of medians 2.1764; effect p = 0.0312
+- open_cost: added per open+close 1,531.2 ns (95 % interval 1,419.8 ns to 1,730.7 ns), 15.76 null syscalls; ratio of medians 2.0444; effect p = 0.0312
+- open_cost: added per open+close 1,587.3 ns (95 % interval 1,421.4 ns to 1,753.2 ns), 16.34 null syscalls; ratio of medians 2.0902; effect p = 0.0312
+- open_cost: opens expected 1,320,000; OPEN records with their path 1,320,000; PATH_MISSING records of the workload 0; CLOSE records 1,320,000; lost to the ring 0
+- open_cost: p15d idle: 2.92 ms of CPU per second (mean; median 2.96)
+- open_cost: p15d per open+close of the workload: 261.3 ns of CPU in the window (mean), 250.7 ns after the idle rate is taken off (median 245.5 ns)
+- open_cost: p15d's thread switches: 0.4 per 1,000 open+close in the window (median), 19.5 per second idle (median)
+- profile: 19.89%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+- profile: 11.05%  p15d               [.] tiles
+- profile: 4.97%  p15d               [.] on_bulk
+- profile: 4.42%  p15d               [.] crc_hw
+- profile: 3.87%  [kernel.kallsyms]  [k] fdget
+- profile: 3.87%  p15d               [.] after_poll
+- profile: 3.31%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+- profile: 2.21%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+- idle: | default | 2.258 | 2.174 .. 2.330 | 9.3 | 11.9 | 1.00x | no |
+- idle: Per thread, median ms/s over rounds:
+- idle: | default | 1.498 | 0.676 |
+- soak: | over the run | median | max | first | last |
+- soak: | p15d CPU, ms/s | 4.93 | 6.26 | 5.33 | 3.16 |
+- soak: | drain thread, ms/s | 3.20 | 4.16 | | |
+- soak: | writer thread, ms/s | 1.79 | 2.11 | | |
+- soak: | resident memory, MiB | 24.9 | 25.1 | 24.2 | 25.1 |
+- soak: | longest poll gap, s | 0.201 | 0.215 | | |
+- soak: WAL: 47.6 MiB, 73.0 KiB/s. Spine records drained: 39,274; bulk-ring records written (NET and file identity): 444,266; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+- soak: | archive | 76 | 1,976 | 1,976 | 100.00% |
+- soak: | compile | 76 | 2,128 | 2,128 | 100.00% |
+- soak: | git | 76 | 988 | 988 | 100.00% |
+- soak: | http | 75 | 225 | 225 | 100.00% |
+- soak: | memfd | 75 | 75 | 75 | 100.00% |
+- soak: | pyfiles | 76 | 912 | 912 | 100.00% |
+- soak: | shell | 75 | 150 | 150 | 100.00% |
+- soak: | dropper_chain | 76 | 76 |
+- soak: | sock_pairs | 600 | 600 |
+- soak: | memfd_exec | 75 | 75 |
+- soak: - PASS

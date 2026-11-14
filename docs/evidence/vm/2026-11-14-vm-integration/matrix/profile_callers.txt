@@ -1,0 +1,71 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 181  of event 'task-clock:ppp'
+# Event count (approx.): 90545250
+#
+# Overhead  Command      Shared Object      Symbol                         
+# ........  ...........  .................  ...............................
+#
+    15.47%  p15d-writer  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+            |
+            ---0x756bc21375cb
+               0x756bc20a3df9
+               p15_writer_main
+               |          
+               |--10.50%--p15w_tick
+               |          timed_sync
+               |          fdatasync
+               |          0x756bc20a039b
+               |          0x756bc20ac802
+               |          entry_SYSCALL_64_after_hwframe
+               |          do_syscall_64
+               |          x64_sys_call
+               |          __x64_sys_fdatasync
+               |          do_fsync
+               |          ext4_sync_file
+               |          file_write_and_wait_range
+               |          __filemap_fdatawait_range
+               |          folio_wait_writeback
+               |          folio_wait_bit
+               |          folio_wait_bit_common
+               |          io_schedule
+               |          schedule
+               |          __schedule
+               |          finish_task_switch.isra.0
+               |          
+                --4.97%--p15q_wait
+                          poll (inlined)
+                          __poll
+                          0x756bc20a039b
+                          0x756bc20ac802
+                          entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_poll
+                          do_sys_poll
+                          do_poll.constprop.0
+                          poll_schedule_timeout.constprop.0
+                          schedule_hrtimeout_range
+                          schedule_hrtimeout_range_clock
+                          schedule
+                          __schedule
+                          finish_task_switch.isra.0
+
+    11.05%  p15d-writer  p15d               [.] tiles
+            |
+            ---0x756bc21375cb
+               0x756bc20a3df9
+               p15_writer_main
+               drain_queue
+               append (inlined)
+               p15w_append
+               tiles
+
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

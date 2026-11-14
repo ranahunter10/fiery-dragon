@@ -1,0 +1,11 @@
+stamp 20261114T033035Z
+commit bb48c37fc7ba2951320dae703b86fb6cc7a1a139 clean
+kernel 7.0.0-38-generic cpus 3
+python /home/ashu/p15venv/bin/python
+p15d_options --flow
+quick 1 soak_seconds 600
+bd9dbebd416ee0488552bf1ae526dfc44fb9254145551a44d9a2c813f68df659  build/p15d
+dc96168b80103c799387df02a17398b7939b639ab94ba1ab16e86ff73e6e5ca9  build/p15w-inspect
+35eb6a40dc8d36d028aeed6db7be036bb3f785b1b81b18134ccdf2a07ff6d32f  build/open_cost
+173c8b06ef019e8422eb2bfd9bd8f9fe225cacbcbaea66bb2fb9c1303e8b5dda  build/prim_cost
+138c1b21d7b3ddcd769db1750857a44ed18b200e349869c68aa677730fd0ec5e  build/crc32c_bench

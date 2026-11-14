@@ -395,3 +395,11 @@ From the detach fault's design note ([note](research/2026-11-13-detach-fault-des
 
 126. **The rule for the open-file map's size:** 4 x the files open on the host at load, at least 65,536, at most 4,194,304 and 1/128 of memory. On a quiet host this is the old size. Options: (a) as built; (b) a larger floor, for example 262,144 (27 MB), so that one process needs more files to fill it; (c) the size re-made when the map is seen nearly full, which needs a second map and a swap and is not built. Recommendation: (a) now; choose (b)'s floor after run V-3 says how many entries real work on the VM uses (`files_live_max` in FILE_STATS). Evidence: E-0309; no size stops a process that wants to fill the map, which is why the full map is now a state.
 127. **The object map** keeps its fixed 131,072 and a full object map is still only a count (`obj_map_full`). Recommendation: the same treatment (sized 2 x the open-file map, DEGRADED when full) in a follow-up; say so if it should have been in this PR.
+
+**The four Dragon pieces on the VM, 2026-11-14 (E-0310; [evidence](evidence/vm/2026-11-14-vm-integration/)):** run in an integrated tree with #90's head, #91 and the socket join. Results:
+- `it_p15d`: every case passed, none skipped.
+- Canary with `--flow`: 9 of 9 in time, want 0x7f, 23 links checked.
+- Planted bugs 77, 80, 86 to 89 and 108: all killed.
+- `--flow` matrix: all 12 steps rc=0, no stall.
+
+For 119: `file_open_session` costs 91.3 ns per run against 87.8 at #95's head. That is about 7 ns per open, compared across two runs whose other programs moved by 60 to 100 ns without a code change, so it is not resolved. Recommendation unchanged: accept. For 123: the default matrix has now run with `--flow`, but not yet with `--canary-s 10`.

@@ -1,0 +1,58 @@
+processes naming port 4444 or called nc: 4
+  p:15799:652704701627  comm='nc' exe='/usr/bin/nc' cmd='nc -l 127.0.0.1 4444'
+  p:15826:655343338748  comm='curl' exe='/usr/bin/curl' cmd='curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C/dev/null'
+  p:15827:655352544965  comm='sh' exe='/bin/sh' cmd='/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null'
+  p:15829:655358765605  comm='nc' exe='/usr/bin/nc' cmd='nc -w1 127.0.0.1 4444'
+
+tracking from p:15829:655358765605 ('nc -w1 127.0.0.1 4444')
+
+===== --back p:15829:655358765605 =====
+backward from node 183 at 682764108744: 181 nodes, file 154, proc 18, sock 9
+          682764108744        183  proc 15829 nc (nc -w1 127.0.0.1 4444)
+          655363706785        845  file /etc/services
+          655361204779        663  file /etc/ld.so.cache
+          655361039699        789  file /etc/nsswitch.conf
+          655360757638        671  file /usr/lib/x86_64-linux-gnu/libmd.so.0.1.0
+          655360723442        661  file /usr/lib/x86_64-linux-gnu/libc.so.6
+          655360688411        670  file /usr/lib/x86_64-linux-gnu/libresolv.so.2
+          655360646574        669  file /usr/lib/x86_64-linux-gnu/libbsd.so.0.12.2
+          655359303314        668  file /usr/bin/nc.openbsd
+          655359052247        656  file /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+          655358769272        181  proc 15827 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null)
+          655358730723        213  file /dev/null
+          655353641112        834  file /usr/bin/dash
+          655352550149        158  proc 15803 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)
+          655351887484        918  sock 127.0.0.1:36736 -> 127.0.0.1:8080
+          655351887484        919  sock 127.0.0.1:8080 -> 127.0.0.1:36736
+          655351677668        180  proc 15826 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C/dev/null)
+          655351471108        820  file /etc/passwd
+          655351287666        664  file /usr/lib/locale/locale-archive
+          655351183445        819  file /etc/ssl/openssl.cnf
+          655350351800        818  file /etc/gnutls/config
+          655347166760        441  file /usr/lib/x86_64-linux-gnu/libffi.so.8.2.0
+          655347079502        817  file /usr/lib/x86_64-linux-gnu/libkeyutils.so.1.10
+          655347024038        816  file /usr/lib/x86_64-linux-gnu/libtasn1.so.6.6.5
+          655346969710        815  file /usr/lib/x86_64-linux-gnu/libp11-kit.so.0.4.8
+          655346925987        814  file /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1.2.0
+          655346876511        813  file /usr/lib/x86_64-linux-gnu/libkrb5support.so.0.1
+          655346836575        812  file /usr/lib/x86_64-linux-gnu/libcom_err.so.2.1
+          655346744502        811  file /usr/lib/x86_64-linux-gnu/libk5crypto.so.3.1
+          655346714421        810  file /usr/lib/x86_64-linux-gnu/libkrb5.so.3.3
+          655346678006        809  file /usr/lib/x86_64-linux-gnu/libsasl2.so.2.0.25
+          655346654281        808  file /usr/lib/x86_64-linux-gnu/libgmp.so.10.5.0
+          655346630780        807  file /usr/lib/x86_64-linux-gnu/libnettle.so.8.11
+          655346608491        806  file /usr/lib/x86_64-linux-gnu/libhogweed.so.6.11
+          655346570558        805  file /usr/lib/x86_64-linux-gnu/libgnutls.so.30.41.1
+          655346535364        804  file /usr/lib/x86_64-linux-gnu/libunistring.so.5.2.0
+          655346505490        803  file /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1.2.0
+          655346477287        765  file /usr/lib/x86_64-linux-gnu/libzstd.so.1.5.7
+          655346450070        802  file /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so.2.2
+          655346414965        764  file /usr/lib/x86_64-linux-gnu/libcrypto.so.3
+  ... 141 more (--top)
+
+===== --forward p:15829:655358765605 =====
+forward from node 183 at 652581658578: 4 nodes, proc 2, sock 2
+          652581658578        183  proc 15829 nc (nc -w1 127.0.0.1 4444)
+          655363839511        921  sock 127.0.0.1:44426 -> 127.0.0.1:4444
+          655363839511        922  sock 127.0.0.1:4444 -> 127.0.0.1:44426
+          655363881541        154  proc 15799 nc (nc -l 127.0.0.1 4444)

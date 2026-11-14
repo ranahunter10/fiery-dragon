@@ -1,0 +1,6 @@
+# Pasted by the maintainer from the VM's terminal, 2026-11-14 (the test script's own capture of these
+# lines was empty: its glob was expanded outside sudo, fixed since). The run: canary_run.txt.
+ashu@p15-dev:~/fd-vm$ sudo sh -c 'build/p15w-inspect -v /var/tmp/p15-canary-flow/*/' | grep -E "\] SELF_STATS|\] CANARY_MISS|^END" | tail -3
+    [2] SELF_STATS ts=647375544310 tgid=15679 tid=15683 start=635285013661 flags=0x0 canary: runs=9 missed=0 late=0 spawn_failed=0 exec_failed=0 unfinished=0 stalled=0 every=1s want=0x7f links: 23 checks=230 missing=0
+    [2] SELF_STATS ts=647783238588 tgid=15679 tid=15683 start=635285013661 flags=0x0 canary: runs=9 missed=0 late=0 spawn_failed=0 exec_failed=0 unfinished=0 stalled=0 every=1s want=0x7f links: 23 checks=230 missing=0
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
