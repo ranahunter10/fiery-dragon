@@ -147,8 +147,8 @@ M = [
     ("../bpf/progs/file.bpf.c", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_RETURNED | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", IT),
     # the self-check (ADR-0019 G4.4; canary.c, selfcheck.c; test_canary and it_p15d cases 21 to 25)
     ("canary.c", "		if (now - c->last_poll_ns > P15_CANARY_STALL_NS) {", "		if (0) {", UNIT),
-    ("canary.c", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->deadline_ns && !took &&", UNIT),
-    ("canary.c", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !(took && 0) &&", UNIT),
+    ("canary.c", "now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->miss_deadline_ns && !took &&", UNIT),
+    ("canary.c", "now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !(took && 0) &&", UNIT),
     ("canary.c", "			finish(c, c->all_seen_ns > c->deadline_ns ? P15_CANARY_MISS_KIND_LATE : 0,", "			finish(c, 0,", UNIT),
     ("canary.c", "				c->cur_want &= ~P15_CANARY_EXEC;\n", "", UNIT),
     ("canary.c", "		p15_run_set_state(c->run, P15_RUN_DEGRADED, msg);\n		publish_bad(c, kind, late_ns);", "		publish_bad(c, kind, late_ns);", IT),
@@ -185,6 +185,7 @@ M = [
     ("queue.h", "	return q->n - p15q_depth(q) > keep;", "	return q->n - p15q_depth(q) >= keep;", UNIT),   # 125: the reserve one short
     ("config.c", "	uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;", "	uint32_t keep = c->flow_keep_batches;", UNIT),   # 126: the auto reserve gone
     ("canary.c", "	c->deadline_ns += over_ns;", "	(void)over_ns;", UNIT),   # 127: the drain's oversleep not excused
+    ("canary.c", "		else if (!c->all_seen_ns && now >= c->miss_deadline_ns && c->polls", "		else if (!c->all_seen_ns && now >= c->deadline_ns && c->polls", UNIT),   # 128: a miss waits on the moved deadline
 ]
 
 

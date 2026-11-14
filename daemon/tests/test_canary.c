@@ -304,6 +304,20 @@ static void test_oversleep(void)
 	reap_ready = 1;
 	p15_canary_tick(&c, t + 1200 * MS, 1);
 	EXPECT(c.pid == 0 && LATE() == 1, "an oversleep before the canary started does not move its deadline");
+
+	/* every wait oversleeps (the VM, E-0318) and the EXEC never comes: the miss is still judged at
+	 * the unmoved deadline, not pushed away poll after poll */
+	start(&c, 10, 0, 0);
+	p15_canary_tick(&c, t, 0);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	for (unsigned i = 1; i <= 12; i++) {
+		p15_canary_oversleep(&c, 250 * MS);
+		p15_canary_tick(&c, t + i * 100 * MS, 0);
+	}
+	EXPECT(c.pid == 0 && MISSED() == 1 && LATE() == 0 && BAD(kind) == P15_CANARY_MISS_KIND_RECORD && BAD(seen) == 5,
+	       "chronic oversleep: the missing EXEC is still a miss, judged at the first empty poll after 1 s");
 }
 
 static void test_exec_failed(void)

@@ -42,6 +42,12 @@ echo "network capture and file identity: $([ $NET_OK = 1 ] && echo on || echo 'o
 storm() { local ps=(); for _ in $(seq "$1"); do /bin/true & ps+=($!); done; wait "${ps[@]}"; }   # not a bare wait: p15d is a job too
 # p15d prints code=start once its hooks are attached and both self-tests passed: wait for that,
 # not for a fixed time, so a slow start never hides events from the test (E-0089 follow-up)
+# stopwait PID: stop p15d once the case's workload is done, and take its exit code. The cases below
+# that run a workload beside p15d used a fixed --duration, which on the VM a workload could outlive:
+# its sleeps can wake up to a second late (E-0317), so the last steps fell after p15d had stopped
+# (case 28: "0 of the last 100"; case 30: the victim's last files, E-0318). They now run with a
+# safety cap and are stopped here, after the workload, whatever its pace.
+stopwait() { kill -INT "$1" 2>/dev/null; wait "$1"; }
 started() { for _ in $(seq 150); do grep -q code=start "$1" 2>/dev/null && return 0; sleep 0.1; done; echo "  FAIL p15d did not start within 15 s: $(cat "$1")"; return 1; }
 # the run's EXEC records of /bin/true, and the kernel's skips from the last STATS (ADR-0020)
 true_execs() { PYTHONPATH=python "$PY" -c "
@@ -371,7 +377,7 @@ fi
 echo "case 13: --flow: a known workload's reads, writes, sends and receives become FLOW records (ADR-0005, step 2b) [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
     D13=$(mktemp -d /tmp/p15d-it13-XXXXXX); D13=$(realpath "$D13")
-    "$B/p15d" --wal-dir "$T/c13" --flow --duration 5 --stats-ms 200 2>"$T/c13.err" &
+    "$B/p15d" --wal-dir "$T/c13" --flow --duration 120 --stats-ms 200 2>"$T/c13.err" &
     pid=$!
     if started "$T/c13.err"; then
         # one process, known sizes: a 12345-byte write and read of a file, a 7-byte writev and
@@ -398,7 +404,7 @@ print(os.getpid())
 WL
 )
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c13; inspect >"$T/c13.txt"; irc=$?
     c13=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
@@ -441,7 +447,7 @@ fi
 
 echo "case 14: --flow with the first FILE of every file lost (--test-flow-file-fail-first): counted, DEGRADED, retried [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
-    "$B/p15d" --wal-dir "$T/c14" --flow --test-flow-file-fail-first --duration 4 --stats-ms 200 2>"$T/c14.err" &
+    "$B/p15d" --wal-dir "$T/c14" --flow --test-flow-file-fail-first --duration 120 --stats-ms 200 2>"$T/c14.err" &
     pid=$!
     if started "$T/c14.err"; then
         # three transfers on each end of a pipe and of a socketpair: the first finds its FILE lost,
@@ -459,7 +465,7 @@ print(os.getpid())
 WL
 )
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c14; inspect >"$T/c14.txt"; irc=$?
     c14=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
@@ -606,10 +612,11 @@ check "[ \"\${s_missed:-0}\" -ge 1 ] && case \" $s_miss \" in *' R:'*) true;; *)
 check "PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(':')[1:]); sys.exit(0 if w & ~s == 2 else 1)\" \"\$(printf '%s\\n' $s_miss | grep -m1 '^R:')\"" "  ... whose masks say it is the EXEC that is missing"
 check "grep -q 'code=canary_miss' $T/c22.err && grep -q 'records missing, mask 0x2' $T/c22.txt" "  ... the log has the error and END's reason names the mask"
 
-echo "case 23: a stuck drain (1.5 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+${SECONDS}s]"
-# 8 s, not 6: the first canary starts 1 s in, at a poll, and is judged at the next poll 1.5 s later;
-# a 6 s run left one verdict at most, and on the VM sometimes none (E-0316)
-selfrun c23 --canary-s 1 --test-drain-pause-ms 1500 --duration 8
+echo "case 23: a stuck drain (3 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+${SECONDS}s]"
+# A 3 s pause, so a canary judged at the next poll is at least 2 s late: more than the VM's longest
+# measured wait overshoot (about 1 s, E-0317), which the canary excuses from lateness. 12 s, so at
+# least one canary is judged (the first starts at the first poll after 1 s, its verdict one pause later).
+selfrun c23 --canary-s 1 --test-drain-pause-ms 3000 --duration 12
 echo "  canaries $s_runs (missed $s_missed, late $s_late, unfinished $s_unf); CANARY_MISS: ${s_miss:-none}"
 check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c23.txt" "exit 3 (DEGRADED), WAL valid, nothing lost (p15d $rc)"
 check "[ \"\${s_late:-0}\" -ge 1 ] && [ \"$s_missed\" = 0 ] && case \" $s_miss \" in *' L:'*) true;; *) false;; esac" "counted late, not missed, with a CANARY_MISS record of kind LATE ($s_miss)"
@@ -643,7 +650,7 @@ check "[ $rc -eq 0 ] && [ \"$c26n\" = 2048 ] && [ \"$c26by\" = option ]" "with -
 echo "case 27: a full open-file map is a state of the run: one process opens 3000 files into a map of 1024 (F-04) [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
     D27=$(mktemp -d /tmp/p15d-it27-XXXXXX)
-    "$B/p15d" --wal-dir "$T/c27" --file-map-entries 1024 --duration 4 --stats-ms 200 2>"$T/c27.err" &
+    "$B/p15d" --wal-dir "$T/c27" --file-map-entries 1024 --duration 120 --stats-ms 200 2>"$T/c27.err" &
     pid=$!
     if started "$T/c27.err"; then
         ( ulimit -n 4096; "$PY" -c "
@@ -651,7 +658,7 @@ import os, sys, time
 fds = [os.open(os.path.join(sys.argv[1], 'f%d' % i), os.O_WRONLY | os.O_CREAT, 0o600) for i in range(3000)]
 time.sleep(1)" "$D27" )
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c27; inspect >"$T/c27.txt" 2>&1; irc=$?
     c27=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
@@ -692,23 +699,27 @@ echo "case 28: the disk fills while p15d runs, guard on: bulk shed, then the spi
 D28=$T/disk28
 mkdir -p "$D28" && mount -t tmpfs -o size=48m tmpfs "$D28"
 dd if=/dev/zero of="$D28/fill1" bs=1M count=20 status=none
-"$B/p15d" --wal-dir "$D28/wal" $NET --wal-space-low-mb 24 --wal-space-reserve-mb 12 --duration 12 --stats-ms 200 \
+"$B/p15d" --wal-dir "$D28/wal" $NET --wal-space-low-mb 24 --wal-space-reserve-mb 12 --duration 120 --stats-ms 200 \
     2>"$T/c28.err" &
 pid=$!
+# Each step waits for p15d to log the level it causes (code=wal_space, writer.c space_changed),
+# not for a fixed time: the guard reads free space once per writer loop, and on the VM a loop can
+# come a second late (E-0317). 30 s at most per step, then the case goes on and its checks fail.
+level28() { for _ in $(seq 300); do grep -q "code=wal_space level=$1 " "$T/c28.err" && return 0; sleep 0.1; done
+            echo "  (p15d did not log level $1 within 30 s)"; return 1; }
 if started "$T/c28.err"; then
     sleep 1
     dd if=/dev/zero of="$D28/fill2" bs=1M count=8 status=none        # about 20 MiB free: below low
-    sleep 1.5
+    level28 shed_bulk
     dd if=/dev/zero of="$D28/fill3" bs=1M count=10 status=none       # about 10 MiB free: below the reserve
-    sleep 1.5
+    level28 shed_all
     storm 300                                                       # spine records the guard must shed
-    sleep 1
     rm -f "$D28/fill1" "$D28/fill2" "$D28/fill3"                    # space comes back
-    sleep 1.5
+    level28 ok
     t_back=$(boot_ns)
     storm 100                                                       # written again
 fi
-wait $pid; rc=$?
+stopwait $pid; rc=$?
 RUN=$D28/wal; inspect >"$T/c28.txt" 2>&1; irc=$?
 read -r lv28 last28 sp28 bk28 ns28 fk28 ex28 <<<"$(spacerec "$D28/wal")"
 tc28=$(treecheck "$D28/wal")
@@ -726,7 +737,7 @@ umount "$D28"
 echo "case 29: the guard off, the disk really full: a refused batch is taken back, the WAL stays valid, p15d goes on (F-02) [t+${SECONDS}s]"
 D29=$T/disk29
 mkdir -p "$D29" && mount -t tmpfs -o size=8m tmpfs "$D29"
-"$B/p15d" --wal-dir "$D29/wal" $NET --wal-space-guard 0 --duration 8 --stats-ms 200 --batch-kb 64 2>"$T/c29.err" &
+"$B/p15d" --wal-dir "$D29/wal" $NET --wal-space-guard 0 --duration 120 --stats-ms 200 --batch-kb 64 2>"$T/c29.err" &
 pid=$!
 if started "$T/c29.err"; then
     sleep 0.5
@@ -738,7 +749,7 @@ if started "$T/c29.err"; then
     t_back=$(boot_ns)
     storm 100
 fi
-wait $pid; rc=$?
+stopwait $pid; rc=$?
 RUN=$D29/wal; inspect >"$T/c29.txt" 2>&1; irc=$?
 read -r lv29 last29 sp29 bk29 ns29 fk29 ex29 <<<"$(spacerec "$D29/wal")"
 back29=$(true_after "$D29/wal" "${t_back:-0}")
@@ -755,7 +766,7 @@ if [ "$NET_OK" = 1 ]; then
     # which p15d, at SCHED_FIFO, drained the 64 KiB ring in time: no FLOW lost). The drain pauses
     # 20 ms after every poll, so the ring (about 680 FLOWs) fills between polls; the writer takes
     # 100 ms a 64 KiB batch, slower than the drain, so the queue fills and FLOW must leave its reserve.
-    "$B/p15d" --wal-dir "$T/c30" --flow --duration 8 --stats-ms 200 --flow-ring-kb 64 --batch-kb 64 \
+    "$B/p15d" --wal-dir "$T/c30" --flow --duration 120 --stats-ms 200 --flow-ring-kb 64 --batch-kb 64 \
         --test-drain-pause-ms 20 --test-writer-batch-ms 100 2>"$T/c30.err" &
     pid=$!
     if started "$T/c30.err"; then
@@ -778,7 +789,7 @@ WL
 )
         kill "$flood" 2>/dev/null; wait "$flood" 2>/dev/null
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c30; inspect >"$T/c30.txt"; irc=$?
     c30=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal

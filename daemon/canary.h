@@ -66,7 +66,9 @@ struct p15_canary_state {
 	/* the canary in flight */
 	pid_t pid;                  /* 0: none */
 	unsigned seen, cur_want;
-	uint64_t spawn_boot_ns, spawn_ns, deadline_ns, last_poll_ns;
+	uint64_t spawn_boot_ns, spawn_ns, last_poll_ns;
+	uint64_t deadline_ns;       /* for LATE: start + 1 s, moved by the drain's oversleep (p15_canary_oversleep) */
+	uint64_t miss_deadline_ns;  /* for MISS: start + 1 s, never moved by oversleep, so a miss is always judged */
 	uint64_t all_seen_ns;       /* when the last wanted thing was seen (monotonic); 0: not yet */
 	uint64_t base_session, base_free;   /* the two run counters when it started */
 	unsigned polls;

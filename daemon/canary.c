@@ -156,7 +156,8 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 		if (ctr(c, P15_FC_FREE_RUN) != c->base_free)
 			c->seen |= P15_CANARY_FREE & ~c->blind;
 		if (now - c->last_poll_ns > P15_CANARY_STALL_NS) {
-			c->deadline_ns = now + P15_CANARY_DEADLINE_NS;   /* the guest stood still: start the second again */
+			/* the guest stood still: start the second again, for both verdicts */
+			c->deadline_ns = c->miss_deadline_ns = now + P15_CANARY_DEADLINE_NS;
 			atomic_fetch_add(&c->run->canary_stalled, 1);
 		}
 		c->last_poll_ns = now;
@@ -166,9 +167,12 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 		if (c->all_seen_ns && c->reaped)
 			finish(c, c->all_seen_ns > c->deadline_ns ? P15_CANARY_MISS_KIND_LATE : 0,
 			       c->all_seen_ns > c->deadline_ns ? c->all_seen_ns - c->deadline_ns : 0);
-		else if (!c->all_seen_ns && now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&
-			 (c->reaped || now >= c->deadline_ns + 10 * P15_CANARY_DEADLINE_NS))
-			finish(c, P15_CANARY_MISS_KIND_RECORD, now - c->deadline_ns);   /* unreaped for 10 s more: judged anyway, so it cannot hang */
+		/* A miss is judged against the unmoved deadline: the oversleep excuse only stops lateness from
+		 * being blamed on the pipeline. Moving this one too let a VM whose waits always overslept
+		 * push the verdict past the end of a short run (case 22 on the VM, E-0318). */
+		else if (!c->all_seen_ns && now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&
+			 (c->reaped || now >= c->miss_deadline_ns + 10 * P15_CANARY_DEADLINE_NS))
+			finish(c, P15_CANARY_MISS_KIND_RECORD, now - c->miss_deadline_ns);   /* unreaped for 10 s more: judged anyway, so it cannot hang */
 		return;
 	}
 	if (c->stopped || now < c->next_ns)
@@ -185,7 +189,7 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 	c->base_free = ctr(c, P15_FC_FREE_RUN);
 	c->spawn_boot_ns = p15_boot_ns();
 	c->spawn_ns = now;
-	c->deadline_ns = now + P15_CANARY_DEADLINE_NS;
+	c->deadline_ns = c->miss_deadline_ns = now + P15_CANARY_DEADLINE_NS;
 	c->last_poll_ns = now;
 	errno = 0;
 	c->pid = (c->spawn ? c->spawn : real_spawn)(c, (c->want & (P15_CANARY_FILES | P15_CANARY_FLOW)) != 0);
