@@ -1,0 +1,18 @@
+p15d exit 0; strace root pid 252998
+  processes         26 of 26       100.00 %  
+  clone_edges       25 of 25       100.00 %  
+  execs             26 of 26       100.00 %  0 matched by last component only
+  opens            427 of 427      100.00 %  
+  connects           2 of 2        100.00 %  tgid, family, port, ret
+  accepts            2 of 2        100.00 %  tgid, count
+  bytes file_read   graph     15119636 strace     15119636  100.0000 %  exact in 26 of 26 processes
+  bytes file_write  graph     11816152 strace     11816152  100.0000 %  exact in 26 of 26 processes
+  bytes sock_recv   graph     11811542 strace     11811542  100.0000 %  exact in 26 of 26 processes
+  bytes sock_send   graph     11811542 strace     11807392  100.0351 %  exact in 25 of 26 processes
+  extra: processes 0; opens 52 (52 an exec's program or interpreter, 0 other)
+  calls the flow programs do not hook (by design): copy_file_range 1 (11807104 B), splice 5 (11752 B)
+  not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 136, thread 1, unfinished 408
+  attack 'fake key to the catcher': reached True (expected True), bytes 4150 of 4150
+  attack rules: R1 fired; all fired: {'R1': 1}
+VERDICT: 1 capture or graph check(s) do not hold; detection: every expected rule fired
+  - bytes sock_send: graph 11811542 vs strace 11807392 (first: [[253028, 0, 4150]])

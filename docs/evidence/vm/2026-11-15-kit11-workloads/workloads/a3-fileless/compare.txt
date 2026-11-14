@@ -1,0 +1,16 @@
+p15d exit 0; strace root pid 253330
+  processes          5 of 5        100.00 %  
+  clone_edges        4 of 4        100.00 %  
+  execs              5 of 5        100.00 %  0 matched by last component only
+  opens             58 of 58       100.00 %  
+  connects           0 of 0               -  tgid, family, port, ret
+  accepts            0 of 0               -  tgid, count
+  bytes file_read   graph     11947612 strace     11947612  100.0000 %  exact in 5 of 5 processes
+  bytes file_write  graph     11834665 strace     11834665  100.0000 %  exact in 5 of 5 processes
+  bytes sock_recv   graph            0 strace            0           -  exact in 5 of 5 processes
+  bytes sock_send   graph            0 strace            0           -  exact in 5 of 5 processes
+  extra: processes 0; opens 10 (8 an exec's program or interpreter, 2 other)
+  calls the flow programs do not hook (by design): splice 2 (60 B)
+  not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 19, unfinished 3
+  attack rules: R1 fired, R2 fired, R3 fired; all fired: {'R1': 2, 'R2': 1, 'R3': 1}
+VERDICT: capture and graph checks hold; detection: every expected rule fired

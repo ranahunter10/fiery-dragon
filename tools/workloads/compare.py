@@ -111,9 +111,15 @@ def compare(con: duckdb.DuckDBPyConnection, f: O.Facts, manifest: dict | None, p
                                    JOIN openfile o ON o.fid = e.fid JOIN wl ON wl.tgid = p.tgid
                                    WHERE e.op = 'OPEN' AND e.ok""").fetchall())
     recall("opens", f.opens, have_open, out)
+    # the kernel opens an exec's program (the file of its EXECUTE edge, whatever path the exec was
+    # given: /proc/self/fd/N for a memfd) and its ELF interpreter with no open call
+    exec_files = set(con.execute("""SELECT p.tgid, f.path FROM edge e JOIN proc p ON p.node_id = e.dst
+                                    JOIN file f ON f.node_id = e.src JOIN wl ON wl.tgid = p.tgid
+                                    WHERE e.op = 'EXECUTE'""").fetchall())
     exec_paths = {os.path.realpath(p) for _, p in f.execs} | {p for _, p in f.execs}
     extra_o = sorted(have_open - f.opens - f.opath, key=str)
-    expected = [x for x in extra_o if x[1] in exec_paths or "/ld-linux" in (x[1] or "") or "/ld-musl" in (x[1] or "")]
+    expected = [x for x in extra_o if x in exec_files or x[1] in exec_paths
+                or "/ld-linux" in (x[1] or "") or "/ld-musl" in (x[1] or "")]
     other = [x for x in extra_o if x not in set(expected)]
     out["extra"]["opens"] = {"n": len(extra_o), "exec_and_interpreter": len(expected),
                              "other": len(other), "other_first": [list(x) for x in other[:SHOW]]}

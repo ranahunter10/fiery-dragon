@@ -1,0 +1,10 @@
+p15d exit 0; strace root pid 254213
+  processes         13 of 13       100.00 %  
+  clone_edges       12 of 12       100.00 %  
+  execs             13 of 13       100.00 %  0 matched by last component only
+  opens           3384 of 3384     100.00 %  
+  connects           0 of 0               -  tgid, family, port, ret
+  accepts            0 of 0               -  tgid, count
+  extra: processes 0; opens 26 (26 an exec's program or interpreter, 0 other)
+  not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 2732, thread 12, unfinished 552
+VERDICT: capture and graph checks hold

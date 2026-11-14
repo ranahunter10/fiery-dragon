@@ -1,0 +1,149 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 37,
+  "unfinished_never_resumed": 0,
+  "open_failed": 51
+ },
+ "recall": {
+  "processes": {
+   "oracle": 11,
+   "found": 11,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 10,
+   "found": 10,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 12,
+   "found": 12,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 146,
+   "found": 146,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 1,
+   "found": 1,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 1,
+   "found": 1,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 23,
+   "exec_and_interpreter": 23,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 764478,
+   "graph": 764478,
+   "exact_processes": 11,
+   "processes": 11,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 890,
+   "graph": 890,
+   "exact_processes": 11,
+   "processes": 11,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 164,
+   "graph": 164,
+   "exact_processes": 11,
+   "processes": 11,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 164,
+   "graph": 164,
+   "exact_processes": 11,
+   "processes": 11,
+   "ratio": 1.0,
+   "differ": []
+  }
+ },
+ "unseen": {
+  "splice": {
+   "calls": 2,
+   "bytes": 652
+  }
+ },
+ "unix_connects": 4,
+ "opath_opens": 0,
+ "root": 253171,
+ "attack": {
+  "reach": [
+   {
+    "name": "controller to id",
+    "from_nodes": 1,
+    "to_nodes": 1,
+    "reached": true,
+    "expect": true
+   },
+   {
+    "name": "controller to uname",
+    "from_nodes": 1,
+    "to_nodes": 1,
+    "reached": true,
+    "expect": true
+   },
+   {
+    "name": "id's output to the controller",
+    "from_nodes": 1,
+    "to_nodes": 1,
+    "reached": true,
+    "expect": true
+   }
+  ],
+  "rules": {
+   "R4": false
+  },
+  "refused": {},
+  "comm": {},
+  "alerts": [],
+  "rules_fired": {}
+ },
+ "verdict": [],
+ "detection_gaps": [
+  "rule R4 did not fire"
+ ]
+}

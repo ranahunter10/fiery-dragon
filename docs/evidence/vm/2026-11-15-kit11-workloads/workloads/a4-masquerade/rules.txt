@@ -1,0 +1,2 @@
+rules: R1 dropper 1, R2 memfd-exec 0, R3 deleted-exec 0, R4 net-shell 0
+  +   0.600s  R1 dropper      p:253482:14809855244806  wrote /var/tmp/p15-workloads/a4-masquerade/work/.X11/kworker (pid 253481 cp), ran it as pid 253482

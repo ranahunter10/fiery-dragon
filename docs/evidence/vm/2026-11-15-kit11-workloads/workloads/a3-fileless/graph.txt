@@ -1,0 +1,40 @@
+graph: /var/tmp/p15-workloads/a3-fileless/graph.duckdb
+records: FORK 15, EXEC 12, EXIT 15, RENAME 14, CLOCK_SYNC 1, STATS 2, END 1, NET_STATS 2, PROC 281, SNAP_DONE 2, OPEN 172, CLOSE 204, FILE 8, FD 1479, FILE_STATS 2, FLOW_STATS 2, SELF_STATS 2, FLOW_RING 2, FLOW 528
+  accept_not_paired            0
+  edge_CLONE                   14
+  edge_EXECUTE                 12
+  edge_HELD                    621
+  edge_OPEN                    172
+  edge_READ                    139
+  edge_WRITE                   389
+  edge_proc_end_without_image  0
+  edge_without_node            0
+  exec_file_tuple              12
+  fid_two_objs                 0
+  file_rule_fid                189
+  file_rule_obj                270
+  file_rule_tuple              102
+  flow_interval_reversed       0
+  flow_sock_joined             0
+  flow_sock_not_joined         0
+  flow_start_unknown           0
+  flow_unregistered            0
+  image_exec                   12
+  image_exec_without_edge      0
+  image_fork                   14
+  image_snapshot               38
+  node_file                    561
+  node_proc                    155
+  obj_facts_conflict           0
+  open_denied                  0
+  open_never_opened            0
+  open_no_path                 0
+  openfile_close-only          8
+  openfile_file                8
+  openfile_open                172
+  openfile_snapshot            540
+  sock_cookie_without_net      0
+  sock_obj_two_cookies         0
+  thread_rename                1
+tree: exec 12, exit_process 15, fork_process 14, fork_thread 1, from_snapshot 140, image_exec 12, image_fork 14, image_none 104, image_snapshot 38, pre_existing 141, pre_existing_unlisted 1, rename 13, rename_thread 1
+wal bytes 388240

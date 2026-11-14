@@ -1,0 +1,198 @@
+== a1-exfil (full trace) 22:21:17
+a1-exfil       workload rc=0     2971 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: 1 capture or graph check(s) do not hold; detection: every expected rule fired
+     processes         26 of 26       100.00 %  
+     clone_edges       25 of 25       100.00 %  
+     execs             26 of 26       100.00 %  0 matched by last component only
+     opens            427 of 427      100.00 %  
+     connects           2 of 2        100.00 %  tgid, family, port, ret
+     accepts            2 of 2        100.00 %  tgid, count
+     bytes file_read   graph     15119636 strace     15119636  100.0000 %  exact in 26 of 26 processes
+     bytes file_write  graph     11816152 strace     11816152  100.0000 %  exact in 26 of 26 processes
+     bytes sock_recv   graph     11811542 strace     11811542  100.0000 %  exact in 26 of 26 processes
+     bytes sock_send   graph     11811542 strace     11807392  100.0351 %  exact in 25 of 26 processes
+     extra: processes 0; opens 52 (52 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 1 (11807104 B), splice 5 (11752 B)
+     not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 136, thread 1, unfinished 408
+     attack 'fake key to the catcher': reached True (expected True), bytes 4150 of 4150
+     attack rules: R1 fired; all fired: {'R1': 1}
+   VERDICT: 1 capture or graph check(s) do not hold; detection: every expected rule fired
+== a2-revshell (full trace) 22:21:27
+a2-revshell    workload rc=0     1354 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: rule R4 did not fire
+     processes         11 of 11       100.00 %  
+     clone_edges       10 of 10       100.00 %  
+     execs             12 of 12       100.00 %  0 matched by last component only
+     opens            146 of 146      100.00 %  
+     connects           1 of 1        100.00 %  tgid, family, port, ret
+     accepts            1 of 1        100.00 %  tgid, count
+     bytes file_read   graph       764478 strace       764478  100.0000 %  exact in 11 of 11 processes
+     bytes file_write  graph          890 strace          890  100.0000 %  exact in 11 of 11 processes
+     bytes sock_recv   graph          164 strace          164  100.0000 %  exact in 11 of 11 processes
+     bytes sock_send   graph          164 strace          164  100.0000 %  exact in 11 of 11 processes
+     extra: processes 0; opens 23 (23 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): splice 2 (652 B)
+     not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 51, unfinished 37
+     attack 'controller to id': reached True (expected True)
+     attack 'controller to uname': reached True (expected True)
+     attack 'id's output to the controller': reached True (expected True)
+     attack rules: R4 NOT fired; all fired: {}
+   VERDICT: capture and graph checks hold; detection: rule R4 did not fire
+== a3-fileless (full trace) 22:21:36
+a3-fileless    workload rc=0      642 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+     processes          5 of 5        100.00 %  
+     clone_edges        4 of 4        100.00 %  
+     execs              5 of 5        100.00 %  0 matched by last component only
+     opens             58 of 58       100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph     11947612 strace     11947612  100.0000 %  exact in 5 of 5 processes
+     bytes file_write  graph     11834665 strace     11834665  100.0000 %  exact in 5 of 5 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 5 of 5 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 5 of 5 processes
+     extra: processes 0; opens 10 (8 an exec's program or interpreter, 2 other)
+     calls the flow programs do not hook (by design): splice 2 (60 B)
+     not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 19, unfinished 3
+     attack rules: R1 fired, R2 fired, R3 fired; all fired: {'R1': 2, 'R2': 1, 'R3': 1}
+   VERDICT: capture and graph checks hold; detection: every expected rule fired
+== a4-masquerade (full trace) 22:21:44
+a4-masquerade  workload rc=1      456 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes          4 of 4        100.00 %  
+     clone_edges        3 of 3        100.00 %  
+     execs              4 of 4        100.00 %  0 matched by last component only
+     opens             36 of 36       100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph        40688 strace        40688  100.0000 %  exact in 4 of 4 processes
+     bytes file_write  graph           37 strace           37  100.0000 %  exact in 4 of 4 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 4 of 4 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 4 of 4 processes
+     extra: processes 0; opens 8 (8 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 1 (11807104 B)
+     not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 15
+   VERDICT: capture and graph checks hold
+== a5-staged (full trace) 22:21:54
+a5-staged      workload rc=0     2154 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+     processes         21 of 21       100.00 %  
+     clone_edges       20 of 20       100.00 %  
+     execs             21 of 21       100.00 %  0 matched by last component only
+     opens            273 of 273      100.00 %  
+     connects           1 of 1        100.00 %  tgid, family, port, ret
+     accepts            1 of 1        100.00 %  tgid, count
+     bytes file_read   graph      1826152 strace      1826152  100.0000 %  exact in 21 of 21 processes
+     bytes file_write  graph       297573 strace       297573  100.0000 %  exact in 21 of 21 processes
+     bytes sock_recv   graph        61867 strace        61867  100.0000 %  exact in 21 of 21 processes
+     bytes sock_send   graph        61867 strace        61867  100.0000 %  exact in 21 of 21 processes
+     extra: processes 0; opens 42 (42 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): splice 5 (60422 B)
+     not compared: AF_UNIX connects 4, O_PATH opens 1, oracle lines: open_failed 75, unfinished 108
+     attack 'report2.txt to the catcher, through the archive': reached True (expected True), bytes 61867 of 61867
+     attack rules: ; all fired: {}
+   VERDICT: capture and graph checks hold; detection: every expected rule fired
+== a6-scan (full trace) 22:22:04
+a6-scan        workload rc=0     2108 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+     processes         31 of 31       100.00 %  
+     clone_edges       30 of 30       100.00 %  
+     execs             11 of 11       100.00 %  0 matched by last component only
+     opens            164 of 164      100.00 %  
+     connects          21 of 21       100.00 %  tgid, family, port, ret
+     accepts            1 of 1        100.00 %  tgid, count
+     bytes file_read   graph       766180 strace       766180  100.0000 %  exact in 31 of 31 processes
+     bytes file_write  graph         4611 strace         4611  100.0000 %  exact in 31 of 31 processes
+     bytes sock_recv   graph            6 strace            6  100.0000 %  exact in 31 of 31 processes
+     bytes sock_send   graph            6 strace            6  100.0000 %  exact in 31 of 31 processes
+     extra: processes 0; opens 22 (22 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): splice 2 (322 B)
+     not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 279, unfinished 52
+     attack rules: ; all fired: {}
+     attack refused connects seen: 14501 True, 14502 True, 14503 True, 14504 True, 14505 True, 14506 True, 14507 True, 14508 True, 14509 True, 14510 True, 14511 True, 14512 True, 14513 True, 14514 True, 14515 True, 14516 True, 14517 True, 14518 True, 14519 True, 14520 True
+   VERDICT: capture and graph checks hold; detection: every expected rule fired
+== w1-build (full trace) 22:22:14
+w1-build       workload rc=0    17145 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes        107 of 107      100.00 %  
+     clone_edges      106 of 106      100.00 %  
+     execs            107 of 107      100.00 %  0 matched by last component only
+     opens           3978 of 3978     100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph     58699169 strace     58699169  100.0000 %  exact in 107 of 107 processes
+     bytes file_write  graph     26181736 strace     26181736  100.0000 %  exact in 107 of 107 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 107 of 107 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 107 of 107 processes
+     extra: processes 0; opens 214 (214 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 67 (2020783 B)
+     not compared: AF_UNIX connects 4, O_PATH opens 1, oracle lines: open_failed 15166, thread 4, unfinished 5512
+   VERDICT: capture and graph checks hold
+== w2-git (light trace) 22:22:42
+w2-git         workload rc=0    10170 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes         13 of 13       100.00 %  
+     clone_edges       12 of 12       100.00 %  
+     execs             13 of 13       100.00 %  0 matched by last component only
+     opens           3384 of 3384     100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     extra: processes 0; opens 26 (26 an exec's program or interpreter, 0 other)
+     not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 2732, thread 12, unfinished 552
+   VERDICT: capture and graph checks hold
+== w3-web (full trace) 22:22:59
+w3-web         workload rc=0     7767 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes         95 of 95       100.00 %  
+     clone_edges       94 of 94       100.00 %  
+     execs             79 of 79       100.00 %  0 matched by last component only
+     opens           1770 of 1770     100.00 %  
+     connects          30 of 30       100.00 %  tgid, family, port, ret
+     accepts           30 of 30       100.00 %  tgid, count
+     bytes file_read   graph     69594039 strace     69594039  100.0000 %  exact in 95 of 95 processes
+     bytes file_write  graph     31462326 strace     31462326  100.0000 %  exact in 95 of 95 processes
+     bytes sock_recv   graph     31466145 strace     31466145  100.0000 %  exact in 95 of 95 processes
+     bytes sock_send   graph     31466145 strace     31466145  100.0000 %  exact in 95 of 95 processes
+     extra: processes 0; opens 158 (158 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): splice 4 (4194304 B)
+     not compared: AF_UNIX connects 62, O_PATH opens 0, oracle lines: open_failed 349, thread 30, unfinished 6058
+   VERDICT: capture and graph checks hold
+== w4-archive (full trace) 22:23:17
+w4-archive     workload rc=0    16564 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes         10 of 10       100.00 %  
+     clone_edges        9 of 9        100.00 %  
+     execs             10 of 10       100.00 %  0 matched by last component only
+     opens           6502 of 6502     100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph     86042106 strace     86042106  100.0000 %  exact in 10 of 10 processes
+     bytes file_write  graph     51865288 strace     51865288  100.0000 %  exact in 10 of 10 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 10 of 10 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 10 of 10 processes
+     extra: processes 0; opens 20 (20 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 900 (15973428 B)
+     not compared: AF_UNIX connects 8, O_PATH opens 127, oracle lines: exec_failed 3, open_failed 66, unfinished 4519
+   VERDICT: capture and graph checks hold
+== w5-python (full trace) 22:23:44
+w5-python      workload rc=0     3052 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes          6 of 6        100.00 %  
+     clone_edges        5 of 5        100.00 %  
+     execs              6 of 6        100.00 %  0 matched by last component only
+     opens            405 of 405      100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph      3035110 strace      3035110  100.0000 %  exact in 6 of 6 processes
+     bytes file_write  graph       982921 strace       982921  100.0000 %  exact in 6 of 6 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 6 of 6 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 6 of 6 processes
+     extra: processes 0; opens 12 (12 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 60 (941186 B)
+     not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 39, unfinished 11
+   VERDICT: capture and graph checks hold
+== w6-pipeline (full trace) 22:23:54
+w6-pipeline    workload rc=0     7254 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes         11 of 11       100.00 %  
+     clone_edges       10 of 10       100.00 %  
+     execs             11 of 11       100.00 %  0 matched by last component only
+     opens            964 of 964      100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph      9351872 strace      9351872  100.0000 %  exact in 11 of 11 processes
+     bytes file_write  graph      6243273 strace      6243273  100.0000 %  exact in 11 of 11 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 11 of 11 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 11 of 11 processes
+     extra: processes 0; opens 22 (22 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): splice 598 (5987402 B)
+     not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: exec_failed 3, open_failed 36, thread 8, unfinished 2194
+   VERDICT: capture and graph checks hold

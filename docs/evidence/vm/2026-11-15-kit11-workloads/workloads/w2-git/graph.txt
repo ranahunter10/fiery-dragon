@@ -1,0 +1,42 @@
+graph: /var/tmp/p15-workloads/w2-git/graph.duckdb
+records: FORK 35, EXEC 20, EXIT 35, RENAME 22, CLOCK_SYNC 2, STATS 11, END 1, NET_STATS 11, PROC 283, SNAP_DONE 2, OPEN 3638, CLOSE 3688, FILE 26, FD 1479, FILE_STATS 11, FLOW_STATS 11, SELF_STATS 11, FLOW_RING 11, FLOW 21915
+  accept_not_paired            0
+  edge_CLONE                   22
+  edge_EXECUTE                 20
+  edge_HELD                    621
+  edge_OPEN                    3638
+  edge_READ                    5111
+  edge_RECV                    5
+  edge_SEND                    5
+  edge_WRITE                   16794
+  edge_proc_end_without_image  0
+  edge_without_node            0
+  exec_file_tuple              20
+  fid_two_objs                 0
+  file_rule_fid                189
+  file_rule_obj                296
+  file_rule_tuple              1751
+  flow_interval_reversed       0
+  flow_sock_joined             0
+  flow_sock_not_joined         10
+  flow_start_unknown           0
+  flow_unregistered            0
+  image_exec                   20
+  image_exec_without_edge      0
+  image_fork                   22
+  image_snapshot               38
+  node_file                    2236
+  node_proc                    164
+  obj_facts_conflict           0
+  open_denied                  0
+  open_never_opened            0
+  open_no_path                 0
+  openfile_close-only          8
+  openfile_file                26
+  openfile_open                3638
+  openfile_snapshot            540
+  sock_cookie_without_net      0
+  sock_obj_two_cookies         0
+  thread_rename                1
+tree: exec 20, exit_process 23, exit_thread 12, fork_process 22, fork_thread 13, from_snapshot 141, image_exec 20, image_fork 22, image_none 105, image_snapshot 38, pre_existing 142, pre_existing_unlisted 1, rename 21, rename_thread 1
+wal bytes 3358656

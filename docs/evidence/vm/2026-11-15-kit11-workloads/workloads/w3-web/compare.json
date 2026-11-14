@@ -1,0 +1,117 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 6058,
+  "unfinished_never_resumed": 0,
+  "open_failed": 349,
+  "thread": 30
+ },
+ "recall": {
+  "processes": {
+   "oracle": 95,
+   "found": 95,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 94,
+   "found": 94,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 79,
+   "found": 79,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 1770,
+   "found": 1770,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 30,
+   "found": 30,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 30,
+   "found": 30,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 158,
+   "exec_and_interpreter": 158,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 69594039,
+   "graph": 69594039,
+   "exact_processes": 95,
+   "processes": 95,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 31462326,
+   "graph": 31462326,
+   "exact_processes": 95,
+   "processes": 95,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 31466145,
+   "graph": 31466145,
+   "exact_processes": 95,
+   "processes": 95,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 31466145,
+   "graph": 31466145,
+   "exact_processes": 95,
+   "processes": 95,
+   "ratio": 1.0,
+   "differ": []
+  }
+ },
+ "unseen": {
+  "splice": {
+   "calls": 4,
+   "bytes": 4194304
+  }
+ },
+ "unix_connects": 62,
+ "opath_opens": 0,
+ "root": 254386,
+ "attack": null,
+ "verdict": [],
+ "detection_gaps": []
+}

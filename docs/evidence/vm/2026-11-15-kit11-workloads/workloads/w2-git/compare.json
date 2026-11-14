@@ -1,0 +1,79 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 552,
+  "unfinished_never_resumed": 0,
+  "open_failed": 2732,
+  "thread": 12
+ },
+ "recall": {
+  "processes": {
+   "oracle": 13,
+   "found": 13,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 12,
+   "found": 12,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 13,
+   "found": 13,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 3384,
+   "found": 3384,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 0,
+   "found": 0,
+   "ratio": null,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 0,
+   "found": 0,
+   "ratio": null,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 26,
+   "exec_and_interpreter": 26,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {},
+ "unseen": {},
+ "unix_connects": 4,
+ "opath_opens": 0,
+ "root": 254213,
+ "attack": null,
+ "verdict": [],
+ "detection_gaps": []
+}

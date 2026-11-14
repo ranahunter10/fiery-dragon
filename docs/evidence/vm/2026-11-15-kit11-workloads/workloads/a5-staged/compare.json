@@ -1,0 +1,134 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 108,
+  "unfinished_never_resumed": 0,
+  "open_failed": 75
+ },
+ "recall": {
+  "processes": {
+   "oracle": 21,
+   "found": 21,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 20,
+   "found": 20,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 21,
+   "found": 21,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 273,
+   "found": 273,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 1,
+   "found": 1,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 1,
+   "found": 1,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 42,
+   "exec_and_interpreter": 42,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 1826152,
+   "graph": 1826152,
+   "exact_processes": 21,
+   "processes": 21,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 297573,
+   "graph": 297573,
+   "exact_processes": 21,
+   "processes": 21,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 61867,
+   "graph": 61867,
+   "exact_processes": 21,
+   "processes": 21,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 61867,
+   "graph": 61867,
+   "exact_processes": 21,
+   "processes": 21,
+   "ratio": 1.0,
+   "differ": []
+  }
+ },
+ "unseen": {
+  "splice": {
+   "calls": 5,
+   "bytes": 60422
+  }
+ },
+ "unix_connects": 4,
+ "opath_opens": 1,
+ "root": 253636,
+ "attack": {
+  "reach": [
+   {
+    "name": "report2.txt to the catcher, through the archive",
+    "from_nodes": 1,
+    "to_nodes": 1,
+    "reached": true,
+    "expect": true,
+    "bytes_want": 61867,
+    "bytes_got": 61867,
+    "bytes_ok": true
+   }
+  ],
+  "rules": {},
+  "refused": {},
+  "comm": {},
+  "alerts": [],
+  "rules_fired": {}
+ },
+ "verdict": [],
+ "detection_gaps": []
+}

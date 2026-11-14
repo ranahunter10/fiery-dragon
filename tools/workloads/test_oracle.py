@@ -101,6 +101,8 @@ def graph(missing_open=False, wrong_bytes=False):
     con.execute("CREATE TABLE openfile (fid UBIGINT, path VARCHAR, file_node BIGINT, first_ns UBIGINT)")
     con.execute("INSERT INTO openfile VALUES (1, '/w/t.txt', 10, 1), (2, '/w/a b, c', 11, 2), (3, '/usr/bin/cat', 12, 3)")
     con.execute("CREATE TABLE file (node_id BIGINT, path VARCHAR, first_ns UBIGINT)")
+    con.execute("INSERT INTO file VALUES (14, '/memfd:x (deleted)', 4)")
+    con.execute("INSERT INTO openfile VALUES (4, '/memfd:x (deleted)', 14, 4)")
     con.execute("CREATE TABLE sock (node_id BIGINT, lport USMALLINT)")
     con.execute("INSERT INTO sock VALUES (20, 0), (21, 0), (22, 80)")
     con.execute("CREATE TABLE raw_net (ring UTINYINT, seq UBIGINT, tgid UINTEGER, family USMALLINT, rport USMALLINT, ret INTEGER)")
@@ -117,6 +119,8 @@ def graph(missing_open=False, wrong_bytes=False):
     if not missing_open:
         rows += [(10, 1, "OPEN", True, 1, 0, 0, None)]
     rows += [(11, 2, "OPEN", True, 2, 0, 0, None)]
+    # cat (101) also ran a memfd through /proc/self/fd: the kernel's open of it is an expected extra
+    rows += [(14, 2, "EXECUTE", True, None, 0, 0, None), (14, 2, "OPEN", True, 4, 0, 0, None)]
     con.executemany("INSERT INTO edge VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)", rows)
     return con
 
@@ -128,7 +132,7 @@ class Compare(unittest.TestCase):
         self.assertEqual(bad, [])
         for k in ("processes", "clone_edges", "execs", "opens", "connects", "accepts"):
             self.assertEqual(r["recall"][k]["ratio"], 1.0, k)
-        self.assertEqual(r["extra"]["opens"], {"n": 1, "exec_and_interpreter": 1, "other": 0, "other_first": []})
+        self.assertEqual(r["extra"]["opens"], {"n": 2, "exec_and_interpreter": 2, "other": 0, "other_first": []})
         self.assertEqual(r["bytes"]["sock_send"]["graph"], 112)      # 70 by sendto and write, 42 by splice and sendfile
 
     def test_a_missing_open_and_a_byte_off_are_named(self):

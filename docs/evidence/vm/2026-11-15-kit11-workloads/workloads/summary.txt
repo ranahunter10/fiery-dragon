@@ -1,0 +1,12 @@
+a1-exfil       workload rc=0     2971 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: 1 capture or graph check(s) do not hold; detection: every expected rule fired
+a2-revshell    workload rc=0     1354 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: rule R4 did not fire
+a3-fileless    workload rc=0      642 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+a4-masquerade  workload rc=1      456 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+a5-staged      workload rc=0     2154 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+a6-scan        workload rc=0     2108 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+w1-build       workload rc=0    17145 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+w2-git         workload rc=0    10170 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+w3-web         workload rc=0     7767 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+w4-archive     workload rc=0    16564 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+w5-python      workload rc=0     3052 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+w6-pipeline    workload rc=0     7254 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
