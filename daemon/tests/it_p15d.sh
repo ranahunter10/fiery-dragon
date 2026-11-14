@@ -748,9 +748,12 @@ umount "$D29"
 echo "case 30: a flood of one-byte transfers beside a process that opens files and connects: only FLOWs are lost (F-01, ADR-0051 draft) [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
     D30=$(mktemp -d /tmp/p15d-it30-XXXXXX); D30=$(realpath "$D30")
-    # a small FLOW ring and a slowed writer, so the flood overflows within a second
+    # The overflow and the reserve both forced, not left to timing (the VM's first sweep saw a run in
+    # which p15d, at SCHED_FIFO, drained the 64 KiB ring in time: no FLOW lost). The drain pauses
+    # 20 ms after every poll, so the ring (about 680 FLOWs) fills between polls; the writer takes
+    # 100 ms a 64 KiB batch, slower than the drain, so the queue fills and FLOW must leave its reserve.
     "$B/p15d" --wal-dir "$T/c30" --flow --duration 8 --stats-ms 200 --flow-ring-kb 64 --batch-kb 64 \
-        --test-writer-batch-ms 5 2>"$T/c30.err" &
+        --test-drain-pause-ms 20 --test-writer-batch-ms 100 2>"$T/c30.err" &
     pid=$!
     if started "$T/c30.err"; then
         dd if=/dev/zero of=/dev/null bs=1 count=4000000 status=none &

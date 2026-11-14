@@ -217,8 +217,11 @@ def main() -> int:
             r = subprocess.run(f"timeout 900 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
             dt = time.monotonic() - t0
             if r.returncode:
+                # the whole output, for a failure that the lines below do not explain (a flaky case)
+                keep = ROOT / "build" / f"mutate-baseline-{name.replace(' ', '-')}.txt"
+                keep.write_text(r.stdout + r.stderr)
                 print(f"baseline: the {name} fail on the unmutated tree (exit {r.returncode} after {dt:.0f} s); "
-                      "no mutant was run\n" +
+                      f"no mutant was run; the whole output is in {keep}\n" +
                       "".join(ln + "\n" for ln in (r.stdout + r.stderr).splitlines() if "FAIL" in ln) +   # wherever it failed
                       (r.stdout + r.stderr)[-3000:], flush=True)
                 return 2
