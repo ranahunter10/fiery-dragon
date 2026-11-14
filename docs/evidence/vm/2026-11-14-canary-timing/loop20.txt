@@ -1,0 +1,9 @@
+# 20 runs of: sudo build/p15d --wal-dir /var/tmp/c21 --canary-s 1 --duration 5 (case 21's command), failures only;
+# each failure appears twice (the log line and END's reason). Pasted by the maintainer, 2026-11-14.
+canary 3 (pid 109773): records late, mask 0x6f of 0x6f, 135 ms
+canary 3 (pid 109805): records late, mask 0x6f of 0x6f, 64 ms
+canary 3 (pid 109916): records late, mask 0x6f of 0x6f, 232 ms
+canary 1 (pid 109953): records late, mask 0x6f of 0x6f, 26 ms
+canary 1 (pid 109969): records late, mask 0x6f of 0x6f, 49 ms
+# an earlier 10-run loop: 1 failure
+canary 1 (pid 109632): records late, mask 0x6f of 0x6f, 34 ms after its deadline

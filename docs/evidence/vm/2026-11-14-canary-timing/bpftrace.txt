@@ -1,0 +1,19 @@
+# bpftrace on syscalls:sys_{enter,exit}_clone{,3} and epoll_{p,}wait of comm "p15d" during one canary run (5 s, --canary-s 1).
+# @fork_us: time inside each fork (parent side); @late_ms: how long after its timeout each timed-out wait returned.
+@fork_us:
+[64, 128)              1
+[256, 512)             2
+[512, 1K)              2
+
+@late_ms:
+[0]                    5
+[1]                    1
+[2, 4)                 4
+[4, 8)                 4
+[8, 16)                5
+[16, 32)               4
+[32, 64)               3
+[64, 128)              4
+[128, 256)             2
+[256, 512)             3
+[512, 1K)              1

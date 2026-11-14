@@ -1063,7 +1063,7 @@ Fixed part 120 bytes; at most 120 bytes with its variable fields.
 | 56 | `canary_spawn_failed` | u64 | canaries that could not be started (fork failed): no verdict; cumulative |
 | 64 | `canary_exec_failed` | u64 | canaries whose /bin/true could not be executed: judged without their EXEC; cumulative |
 | 72 | `canary_unfinished` | u64 | canaries still in flight when the run stopped: no verdict; cumulative |
-| 80 | `canary_stalled` | u64 | times a canary's deadline was started again because two polls were more than 5 s apart (the guest was not scheduled, E-0250); cumulative |
+| 80 | `canary_stalled` | u64 | times a canary's deadline was started again because two polls were more than 5 s apart (the guest was not scheduled, E-0250), or moved because the drain's wait came back more than 20 ms after its timeout (E-0316); cumulative |
 | 88 | `link_checks` | u64 | checks of one link's descriptor made (every link, every stats tick); cumulative |
 | 96 | `links_missing` | u64 | p15d's links found gone or replaced (run DEGRADED; a CANARY_MISS record of kind LINK names each); cumulative |
 | 104 | `links` | u32 | the links p15d holds and checks |

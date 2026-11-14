@@ -1039,7 +1039,7 @@ fields = [
   { name = "canary_spawn_failed", c = "u64", doc = "canaries that could not be started (fork failed): no verdict; cumulative" },
   { name = "canary_exec_failed",  c = "u64", doc = "canaries whose /bin/true could not be executed: judged without their EXEC; cumulative" },
   { name = "canary_unfinished",   c = "u64", doc = "canaries still in flight when the run stopped: no verdict; cumulative" },
-  { name = "canary_stalled",      c = "u64", doc = "times a canary's deadline was started again because two polls were more than 5 s apart (the guest was not scheduled, E-0250); cumulative" },
+  { name = "canary_stalled",      c = "u64", doc = "times a canary's deadline was started again because two polls were more than 5 s apart (the guest was not scheduled, E-0250), or moved because the drain's wait came back more than 20 ms after its timeout (E-0316); cumulative" },
   { name = "link_checks",         c = "u64", doc = "checks of one link's descriptor made (every link, every stats tick); cumulative" },
   { name = "links_missing",       c = "u64", doc = "p15d's links found gone or replaced (run DEGRADED; a CANARY_MISS record of kind LINK names each); cumulative" },
   { name = "links",               c = "u32", doc = "the links p15d holds and checks" },

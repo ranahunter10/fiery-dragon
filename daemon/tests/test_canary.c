@@ -264,6 +264,48 @@ static void test_stall(void)
 	EXPECT(c.pid == 0 && MISSED() == 1, "a gap under the stall bound does not restart the deadline");
 }
 
+/* The drain's wait came back late (the VM did not run the thread when its timer fired, E-0316):
+ * that time moves the deadline, so the canary is not late; the excuse is counted stalled once. A
+ * drain slow in its own work reports no oversleep and stays late (test_late). */
+static void test_oversleep(void)
+{
+	struct p15_canary_state c;
+	uint64_t t = 110 * S, stalled0;
+
+	start(&c, 10, 0, 0);
+	stalled0 = atomic_load(&run.canary_stalled);
+	p15_canary_tick(&c, t, 0);
+	p15_canary_oversleep(&c, 300 * MS);
+	p15_canary_oversleep(&c, 300 * MS);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 1500 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 0 && RUNS() == 1, "seen 1.5 s after the start, 600 ms of it the drain's oversleep: in time");
+	EXPECT(atomic_load(&run.canary_stalled) == stalled0 + 1, "the excuse is counted stalled, once per canary");
+
+	start(&c, 10, 0, 0);
+	p15_canary_tick(&c, t, 0);
+	p15_canary_oversleep(&c, 20 * MS);   /* at the bound: timer jitter, not excused */
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 1010 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 1, "an oversleep of 20 ms is not excused: 10 ms late");
+
+	start(&c, 10, 0, 0);
+	p15_canary_oversleep(&c, 900 * MS);  /* no canary in flight: nothing to move */
+	p15_canary_tick(&c, t, 0);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 1200 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 1, "an oversleep before the canary started does not move its deadline");
+}
+
 static void test_exec_failed(void)
 {
 	struct p15_canary_state c;
@@ -371,6 +413,7 @@ int main(void)
 	test_miss();
 	test_polls_needed();
 	test_stall();
+	test_oversleep();
 	test_exec_failed();
 	test_never_reaped();
 	test_blind();

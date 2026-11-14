@@ -179,6 +179,7 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 	c->seen = 0;
 	c->polls = 0;
 	c->reaped = 0;
+	c->excused = 0;
 	c->all_seen_ns = 0;
 	c->base_session = ctr(c, P15_FC_SESSION_ENTRY);
 	c->base_free = ctr(c, P15_FC_FREE_RUN);
@@ -195,6 +196,17 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 		atomic_fetch_add(&c->run->canary_spawn_failed, 1);
 		fprintf(stderr, "p15d level=warn code=canary_spawn msg=\"the canary could not be started: %s\"\n",
 			e ? strerror(e) : "no error number given");
+	}
+}
+
+void p15_canary_oversleep(struct p15_canary_state *c, uint64_t over_ns)
+{
+	if (!c->interval_ns || !c->pid || over_ns <= P15_CANARY_OVERSLEEP_NS)
+		return;
+	c->deadline_ns += over_ns;
+	if (!c->excused) {
+		c->excused = 1;
+		atomic_fetch_add(&c->run->canary_stalled, 1);
 	}
 }
 

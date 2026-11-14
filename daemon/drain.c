@@ -635,9 +635,16 @@ int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 	d->queue_full_now = 0;
 	/* Wait only: ring_buffer__poll would read the rings itself, without asking for room. Below the
 	 * high-water mark records don't wake us (ADR-0020 rule 2), so the rings are read after every wait. */
-	n = epoll_wait(ring_buffer__epoll_fd(d->rb), ev, 3, timeout_ms);
-	if (n < 0 && errno != EINTR)
-		return -errno;
+	{
+		uint64_t t0 = p15_mono_ns(), slept;
+
+		n = epoll_wait(ring_buffer__epoll_fd(d->rb), ev, 3, timeout_ms);
+		if (n < 0 && errno != EINTR)
+			return -errno;
+		slept = p15_mono_ns() - t0;
+		if (n == 0 && timeout_ms > 0 && slept > (uint64_t)timeout_ms * 1000000ull)
+			p15_canary_oversleep(&d->canary, slept - (uint64_t)timeout_ms * 1000000ull);
+	}
 	n = take_all(d);
 	note_poll_gap(d, p15_boot_ns());
 	if (n < 0)

@@ -1,0 +1,10 @@
+# journalctl -k --since "3 hours ago" | grep stall signs (dmesg identical). The VM booted at 14:01:48. Pasted by the maintainer.
+2026-11-14T14:01:54 clocksource: Long readout interval, skipping watchdog check: cs_nsec: 1312353881
+2026-11-14T14:02:19 clocksource: Long readout interval, skipping watchdog check: cs_nsec: 4653974321
+2026-11-14T14:05:55 clocksource: Long readout interval, skipping watchdog check: cs_nsec: 11640006963
+2026-11-14T14:15:58 workqueue: e1000_watchdog [e1000] hogged CPU for >10000us 4 times
+2026-11-14T14:17:04 workqueue: e1000_watchdog [e1000] hogged CPU for >10000us 5 times
+2026-11-14T16:02:59 rcu: INFO: rcu_preempt self-detected stall on CPU
+2026-11-14T16:02:59 watchdog: BUG: soft lockup - CPU#2 stuck for 71s! [snapd:1057]
+2026-11-14T16:02:59 clocksource: Long readout interval, skipping watchdog check: cs_nsec: 76371530466
+# nothing from 16:03 to 16:48, the window of the canary loops above

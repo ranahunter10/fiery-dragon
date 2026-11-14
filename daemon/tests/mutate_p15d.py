@@ -184,6 +184,7 @@ M = [
     ("drain.c", "	atomic_fetch_add(&d->run->flow_drained, 1);\n	p15_canary_see(&d->canary, h);", "	p15_canary_see(&d->canary, h);", IT),   # 124: flow-ring FLOWs off the books
     ("queue.h", "	return q->n - p15q_depth(q) > keep;", "	return q->n - p15q_depth(q) >= keep;", UNIT),   # 125: the reserve one short
     ("config.c", "	uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;", "	uint32_t keep = c->flow_keep_batches;", UNIT),   # 126: the auto reserve gone
+    ("canary.c", "	c->deadline_ns += over_ns;", "	(void)over_ns;", UNIT),   # 127: the drain's oversleep not excused
 ]
 
 
