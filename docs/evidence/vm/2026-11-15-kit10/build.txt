@@ -1,0 +1,4 @@
+make: 'build/open_cost' is up to date.
+make: 'build/crc32c_bench' is up to date.
+make: 'build/p15d_path' is up to date.
+make: 'build/prim_cost' is up to date.

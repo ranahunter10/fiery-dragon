@@ -1,0 +1,25 @@
+baseline: the end-to-end test pass in 302 s; a mutant gets 1206 s
+killed   121 writer.c if (!p15_space_allows(&w->space, ring)) { (278 s)
+           FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+           FAIL spine records were shed at the reserve (0), and the disk never had to refuse a batch
+           FAIL the shed FORKs (0) and EXITs (0) are counted by type, within the spine's shed (0)
+killed   122 writer.c p15_run_set_state(r, P15_RUN_DEGRADED, msg); (278 s)
+           FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+           FAIL the log says so, and END's reason names the low disk
+           FAIL exit 3 (DEGRADED), not INVALID; the WAL scans whole in both readers; books closed (p15d 0)
+killed   123 writer.c if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0) (538 s)
+           FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+           FAIL WAL_SPACE records the levels in order: shed bulk, shed all, then ok again (-)
+           FAIL spine records were shed at the reserve (0), and the disk never had to refuse a batch
+killed   124 writer.c forks += h->type == P15_T_FORK; (283 s)
+           FAIL the shed FORKs (0) and EXITs (310) are counted by type, within the spine's shed (1236)
+           it_p15d: FAIL (1 failed checks)
+killed   125 drain.c !p15q_may_take(&d->run->q, keep)) { (293 s)
+           FAIL each end: its first FLOW names an id with no FILE; its next two name a new id, whose FILE was written (the retry, review V3)
+           FAIL the drain left FLOWs in their ring to keep batches free for the other rings (0 polls)
+           it_p15d: FAIL (2 failed checks)
+killed   126 drain.c atomic_fetch_add(&d->run->flow_drained, 1); (289 s)
+           FAIL --flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc 4)
+           FAIL a lost FILE: exit 3, the run DEGRADED, the books still closed, the WAL valid (rc 4)
+           FAIL exit 0, WAL valid, the holder ran (p15d 4, inspect 0)
+mutation sweep: 6/6 killed (mutants [121, 122, 123, 124, 125, 126] only)
