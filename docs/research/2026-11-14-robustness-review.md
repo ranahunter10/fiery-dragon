@@ -37,6 +37,29 @@ So on this VM (VirtualBox on a Windows host with Hyper-V, E-0088) a thread can w
 | the canary's MISS | everything the child writes is committed before it can be reaped | Linux v7.0 `kernel/exit.c` `do_exit`: `trace_sched_process_exit` (the spine's EXIT), then `exit_files` and `exit_task_work` (the open file's last `fput`, so its free), then `exit_notify`, after which the parent can reap | a MISS after reap and an empty poll is real |
 | writer shedding at SHED_ALL | — | — | a canary's records are seen by the drain even when the writer then sheds them: the canary checks the hooks and the drain, the books and WAL_SPACE account for the shed. Stated, not changed |
 
+## 3b. Every system call p15d makes at run time, against its manual page and the kernel
+
+How: every call site in `daemon/*.c` (outside the tests) listed with `grep`, then each checked for its error codes (EINTR first), partial results, what a signal does to it, and what a forked child may call. Kernel behaviour from Linux v7.0 (`git show 028ef9c:<path>`); fsync(2) from man-pages 6.19 (pasted by the maintainer); the rest from the man pages' standard error lists (DOC, not re-fetched in this session).
+
+| Call (where) | Hazard | Before | Now | Grade |
+|---|---|---|---|---|
+| `fdatasync`, directory `fsync` (wal.c) | EINTR (fsync(2)); after EIO or ENOSPC a retry can succeed without the data (errors reported once per descriptor since 4.13) | EINTR failed the writer | EINTR retried, nothing else; the writer thread blocks SIGTERM/SIGINT | DOC |
+| `writev` (wal.c `write_raw`) | short writes, EINTR, and a return of 0 | short writes and EINTR handled; **a return of 0 looped forever** | 0 is an error (-EIO); unit test `test_zero_progress_fails`; WAL planted bug 34 | SRC |
+| `ftruncate`, `lseek` (wal.c ENOSPC path) | ftruncate can return EINTR | a signal could fail the writer | the writer blocks the stop signals | DOC |
+| `close` of a segment (wal.c) | on Linux the descriptor is closed even when close returns EINTR: never retry | an EINTR would have counted as a WAL error | the writer blocks the stop signals; close is not retried | DOC |
+| `pread` (wal.c recovery, at start) | EINTR | failed the recovery | retried (no handler is installed then, so defensive) | DOC |
+| `epoll_wait` (drain.c) | EINTR when a stop signal lands (no SA_RESTART, on purpose) | handled | handled; its overshoot is measured for the canary | SRC |
+| `poll`, `read` of the eventfd (queue.c) | EINTR, EAGAIN | handled | — | SRC |
+| `read` of iterator links (snapshot.c, loader.c) | EINTR, EAGAIN, partial reads | handled | — | SRC |
+| `fstatvfs` (space.c) | EINTR | counted in `refresh_errors`, last reading kept | also no longer reachable by a stop signal | SRC |
+| `membarrier(GLOBAL)` (barrier.c) | EINVAL under nohz_full; **no grace period at all with one CPU online** (membarrier.c L655-656) | EINVAL reported as "counts not exact" | checked: the one-CPU shortcut is still a barrier for our gates, because both are read by kprobe.session programs, which run with preemption off (fprobe.c L268-273; bpf_trace.c `cant_sleep()`); written down in barrier.h so no preemptible program is ever gated by it | SRC |
+| `fork`, then `open`/`write`/`execl`/`_exit` in the child (canary.c) | a child of a threaded process may call only async-signal-safe functions until exec | only those | — ; the child inherits SCHED_FIFO 1 from the drain thread (it runs `/bin/true` for milliseconds); `SCHED_RESET_ON_FORK` would also make the writer thread non-real-time, so it is a decision, not a fix | SRC |
+| `waitpid(WNOHANG)` (canary.c) | does not block, so no EINTR; ECHILD | treated as reaped | — | SRC |
+| signal handler (p15d.c `on_signal`) | only async-signal-safe work | two lock-free atomic stores | — | SRC |
+| `usleep` (drain.c, p15d.c) | returns early on a signal | pacing only | — | SRC |
+| `rename` of the textfile (writer.c) | atomic in one directory; no fsync | metrics file, not evidence | — | SRC |
+| `fork`/`waitpid`/`pipe2`/sockets in the self-tests | run before any handler or second thread exists | — | — | SRC |
+
 ## 4. Still open (ranked by what they risk)
 
 1. **Under heavy load the canary judges late or not at all.** Its MISS needs a poll that took nothing; a host that never goes idle gives none, and the 11 s guard then decides. Better: decide a miss when every ring has been drained past the point it held at the reap (track bytes consumed per ring). Not built.

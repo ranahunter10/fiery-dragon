@@ -9,7 +9,12 @@
  * program run that had started before the call has finished: membarrier(MEMBARRIER_CMD_GLOBAL)
  * is synchronize_rcu() (kernel/sched/membarrier.c at v7.0), and the programs run inside
  * rcu_read_lock (kernel/trace/bpf_trace.c). It is not a BPF system call and does not touch
- * bpf_prog_active.
+ * bpf_prog_active. With one CPU online the kernel skips synchronize_rcu (membarrier.c L655-656).
+ * That is still a barrier for the gated programs: both gates are read by kprobe.session programs,
+ * which run with preemption off (fprobe.c L268-273: ftrace_test_recursion_trylock; bpf_trace.c
+ * kprobe_multi_link_prog_run: cant_sleep()), so while this thread runs on the only CPU none of
+ * them is between its read of the gate and its write. A gate read by a preemptible program
+ * (fentry, tp_btf) would need more than this on a one-CPU host.
  */
 #ifndef P15_BARRIER_H
 #define P15_BARRIER_H

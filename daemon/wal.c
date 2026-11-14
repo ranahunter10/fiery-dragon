@@ -104,6 +104,8 @@ static int write_raw(struct p15w *w, struct iovec *iov, int n)
 				continue;
 			return -(errno ? errno : EIO);
 		}
+		if (r == 0)
+			return -EIO;         /* no progress on a regular file (write(2)): never loop on it */
 		while (n > 0 && (size_t)r >= iov->iov_len) {
 			r -= iov->iov_len;
 			iov++;
@@ -656,6 +658,8 @@ int p15w_recover(const char *path, uint64_t *cut, const char **why)
 	while (got < st.st_size) {
 		ssize_t r = pread(fd, buf + got, st.st_size - got, got);
 
+		if (r < 0 && errno == EINTR)
+			continue;
 		if (r <= 0) {
 			rc = r < 0 ? -errno : -EIO;
 			goto out;

@@ -59,6 +59,7 @@ M = [
  ("crc32c.c", "\tuint64_t c = ~crc;", "\tuint64_t c = crc;"),
  ("wal.c", "w->st.oversize_batches++;", ""),
  ("wal.c", "if (ftruncate(fd, s.good_end) || fdatasync(fd))", "if (ftruncate(fd, s.good_end + 8) || fdatasync(fd))"),
+ ("wal.c", "\t\tif (r == 0)\n\t\t\treturn -EIO;", "\t\tif (0)\n\t\t\treturn -EIO;"),   # a writev of no progress loops
 ]
 
 

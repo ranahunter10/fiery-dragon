@@ -541,6 +541,33 @@ static void test_io_error_fails_the_writer(void)
 	free(d);
 }
 
+/* writev that reports no progress (returns 0): the writer fails, it never spins on it */
+static int zero_armed;
+
+static ssize_t zero_writev(int fd, const struct iovec *iov, int n)
+{
+	if (zero_armed)
+		return 0;
+	return writev(fd, iov, n);
+}
+
+static void test_zero_progress_fails(void)
+{
+	char *d = tmpdir();
+	struct p15w_opts o = { .dir = d, .clock = fake_clock, .writev = zero_writev };
+	struct p15w *w;
+
+	zero_armed = 0;
+	EXPECT(p15w_open(&w, &o) == 0, "zero: open");
+	zero_armed = 1;
+	EXPECT(put(w, P15W_RING_SPINE, 1, 32, 1) == -EIO, "zero: a writev that returns 0 is an error, not a loop");
+	EXPECT(p15w_stats(w)->errors == 1 && p15w_stats(w)->batches == 0, "zero: counted as an error");
+	zero_armed = 0;
+	EXPECT(p15w_close(w) == -EIO, "zero: close reports it");
+	rmtree(d);
+	free(d);
+}
+
 /* writev that writes the first `nospace_after` bytes of the next batch (a short write), then fails
  * the call that would write the rest with ENOSPC */
 static long nospace_after = -1;
@@ -775,6 +802,7 @@ int main(void)
 	test_full_disk_is_survived();
 	test_full_disk_untruncatable_fails();
 	test_hold_rotation();
+	test_zero_progress_fails();
 	test_short_writes_and_eintr();
 	test_bad_batches_rejected();
 	test_batch_builder();
