@@ -186,12 +186,15 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 	c->spawn_ns = now;
 	c->deadline_ns = now + P15_CANARY_DEADLINE_NS;
 	c->last_poll_ns = now;
+	errno = 0;
 	c->pid = (c->spawn ? c->spawn : real_spawn)(c, (c->want & (P15_CANARY_FILES | P15_CANARY_FLOW)) != 0);
 	if (c->pid <= 0) {
+		int e = errno;
+
 		c->pid = 0;
 		atomic_fetch_add(&c->run->canary_spawn_failed, 1);
 		fprintf(stderr, "p15d level=warn code=canary_spawn msg=\"the canary could not be started: %s\"\n",
-			strerror(errno));
+			e ? strerror(e) : "no error number given");
 	}
 }
 
