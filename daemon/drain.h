@@ -27,6 +27,8 @@ struct p15_drain {
 	struct p15_run *run;
 	struct ring_buffer *rb;
 	struct ring *spine, *bulk;
+	struct ring *flow;               /* FLOW's own ring (ADR-0051 draft, F-01); NULL without --flow */
+	uint32_t flow_keep;              /* free batches FLOW never takes (p15_flow_keep) */
 	struct p15_counters ctr, bulk_ctr; /* mapped counter rows (ADR-0026); bulk_ctr unmapped without network */
 	struct p15_counters file_ctr;     /* the file-identity counters; unmapped without them */
 	struct p15_counters flow_ctr;     /* the data-flow counters (ADR-0005); unmapped without file identity */
@@ -46,6 +48,9 @@ struct p15_drain {
  * without theirs. */
 P15_MUST_CHECK int p15_drain_init(struct p15_drain *d, struct p15_run *run, int spine_rb_fd, int ctr_fd, int bulk_rb_fd,
 				int bulk_ctr_fd, int file_ctr_fd, int flow_ctr_fd);
+/* Add FLOW's ring (after p15_drain_init, with file identity): drained last, and only into a batch
+ * already open for the bulk ring or while more than `keep` batches are free. */
+P15_MUST_CHECK int p15_drain_add_flow(struct p15_drain *d, int flow_rb_fd, uint32_t keep);
 void p15_drain_free(struct p15_drain *d);
 /* The records of `ring` (P15W_RING_*) that are certain to fit in its batch now; 0 when no batch is
  * free. Publishes a batch it cannot use. For p15_drain_poll and the tests. */

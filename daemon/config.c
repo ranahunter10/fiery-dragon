@@ -45,6 +45,8 @@ static const struct opt OPTS[] = {
 	{ "--wal-space-low-mb",    U32(wal_space_low_mb), 0,    1048576, 0,      0 },   /* F-02; 0: auto (space.h) */
 	{ "--wal-space-reserve-mb", U32(wal_space_reserve_mb), 0, 1048576, 0,    0 },
 	{ "--wal-space-guard",     U32(wal_space_guard),  0,    1,       1,      0 },
+	{ "--flow-ring-kb",        U32(flow_ring_kb),     4,    262144,  4096,   1 },   /* F-01: FLOW's own ring */
+	{ "--flow-keep-batches",   U32(flow_keep_batches), 0,   1024,    0,      0 },   /* 0: a quarter of the queue */
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
@@ -160,7 +162,19 @@ int p15_config_parse(struct p15_config *c, int argc, char **argv, char *err, siz
 		snprintf(err, errlen, "--test-flow-file-fail-first needs --flow");
 		return -EINVAL;
 	}
+	if (c->flow_keep_batches >= c->queue_batches) {
+		snprintf(err, errlen, "--flow-keep-batches %u leaves FLOW no batch of --queue-batches %u", c->flow_keep_batches,
+			 c->queue_batches);
+		return -EINVAL;
+	}
 	return 0;
+}
+
+uint32_t p15_flow_keep(const struct p15_config *c)
+{
+	uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;
+
+	return keep ? keep : 1;   /* --queue-batches' minimum is 4, so this is at least 1 and below it */
 }
 
 uint32_t p15_file_map_auto(uint64_t files_now, uint64_t mem_total_bytes)
@@ -188,6 +202,7 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.test_flow_cut_pause_ms", "config.test_barrier_fail", "config.test_open_end_mode",
 		"config.test_open_end_tgid", "config.canary_s", "config.test_canary_blind", "config.test_link_close",
 		"config.wal_space_low_mb", "config.wal_space_reserve_mb", "config.wal_space_guard",
+		"config.flow_ring_kb", "config.flow_keep_batches",
 	};
 	size_t n = 0;
 

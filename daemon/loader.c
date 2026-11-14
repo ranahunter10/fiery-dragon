@@ -21,6 +21,13 @@
 #include "selftest_net.h"
 #include "spine.skel.h"
 
+static uint32_t flow_ring_bytes = 4u << 20;   /* p15_loader_flow_ring */
+
+void p15_loader_flow_ring(uint32_t bytes)
+{
+	flow_ring_bytes = bytes;
+}
+
 /* TEST ONLY: see p15_loader_test_open_end in loader.h */
 static uint32_t test_open_mode, test_open_tgid;
 
@@ -53,15 +60,18 @@ static int load_file(struct p15_loader *l, const struct p15_loader_opts *o, char
 		snprintf(err, errlen, "file: open failed: %s", strerror(errno));
 		return P15_EXIT_LOAD;
 	}
+	/* the flow ring is a page when the flow programs are not attached: nothing writes to it */
 	if (bpf_map__set_max_entries(l->file->maps.bulk_rb, o->bulk_ring_bytes) ||
+	    bpf_map__set_max_entries(l->file->maps.flow_rb, o->flow ? flow_ring_bytes : 4096) ||
 	    bpf_map__set_max_entries(l->file->maps.files, o->file_map_entries) ||
 	    bpf_map__set_max_entries(l->file->maps.objs, o->obj_map_entries) ||
 	    bpf_map__set_max_entries(l->file->maps.flow_test_tried, o->test_flow_file_fail_first ? 65536 : 1)) {
-		snprintf(err, errlen, "file: bulk ring %u or map sizes %u/%u refused", o->bulk_ring_bytes, o->file_map_entries,
-			 o->obj_map_entries);
+		snprintf(err, errlen, "file: bulk ring %u, flow ring %u or map sizes %u/%u refused", o->bulk_ring_bytes,
+			 flow_ring_bytes, o->file_map_entries, o->obj_map_entries);
 		return P15_EXIT_CONFIG;
 	}
 	l->file->rodata->file_wake_bytes = o->bulk_ring_bytes / 4;   /* ADR-0020 rule 2 */
+	l->file->rodata->flow_wake_bytes = flow_ring_bytes / 4;
 	if (p15_counters_configure(l->file->maps.file_counters, &l->file->rodata->file_counters_ncpu, l->ncpu) ||
 	    p15_counters_configure(l->file->maps.flow_counters, &l->file->rodata->flow_counters_ncpu, l->ncpu)) {
 		snprintf(err, errlen, "file: cannot size the counters for %d possible CPUs (ADR-0026)", l->ncpu);
@@ -340,7 +350,7 @@ int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char
 			FILE *mem = open_memstream(&text, &text_len);
 
 			l->flow_selftest_failed = p15_selftest_flow(bpf_map__fd(l->file->maps.bulk_rb),
-								    o->test_flow_file_fail_first, mem ? mem : stderr, &flc,
+								    bpf_map__fd(l->file->maps.flow_rb), o->test_flow_file_fail_first, mem ? mem : stderr, &flc,
 								    &fc, &nc);
 			if (mem)
 				fclose(mem);
@@ -490,6 +500,10 @@ int p15_loader_counters_fd(const struct p15_loader *l) { return bpf_map__fd(l->s
 int p15_loader_bulk_rb_fd(const struct p15_loader *l)
 {
 	return l->file ? bpf_map__fd(l->file->maps.bulk_rb) : l->net ? bpf_map__fd(l->net->maps.bulk_rb) : -1;
+}
+int p15_loader_flow_rb_fd(const struct p15_loader *l)
+{
+	return l->file && l->n_flow_links ? bpf_map__fd(l->file->maps.flow_rb) : -1;
 }
 int p15_loader_file_counters_fd(const struct p15_loader *l) { return l->file ? bpf_map__fd(l->file->maps.file_counters) : -1; }
 int p15_loader_flow_counters_fd(const struct p15_loader *l) { return l->file ? bpf_map__fd(l->file->maps.flow_counters) : -1; }

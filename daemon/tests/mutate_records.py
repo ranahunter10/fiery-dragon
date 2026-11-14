@@ -129,6 +129,8 @@ M = [
  ("case P15_T_CANARY_MISS: return version == 1 ? sizeof(struct p15_canary_miss_v1) : 0;", "case P15_T_CANARY_MISS: return sizeof(struct p15_canary_miss_v1);"),
  ("case P15_T_CANARY_MISS: return \"CANARY_MISS\";", "case P15_T_CANARY_MISS: return \"?\";"),
  ("case P15_T_WAL_SPACE: return version == 1 ? sizeof(struct p15_wal_space_v1) : 0;", "case P15_T_WAL_SPACE: return sizeof(struct p15_wal_space_v1);"),
+ ("case P15_T_FLOW_RING: return version == 1 ? sizeof(struct p15_flow_ring_v1) : 0;", "case P15_T_FLOW_RING: return sizeof(struct p15_flow_ring_v1);"),
+ ("case P15_T_FLOW_RING: return \"FLOW_RING\";", "case P15_T_FLOW_RING: return \"?\";"),
  ("case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;", "case P15_T_FILE:   return 0;"),
  ("\t} else if (h->type == P15_T_FLOW) {", "\t} else if (0) {"),
  (" || h->type == P15_T_FD || h->type == P15_T_FILE) {", " || h->type == P15_T_FD) {"),

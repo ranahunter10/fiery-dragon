@@ -682,6 +682,23 @@ static void self_check(struct p15_writer *w)
 	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
 }
 
+/* FLOW_RING (ADR-0051 draft): FLOW's own ring, and how often the drain left FLOWs waiting. */
+static void flow_ring_stats(struct p15_writer *w)
+{
+	struct p15_run *r = w->run;
+	struct p15_flow_ring s;
+
+	memset(&s, 0, sizeof(s));
+	p15_daemon_hdr(r, &s, P15_T_FLOW_RING, P15_FLOW_RING_VERSION, sizeof(s));
+	s.ring_bytes = r->flow_ring_bytes;
+	s.fill_max = atomic_exchange(&r->flow_fill_max, 0);
+	s.deferred = atomic_load(&r->flow_deferred);
+	s.queue_full = atomic_load(&r->q.full);
+	s.keep_batches = r->flow_keep;
+	s.queue_batches = r->q.n;
+	append(w, P15W_RING_DAEMON, 1, &s, sizeof(s));
+}
+
 static void stats(struct p15_writer *w, uint64_t now)
 {
 	struct p15_stats s;
@@ -693,6 +710,8 @@ static void stats(struct p15_writer *w, uint64_t now)
 	if (w->run->files) {
 		file_stats(w);
 		flow_stats(w);
+		if (w->run->flow_ring_bytes)
+			flow_ring_stats(w);
 	}
 	self_check(w);
 	if (w->space.level != P15_SPACE_OK || atomic_load(&w->run->spine_shed) || atomic_load(&w->run->net_shed) ||

@@ -110,7 +110,7 @@ M = [
     ("drain.c", "(d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", "(d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", UNIT),
     ("drain.c", "\t\tgot = ring__consume_n(r, room);", "\t\tgot = ring__consume(r);", IT),
     ("drain.c", "\tn = take_all(d);\n\tnote_poll_gap(d, p15_boot_ns());", "\tn = ring_buffer__consume(d->rb);\n\tnote_poll_gap(d, p15_boot_ns());", IT),
-    ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;", "\tint n = 0, m;", IT),
+    ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE, 0) : 0, m, f;", "\tint n = 0, m, f;", IT),
     # the end of the flow programs' run (bpf/include/p15_flow.h; the design note of 2026-11-13): B1's
     # terms by the unit test, the stop's order and the programs' count word by it_p15d cases 15 to 17
     ("writer.c", "+ L(V_OWNED_BY_SOCK) + L(V_GATED) + L(OPEN_AT_END) +", "+ L(V_OWNED_BY_SOCK) + L(OPEN_AT_END) +", UNIT),
@@ -179,6 +179,11 @@ M = [
     ("writer.c", "	p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n}\n\nstatic void append", "}\n\nstatic void append", IT),
     ("writer.c", "		if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0)\n			space_changed(w);\n", "", IT),
     ("writer.c", "			forks += h->type == P15_T_FORK;", "			forks += 0;", IT),   # 122: shed FORKs uncounted: the tree check goes INVALID
+    # FLOW's own ring (ADR-0051 draft, F-01). 123-124 need the flow programs: the VM, it_p15d case 30.
+    ("drain.c", "		    !p15q_may_take(&d->run->q, keep)) {", "		    0) {", IT),   # 123: FLOW takes every free batch
+    ("drain.c", "	atomic_fetch_add(&d->run->flow_drained, 1);\n	p15_canary_see(&d->canary, h);", "	p15_canary_see(&d->canary, h);", IT),   # 124: flow-ring FLOWs off the books
+    ("queue.h", "	return q->n - p15q_depth(q) > keep;", "	return q->n - p15q_depth(q) >= keep;", UNIT),   # 125: the reserve one short
+    ("config.c", "	uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;", "	uint32_t keep = c->flow_keep_batches;", UNIT),   # 126: the auto reserve gone
 ]
 
 

@@ -245,7 +245,7 @@ static int stuck(struct p15_run *r, struct p15_loader *l, const char *phase)
 
 int main(int argc, char **argv)
 {
-	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
+	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], flow_b[24], flow_k[24], cut[8] = "0";
 	static char map_by[64] = "option";
 	static char cfg_vals[48][24], space_low[24], space_res[24];
 	struct p15w_kv meta[80];
@@ -283,12 +283,15 @@ int main(int argc, char **argv)
 	libbpf_set_print(print_libbpf);
 
 	run.bulk_ring_bytes = run.cfg.bulk_ring_kb * 1024u;
+	run.flow_ring_bytes = run.cfg.flow ? run.cfg.flow_ring_kb * 1024u : 0;
+	run.flow_keep = run.cfg.flow ? p15_flow_keep(&run.cfg) : 0;
 	run.net = run.cfg.net;
 	run.files = run.cfg.files;
 	/* The snapshot object first: loading it writes its .bss with a map update, which holds
 	 * bpf_prog_active while preemptible, so it must happen before any program is attached. From
 	 * the spine's attach on, p15d makes no map syscall (ADR-0026). */
 	p15_loader_test_open_end(run.cfg.open_end_mode, run.cfg.open_end_tgid);   /* TEST ONLY; 0, 0 otherwise */
+	p15_loader_flow_ring(run.cfg.flow_ring_kb * 1024u);   /* a setter: the options block below is a mutant's anchor */
 	code = p15_snapshot_init(&snap, &run, err, sizeof(err));
 	if (code) {
 		logline("error", "load", err);
@@ -361,6 +364,8 @@ int main(int argc, char **argv)
 	snprintf(tz, sizeof(tz), "%s", getenv("TZ") ? getenv("TZ") : tzname[0]);
 	snprintf(ring_b, sizeof(ring_b), "%u", run.spine_ring_bytes);
 	snprintf(bulk_b, sizeof(bulk_b), "%u", run.bulk_ring_bytes);
+	snprintf(flow_b, sizeof(flow_b), "%u", run.flow_ring_bytes);
+	snprintf(flow_k, sizeof(flow_k), "%u", run.flow_keep);
 #define KV(k, v) do { meta[nm].key = (k); meta[nm].value = (v); nm++; } while (0)
 	KV("run.id", run_id);
 	KV("boot_id", boot_id);
@@ -376,6 +381,8 @@ int main(int argc, char **argv)
 			      : run.files ? (run.cfg.flow ? "pass (spine, files, flow)" : "pass (spine, files)") : "pass (spine)");
 	KV("ring.spine.bytes", ring_b);
 	KV("ring.bulk.bytes", run.net || run.files ? bulk_b : "0 (--no-net --no-files: no bulk capture)");
+	KV("ring.flow.bytes", run.cfg.flow ? flow_b : "0 (no --flow)");   /* FLOW's own ring (ADR-0051 draft) */
+	KV("ring.flow.keep_batches", flow_k);
 	KV("file_map.sized_by", map_by);   /* how config.file_map_entries, below, was chosen */
 	{
 		/* the WAL's free-space guard (space.h, F-02): its thresholds for this filesystem, in bytes */
@@ -430,7 +437,8 @@ int main(int argc, char **argv)
 	if (p15q_init(&run.q, run.cfg.queue_batches, run.cfg.batch_kb * 1024u) ||
 	    p15_drain_init(&d, &run, p15_loader_spine_rb_fd(&ld), p15_loader_counters_fd(&ld), p15_loader_bulk_rb_fd(&ld),
 			   p15_loader_bulk_counters_fd(&ld), p15_loader_file_counters_fd(&ld),
-			   p15_loader_flow_counters_fd(&ld))) {
+			   p15_loader_flow_counters_fd(&ld)) ||
+	    (p15_loader_flow_rb_fd(&ld) >= 0 && p15_drain_add_flow(&d, p15_loader_flow_rb_fd(&ld), run.flow_keep))) {
 		logline("error", "oserr", "cannot allocate the queue or the drain");
 		return P15_EXIT_OSERR;
 	}

@@ -1109,6 +1109,21 @@ fields = [
   { name = "transitions",   c = "u32", doc = "changes of level since the run's start" },
 ]
 
+[[record]]
+name = "FLOW_RING"
+type = 45
+version = 1
+class = "STATS"
+doc = "FLOW's own kernel ring (ADR-0051 draft; the design review's F-01), written with every FLOW_STATS while the flow programs are attached. FLOWs go to this ring and identity and NET stay on the bulk ring, so a flood of transfers loses FLOWs (flow_lost in FLOW_STATS), not other records. p15d drains this ring last and never into its last keep_batches free batches; a poll that left FLOWs waiting for that reason counts in deferred. In the WAL, FLOW records are on the bulk ring as before."
+fields = [
+  { name = "ring_bytes",   c = "u64", doc = "the ring's size (--flow-ring-kb)" },
+  { name = "fill_max",     c = "u64", doc = "the most bytes waiting in the ring at a poll, this interval" },
+  { name = "deferred",     c = "u64", doc = "polls that left FLOWs in the ring to keep the reserve of batches free, cumulative" },
+  { name = "queue_full",   c = "u64", doc = "the queue's full count at the same moment (the drain found no free batch for any ring), cumulative" },
+  { name = "keep_batches", c = "u32", doc = "batches FLOW never takes (--flow-keep-batches, or a quarter of --queue-batches)" },
+  { name = "queue_batches", c = "u32", doc = "the queue's batches (--queue-batches)" },
+]
+
 # ---- data flow (ADR-0005; STATE decision 18): FLOW class, on the bulk ring, counted loss ----
 [[enum]]
 name = "FLOW_KIND"

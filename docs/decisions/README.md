@@ -38,6 +38,7 @@ To write a new one:
 | [0029](0029-path-walked-when-the-fentry-is-skipped.md) | When the path fentry is skipped, the session's return walks the path (a sequence-checked dentry walk, `d_dname` names made as the kernel makes them), and an overlay's real file gets BACKING (supersedes ADR-0015 rule 6 in part) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
 | [0030](0030-adaptive-drain-poll.md) | The drain's timer adapts: 10 ms after work, doubling to 200 ms when idle; the writer sleeps until its next deadline (supersedes ADR-0020 rule 2's 10 ms timer) | accepted (under STATE decisions 22a, 29) | 2026-11-12 |
 | [0031](0031-graph-images-by-time-and-leader-names.md) | The graph keeps every program a process ran (`proc_image`), each edge names the program at its time by ASOF JOIN, and a process's name comes from its leader (extends ADR-0028 rule 2) | accepted (under STATE decision 36) | 2026-11-12 |
+| [0051](0051-flow-ring-of-its-own.md) | FLOW records on a ring of their own, drained last and never into the drain's last free batches (supersedes ADR-0006 rule 2 in part; the design review's F-01) | proposed (Dragon's draft) | — |
 
 ## Planned (from capture blueprint v1, §8.3)
 

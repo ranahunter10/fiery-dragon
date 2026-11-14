@@ -745,6 +745,61 @@ check "[ \"\${ns29:-0}\" -gt 0 ] && [ \"\${sp29:-0}\" -gt 0 ]" "the disk refused
 check "[ \"\${back29:-0}\" -ge 100 ]" "after the space came back p15d writes again ($back29 of the last 100)"
 umount "$D29"
 
+echo "case 30: a flood of one-byte transfers beside a process that opens files and connects: only FLOWs are lost (F-01, ADR-0051 draft) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    D30=$(mktemp -d /tmp/p15d-it30-XXXXXX); D30=$(realpath "$D30")
+    # a small FLOW ring and a slowed writer, so the flood overflows within a second
+    "$B/p15d" --wal-dir "$T/c30" --flow --duration 8 --stats-ms 200 --flow-ring-kb 64 --batch-kb 64 \
+        --test-writer-batch-ms 5 2>"$T/c30.err" &
+    pid=$!
+    if started "$T/c30.err"; then
+        dd if=/dev/zero of=/dev/null bs=1 count=4000000 status=none &
+        flood=$!
+        sleep 0.5
+        # the victim: 300 files created and closed, and 30 connects to a listener, during the flood
+        vic=$("$PY" - "$D30" <<'WL'
+import os, socket, sys, time
+d = sys.argv[1]
+srv = socket.socket(); srv.bind(("127.0.0.1", 0)); srv.listen(64)
+for i in range(300):
+    fd = os.open(f"{d}/v{i}", os.O_CREAT | os.O_RDWR, 0o600)
+    os.close(fd)
+    if i % 10 == 0:
+        c = socket.create_connection(srv.getsockname()); a, _ = srv.accept(); c.close(); a.close()
+    time.sleep(0.005)
+print(os.getpid())
+WL
+)
+        kill "$flood" 2>/dev/null; wait "$flood" 2>/dev/null
+    fi
+    wait $pid; rc=$?
+    RUN=$T/c30; inspect >"$T/c30.txt"; irc=$?
+    c30=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+run = wal.read_run(Path(sys.argv[1])); me = int(sys.argv[2] or 0); d = sys.argv[3].encode()
+bulk = list(run.ring_records(1)); dm = list(run.ring_records(2))
+opens = {r.f['fid'] for r in bulk if r.name == 'OPEN' and r.h['tgid'] == me and r.var.get('path', b'').startswith(d + b'/v')}
+closes = sum(1 for r in bulk if r.name == 'CLOSE' and r.f['fid'] in opens)
+conns = sum(1 for r in bulk if r.name == 'NET' and r.h['tgid'] == me and r.f['op'] == 1)
+last = lambda n: [r for r in dm if r.name == n][-1].f
+fs, fl, ns, ring = last('FILE_STATS'), last('FLOW_STATS'), last('NET_STATS'), last('FLOW_RING')
+lost_id = fs['open_lost'] + fs['close_lost'] + fs['backing_lost'] + fs['verdict_lost'] + fs['missing_lost']
+print(len(opens), closes, conns, fl['flow_lost'], lost_id, ns['net_reserve_failed'], ring['deferred'],
+      max(r.f['fill_max'] for r in dm if r.name == 'FLOW_RING'), ring['keep_batches'])" \
+      "$(ls -d "$T"/c30/*/ | head -1)" "${vic:-0}" "$D30")
+    read -r o30 cl30 cn30 fl30 id30 nl30 df30 fm30 kp30 <<<"$c30"
+    echo "  victim ${vic:-?}: OPEN $o30 of 300, CLOSE $cl30, CONNECT $cn30 of 30; FLOW lost $fl30; identity lost $id30, NET lost $nl30; FLOW ring: fill max $fm30 bytes, deferred $df30 polls, keep $kp30 batches"
+    check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c30.txt" "exit 3 (DEGRADED by the lost FLOWs), WAL valid in both readers, books closed (rc $rc)"
+    check "[ \"\${fl30:-0}\" -gt 0 ]" "the flood overflowed FLOW's ring: FLOWs lost and counted ($fl30)"
+    check "[ \"\${id30:-1}\" = 0 ] && [ \"\${nl30:-1}\" = 0 ]" "no identity or NET record was lost: they are on the bulk ring, which the flood does not touch"
+    check "[ \"\${o30:-0}\" = 300 ] && [ \"\${cl30:-0}\" = 300 ] && [ \"\${cn30:-0}\" = 30 ]" "the victim's 300 OPENs, their 300 CLOSEs and its 30 connects are all in the WAL"
+    check "[ \"\${fm30:-0}\" -gt 0 ] && [ \"\${kp30:-0}\" -ge 1 ]" "FLOW_RING says the ring filled ($fm30 bytes at most) and how many batches FLOW leaves free ($kp30)"
+    check "[ \"\${df30:-0}\" -gt 0 ]" "the drain left FLOWs in their ring to keep batches free for the other rings ($df30 polls)"
+    rm -rf "$D30"
+else
+    echo "  SKIP (the flow programs are not loadable here; CI and the VM run it)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

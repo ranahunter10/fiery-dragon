@@ -69,6 +69,7 @@ static void test_fixed_sizes(void)
 		{ P15_T_SELF_STATS, sizeof(struct p15_self_stats_v1), "SELF_STATS" },
 		{ P15_T_CANARY_MISS, sizeof(struct p15_canary_miss_v1), "CANARY_MISS" },
 		{ P15_T_WAL_SPACE, sizeof(struct p15_wal_space_v1), "WAL_SPACE" },
+		{ P15_T_FLOW_RING, sizeof(struct p15_flow_ring_v1), "FLOW_RING" },
 	};
 	struct p15_snap_done_v1 *sd;
 
@@ -91,7 +92,7 @@ static void test_fixed_sizes(void)
 		EXPECT(!ok(), what);
 	}
 	EXPECT(!strcmp(p15_type_name(P15_T_EXEC), "EXEC") && !strcmp(p15_type_name(P15_T_END), "END"), "var types named");
-	EXPECT(!strcmp(p15_type_name(45), "?") && !strcmp(p15_type_name(99), "?"), "unknown types");
+	EXPECT(!strcmp(p15_type_name(46), "?") && !strcmp(p15_type_name(99), "?"), "unknown types");
 	EXPECT(!strcmp(p15_type_name(P15_T_PROC), "PROC") && !strcmp(p15_type_name(P15_T_SNAP_DONE), "SNAP_DONE"),
 	       "snapshot types named");
 	mk(99, 32);

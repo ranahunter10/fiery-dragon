@@ -1115,6 +1115,22 @@ Fixed part 128 bytes; at most 128 bytes with its variable fields.
 | 120 | `level` | u32 | WAL_SPACE_LEVEL now |
 | 124 | `transitions` | u32 | changes of level since the run's start |
 
+## FLOW_RING (type 45, version 1, class STATS)
+
+FLOW's own kernel ring (ADR-0051 draft; the design review's F-01), written with every FLOW_STATS while the flow programs are attached. FLOWs go to this ring and identity and NET stay on the bulk ring, so a flood of transfers loses FLOWs (flow_lost in FLOW_STATS), not other records. p15d drains this ring last and never into its last keep_batches free batches; a poll that left FLOWs waiting for that reason counts in deferred. In the WAL, FLOW records are on the bulk ring as before.
+
+Fixed part 72 bytes; at most 72 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `ring_bytes` | u64 | the ring's size (--flow-ring-kb) |
+| 40 | `fill_max` | u64 | the most bytes waiting in the ring at a poll, this interval |
+| 48 | `deferred` | u64 | polls that left FLOWs in the ring to keep the reserve of batches free, cumulative |
+| 56 | `queue_full` | u64 | the queue's full count at the same moment (the drain found no free batch for any ring), cumulative |
+| 64 | `keep_batches` | u32 | batches FLOW never takes (--flow-keep-batches, or a quarter of --queue-batches) |
+| 68 | `queue_batches` | u32 | the queue's batches (--queue-batches) |
+
 ## FLOW (type 10, version 1, class FLOW)
 
 Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here.
