@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-11-14          # drafted; the date of the merge if accepted
+status: accepted
+date: 2026-11-15          # accepted by the maintainer (STATE decision 134, "recommendations are accepted"); drafted 2026-11-14
 owner: Ashish Rana
 consulted: [Dragon (design review F-01, 2026-11-13), Falco libs 0815626, Tetragon 75b95a2, Tracee 2f9dc40]
 supersedes: ADR-0006 rule 2 in part (the bulk ring no longer carries FLOW)
