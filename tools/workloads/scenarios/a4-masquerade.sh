@@ -8,7 +8,9 @@ set -eu
 W=$1 M=$2
 mkdir -p "$W/.X11" "$W/etc/cron.d"
 cp /usr/bin/sleep "$W/.X11/kworker"
-"$W/.X11/kworker" 0.2
+# Ubuntu 26.04's coreutils is one multi-call binary that picks its tool by argv[0]: run the copy
+# with argv[0] "sleep". The process's name (comm) still comes from the file: "kworker".
+bash -c 'exec -a sleep "$0" 0.2' "$W/.X11/kworker"
 python3 - "$W" <<'PY'
 import ctypes, sys
 libc = ctypes.CDLL(None, use_errno=True)

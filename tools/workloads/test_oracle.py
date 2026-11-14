@@ -38,6 +38,9 @@ LOG = """\
 102 1.000019 recvfrom(7<TCPv6:[::1:5->::1:443]>, ""..., 64, 0, NULL, NULL) = 64
 102 1.000020 sendmmsg(9<UDP:[12]>, [...], 2, 0) = 2
 101 1.000021 copy_file_range(3</w/a b, c>, NULL, 4</w/o>, NULL, 1000, 0) = 1000
+101 1.000022 splice(3</w/a b, c>, NULL, 5<pipe:[78]>, NULL, 1048576, 0) = 30
+101 1.000023 splice(4<pipe:[78]>, NULL, 1<TCP:[127.0.0.1:5->127.0.0.1:9]>, NULL, 30, 0) = 30
+101 1.000024 sendfile(1<TCP:[127.0.0.1:5->127.0.0.1:9]>, 3</w/a b, c>, NULL, 12) = 12
 100 1.000022 accept4(10<TCP:[13]>, NULL, NULL, SOCK_CLOEXEC) = 11<TCP:[127.0.0.1:80->127.0.0.1:5]>
 101 1.000023 exit_group(0) = ?
 101 1.000024 +++ exited with 0 +++
@@ -67,7 +70,10 @@ class Oracle(unittest.TestCase):
         self.assertEqual(self.f.unix_connects, 1)
         self.assertEqual(self.f.accepts[100], 1)
         self.assertEqual(dict(self.f.bytes[100]), {"file_read": 7, "sock_send": 70, "sock_recv": 64})
-        self.assertEqual(dict(self.f.bytes[101]), {"file_read": 100, "file_write": 100})
+        # the splice and the sendfile into a socket are sends; the splice from a file into a pipe is unseen
+        self.assertEqual(dict(self.f.bytes[101]), {"file_read": 100, "file_write": 100, "sock_send": 42})
+        self.assertEqual((self.f.unseen["splice"], self.f.unseen_bytes["splice"]), (1, 30))
+        self.assertEqual((self.f.counts["splice_to_socket"], self.f.counts["sendfile_to_socket"]), (1, 1))
         self.assertEqual(self.f.counts["mmsg_call"], 1)
         self.assertEqual((self.f.unseen["copy_file_range"], self.f.unseen_bytes["copy_file_range"]), (1, 1000))
 
@@ -106,7 +112,8 @@ def graph(missing_open=False, wrong_bytes=False):
             (1, 20, "CONNECT", False, None, 1, 1, None), (1, 21, "CONNECT", True, None, 1, 2, None),
             (22, 1, "ACCEPT", True, None, 0, 0, None),
             (77, 1, "READ", True, None, 0, 0, 7), (1, 21, "SEND", True, None, 0, 0, 70), (21, 1, "RECV", True, None, 0, 0, 64),
-            (11, 2, "READ", True, None, 0, 0, 100), (2, 13, "WRITE", True, None, 0, 0, 99 if wrong_bytes else 100)]
+            (11, 2, "READ", True, None, 0, 0, 100), (2, 13, "WRITE", True, None, 0, 0, 99 if wrong_bytes else 100),
+            (2, 21, "SEND", True, None, 0, 0, 42)]
     if not missing_open:
         rows += [(10, 1, "OPEN", True, 1, 0, 0, None)]
     rows += [(11, 2, "OPEN", True, 2, 0, 0, None)]
@@ -122,7 +129,7 @@ class Compare(unittest.TestCase):
         for k in ("processes", "clone_edges", "execs", "opens", "connects", "accepts"):
             self.assertEqual(r["recall"][k]["ratio"], 1.0, k)
         self.assertEqual(r["extra"]["opens"], {"n": 1, "exec_and_interpreter": 1, "other": 0, "other_first": []})
-        self.assertEqual(r["bytes"]["sock_send"]["graph"], 70)
+        self.assertEqual(r["bytes"]["sock_send"]["graph"], 112)      # 70 by sendto and write, 42 by splice and sendfile
 
     def test_a_missing_open_and_a_byte_off_are_named(self):
         r = C.compare(graph(missing_open=True, wrong_bytes=True), O.parse(LOG.splitlines(True)), None, 0)

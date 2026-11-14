@@ -27,7 +27,8 @@ The facts, each keyed by the thread group (tgid) that made the call:
   unseen    calls that move data without vfs_read/vfs_write or the socket tracepoints, which the
             flow programs do not hook by design (sendfile, splice, tee, vmsplice, copy_file_range,
             io_uring_enter): counted with the bytes they reported, so a byte mismatch they explain
-            is told apart from a capture miss
+            is told apart from a capture miss. A splice or sendfile INTO a socket is the exception:
+            it reaches sock_sendmsg and its tracepoint, so its bytes count as socket bytes sent
 """
 
 from __future__ import annotations
@@ -221,6 +222,16 @@ def parse(lines, light: bool = False) -> Facts:
             continue
         if not f.full or ret <= 0:
             continue
+        if name in ("splice", "sendfile", "sendfile64"):
+            # into a socket, both reach sock_sendmsg (fs/splice.c splice_to_socket L795/L884 at v7.0;
+            # sendfile through do_splice_direct), which fires sock_send_length: a SEND the flow
+            # programs do see. The file or pipe side of the call is not seen (no vfs_read).
+            first, rest = split_first_arg(args)
+            out_fd = first if name != "splice" else split_first_arg(split_first_arg(rest)[1])[0]
+            if is_sock(fd_target(out_fd)):
+                f.bytes[g]["sock_send"] += ret
+                f.counts[f"{name}_to_socket"] += 1
+                continue
         if name in UNSEEN:
             f.unseen[name] += 1
             f.unseen_bytes[name] += ret
