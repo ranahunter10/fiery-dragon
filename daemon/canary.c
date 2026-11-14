@@ -214,6 +214,14 @@ void p15_canary_oversleep(struct p15_canary_state *c, uint64_t over_ns)
 	}
 }
 
+void p15_canary_paused(struct p15_canary_state *c, uint64_t want_ns, uint64_t over_ns)
+{
+	if (!c->interval_ns || !c->pid)
+		return;
+	c->last_poll_ns += want_ns;     /* the stall bound measures time the drain did not choose */
+	p15_canary_oversleep(c, over_ns);
+}
+
 void p15_canary_stop(struct p15_canary_state *c)
 {
 	c->stopped = 1;

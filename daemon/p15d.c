@@ -515,8 +515,13 @@ int main(int argc, char **argv)
 		if (p15_drain_poll(&d, poll_ms))   /* ADR-0020 rule 2, ADR-0030: high-water wake-ups, an adaptive timer */
 			p15_fail(&run, P15_EXIT_INTERNAL, "drain: poll or counter read failed");
 		poll_ms = p15_poll_next(poll_ms, d.last_taken, d.queue_full_now, (int)run.cfg.poll_max_ms);
-		if (run.cfg.drain_pause_ms)
-			usleep(run.cfg.drain_pause_ms * 1000u);   /* TEST ONLY: config.test_drain_pause_ms in the header */
+		if (run.cfg.drain_pause_ms) {   /* TEST ONLY: config.test_drain_pause_ms in the header */
+			uint64_t want = (uint64_t)run.cfg.drain_pause_ms * 1000000ull, t0 = p15_mono_ns(), slept;
+
+			usleep(run.cfg.drain_pause_ms * 1000u);
+			slept = p15_mono_ns() - t0;
+			p15_canary_paused(&d.canary, want, slept > want ? slept - want : 0);
+		}
 	}
 
 	p15_canary_stop(&d.canary);   /* the run is ending: no new canary, and one in flight gets no verdict */

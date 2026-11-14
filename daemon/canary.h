@@ -95,6 +95,11 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now_mono_ns, int took)
  * that time is not the pipeline's, so a canary in flight gets it added to its deadline. A drain that
  * is slow in its own work (case 23's pause, a blocked writer) is outside the wait and is not excused. */
 void p15_canary_oversleep(struct p15_canary_state *c, uint64_t over_ns);
+/* TEST ONLY (--test-drain-pause-ms): the drain slept `want_ns` on purpose and `over_ns` more. The
+ * pause is a stuck drain, so it counts against the canary; but it is not the guest standing still,
+ * so it does not count toward P15_CANARY_STALL_NS; the overshoot is excused like a wait's. On the
+ * VM a 3 s pause plus a late wake-up passed the 5 s stall bound and cancelled case 23's lateness. */
+void p15_canary_paused(struct p15_canary_state *c, uint64_t want_ns, uint64_t over_ns);
 /* The run is ending: no new canary; one in flight gets no verdict (counted unfinished). */
 void p15_canary_stop(struct p15_canary_state *c);
 

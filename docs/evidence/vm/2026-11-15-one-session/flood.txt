@@ -1,0 +1,9 @@
+p15d exit 0 (0: nothing was lost; 3: FLOWs were lost and counted; either passes if the victim is whole)
+FLOW_STATS {'read_emitted': 4517465, 'write_emitted': 4517368, 'send_emitted': 7, 'recv_emitted': 12, 'flow_lost': 0, 'file_emitted': 8, 'file_lost': 0, 'file_map_full': 0}
+FILE_STATS {'open_emitted': 2132, 'open_lost': 0, 'open_full_size': 0, 'backing_emitted': 0, 'backing_lost': 0, 'missing_emitted': 0, 'missing_lost': 0, 'verdict_emitted': 0, 'verdict_lost': 0, 'close_emitted': 2174, 'close_lost': 0, 'file_map_full': 0, 'obj_map_full': 0, 'ret_backing_emitted': 0, 'ret_backing_lost': 0, 'ret_backing_verdict_emitted': 0, 'ret_backing_verdict_lost': 0}
+NET_STATS {'net_emitted': 207, 'net_reserve_failed': 0, 'net_drain_lost': 0, 'bulk_fill_max': 0}
+FLOW_RING {'fill_max': 0, 'deferred': 11568, 'queue_full': 23134, 'keep_batches': 4}
+WAL_SPACE none
+END {'exit_code': 0, 'run_state': 0, 'invariant': 1, 'signal': 0, 'closing_snapshot': 1, 'reserved': 0, 'reason_full': 14, 'reason_len': 14}
+bulk ring by type: NET 207, OPEN 2139, CLOSE 2185, FLOW 9034852, FILE 8
+victim: OPEN 2000 of 2000, CLOSE 2000 of 2000, CONNECT 100 of 100

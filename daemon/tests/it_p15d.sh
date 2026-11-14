@@ -258,18 +258,21 @@ if [ "$NET_OK" = 1 ]; then
 D9=$(mktemp -d /tmp/p15d-it9-XXXXXX); D9=$(realpath "$D9")
 printf 'held\n' > "$D9/held"; printf 'again\n' > "$D9/again"
 # opened before p15d starts, held on fd 3, stdin a pipe: only the FD pass can name them
-( exec 3<"$D9/held"; exec sleep 6 ) < <(exec sleep 6) &
+# It lives until killed below: a fixed 6 s life ended before p15d's opening snapshot when p15d's
+# start took longer on the VM (the holder gone, no FD row: E-0319).
+( exec 3<"$D9/held"; exec sleep 300 ) < <(exec sleep 30) &   # fd 0 stays a pipe after its writer ends
 holder=$!
 sleep 0.3
 # segments of 1 s: each opening snapshot repeats the FD pass and starts a new facts epoch, so a
 # file opened in two segments has its facts in both (ADR-0007's self-describing segments, E-0160)
-"$B/p15d" --wal-dir "$T/c9" --duration 4 --stats-ms 200 --rotate-s 1 2>"$T/c9.err" &
+"$B/p15d" --wal-dir "$T/c9" --duration 120 --stats-ms 200 --rotate-s 1 2>"$T/c9.err" &
 pid=$!
 if started "$T/c9.err"; then
     sleep 0.3; cat "$D9/held" "$D9/again" >/dev/null; kill $holder 2>/dev/null; wait $holder 2>/dev/null
-    sleep 2.2; cat "$D9/again" >/dev/null
+    sleep 2.2; cat "$D9/again" >/dev/null                         # at least one rotation later
 fi
-wait $pid; rc=$?
+kill $holder 2>/dev/null; wait $holder 2>/dev/null
+stopwait $pid; rc=$?
 RUN=$T/c9; inspect -v >"$T/c9.txt"; irc=$?
 row=$(grep -E "FD .* tgid=$holder .* snap=0 fd=3 " "$T/c9.txt" | head -1)
 echo "$row" | sed 's/^ *//' | cut -c1-240

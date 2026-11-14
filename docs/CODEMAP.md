@@ -205,8 +205,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`barrier.c`](../daemon/barrier.c) | See barrier.h. | `p15_barrier` |
 | [`barrier.h`](../daemon/barrier.h) | A grace-period barrier from user space (docs/research/2026-11-13-detach-fault-design.md §3.1). | `p15_barrier` |
-| [`canary.c`](../daemon/canary.c) | See canary.h. | `p15_canary_see`, `p15_canary_tick`, `p15_canary_oversleep`, `p15_canary_stop` |
-| [`canary.h`](../daemon/canary.h) | a continuous self-test (ADR-0019 G4.4; docs/research/2026-11-14-canary-and-self-check.md). | `p15_canary_see`, `p15_canary_tick`, `p15_canary_oversleep`, `p15_canary_stop` |
+| [`canary.c`](../daemon/canary.c) | See canary.h. | `p15_canary_see`, `p15_canary_tick`, `p15_canary_oversleep`, `p15_canary_paused`, `p15_canary_stop` |
+| [`canary.h`](../daemon/canary.h) | a continuous self-test (ADR-0019 G4.4; docs/research/2026-11-14-canary-and-self-check.md). | `p15_canary_see`, `p15_canary_tick`, `p15_canary_oversleep`, `p15_canary_paused`, `p15_canary_stop` |
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
 | [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_flow_keep`, `p15_file_map_auto`, `p15_config_meta` |
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_flow_keep`, `p15_file_map_auto`, `p15_config_meta`, `p15_config_usage` |

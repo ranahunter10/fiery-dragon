@@ -186,6 +186,7 @@ M = [
     ("config.c", "	uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;", "	uint32_t keep = c->flow_keep_batches;", UNIT),   # 126: the auto reserve gone
     ("canary.c", "	c->deadline_ns += over_ns;", "	(void)over_ns;", UNIT),   # 127: the drain's oversleep not excused
     ("canary.c", "		else if (!c->all_seen_ns && now >= c->miss_deadline_ns && c->polls", "		else if (!c->all_seen_ns && now >= c->deadline_ns && c->polls", UNIT),   # 128: a miss waits on the moved deadline
+    ("canary.c", "	c->last_poll_ns += want_ns;", "	(void)want_ns;", UNIT),   # 129: a deliberate pause counts toward the stall bound
 ]
 
 

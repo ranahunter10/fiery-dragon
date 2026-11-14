@@ -320,6 +320,26 @@ static void test_oversleep(void)
 	       "chronic oversleep: the missing EXEC is still a miss, judged at the first empty poll after 1 s");
 }
 
+/* case 23 on the VM (E-0319): a 3 s deliberate pause that wakes 2.5 s late. The pause is the stuck
+ * drain the case stages, so the canary is late; the gap is not a guest stall (the deliberate part
+ * does not count toward the 5 s bound), and the overshoot is excused. */
+static void test_paused(void)
+{
+	struct p15_canary_state c;
+	uint64_t t = 110 * S;
+
+	start(&c, 10, 0, 0);
+	p15_canary_tick(&c, t, 0);
+	p15_canary_paused(&c, 3000 * MS, 2500 * MS);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 5600 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 1 && BAD(late_ms) == 2100,
+	       "a 3 s pause woken 2.5 s late: late by 2.1 s (5.6 s less the 1 s deadline and the 2.5 s overshoot), not a stall");
+}
+
 static void test_exec_failed(void)
 {
 	struct p15_canary_state c;
@@ -428,6 +448,7 @@ int main(void)
 	test_polls_needed();
 	test_stall();
 	test_oversleep();
+	test_paused();
 	test_exec_failed();
 	test_never_reaped();
 	test_blind();

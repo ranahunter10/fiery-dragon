@@ -1,0 +1,108 @@
+== 93 canary.c now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&
+FAIL daemon/tests/test_canary.c:227 first poll after the deadline: not yet
+FAIL daemon/tests/test_canary.c:229 second: not yet
+FAIL daemon/tests/test_canary.c:262 gap of 4.9 s, one poll short
+test_canary: 3 FAILED
+== 94 canary.c now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&
+FAIL daemon/tests/test_canary.c:208 deadline passed but the poll took records: more may be queued, no verdict
+FAIL daemon/tests/test_canary.c:212 published: kind, seen and want, how long after the deadline
+test_canary: 2 FAILED
+== 111 space.c if (avail < s->reserve)
+FAIL daemon/tests/test_space.c:65 below the reserve: SHED_ALL
+FAIL daemon/tests/test_space.c:66 SHED_ALL: only the daemon ring
+FAIL daemon/tests/test_space.c:70 just above the reserve: still SHED_ALL
+FAIL daemon/tests/test_space.c:72 an eighth above it: back to SHED_BULK
+FAIL daemon/tests/test_space.c:78 a fall straight past both: SHED_ALL
+FAIL daemon/tests/test_space.c:79 every change and every reading counted
+FAIL daemon/tests/test_space.c:93 never below 0
+== 112 space.c if (lv == P15_SPACE_SHED_ALL && avail < up_res)
+FAIL daemon/tests/test_space.c:70 just above the reserve: still SHED_ALL
+FAIL daemon/tests/test_space.c:72 an eighth above it: back to SHED_BULK
+== 113 space.c if (lv >= P15_SPACE_SHED_BULK && avail < up_low)
+FAIL daemon/tests/test_space.c:74 just above low: still SHED_BULK
+FAIL daemon/tests/test_space.c:76 an eighth above low: OK
+== 114 space.c s->avail = s->avail > bytes ? s->avail - bytes : 0;
+FAIL daemon/tests/test_space.c:91 the estimate falls with each write
+FAIL daemon/tests/test_space.c:92 and crosses low without a reading
+FAIL daemon/tests/test_space.c:93 never below 0
+== 115 space.c return s->level < P15_SPACE_SHED_ALL;
+FAIL daemon/tests/test_space.c:66 SHED_ALL: only the daemon ring
+== 116 space.c if (l < 2 * r)
+FAIL daemon/tests/test_space.c:42 a tiny filesystem: the reserve's 4 MiB floor, low raised to twice it
+FAIL daemon/tests/test_space.c:44 size unknown: the floors
+FAIL daemon/tests/test_space.c:46 given sizes, low raised to twice the reserve
+== 117 wal.c if (ftruncate(w->fd, (off_t)w->seg_bytes) || lseek(w->fd, (off_t)w->seg_bytes, SEEK_SET) < 0)
+FAIL daemon/tests/test_wal.c:646 the batch cannot be taken back: the writer fails
+FAIL daemon/tests/test_wal.c:648 an error, not a survived full disk
+== 118 wal.c if (rc == -ENOSPC || rc == -EDQUOT) {
+FAIL daemon/tests/test_wal.c:615 counted as a full disk, not an error
+FAIL daemon/tests/test_wal.c:617 refused at its first byte
+FAIL daemon/tests/test_wal.c:618 counted again
+FAIL daemon/tests/test_wal.c:619 space again: the writer goes on
+FAIL daemon/tests/test_wal.c:620 and ticks
+FAIL daemon/tests/test_wal.c:621 refused batches spend no sequence numbers
+FAIL daemon/tests/test_wal.c:623 close: no error to report
+FAIL daemon/tests/test_wal.c:625 the segment scans whole: two batches, three records, no torn tail
+FAIL daemon/tests/test_wal.c:627 the last batch is the one after the disk had room again
+== 119 wal.c if (!w->in_open && !w->hold_rotation && w->seg_batches > 0
+FAIL daemon/tests/test_wal.c:664 no rotation while held
+FAIL daemon/tests/test_wal.c:666 nor by age
+== 120 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_drain_lost) + atomic_load(&r->
+FAIL daemon/tests/test_run.c:194 shed records close the writer side too
+== 121 writer.c if (!p15_space_allows(&w->space, ring)) {
+FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+FAIL spine records were shed at the reserve (0), and the disk never had to refuse a batch
+FAIL the shed FORKs (0) and EXITs (0) are counted by type, within the spine's shed (0)
+FAIL the log says so, and END's reason names the low disk
+it_p15d: FAIL (4 failed checks)
+== 122 writer.c p15_run_set_state(r, P15_RUN_DEGRADED, msg);
+FAIL an FD row for the holder's fd 3, with the file's path (fid , obj )
+FAIL   ... and for its fds 0, 1 and 2 (the streams of a process older than capture)
+FAIL a later open of the same file names the FD row's object
+FAIL the holder's exit ends that open file: CLOSE fid
+FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+FAIL the log says so, and END's reason names the low disk
+FAIL exit 3 (DEGRADED), not INVALID; the WAL scans whole in both readers; books closed (p15d 0)
+it_p15d: FAIL (7 failed checks)
+== 123 writer.c if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0)
+FAIL exit 3 (DEGRADED), WAL valid, nothing lost (p15d 0)
+FAIL counted late, not missed, with a CANARY_MISS record of kind LATE ()
+FAIL exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 0)
+FAIL WAL_SPACE records the levels in order: shed bulk, shed all, then ok again (-)
+FAIL spine records were shed at the reserve (0), and the disk never had to refuse a batch
+FAIL after the space came back every exec is written again (0 of the last 100)
+FAIL the shed FORKs (0) and EXITs (0) are counted by type, within the spine's shed (0)
+FAIL the log says so, and END's reason names the low disk
+it_p15d: FAIL (8 failed checks)
+== 124 writer.c forks += h->type == P15_T_FORK;
+FAIL an FD row for the holder's fd 3, with the file's path (fid , obj )
+FAIL   ... and for its fds 0, 1 and 2 (the streams of a process older than capture)
+FAIL a later open of the same file names the FD row's object
+FAIL the holder's exit ends that open file: CLOSE fid
+FAIL the shed FORKs (0) and EXITs (305) are counted by type, within the spine's shed (1214)
+it_p15d: FAIL (5 failed checks)
+== 125 drain.c !p15q_may_take(&d->run->q, keep)) {
+FAIL exit 3 (DEGRADED), WAL valid, nothing lost (p15d 0)
+FAIL counted late, not missed, with a CANARY_MISS record of kind LATE ()
+FAIL the drain left FLOWs in their ring to keep batches free for the other rings (0 polls)
+it_p15d: FAIL (3 failed checks)
+== 126 drain.c atomic_fetch_add(&d->run->flow_drained, 1);
+FAIL --flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc 4)
+FAIL a lost FILE: exit 3, the run DEGRADED, the books still closed, the WAL valid (rc 4)
+FAIL exit 0, WAL valid, the holder ran (p15d 4, inspect 0)
+FAIL END: exit 0, RUNNING, the books close with calls open at the detach
+FAIL exit 0, WAL valid, the holder ran (p15d 4, inspect 0)
+FAIL END: exit 0, RUNNING, the books close with calls open at the detach
+FAIL exit 3 (DEGRADED by the lost FLOWs), WAL valid in both readers, books closed (rc 4)
+it_p15d: FAIL (7 failed checks)
+== 127 queue.h return q->n - p15q_depth(q) > keep;
+FAIL daemon/tests/test_queue.c:132 reserve: 2 free, the held ring must leave them
+FAIL daemon/tests/test_queue.c:137 reserve: after one release, 2 free: held at keep 2, not at keep 1
+== 128 config.c uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;
+FAIL daemon/tests/test_config.c:94 the reserve: a quarter of 16 batches
+== 129 canary.c c->deadline_ns += over_ns;
+FAIL daemon/tests/test_canary.c:285 seen 1.5 s after the start, 600 ms of it the drain's oversleep: in time
+test_canary: 1 FAILED
+== 130 canary.c else if (!c->all_seen_ns && now >= c->miss_deadline_ns && c->polls
+FAIL daemon/tests/test_canary.c:319 chronic oversleep: the missing EXEC is still a miss, judged at the first empty poll after 1 s
+test_canary: 1 FAILED
