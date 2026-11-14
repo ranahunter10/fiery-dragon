@@ -1,0 +1,18 @@
+p15d exit 0; strace root pid 272536
+  processes          6 of 6        100.00 %  
+  clone_edges        5 of 5        100.00 %  
+  execs              6 of 6        100.00 %  0 matched by last component only
+  opens             80 of 80       100.00 %  
+  connects           0 of 0               -  tgid, family, port, ret
+  accepts            0 of 0               -  tgid, count
+  bytes file_read   graph       270005 strace       270005  100.0000 %  exact in 6 of 6 processes
+  bytes file_write  graph          530 strace          530  100.0000 %  exact in 6 of 6 processes
+  bytes sock_recv   graph            0 strace            0           -  exact in 6 of 6 processes
+  bytes sock_send   graph            0 strace            0           -  exact in 6 of 6 processes
+  extra: processes 0; opens 12 (12 an exec's program or interpreter, 0 other)
+  calls the flow programs do not hook (by design): copy_file_range 1 (1540520 B), splice 2 (550 B)
+  not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 34
+  attack 'dropped program to the cron line': reached False (expected False)
+  attack rules: R1 fired; all fired: {'R1': 1}
+  attack renames seen: kworker/0:1 True
+VERDICT: capture and graph checks hold; detection: every expected rule fired

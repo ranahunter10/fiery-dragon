@@ -1,0 +1,2 @@
+{"reach": [{"name": "dropped program to the cron line", "from": {"path": "/var/tmp/p15-workloads/a4-masquerade/work/.X11/kworker"}, "to": {"path": "/var/tmp/p15-workloads/a4-masquerade/work/etc/cron.d/backdoor"}, "expect": false}],
+ "rules": ["R1"], "comm": ["kworker/0:1"]}

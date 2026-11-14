@@ -1,0 +1,1 @@
+a4-masquerade  workload rc=0      834 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired

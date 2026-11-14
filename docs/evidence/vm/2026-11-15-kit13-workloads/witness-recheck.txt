@@ -1,0 +1,1 @@
+a4-masquerade  file_read EXACT 270005; file_write EXACT 530; sock_recv EXACT 0; sock_send EXACT 0; unseen: copy_file_range 1 (1540520 B), splice 2 (550 B)

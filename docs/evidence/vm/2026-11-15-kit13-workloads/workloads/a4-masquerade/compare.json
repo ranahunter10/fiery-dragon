@@ -1,0 +1,146 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished_never_resumed": 0,
+  "open_failed": 34
+ },
+ "recall": {
+  "processes": {
+   "oracle": 6,
+   "found": 6,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 5,
+   "found": 5,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 6,
+   "found": 6,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 80,
+   "found": 80,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 0,
+   "found": 0,
+   "ratio": null,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 0,
+   "found": 0,
+   "ratio": null,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 12,
+   "exec_and_interpreter": 12,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 270005,
+   "graph": 270005,
+   "exact_processes": 6,
+   "processes": 6,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 530,
+   "graph": 530,
+   "exact_processes": 6,
+   "processes": 6,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 0,
+   "graph": 0,
+   "exact_processes": 6,
+   "processes": 6,
+   "ratio": null,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 0,
+   "graph": 0,
+   "exact_processes": 6,
+   "processes": 6,
+   "ratio": null,
+   "differ": []
+  }
+ },
+ "unseen": {
+  "copy_file_range": {
+   "calls": 1,
+   "bytes": 1540520
+  },
+  "splice": {
+   "calls": 2,
+   "bytes": 550
+  }
+ },
+ "unix_connects": 0,
+ "opath_opens": 0,
+ "root": 272536,
+ "attack": {
+  "reach": [
+   {
+    "name": "dropped program to the cron line",
+    "from_nodes": 1,
+    "to_nodes": 1,
+    "reached": false,
+    "expect": false
+   }
+  ],
+  "rules": {
+   "R1": true
+  },
+  "refused": {},
+  "comm": {
+   "kworker/0:1": true
+  },
+  "alerts": [
+   {
+    "rule": "R1",
+    "key": "p:272539:16720343348222",
+    "detail": "wrote /var/tmp/p15-workloads/a4-masquerade/work/.X11/kworker (pid 272538 cp), ran it as pid 272539"
+   }
+  ],
+  "rules_fired": {
+   "R1": 1
+  }
+ },
+ "verdict": [],
+ "detection_gaps": []
+}
