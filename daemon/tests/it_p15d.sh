@@ -607,7 +607,10 @@ check "PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(
 check "grep -q 'code=canary_miss' $T/c22.err && grep -q 'records missing, mask 0x2' $T/c22.txt" "  ... the log has the error and END's reason names the mask"
 
 echo "case 23: a stuck drain (1.5 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+${SECONDS}s]"
-selfrun c23 --canary-s 1 --test-drain-pause-ms 1500 --duration 6
+# 8 s, not 6: the first canary starts 1 s in, at a poll, and is judged at the next poll 1.5 s later;
+# a 6 s run left one verdict at most, and on the VM sometimes none (E-0316)
+selfrun c23 --canary-s 1 --test-drain-pause-ms 1500 --duration 8
+echo "  canaries $s_runs (missed $s_missed, late $s_late, unfinished $s_unf); CANARY_MISS: ${s_miss:-none}"
 check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c23.txt" "exit 3 (DEGRADED), WAL valid, nothing lost (p15d $rc)"
 check "[ \"\${s_late:-0}\" -ge 1 ] && [ \"$s_missed\" = 0 ] && case \" $s_miss \" in *' L:'*) true;; *) false;; esac" "counted late, not missed, with a CANARY_MISS record of kind LATE ($s_miss)"
 

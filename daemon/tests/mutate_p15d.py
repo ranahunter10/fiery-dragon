@@ -245,6 +245,13 @@ def main() -> int:
             killed += dead
             tag = ("killed  " if dead else "NO BUILD" if not built else "TIMEOUT " if timed_out else "SURVIVED")
             print(f"{tag} {i} {f} {old.strip().splitlines()[0][:70]} ({dt:.0f} s)", flush=True)
+            if dead:
+                # which checks killed it: a kill by an unrelated flaky check is not evidence
+                fails = [ln.strip() for ln in (r.stdout + r.stderr).splitlines() if "FAIL" in ln]
+                for ln in fails[:3]:
+                    print(f"           {ln[:150]}", flush=True)
+                with open(ROOT / "build" / "mutate-kills.txt", "a") as k:
+                    k.write(f"== {i} {f} {old.strip().splitlines()[0][:100]}\n" + "".join(x + "\n" for x in fails))
     finally:
         for f, text in orig.items():
             (ROOT / "daemon" / f).write_text(text)

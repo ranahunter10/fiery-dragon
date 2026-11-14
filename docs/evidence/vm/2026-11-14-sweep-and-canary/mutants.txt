@@ -1,0 +1,23 @@
+baseline: the unit tests pass in 0 s; a mutant gets 120 s
+baseline: the end-to-end test pass in 280 s; a mutant gets 1121 s
+baseline: the space-guard tests pass in 0 s; a mutant gets 120 s
+baseline: the WAL tests pass in 0 s; a mutant gets 120 s
+killed   111 space.c if (avail < s->reserve) (0 s)
+killed   112 space.c if (lv == P15_SPACE_SHED_ALL && avail < up_res) (0 s)
+killed   113 space.c if (lv >= P15_SPACE_SHED_BULK && avail < up_low) (0 s)
+killed   114 space.c s->avail = s->avail > bytes ? s->avail - bytes : 0; (0 s)
+killed   115 space.c return s->level < P15_SPACE_SHED_ALL; (0 s)
+killed   116 space.c if (l < 2 * r) (0 s)
+killed   117 wal.c if (ftruncate(w->fd, (off_t)w->seg_bytes) || lseek(w->fd, (off_t)w->se (1 s)
+killed   118 wal.c if (rc == -ENOSPC || rc == -EDQUOT) { (1 s)
+killed   119 wal.c if (!w->in_open && !w->hold_rotation && w->seg_batches > 0 (1 s)
+killed   120 writer.c if (drained != atomic_load(&r->spine_written) + atomic_load(&r->spine_ (3 s)
+killed   121 writer.c if (!p15_space_allows(&w->space, ring)) { (300 s)
+killed   122 writer.c p15_run_set_state(r, P15_RUN_DEGRADED, msg); (295 s)
+killed   123 writer.c if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0) (291 s)
+killed   124 writer.c forks += h->type == P15_T_FORK; (301 s)
+killed   125 drain.c !p15q_may_take(&d->run->q, keep)) { (293 s)
+killed   126 drain.c atomic_fetch_add(&d->run->flow_drained, 1); (286 s)
+killed   127 queue.h return q->n - p15q_depth(q) > keep; (3 s)
+killed   128 config.c uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue (3 s)
+mutation sweep: 18/18 killed (mutants [111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128] only)

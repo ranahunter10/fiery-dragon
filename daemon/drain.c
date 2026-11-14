@@ -643,9 +643,12 @@ int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 	if (n < 0)
 		return n;
 	d->last_taken = n;
-	/* the rings count as empty for the canary only when this poll took nothing and left nothing behind */
-	p15_canary_tick(&d->canary, p15_mono_ns(), d->last_taken || d->queue_full_now);
 	n = after_poll(d);
+	/* After after_poll, so the canary judges the file counters this poll read: before it, the open
+	 * session's and the file free's runs were seen one poll late (with a 1.5 s drain pause, 1.5 s
+	 * late, which pushed case 23's only verdict past the end of its run). The rings count as empty
+	 * for the canary only when this poll took nothing and left nothing behind. */
+	p15_canary_tick(&d->canary, p15_mono_ns(), d->last_taken || d->queue_full_now);
 	if (d->queue_full_now)
 		usleep(1000);               /* the writer is behind: let it release batches (counted in q.full) */
 	return n;
