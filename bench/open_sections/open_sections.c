@@ -163,6 +163,7 @@ int main(int argc, char **argv)
 	}
 	s->rodata->file_wake_bytes = bpf_map__max_entries(s->maps.bulk_rb) / 4;   /* as p15d (ADR-0020 rule 2) */
 	bpf_program__set_autoattach(s->progs.file_fd_iter, false);
+	bpf_program__set_autoattach(s->progs.file_open_iter, false);   /* attached by p15d at detach only, with its map (loader.c) */
 	if (file_prof_bpf__load(s) || p15_counters_map(&ctr, bpf_map__fd(s->maps.file_counters), ncpu) ||
 	    file_prof_bpf__attach(s)) {
 		fprintf(stderr, "open_sections: load or attach failed: %s\n", strerror(errno));
