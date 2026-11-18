@@ -59,7 +59,11 @@ int main(void)
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
 	n = p15_config_meta(&c, kv, vals, 32);
-	EXPECT(n == 28, "every setting echoed");
+	EXPECT(n == 31, "every setting echoed");
+	EXPECT(!strcmp(kv[22].key, "config.canary_s") && !strcmp(kv[22].value, "0") &&
+	       !strcmp(kv[23].key, "config.test_canary_blind") && !strcmp(kv[23].value, "0") &&
+	       !strcmp(kv[24].key, "config.test_link_close") && !strcmp(kv[24].value, "0") &&
+	       1, "the canary's interval echoed, off by default, and the self-check's two test switches");
 	EXPECT(!strcmp(kv[17].key, "config.flow_stop_wait_ms") && !strcmp(kv[17].value, "200") &&
 	       !strcmp(kv[18].key, "config.test_flow_cut_pause_ms") && !strcmp(kv[18].value, "0") &&
 	       !strcmp(kv[19].key, "config.test_barrier_fail") && !strcmp(kv[19].value, "0") &&

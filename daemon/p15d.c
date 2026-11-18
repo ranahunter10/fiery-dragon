@@ -11,6 +11,7 @@
  */
 #define _GNU_SOURCE
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <sched.h>
 #include <signal.h>
@@ -34,6 +35,7 @@
 #include "p15_flow.h"
 #include "p15_records.h"
 #include "run.h"
+#include "selfcheck.h"
 #include "snapshot.h"
 #include "wal.h"
 #include "writer.h"
@@ -192,10 +194,16 @@ static int end_cut(struct p15_run *r, struct p15_loader *l, struct p15_drain *d)
 	return 0;
 }
 
+static int link_add(void *arg, const struct bpf_link *link, const char *name)
+{
+	return p15_links_add(arg, link, name);
+}
+
 static int stuck(struct p15_run *r, struct p15_loader *l, const char *phase)
 {
 	char msg[256];
 
+	atomic_store(&r->links_closing, 1);
 	p15_loader_detach(l);
 	snprintf(msg, sizeof(msg), "the writer made no progress for %u s during %s; exiting without END "
 		 "(the WAL is valid up to its last synced batch)", r->cfg.stop_stall_s, phase);
@@ -369,6 +377,19 @@ int main(int argc, char **argv)
 		logline("error", "oserr", "cannot allocate the queue or the drain");
 		return P15_EXIT_OSERR;
 	}
+	/* p15d watches itself (ADR-0019 G4.4): every link it holds is recorded for the writer's check
+	 * (selfcheck.h), and the canary wants from its process only what the attached programs give */
+	rc = p15_loader_each_link(&ld, link_add, &run);
+	if (rc) {
+		snprintf(err, sizeof(err), "self-check: a link could not be recorded: %s", strerror(-rc));
+		logline("error", "selfcheck", err);
+		p15_loader_free(&ld);
+		p15_snapshot_free(&snap);
+		return P15_EXIT_INTERNAL;
+	}
+	run.canary_want = P15_CANARY_FORK | P15_CANARY_EXEC | P15_CANARY_EXIT | (run.files ? P15_CANARY_FILES : 0) |
+			  (run.flow_attached ? P15_CANARY_FLOW : 0);
+	p15_canary_init(&d.canary, &run, run.cfg.canary_s, run.canary_want, run.cfg.canary_blind, p15_mono_ns());
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = on_signal;            /* no SA_RESTART: a signal ends the current poll */
 	if (sigaction(SIGTERM, &sa, NULL) || sigaction(SIGINT, &sa, NULL)) {
@@ -384,6 +405,28 @@ int main(int argc, char **argv)
 		sched, run.spine_ring_bytes, run.net ? "on" : "off (--no-net)",
 		run.files ? (run.cfg.test_no_path_fentry ? "on (TEST: no path fentry)" : "on") : "off (--no-files)",
 		p15_crc32c_impl());
+	{
+		char names[P15_LINKS_MAX * 33];
+		size_t off = 0;
+
+		names[0] = 0;
+		for (int i = 0; i < run.n_links && off < sizeof(names); i++)
+			off += (size_t)snprintf(names + off, sizeof(names) - off, "%s%s", i ? "," : "", run.links[i].name);
+		fprintf(stderr, "p15d level=info code=links n=%d names=%s\n", run.n_links, names);
+	}
+	if (run.cfg.link_close) {
+		/* TEST ONLY (config.test_link_close in the header): the Nth link's descriptor is replaced by
+		 * /dev/null, as something acting inside p15d could. That drops the link's last reference, so
+		 * its program is really detached; the number stays taken, so the later close is harmless. */
+		int i = (int)run.cfg.link_close - 1, nul = open("/dev/null", O_RDONLY | O_CLOEXEC);
+
+		if (i < run.n_links && nul >= 0 && dup2(nul, run.links[i].fd) >= 0)
+			fprintf(stderr, "p15d level=info code=test_link_close link=%d name=%s\n", i, run.links[i].name);
+		else
+			p15_fail(&run, P15_EXIT_INTERNAL, "--test-link-close: no such link, or its descriptor could not be replaced");
+		if (nul >= 0)
+			close(nul);
+	}
 	if (run.cfg.duration_s)
 		end_ns = p15_mono_ns() + (uint64_t)run.cfg.duration_s * 1000000000ull;
 
@@ -396,6 +439,7 @@ int main(int argc, char **argv)
 			usleep(run.cfg.drain_pause_ms * 1000u);   /* TEST ONLY: config.test_drain_pause_ms in the header */
 	}
 
+	p15_canary_stop(&d.canary);   /* the run is ending: no new canary, and one in flight gets no verdict */
 	/* ADR-0023 rule 1: the closing snapshot, while the hooks are attached, so a process that starts
 	 * or ends during it is in the snapshot, in an event, or both. The writer takes it (it owns the
 	 * WAL); this thread keeps draining meanwhile. Not on the fatal path: END then says 0. */
@@ -413,6 +457,7 @@ int main(int argc, char **argv)
 	}
 	if ((run.flow_attached || run.files) && !atomic_load(&run.fatal_code) && end_cut(&run, &ld, &d))
 		return stuck(&run, &ld, "the count of open flow calls");
+	atomic_store(&run.links_closing, 1);   /* from here a link that goes is p15d's own doing (selfcheck.h) */
 	p15_loader_detach(&ld);
 	/* a program run that began before the detach may still be counting: the books are read after it */
 	barrier_or_degrade(&run, "after the detach");

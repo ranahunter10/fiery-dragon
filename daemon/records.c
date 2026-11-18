@@ -31,6 +31,8 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;
 	case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;
 	case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stats_v1) : 0;
+	case P15_T_SELF_STATS: return version == 1 ? sizeof(struct p15_self_stats_v1) : 0;
+	case P15_T_CANARY_MISS: return version == 1 ? sizeof(struct p15_canary_miss_v1) : 0;
 	}
 	return 0;
 }
@@ -480,6 +482,8 @@ const char *p15_type_name(__u16 type)
 	case P15_T_FD:         return "FD";
 	case P15_T_FILE_STATS: return "FILE_STATS";
 	case P15_T_FLOW_STATS: return "FLOW_STATS";
+	case P15_T_SELF_STATS: return "SELF_STATS";
+	case P15_T_CANARY_MISS: return "CANARY_MISS";
 	case P15_T_FILE:       return "FILE";
 	case P15_T_FLOW:       return "FLOW";
 	}
@@ -610,6 +614,28 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)r->net_drained, (unsigned long long)r->net_invalid,
 				    (unsigned long long)r->net_written, (unsigned long long)r->net_drain_lost,
 				    (unsigned long long)r->bulk_fill_max);
+	}
+	case P15_T_SELF_STATS: {
+		const struct p15_self_stats_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " canary: runs=%llu missed=%llu late=%llu spawn_failed=%llu exec_failed=%llu "
+				    "unfinished=%llu stalled=%llu every=%us want=0x%x links: %u checks=%llu missing=%llu",
+				    (unsigned long long)r->canary_runs, (unsigned long long)r->canary_missed,
+				    (unsigned long long)r->canary_late, (unsigned long long)r->canary_spawn_failed,
+				    (unsigned long long)r->canary_exec_failed, (unsigned long long)r->canary_unfinished,
+				    (unsigned long long)r->canary_stalled, r->canary_interval_s, r->canary_want, r->links,
+				    (unsigned long long)r->link_checks, (unsigned long long)r->links_missing);
+	}
+	case P15_T_CANARY_MISS: {
+		const struct p15_canary_miss_v1 *r = data;
+		static const char *const kinds[] = { "?", "RECORD", "LATE", "LINK" };
+
+		if (r->kind == P15_CANARY_MISS_KIND_LINK)
+			return k + snprintf(buf + k, n - k, " LINK index=%u name=\"%.*s\" err=%u", r->link_index,
+					    (int)sizeof(r->link_name), r->link_name, r->link_err);
+		return k + snprintf(buf + k, n - k, " %s canary=%llu pid=%u want=0x%x seen=0x%x late_ms=%u n=%u",
+				    kinds[r->kind <= P15_CANARY_MISS_KIND_MAX ? r->kind : 0], (unsigned long long)r->canary_n,
+				    r->canary_pid, r->want, r->seen, r->late_ms, r->n);
 	}
 	case P15_T_END: {
 		const struct p15_end_v1 *r1 = data;

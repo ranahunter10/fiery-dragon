@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "74ff064771bf5538be0e99ca60eb8fbd0bb5d4a201f26b28cdb1ae3128087ee2"
+#define P15_SCHEMA_HASH "7f17c2d7e1a905d39c351bd266c6a6b6c99be5ace05a2d9b70c676b7d9eecae0"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -34,6 +34,12 @@
 #define P15_FF_PEEK (1u << 10)   /* FLOW of kind RECV: the receive had MSG_PEEK, so the data stayed queued (ADR-0005 rule 2); part of the aggregate's key */
 #define P15_FF_VECTORED (1u << 11)   /* FLOW of kind READ or WRITE: the transfer was vfs_readv or vfs_writev; part of the aggregate's key */
 #define P15_FF_START_UNKNOWN (1u << 12)   /* FLOW of kind READ or WRITE: the first event's start time was not kept, so first_ts is that event's end (counted in FLOW_STATS) */
+
+/* CANARY_MISS_KIND (CANARY_MISS.kind): what the self-check found (ADR-0019 G4.4) */
+#define P15_CANARY_MISS_KIND_RECORD 1   /* a canary: something it had to cause was not seen; want and seen say what */
+#define P15_CANARY_MISS_KIND_LATE 2   /* a canary: everything was seen, late_ms after its 1 s deadline (the pipeline stood still) */
+#define P15_CANARY_MISS_KIND_LINK 3   /* one of p15d's links is gone or is no longer the link it attached; link_index and link_name say which */
+#define P15_CANARY_MISS_KIND_MAX 3
 
 /* FLOW_KIND (FLOW.kind): the transfer's direction and hook family (ADR-0005 rule 2) */
 #define P15_FLOW_KIND_READ 1   /* vfs_read, vfs_readv: object -> process */
@@ -79,6 +85,8 @@ enum p15_type {
 	P15_T_FD = 39,
 	P15_T_FILE_STATS = 40,
 	P15_T_FLOW_STATS = 41,
+	P15_T_SELF_STATS = 42,
+	P15_T_CANARY_MISS = 43,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -1628,6 +1636,72 @@ P15_ASSERT(P15_OFFSETOF(struct p15_flow_stats_v1, flow_missed) == 336, "p15_flow
 
 #define P15_FLOW_STATS_V1_MAX_SIZE 344
 
+/* SELF_STATS v1 (STATS): p15d watching itself (ADR-0019 G4.4; daemon/canary.h, daemon/selfcheck.h), written with every STATS record while the canary is on or p15d has links to check: the canary's counts and the link check's. A reader that sees canary_runs stand still for longer than canary_interval_s knows the canary itself stopped. */
+struct p15_self_stats_v1 {
+	struct p15_hdr h;
+	__u64 canary_runs;
+	__u64 canary_missed;
+	__u64 canary_late;
+	__u64 canary_spawn_failed;
+	__u64 canary_exec_failed;
+	__u64 canary_unfinished;
+	__u64 canary_stalled;
+	__u64 link_checks;
+	__u64 links_missing;
+	__u32 links;
+	__u32 canary_interval_s;
+	__u32 canary_want;
+	char _pad[4];   /* generated */
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_self_stats_v1) == 120, "p15_self_stats_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, h) == 0, "p15_self_stats_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_runs) == 32, "p15_self_stats_v1.canary_runs offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_missed) == 40, "p15_self_stats_v1.canary_missed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_late) == 48, "p15_self_stats_v1.canary_late offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_spawn_failed) == 56, "p15_self_stats_v1.canary_spawn_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_exec_failed) == 64, "p15_self_stats_v1.canary_exec_failed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_unfinished) == 72, "p15_self_stats_v1.canary_unfinished offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_stalled) == 80, "p15_self_stats_v1.canary_stalled offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, link_checks) == 88, "p15_self_stats_v1.link_checks offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, links_missing) == 96, "p15_self_stats_v1.links_missing offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, links) == 104, "p15_self_stats_v1.links offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_interval_s) == 108, "p15_self_stats_v1.canary_interval_s offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, canary_want) == 112, "p15_self_stats_v1.canary_want offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_self_stats_v1, _pad) == 116, "p15_self_stats_v1._pad offset");
+
+#define P15_SELF_STATS_V1_MAX_SIZE 120
+
+/* CANARY_MISS v1 (STATS): The self-check found capture blind, late or changed (ADR-0019 G4.4): one record per failed canary seen at a stats tick (n > 1 when several failed within one tick: the fields are the last one's) and one per link found gone. Each also raises a counter in SELF_STATS, logs an error and makes the run DEGRADED. */
+struct p15_canary_miss_v1 {
+	struct p15_hdr h;
+	__u64 canary_n;
+	__u64 spawn_ts;
+	__u32 kind;
+	__u32 n;
+	__u32 canary_pid;
+	__u32 want;
+	__u32 seen;
+	__u32 late_ms;
+	__u32 link_index;
+	__u32 link_err;
+	char link_name[32];
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_canary_miss_v1) == 112, "p15_canary_miss_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, h) == 0, "p15_canary_miss_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, canary_n) == 32, "p15_canary_miss_v1.canary_n offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, spawn_ts) == 40, "p15_canary_miss_v1.spawn_ts offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, kind) == 48, "p15_canary_miss_v1.kind offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, n) == 52, "p15_canary_miss_v1.n offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, canary_pid) == 56, "p15_canary_miss_v1.canary_pid offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, want) == 60, "p15_canary_miss_v1.want offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, seen) == 64, "p15_canary_miss_v1.seen offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, late_ms) == 68, "p15_canary_miss_v1.late_ms offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, link_index) == 72, "p15_canary_miss_v1.link_index offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, link_err) == 76, "p15_canary_miss_v1.link_err offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, link_name) == 80, "p15_canary_miss_v1.link_name offset");
+
+#define P15_CANARY_MISS_V1_MAX_SIZE 112
+
 /* FLOW v1 (FLOW): Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here. */
 struct p15_flow_v1 {
 	struct p15_hdr h;
@@ -1737,6 +1811,12 @@ P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, _pad) == 90, "p15_flow_v1._pad offse
 #define P15_FLOW_STATS_VERSION 1
 #define p15_flow_stats p15_flow_stats_v1
 #define P15_FLOW_STATS_MAX_SIZE P15_FLOW_STATS_V1_MAX_SIZE
+#define P15_SELF_STATS_VERSION 1
+#define p15_self_stats p15_self_stats_v1
+#define P15_SELF_STATS_MAX_SIZE P15_SELF_STATS_V1_MAX_SIZE
+#define P15_CANARY_MISS_VERSION 1
+#define p15_canary_miss p15_canary_miss_v1
+#define P15_CANARY_MISS_MAX_SIZE P15_CANARY_MISS_V1_MAX_SIZE
 #define P15_FLOW_VERSION 1
 #define p15_flow p15_flow_v1
 #define P15_FLOW_MAX_SIZE P15_FLOW_V1_MAX_SIZE

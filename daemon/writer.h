@@ -24,6 +24,7 @@ struct p15_writer {
 	void *closing_ctx;
 	uint64_t prev_stats_ns;
 	unsigned stats_written;
+	uint64_t canary_bad_written;   /* failed canaries already written as CANARY_MISS records */
 	int close_rc;               /* p15w_close's result, for main */
 };
 

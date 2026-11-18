@@ -51,6 +51,12 @@ struct p15_config {
 	uint32_t barrier_fail;       /* --test-barrier-fail 1: TEST ONLY, the grace-period barrier reports failure */
 	uint32_t open_end_mode;      /* --test-open-end-mode 1|2: TEST ONLY, what the open session does for the opens of */
 	uint32_t open_end_tgid;      /* --test-open-end-tgid: ... this process (bpf/include/p15_file.h P15_TEST_OPEN_*) */
+	uint32_t canary_s;           /* --canary-s: the canary's interval (ADR-0019 G4.4; canary.h); 0, the default until a
+				      * matrix has run with it on, is off */
+	uint32_t canary_blind;       /* --test-canary-blind MASK: TEST ONLY, these of the canary's records are never
+				      * marked seen, as if their program had stopped (P15_CANARY_* bits) */
+	uint32_t link_close;         /* --test-link-close N: TEST ONLY, after the start p15d closes the fd of its Nth link
+				      * (1-based, the self-check's order), as something acting inside p15d would */
 	uint32_t poll_max_ms;        /* --poll-max-ms: the drain's longest poll timeout, 10..1000, default 200; 10 ms
 				      * after a poll that took records, doubled after each empty one (ADR-0030) */
 };

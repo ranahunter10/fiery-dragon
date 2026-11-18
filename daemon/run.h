@@ -9,6 +9,9 @@
 #ifndef P15_RUN_H
 #define P15_RUN_H
 
+#define P15_LINKS_MAX 48                  /* the most links p15d can record: 4 with the spine alone (E-0308); the count with
+					  * every program on is in the code=links line at the start */
+
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -82,6 +85,24 @@ struct p15_run {
 	_Atomic uint64_t flow_missed;
 	uint64_t flow_missed_base;
 	int flow_attached;                       /* the flow programs are attached (--flow): the end counts their open calls */
+	/* the canary (ADR-0019 G4.4, canary.h): written by the drain thread, read by the writer. The
+	 * canary_bad_* fields describe the last canary that failed, and are valid when canary_seq is
+	 * even and unchanged across the read. */
+	_Atomic uint64_t canary_seq, canary_runs, canary_missed, canary_late, canary_spawn_failed, canary_exec_failed,
+			 canary_unfinished, canary_stalled, canary_bad_n, canary_bad_spawn_ns;
+	_Atomic uint32_t canary_bad_kind, canary_bad_pid, canary_bad_want, canary_bad_seen, canary_bad_late_ms;
+	uint32_t canary_want;                    /* what every canary must cause (P15_CANARY_* mask), for SELF_STATS */
+	/* p15d's own links (selfcheck.h): filled by main after the programs are attached, checked by
+	 * the writer at every stats tick */
+	struct p15_link_ref {
+		int fd;
+		uint32_t id, prog_id;
+		char name[32];
+	} links[P15_LINKS_MAX];
+	int n_links;
+	_Atomic int links_closing;               /* main is detaching: a link that goes now is not a finding */
+	_Atomic uint64_t link_checks, link_missing;
+	uint64_t link_gone;                      /* writer only: bit i set once link i was found gone */
 
 	/* events the kernel skipped before our programs ran (ADR-0020 rule 3): bpf_prog_info.recursion_misses
 	 * of each attached program, read by the drain; *_base is the read after the self-tests */

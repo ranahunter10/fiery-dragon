@@ -199,6 +199,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`barrier.c`](../daemon/barrier.c) | See barrier.h. | `p15_barrier` |
 | [`barrier.h`](../daemon/barrier.h) | A grace-period barrier from user space (docs/research/2026-11-13-detach-fault-design.md §3.1). | `p15_barrier` |
+| [`canary.c`](../daemon/canary.c) | See canary.h. | `p15_canary_see`, `p15_canary_tick`, `p15_canary_stop` |
+| [`canary.h`](../daemon/canary.h) | a continuous self-test (ADR-0019 G4.4; docs/research/2026-11-14-canary-and-self-check.md). | `p15_canary_see`, `p15_canary_tick`, `p15_canary_stop` |
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
 | [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_config_meta` |
 | [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_config_meta`, `p15_config_usage` |
@@ -220,6 +222,8 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`records.h`](../daemon/records.h) | Checking and printing records (ADR-0008 rule 5: never read past len). | `p15_rec_check`, `p15_is_file_type`, `p15_type_name`, `p15_rec_format`, `p15_exec_filename`, `p15_exec_argv`, `p15_exec_exe_name` |
 | [`run.c`](../daemon/run.c) | The run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_writer_stalled`, `p15_run_exit_code` |
 | [`run.h`](../daemon/run.h) | everything p15d's two threads share, the run state machine and the single fatal path (ADR-0019 G2). | `p15_run_set_state`, `p15_fail`, `p15_run_exit_code`, `p15_boot_ns`, `p15_mono_ns`, `p15_writer_stalled` |
+| [`selfcheck.c`](../daemon/selfcheck.c) | See selfcheck.h. | `p15_links_add`, `p15_links_check` |
+| [`selfcheck.h`](../daemon/selfcheck.h) | p15d checks its own links (docs/research/2026-11-14-canary-and-self-check.md; the research note's I4). | `p15_links_add`, `p15_links_check` |
 | [`selftest.c`](../daemon/selftest.c) | (no header comment) | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run_ex`, `p15_selftest_run` |
 | [`selftest.h`](../daemon/selftest.h) | Load-time self-test of the spine (ADR-0003): a test child performs known lifecycle operations and the records attributed to it, and only to it, must match exactly. | `p15_rec_list_add`, `p15_rec_list_free`, `p15_selftest_exec_facts`, `p15_selftest_eval`, `p15_selftest_run`, `p15_selftest_run_ex` |
 | [`selftest_file.c`](../daemon/selftest_file.c) | The file-identity self-test (ADR-0015 confirmation 1). |  |
@@ -242,11 +246,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_open_end.py`](../daemon/tests/it_open_end.py) | opens in flight when the open path's session detaches (bpf/include/p15_file.h; docs/research/2026-11-14-open-session-end-count.md). | `hold`, `check` |
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` (+2) |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |
 | [`mutate_wal.py`](../daemon/tests/mutate_wal.py) | Mutation sweep for the WAL writer (CONTRIBUTING: every gate is checked by mutation sweeps). |  |
+| [`test_canary.c`](../daemon/tests/test_canary.c) | Unit tests for the canary's verdict (daemon/canary.c, ADR-0019 G4.4). |  |
 | [`test_config.c`](../daemon/tests/test_config.c) | Unit tests for p15d's strict configuration parser (daemon/config.c, ADR-0019 G1). |  |
 | [`test_counters.c`](../daemon/tests/test_counters.c) | Unit tests for the counter storage (ADR-0026): the row layout and its sum, and configure verify against the spine's real map definition (the skeleton is opened, never loaded, so... |  |
 | [`test_exitcodes.c`](../daemon/tests/test_exitcodes.c) | The exit-code table (daemon/exitcodes.h, ADR-0019 G2.2): every code is distinct, documented, and outside the values the runtime and the shell use (1, 2, 126 and above). |  |

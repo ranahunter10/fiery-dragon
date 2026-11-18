@@ -35,6 +35,7 @@ struct p15_loader {
 	struct file_bpf *file;      /* NULL with --no-files; owns the bulk ring when loaded (decision 19.4) */
 	struct bpf_link *fd_iter_link; /* the snapshot's FD pass (ADR-0015 rule 7); NULL with --no-files */
 	struct bpf_link *flow_links[6]; /* the flow programs (ADR-0005): attached after the self-tests so their I/O is not in the books */
+	const char *flow_link_names[6];
 	int n_flow_links;
 	struct bpf_link *flow_open_link; /* the end's count of open calls (p15_flow.h): a task iterator, run once */
 	struct bpf_link *file_open_link; /* the end's count of opens in flight (p15_file.h): an iterator over the open-file map */
@@ -82,6 +83,11 @@ P15_MUST_CHECK int p15_loader_file_count(struct p15_loader *l);
  * process's EXIT belongs in the same run. */
 void p15_loader_detach(struct p15_loader *l);
 void p15_loader_free(struct p15_loader *l);
+/* Every link p15d holds, for the self-check (selfcheck.h): fn is called once per link with the
+ * attached program's name, in a fixed order (the spine's, NET's, the file programs', the flow
+ * programs', the iterators'). Stops at fn's first non-zero return and returns it. */
+int p15_loader_each_link(const struct p15_loader *l, int (*fn)(void *arg, const struct bpf_link *link, const char *name),
+			 void *arg);
 int p15_loader_spine_rb_fd(const struct p15_loader *l);
 int p15_loader_counters_fd(const struct p15_loader *l);
 int p15_loader_bulk_rb_fd(const struct p15_loader *l);     /* -1 with --no-net and --no-files */
