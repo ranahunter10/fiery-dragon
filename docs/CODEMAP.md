@@ -149,7 +149,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`check.py`](../bench/soak/check.py) | The soak's ground-truth checks (bench/soak/workload.py's log against the WAL and the graph). | `Truth`, `graph_wants`, `graph_check` |
 | [`soak.py`](../bench/soak/soak.py) | The soak (gate 4 of STATE decision 28): p15d under real programs for a long run, sampled as it goes, then every operation the workload logged checked against the WAL and the gra... | `SoakError`, `prom`, `threads`, `rss_kb`, `du`, `wait_started`, `emit`, `finish` |
-| [`summarize.py`](../bench/soak/summarize.py) | Summarize a soak (bench/soak/soak.py): gate 4 of STATE decision 28. | `ParseError`, `kv`, `parse`, `graph_books`, `late_samples`, `report` |
+| [`summarize.py`](../bench/soak/summarize.py) | Summarize a soak (bench/soak/soak.py): gate 4 of STATE decision 28. | `ParseError`, `kv`, `parse`, `graph_books`, `late_samples`, `flow_lines`, `report` |
 | [`test_soak.py`](../bench/soak/test_soak.py) | Tests for the soak's checks and report (bench/soak/check.py, summarize.py, soak.py's parsers). | `opn`, `exe`, `net`, `Truth`, `Prom`, `soak_text`, `Report` |
 | [`workload.py`](../bench/soak/workload.py) | The soak's workload (gate 4 of STATE decision 28): real programs in a loop, each step logging what it did, so the soak can check that capture saw every one of those things. | `boot_ns`, `run`, `which`, `step_compile`, `step_git`, `step_archive`, `step_pyfiles`, `step_http`, `step_shell`, `step_memfd` |
 

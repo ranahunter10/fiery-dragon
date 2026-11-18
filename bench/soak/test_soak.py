@@ -125,6 +125,25 @@ class Report(unittest.TestCase):
         self.assertIn("node_proc 516", out)
         self.assertIn("- PASS", out)
 
+    def test_flow_stats(self):
+        base = soak_text()
+        out, rc = S.report(base)
+        self.assertNotIn("Data flow:", out)          # a run without --flow has no FLOW_STATS
+        fl = ("flow_stats read_emitted=7 write_emitted=5 send_emitted=2 recv_emitted=3 flow_lost=0 start_unknown=1 "
+              "unregistered=0 file_emitted=4 file_lost=0 file_map_full=0 open_at_end=6 returned_after_count=2 "
+              "flow_missed=0 flow_invalid=0 sess_entry=20 v_release_failed=0 v_claim_race=0")
+        out, rc = S.report(base.replace("graph_out graph: /x", fl + "\ngraph_out graph: /x"))
+        self.assertEqual(rc, 0, out)
+        self.assertIn("Data flow: FLOW READ 7, WRITE 5, SEND 2, RECV 3; lost 0; START_UNKNOWN 1, UNREGISTERED 0; FILE 4 "
+                      "(lost 0, map full 0); calls open at the end 6 (2 returned after the count); kernel skips 0; "
+                      "refused 0.", out)
+        self.assertIn("FLOW_STATS, the other counters: sess_entry 20, v_release_failed 0, v_claim_race 0.", out)
+        self.assertNotIn("note: FLOW_STATS", out)
+        for k in ("v_release_failed", "v_claim_race"):
+            out, rc = S.report(base.replace("graph_out graph: /x", fl.replace(f"{k}=0", f"{k}=3") + "\ngraph_out graph: /x"))
+            self.assertEqual(rc, 0, out)            # a note, not a failure
+            self.assertIn(f"- note: FLOW_STATS {k} = 3 (expected 0)", out)
+
     def test_fails(self):
         for t, why in ((soak_text(found=77), "step archive: 1 of 78 items not in the WAL"),
                        (soak_text(end="end exit=0 end=1 state=1 invariant=1 records=1 read_errors=0 stops=0 read_s=1"),
