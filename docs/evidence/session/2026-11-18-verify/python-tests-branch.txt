@@ -1,0 +1,257 @@
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 2.084s
+ok    bench/census/test_run.py: Ran 25 tests in 0.570s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.016s
+ok    bench/flow_cost/test_summarize.py: Ran 6 tests in 0.015s
+ok    bench/hook_cost/test_summarize.py: Ran 7 tests in 0.026s
+ok    bench/idle_cost/test_idle_cost.py: Ran 8 tests in 0.005s
+FAIL  bench/open_cost/test_open_cost.py
+E
+======================================================================
+ERROR: test_open_cost (unittest.loader._FailedTest.test_open_cost)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_open_cost
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/bench/open_cost/test_open_cost.py", line 24, in <module>
+    from p15w_build import R, batch, header, meta_for, rec, write_run  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/tests/p15w_build.py", line 15, in <module>
+    from p15 import wal as W  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+ok    bench/open_sections/test_summarize.py: Ran 10 tests in 0.003s
+ok    bench/path_walk/test_path_walk.py: Ran 6 tests in 0.003s
+ok    bench/prim_cost/test_prim_cost.py: Ran 9 tests in 0.005s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.007s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.010s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.021s
+ok    bench/quant/test_paired.py: Ran 25 tests in 0.124s
+ok    bench/rw_hook_cost/test_summarize.py: Ran 9 tests in 0.021s
+ok    bench/soak/test_soak.py: Ran 10 tests in 0.004s
+FAIL  python/tests/test_graph.py
+E
+======================================================================
+ERROR: test_graph (unittest.loader._FailedTest.test_graph)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_graph
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_graph.py", line 16, in <module>
+    import duckdb
+ModuleNotFoundError: No module named 'duckdb'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  python/tests/test_provenance.py
+E
+======================================================================
+ERROR: test_provenance (unittest.loader._FailedTest.test_provenance)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_provenance
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_provenance.py", line 11, in <module>
+    from p15w_build import rec  # noqa: E402  (inserts python/ on the path)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/tests/p15w_build.py", line 15, in <module>
+    from p15 import wal as W  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  python/tests/test_reconcile.py
+E
+======================================================================
+ERROR: test_reconcile (unittest.loader._FailedTest.test_reconcile)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_reconcile
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_reconcile.py", line 17, in <module>
+    import scenario as S  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/tests/scenario.py", line 24, in <module>
+    from p15w_build import R, batch, header, meta_for, rec, write_run
+  File "/home/claude/fd/python/tests/p15w_build.py", line 15, in <module>
+    from p15 import wal as W  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  python/tests/test_records.py
+E
+======================================================================
+ERROR: test_records (unittest.loader._FailedTest.test_records)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_records
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_records.py", line 16, in <module>
+    from p15w_build import R, rec  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/tests/p15w_build.py", line 15, in <module>
+    from p15 import wal as W  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  python/tests/test_rules.py
+E
+======================================================================
+ERROR: test_rules (unittest.loader._FailedTest.test_rules)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_rules
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_rules.py", line 9, in <module>
+    import duckdb
+ModuleNotFoundError: No module named 'duckdb'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  python/tests/test_trace.py
+E
+======================================================================
+ERROR: test_trace (unittest.loader._FailedTest.test_trace)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_trace
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_trace.py", line 19, in <module>
+    import scenario as S  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/tests/scenario.py", line 24, in <module>
+    from p15w_build import R, batch, header, meta_for, rec, write_run
+  File "/home/claude/fd/python/tests/p15w_build.py", line 15, in <module>
+    from p15 import wal as W  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  python/tests/test_track.py
+E
+======================================================================
+ERROR: test_track (unittest.loader._FailedTest.test_track)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_track
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_track.py", line 17, in <module>
+    import duckdb
+ModuleNotFoundError: No module named 'duckdb'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+ok    python/tests/test_viewer.py: Ran 27 tests in 0.028s
+FAIL  python/tests/test_wal.py
+E
+======================================================================
+ERROR: test_wal (unittest.loader._FailedTest.test_wal)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_wal
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/python/tests/test_wal.py", line 19, in <module>
+    from p15w_build import R, W, batch, header, meta_for, rec, write_run  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/tests/p15w_build.py", line 15, in <module>
+    from p15 import wal as W  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/claude/fd/python/p15/wal.py", line 29, in <module>
+    import google_crc32c
+ModuleNotFoundError: No module named 'google_crc32c'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+FAIL  schema/gen/test_gen.py
+..........................................E
+======================================================================
+ERROR: test_real_schema_loads_into_duckdb (schema.gen.test_gen.SqlTest.test_real_schema_loads_into_duckdb)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/claude/fd/schema/gen/test_gen.py", line 284, in test_real_schema_loads_into_duckdb
+    import duckdb
+ModuleNotFoundError: No module named 'duckdb'
+
+----------------------------------------------------------------------
+Ran 43 tests in 0.349s
+
+FAILED (errors=1)
+ok    tools/ci/test_check_csv.py: Ran 8 tests in 0.004s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.006s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.001s
+ok    tools/vm/test_stalls.py: Ran 7 tests in 0.000s
+FAIL  tools/workloads/test_oracle.py
+E
+======================================================================
+ERROR: test_oracle (unittest.loader._FailedTest.test_oracle)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_oracle
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/unittest/loader.py", line 141, in loadTestsFromName
+    module = __import__(module_name)
+  File "/home/claude/fd/tools/workloads/test_oracle.py", line 9, in <module>
+    import duckdb
+ModuleNotFoundError: No module named 'duckdb'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+32 test files, 11 failed
+rc=1

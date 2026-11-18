@@ -1,0 +1,4 @@
+submodules rc=0
+missing build dependencies, install: libelf-dev
+make: *** [Makefile:82: deps] Error 1
+make check rc=2
