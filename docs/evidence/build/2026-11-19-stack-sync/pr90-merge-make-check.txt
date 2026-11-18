@@ -1,0 +1,267 @@
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15w_inspect.c daemon/records.c daemon/wal.c daemon/crc32c.c -o build/p15w-inspect
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/crc32c/crc32c_bench.c daemon/crc32c.c -o build/crc32c_bench
+python3 schema/gen/gen.py --check
+schema check: 30 records, 5 generated files, 0 problems
+mkdir -p /home/claude/fd-merge90/build/bpftool
+make -C third_party/bpftool/src ARCH= CROSS_COMPILE= OUTPUT=/home/claude/fd-merge90/build/bpftool/ bootstrap
+make[1]: Entering directory '/home/claude/fd-merge90/third_party/bpftool/src'
+...                        libbfd: [ [31mOFF[m ]
+...               clang-bpf-co-re: [ [32mon[m  ]
+...                          llvm: [ [31mOFF[m ]
+...                        libcap: [ [31mOFF[m ]
+  MKDIR    /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/include/bpf
+  MKDIR    /home/claude/fd-merge90/build/bpftool/bootstrap/
+  MKDIR    /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/
+  INSTALL  /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/include/bpf/hashmap.h
+  INSTALL  /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/include/bpf/relo_core.h
+  INSTALL  /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/include/bpf/libbpf_internal.h
+make[2]: Entering directory '/home/claude/fd-merge90/third_party/bpftool/libbpf/src'
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+  MKDIR    /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs
+  INSTALL  bpf.h libbpf.h btf.h libbpf_common.h libbpf_legacy.h bpf_helpers.h bpf_helper_defs.h bpf_tracing.h bpf_endian.h bpf_core_read.h skel_internal.h libbpf_version.h usdt.bpf.h
+python3 tools/ci/check_exits.py daemon
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/bpf.o
+allowed  daemon/selftest.c:319: _exit(P15_ST_GRANDCHILD_EXIT);   /* exit-ok: self-test grandchild */
+allowed  daemon/selftest.c:321: _exit(120);                      /* exit-ok: self-test child */
+allowed  daemon/selftest.c:324: _exit(127);                              /* exit-ok: self-test child, exec failed */
+allowed  daemon/selftest_flow.c:195: _exit(child_io(path));           /* exit-ok: self-test child */
+allowed  daemon/tests/test_queue.c:114: _exit(1);   /* exit-ok: test deadline, the queue stopped moving (E-0159) */
+exit check: 46 files, 5 marked sites, 0 unmarked calls
+rm -rf build/wal_fixture_run && mkdir -p build/wal_fixture_run
+build/wal_fixture build/wal_fixture_run
+P15_WAL_FIXTURE=build/wal_fixture_run python3 -m unittest -v python/tests/it_wal_c.py
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/btf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/libbpf.o
+test_daemon (python.tests.it_wal_c.CWriterRun.test_daemon) ... ok
+test_daemon_v2 (python.tests.it_wal_c.CWriterRun.test_daemon_v2)
+STATS, GAP and NET_STATS version 2 (ADR-0020): the kernel's skips. ... ok
+test_merged_by_time (python.tests.it_wal_c.CWriterRun.test_merged_by_time) ... ok
+test_net (python.tests.it_wal_c.CWriterRun.test_net) ... ok
+test_net_v2 (python.tests.it_wal_c.CWriterRun.test_net_v2)
+NET version 2 (ADR-0022): the client ISN and its flag, next to v1 records in the same run. ... ok
+test_run_shape (python.tests.it_wal_c.CWriterRun.test_run_shape) ... ok
+test_sequences_per_ring (python.tests.it_wal_c.CWriterRun.test_sequences_per_ring) ... ok
+test_snapshot_and_end_v2 (python.tests.it_wal_c.CWriterRun.test_snapshot_and_end_v2)
+PROC, SNAP_DONE (ADR-0007 rule 3) and END v2 (ADR-0023 rule 1), written by C. ... ok
+test_spine (python.tests.it_wal_c.CWriterRun.test_spine) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.003s
+
+OK
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bpf/test/core_smoke.bpf.c -o build/core_smoke.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/libbpf_utils.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/load_check.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/load_check
+clang -g -O2 -target bpf -Wall -Werror -I/home/claude/fd-merge90/build/libbpf -I/usr/include/x86_64-linux-gnu -c bpf/test/empty.bpf.c -o build/empty.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bpf/test/rb_size.bpf.c -o build/rb_size.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bpf/test/net_probe.bpf.c -o build/net_probe.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/netlink.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -mcpu=v3 -c bpf/test/sliceb_probe.bpf.c -o build/sliceb_probe.bpf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bpf/progs/spine.bpf.c -o build/spine.bpf.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_selftest.c daemon/records.c daemon/selftest.c daemon/counters.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/test_selftest
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/nlattr.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bench/hook_cost/hook_cost.bpf.c -o build/hook_cost.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/libbpf_probes.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bpf/progs/net.bpf.c -o build/net.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/bpf_prog_linfo.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -mcpu=v3 -c bpf/progs/file.bpf.c -o build/file.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/btf_dump.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/hashmap.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/ringbuf.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bpf/progs/snap.bpf.c -o build/snap.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/strset.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/linker.o
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
+  daemon/config.c daemon/records.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_run
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bench/rw_hook_cost/rw_hook_cost.bpf.c -o build/rw_hook_cost.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/gen_loader.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/relo_core.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c bench/flow_cost/flow_cost.bpf.c -o build/flow_cost.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/usdt.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -mcpu=v3 -c bench/prim_cost/prim_cost.bpf.c -o build/prim_cost.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/zip.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -mcpu=v3 -DP15_PROFILE -c bpf/progs/file.bpf.c -o build/file_prof.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/elf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/features.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/btf_iter.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/staticobjs/btf_relocate.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -mcpu=v3 -c bench/path_walk/path_walk.bpf.c -o build/path_walk.bpf.o
+  AR       /home/claude/fd-merge90/build/bpftool/bootstrap/libbpf/libbpf.a
+make[2]: Leaving directory '/home/claude/fd-merge90/third_party/bpftool/libbpf/src'
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/main.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/common.o
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -Wall -Werror -fms-extensions -Wno-microsoft-anon-tag -Ibpf/vmlinux -Ischema/generated -Ibpf/include -I/home/claude/fd-merge90/build/libbpf -c schema/generated/p15_layout_probe.bpf.c -o build/p15_layout_probe.bpf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/json_writer.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/gen.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/btf.o
+  CC       /home/claude/fd-merge90/build/bpftool/bootstrap/sign.o
+  LINK     /home/claude/fd-merge90/build/bpftool/bootstrap/bpftool
+make[1]: Leaving directory '/home/claude/fd-merge90/third_party/bpftool/src'
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/core_smoke.bpf.o > build/core_smoke.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/rb_size.bpf.o > build/rb_size.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/net_probe.bpf.o > build/net_probe.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/sliceb_probe.bpf.o > build/sliceb_probe.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/spine.bpf.o > build/spine.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/hook_cost.bpf.o > build/hook_cost.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/net.bpf.o > build/net.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/file.bpf.o > build/file.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/snap.bpf.o > build/snap.skel.h
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_counters.c daemon/counters.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/test_counters
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/rw_hook_cost.bpf.o > build/rw_hook_cost.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/flow_cost.bpf.o > build/flow_cost.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/prim_cost.bpf.o > build/prim_cost.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/file_prof.bpf.o > build/file_prof.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool gen skeleton build/path_walk.bpf.o > build/path_walk.skel.h
+/home/claude/fd-merge90/build/bpftool/bootstrap/bpftool -j btf dump file build/p15_layout_probe.bpf.o > build/layout_btf.json
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/p15_spine.c daemon/records.c daemon/selftest.c daemon/counters.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/p15-spine
+python3 schema/gen/layout_check.py build/layout_btf.json
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -DP15_GIT_COMMIT='"baa1d07ef93d"' -DP15_BPFTOOL_VERSION='"v7.7.0"' -pie -Wl,-z,relro,-z,now \
+  daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/selftest_net.c daemon/selftest_file.c daemon/selftest_flow.c daemon/snapshot.c daemon/snapshot_frame.c daemon/records.c daemon/selftest.c daemon/counters.c daemon/wal.c daemon/crc32c.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/p15d
+layout check: 32 structs x 3 views, 0 disagreements
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/core_smoke.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/core_smoke
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/rb_size.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/rb_size
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bpf/test/net_probe.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/net_probe
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -Ibpf/test -pie -Wl,-z,relro,-z,now bpf/test/sliceb_probe.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/sliceb_probe
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/hook_cost/hook_cost.c daemon/records.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/hook_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/rw_hook_cost/rw_hook_cost.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/rw_hook_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/flow_cost/flow_cost.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/flow_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/prim_cost/prim_cost.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/prim_cost
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/open_sections/open_sections.c daemon/counters.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -o build/open_sections
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/claude/fd-merge90/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now bench/path_walk/path_walk.c /home/claude/fd-merge90/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/path_walk
+build/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build/test_wal
+crc32c implementation: sse4.2
+daemon/tests/test_wal.c: 0 failures
+build/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build/test_records
+daemon/tests/test_records.c: 0 failures
+build/test_queue
+two threads: 200000 items, queue full 33670856 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+build/test_config
+daemon/tests/test_config.c: 0 failures
+build/test_run
+daemon/tests/test_run.c: 0 failures
+build/test_snapshot
+daemon/tests/test_snapshot.c: 0 failures
+build/test_counters
+daemon/tests/test_counters.c: 0 failures
+python3 tools/ci/check_hardening.py build/p15-spine build/p15d
+ok    build/p15-spine: all of pie, relro, now, nx-stack, canary, fortify, cet
+ok    build/p15d: all of pie, relro, now, nx-stack, canary, fortify, cet
+tools/ci/run-tests.sh
+ok    bench/baseline/test_baseline.py: Ran 17 tests in 2.300s
+ok    bench/census/test_run.py: Ran 25 tests in 0.574s
+ok    bench/census/test_summarize.py: Ran 37 tests in 0.022s
+ok    bench/flow_cost/test_summarize.py: Ran 6 tests in 0.022s
+ok    bench/hook_cost/test_summarize.py: Ran 7 tests in 0.047s
+ok    bench/idle_cost/test_idle_cost.py: Ran 8 tests in 0.004s
+ok    bench/open_cost/test_open_cost.py: Ran 21 tests in 2.568s
+ok    bench/open_sections/test_summarize.py: Ran 10 tests in 0.004s
+ok    bench/path_walk/test_path_walk.py: Ran 6 tests in 0.003s
+ok    bench/prim_cost/test_prim_cost.py: Ran 9 tests in 0.008s
+ok    bench/probes/p11_wheels/test_wheels.py: Ran 12 tests in 0.008s
+ok    bench/probes/p6_argv/test_run.py: Ran 8 tests in 0.001s
+ok    bench/probes/p8_compat/test_run.py: Ran 12 tests in 0.006s
+ok    bench/probes/test_probelib.py: Ran 4 tests in 0.038s
+ok    bench/quant/test_paired.py: Ran 25 tests in 0.172s
+ok    bench/rw_hook_cost/test_summarize.py: Ran 9 tests in 0.029s
+ok    bench/soak/test_soak.py: Ran 10 tests in 0.004s
+ok    python/tests/test_graph.py: Ran 37 tests in 10.033s
+ok    python/tests/test_provenance.py: Ran 18 tests in 0.002s
+ok    python/tests/test_reconcile.py: Ran 17 tests in 0.035s
+ok    python/tests/test_records.py: Ran 22 tests in 0.006s
+ok    python/tests/test_trace.py: Ran 24 tests in 0.056s
+ok    python/tests/test_track.py: Ran 9 tests in 9.641s
+ok    python/tests/test_wal.py: Ran 23 tests in 0.603s
+ok    schema/gen/test_gen.py: Ran 43 tests in 0.457s
+ok    tools/ci/test_check_csv.py: Ran 8 tests in 0.004s
+ok    tools/ci/test_check_exits.py: Ran 10 tests in 0.007s
+ok    tools/ci/test_check_hardening.py: Ran 5 tests in 0.001s
+ok    tools/vm/test_stalls.py: Ran 7 tests in 0.000s
+29 test files, 0 failed
+tools/ci/check-evidence.sh
+ok    docs/evidence/baseline/2026-10-25-hyperv-ABA/SHA256SUMS
+ok    docs/evidence/baseline/2026-10-25-hyperv-on-warm/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-hardening-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-daemon-records-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-exec-exact-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-scaffolding/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-container/SHA256SUMS
+ok    docs/evidence/build/2026-10-25-spine-vm/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-net-capture-runner/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-p15-trace/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-p15d-container/SHA256SUMS
+ok    docs/evidence/build/2026-11-02-py-reader/SHA256SUMS
+ok    docs/evidence/build/2026-11-04-kernel-skips-container/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-atomic-counters/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-merge-main/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-net-v2-isn/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-paired-stats/SHA256SUMS
+ok    docs/evidence/build/2026-11-05-snapshot-4c/SHA256SUMS
+ok    docs/evidence/build/2026-11-06-exec-v2-provenance/SHA256SUMS
+ok    docs/evidence/build/2026-11-07-counters-mmap/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T221732Z-light/SHA256SUMS
+ok    docs/evidence/census/2026-10-24T224617Z-v2/SHA256SUMS
+ok    docs/evidence/demo/2026-11-02-container-dry-run/SHA256SUMS
+ok    docs/evidence/graph/2026-11-11-graph-v0/SHA256SUMS
+ok    docs/evidence/phase0/SHA256SUMS
+ok    docs/evidence/platform/2026-10-25-perf-counters/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-exec-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p11/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p6-p8/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-p8-32bit/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-container/SHA256SUMS
+ok    docs/evidence/probes/2026-10-25-rb-size-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-02-net-probe/SHA256SUMS
+ok    docs/evidence/probes/2026-11-04-recursion-misses/SHA256SUMS
+ok    docs/evidence/probes/2026-11-04-trace-join/SHA256SUMS
+ok    docs/evidence/probes/2026-11-05-hook-cost-container/SHA256SUMS
+ok    docs/evidence/probes/2026-11-05-hook-cost-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-06-exec-cost-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-06-hook-cost-vm-ac/SHA256SUMS
+ok    docs/evidence/probes/2026-11-09-rw-hook-cost-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-10-sliceb-probe-ci/SHA256SUMS
+ok    docs/evidence/probes/2026-11-10-sliceb-probe-vm/SHA256SUMS
+ok    docs/evidence/probes/2026-11-12-flow-cost-ci/SHA256SUMS
+ok    docs/evidence/probes/2026-11-13-flow-it-ci/SHA256SUMS
+ok    docs/evidence/probes/2026-11-13-flow-selftest-ci/SHA256SUMS
+ok    docs/evidence/research/2026-11-09-slice-b-design/SHA256SUMS
+ok    docs/evidence/research/2026-11-10-sliceb-sizing/SHA256SUMS
+ok    docs/evidence/research/2026-11-12-backtrack-prototype/SHA256SUMS
+ok    docs/evidence/vm/2026-11-08-guest-oops/SHA256SUMS
+ok    docs/evidence/vm/2026-11-10-2a-part2-clean/SHA256SUMS
+ok    docs/evidence/vm/2026-11-10-2a-part2-it/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-2a-part3/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-graph-v0/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-open-cost-queue-full/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-open-cost/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-open-sections/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-prim-cost-ac/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-prim-cost-rerun-slow-host/SHA256SUMS
+ok    docs/evidence/vm/2026-11-11-prim-cost-slow-host/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-backtrack-soak/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-batch-size/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-c1-and-p15d-profile/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-crc32c-hw/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-flow-cost/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-graph-profile/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-graph-rebuild/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-graph3-and-costs/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-idle-cost/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-matrix-defaults-vs-b1024/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-matrix-pr87/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-matrix-pr88/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-open-cost-v2/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-open-path-v2/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-p15d-wake-cost/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-path-walk-fallback/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-path-walk/SHA256SUMS
+ok    docs/evidence/vm/2026-11-12-soak-1h/SHA256SUMS
+ok    docs/evidence/vm/2026-11-13-matrix-pr90-default/SHA256SUMS
+ok    docs/evidence/vm/2026-11-13-matrix-pr90-flow/SHA256SUMS
+79 checksum files, 0 failed
+cd bpf/vmlinux && sha256sum -c --quiet SHA256SUMS && echo "ok    bpf/vmlinux/SHA256SUMS"
+ok    bpf/vmlinux/SHA256SUMS

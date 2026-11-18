@@ -1,0 +1,25 @@
+# repo state, captured 2026-11-18T18:19:49Z
+## origin/main
+b5331c23c004f2e009d43eb1c7a4aef090ab1fdf
+## open PRs
+#99 net/socket-join@26a3602 <- feat/graph-flow-edges | net: join a socket's file object to its NET records by the kernel's cookie
+#98 bench/flow-cost-witness@acb0b5a <- dragon/detach-fix | bench: flow_cost measures the mediation witness on security_file_permission
+#97 bench/soak-flow-stats@de9ca5b <- dragon/detach-fix | bench: the soak reports the data-flow counters
+#95 dragon/detach-fix@481575c <- capture/flow-programs | flow: count the calls still open when the flow programs detach
+#91 feat/graph-flow-edges@2131d21 <- capture/flow-programs | graph: FLOW and FILE in the graph; tracking over intervals
+#90 capture/flow-programs@13c46f8 <- main | flow: the read, write, send and receive programs (step 2b part 3)
+## mergeable state
+#90 dirty
+#91 clean
+#95 clean
+#97 clean
+#98 clean
+#99 clean
+## checks on #90 head
+BPF build (vendored libbpf/bpftool) and smoke load (runner kernel, not the target) = success
+lint, unit tests, evidence = success
+GitGuardian Security Checks = success
+## origin refs vs Dragon's bundle (every remote branch, sorted, duplicates removed; the bundle lists origin/main twice)
+identical: 65 refs, nothing pushed to GitHub since the bundle
+## Dragon's package checksums
+all OK

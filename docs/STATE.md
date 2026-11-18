@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-13 (UTC), PR "daemon: the network self-test retries a skipped record and reports its checks"
+**Last updated:** 2026-11-19 (UTC), PR "docs: STATE and journal for 2026-11-15 to 11-19: the report submitted, the stack unblocked, Dragon's work pushed"
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -51,6 +51,17 @@ So that no session re-reads the repo to find its place (the maintainer's request
 Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte for byte with `SHA256SUMS`.
 
 ## Next step
+
+0. **Where things stand on 2026-11-19** ([evidence](evidence/build/2026-11-19-stack-sync/README.md)). Read this before the history below.
+   - ✅ The Phase II report was submitted: the v3 build, 25 pages (E-0327). The presentation follows.
+   - ✅ #90 had stopped merging cleanly after #96. `main` is merged into `capture/flow-programs`; the only conflict was this file's "Last updated" line. `make check` passes in the dev container (E-0325). CI runs again on #90.
+   - ✅ Dragon's 11 PR zips of 2026-11-14/15 are on GitHub as 8 branches, each holding the tree its zip names (E-0326):
+     - #95 has the follow-up commit (`rw_release`'s counter, planted bug 77), with its PR body posted as a comment;
+     - on #95: #100 open-path detach → #101 canary → #102 open-file map sized from the host → #103 disk guard → #104 FLOW ring;
+     - on #99: #105 the four rules and the attack path → #106 the strace witness and the TCP pair both ways.
+   - **Order to `main`:** #90; then #91 → #99 → #105 → #106; and #95 → #100 → #101 → #102 → #103 → #104, with #97 and #98 on #95. Each PR is retargeted to `main` when the PR below it merges, and its CI runs again there.
+   - Decisions waiting 110 to 142 are in those PRs' copies of this file. They reach `main` as the PRs merge.
+   - **Not yet run on the VM:** the merge of `main` into #90 (#96 changed `daemon/loader.c` and `daemon/selftest_net.c`, which #90 also changes). The two merged without a conflict; the VM's matrix on #90's new head is still owed.
 
 1. ✅ Bootstrap merged (PR #1). The maintainer sets squash-only merging and protects `main` with a ruleset.
 2. ✅ PR #2: ADR process and fresh journals.
