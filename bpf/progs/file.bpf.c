@@ -30,6 +30,7 @@
 #include "p15_snap.h"
 #include "p15_prof.h"   /* empty unless -DP15_PROFILE (bench/open_sections) */
 #include "p15_dpath.h"  /* the bounded dentry walk (ADR-0029) */
+#include "p15_flow.h"   /* data flow (ADR-0005, STATE decisions 18 and 47): FLOW and FILE at a transfer */
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -791,6 +792,424 @@ int file_inode_free(struct pt_regs *ctx)
 	}
 	return 0;
 }
+
+/* ===== data flow (ADR-0005, STATE decisions 18 and 47): FLOW per transfer, unfolded (step 2b) =====
+ *
+ * Four kprobe.session on vfs_read/vfs_write/vfs_readv/vfs_writev and the two classic tracepoints
+ * sock:sock_send_length / sock:sock_recv_length. Every transfer is resolved to its open file's
+ * struct file *, which keys the shared files map above; a file the open path never saw (pipe,
+ * socket, memfd, anonymous inode, or a regular file opened before capture) is registered here and
+ * gets one FILE record (ADR-0015 rule 5) carrying its object's facts, before its first FLOW.
+ *
+ * FLOW's start time (decision 47.1, option A): the session's cookie keeps the file pointer, and a
+ * task-storage slot keeps {file, entry time}; the return reads the entry time when the stored file
+ * is this call's, else START_UNKNOWN (a nested transfer overwrote the slot). The socket
+ * tracepoints fire once, so their FLOW is an instant (first_ts == last_ts).
+ *
+ * Counters and books: bpf/include/p15_flow.h. Records go to the same bulk ring; the drain counts
+ * them on the flow books (daemon/drain.c). */
+
+const volatile __u32 flow_self_tgid;   /* p15d's own tgid: its transfers are excluded (ADR-0005). 0 = none */
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(map_flags, BPF_F_MMAPABLE);
+	__uint(max_entries, P15_CTR_ENTRIES(0));
+	__type(key, __u32);
+	__type(value, __u64);
+} flow_counters SEC(".maps");
+const volatile __u32 flow_counters_ncpu;
+
+/* Option A's per-task slot: the file of the vfs call in progress and its entry time. One slot per
+ * task; a nested transfer overwrites it, and the outer return then finds a mismatch and flags
+ * START_UNKNOWN (measured below the VM's resolution, E-0237). */
+struct rw_start {
+	__u64 file;
+	__u64 ts;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_TASK_STORAGE);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__type(key, int);
+	__type(value, struct rw_start);
+} rw_starts SEC(".maps");
+
+/* TEST ONLY (--test-flow-file-fail-first): the first FILE record of every file is lost as a full
+ * ring would lose it, so the retry below is exercised (it_p15d case 14). Off, the verifier removes
+ * the branch; the map then has one entry and is never used. On, a file whose first attempt finds
+ * the map full is not failed: the test can only ever lose fewer records, never more. */
+const volatile __u32 flow_test_file_fail_first;
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1);         /* the loader sizes it when the test switch is on */
+	__type(key, __u64);
+	__type(value, __u8);
+} flow_test_tried SEC(".maps");
+
+static __always_inline void flow_count(__u32 slot)
+{
+	__u32 row = bpf_get_smp_processor_id(), k;
+	__u64 *c;
+
+	if (row > flow_counters_ncpu)
+		row = flow_counters_ncpu;
+	k = P15_CTR_SLOT(row, slot);
+	c = bpf_map_lookup_elem(&flow_counters, &k);
+	if (c)
+		__sync_fetch_and_add(c, 1);   /* preemptible: the sock tracepoints share slots with the vfs returns */
+}
+
+static __always_inline int is_self(void)
+{
+	return flow_self_tgid && (__u32)(bpf_get_current_pid_tgid() >> 32) == flow_self_tgid;
+}
+
+static const __u32 flow_emit_slot[5] = {   /* FLOW.kind -> its EMITTED counter */
+	0, P15_FLC_READ_EMITTED, P15_FLC_WRITE_EMITTED, P15_FLC_RECV_EMITTED, P15_FLC_SEND_EMITTED,
+};
+
+/* One FILE record (ADR-0015 rule 5) for a file first seen at a transfer: its facts (always, since
+ * this is the object's first record unless it raced) and the dentry's own short name, which the
+ * reader turns into pipe:[ino] / socket:[ino] / the protocol from the facts. Written before this
+ * program's FLOW; another thread's FLOW on the same file can reach the ring first (review V5), so
+ * readers join by fid. Returns 0 if the record was lost to a full ring (counted FILE_LOST). */
+static __always_inline int write_file_rec(struct file *file, __u64 fid, __u64 obj,
+					  const struct p15_part_objfacts *f, int carry, __u32 seen)
+{
+	struct p15_file *r;
+	const unsigned char *dname;
+	__u32 off = sizeof(*r), full;
+	long m;
+
+	if (flow_test_file_fail_first) {
+		__u64 k = (__u64)file;
+		__u8 one = 1;
+
+		if (!bpf_map_lookup_elem(&flow_test_tried, &k)) {
+			if (!bpf_map_update_elem(&flow_test_tried, &k, &one, BPF_NOEXIST)) {
+				flow_count(P15_FLC_FILE_LOST);   /* as the !r branch below: the planted loss */
+				return 0;
+			}
+		} else {
+			bpf_map_delete_elem(&flow_test_tried, &k);
+		}
+	}
+	r = bpf_ringbuf_reserve(&bulk_rb, P15_FILE_MAX_SIZE, 0);
+	if (!r) {
+		flow_count(P15_FLC_FILE_LOST);
+		return 0;
+	}
+	__builtin_memset(r, 0, P15_FILE_MAX_SIZE);
+	fill_hdr(&r->h, P15_T_FILE, P15_FILE_VERSION);
+	r->fid = fid;
+	r->obj = obj;
+	r->f_flags = file->f_flags;
+	r->f_mode = file->f_mode;
+	r->seen = seen;
+	if (carry) {
+		__builtin_memcpy((__u8 *)r + off, f, sizeof(*f));
+		r->fflags |= P15_FF_OBJ_NEW;
+		r->facts_len = r->facts_full = sizeof(*f);
+		off += sizeof(*f);
+	}
+	/* The dentry's own name: at most NAME_MAX bytes, read with room for the helper's NUL (the
+	 * reservation's padding holds it). Its length is the helper's count less the NUL, never
+	 * masked: a mask would drop the last byte of an odd-length name and leave it behind the
+	 * field, which p15_rec_check refuses. A longer name is cut and flagged TRUNCATED, with its
+	 * full length from d_name.len; a failed read leaves the name empty, flagged READ_FAILED. */
+	dname = BPF_CORE_READ(file, f_path.dentry, d_name.name);
+	full = BPF_CORE_READ(file, f_path.dentry, d_name.len);
+	m = bpf_probe_read_kernel_str((__u8 *)r + off, P15_FILE_V1_NAME_MAX + 1, dname);
+	if (m > 0 && m <= P15_FILE_V1_NAME_MAX + 1) {
+		r->name_len = (__u16)(m - 1);
+		r->name_full = full > 0xffff ? 0xffff : (__u16)full;
+		if (r->name_full < r->name_len)
+			r->name_full = r->name_len;   /* d_name.len raced a rename: the bytes read are what holds */
+		if (r->name_full != r->name_len)
+			r->h.flags |= P15_F_TRUNCATED;
+		off += r->name_len;
+	} else {
+		r->h.flags |= P15_F_READ_FAILED;
+	}
+	r->h.len = (off + 7) & ~7u;
+	bpf_ringbuf_submit(r, wake());
+	flow_count(P15_FLC_FILE_EMITTED);
+	return 1;
+}
+
+/* Resolve the transfer's file to (fid, obj), registering a pseudo file and its FILE record on first
+ * sight, and write one FLOW (schema/records.toml). kind is P15_FLOWK_*; extra holds the record's
+ * fflags that the caller computed (VECTORED, PEEK, START_UNKNOWN). Counts the kind's EMITTED, or
+ * FLOW_LOST. */
+static __always_inline void emit_flow(struct file *file, struct inode *inode, __u16 kind, __u64 bytes,
+				      __u64 first_ts, __u64 last_ts, __u32 extra)
+{
+	struct p15_part_objfacts f;
+	struct obj_ent *oe = NULL;
+	struct file_ent *fe;
+	struct p15_flow *r;
+	__u64 obj, key = (__u64)file;
+	int carry = 0, created = 0;
+	__u32 seen = kind == P15_FLOWK_READ || kind == P15_FLOWK_WRITE ? P15_SEEN_IO : P15_SEEN_NET;
+
+	read_facts(inode, &f);
+	f.seen = seen;
+	obj = obj_of(inode, &f, &oe, &carry);
+	fe = file_ent_get_key(key, inode, obj, &created);
+	if (fe && created) {
+		if (write_file_rec(file, fe->fid, obj, &f, carry, seen)) {
+			facts_done(oe, carry);   /* the FILE record carried the object's facts */
+		} else {
+			/* the FILE was lost (counted FILE_LOST): undo the registration so the next
+			 * transfer on this file registers it again and writes its FILE, and leave the
+			 * object's facts unsent. This FLOW still names the fid; the reader counts a FLOW
+			 * whose fid has no FILE (graph: openfile_flow). */
+			__u64 fid = fe->fid;
+
+			if (!bpf_map_delete_elem(&files, &key))
+				count_add(P15_FC_FILES_LIVE, (__u64)-1);
+			r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
+			if (!r) {
+				flow_count(P15_FLC_FLOW_LOST);
+				return;
+			}
+			__builtin_memset(r, 0, sizeof(*r));
+			fill_hdr(&r->h, P15_T_FLOW, P15_FLOW_VERSION);
+			r->fid = fid;
+			r->obj = obj;
+			r->fflags = extra;
+			r->reason = P15_FLOWR_SINGLE;
+			r->h.len = sizeof(*r);
+			goto fill;
+		}
+	}
+
+	if (!fe) {
+		/* the files map is full: one FLOW, UNREGISTERED, carrying the facts (ADR-0015 rule 9) */
+		r = bpf_ringbuf_reserve(&bulk_rb, P15_FLOW_MAX_SIZE, 0);
+		if (!r) {
+			flow_count(P15_FLC_FLOW_LOST);
+			return;
+		}
+		__builtin_memset(r, 0, P15_FLOW_MAX_SIZE);
+		fill_hdr(&r->h, P15_T_FLOW, P15_FLOW_VERSION);
+		r->fid = new_id();
+		r->obj = obj;
+		r->fflags = extra | P15_FF_UNREGISTERED;
+		r->reason = P15_FLOWR_MAP_FULL;
+		r->h.len = sizeof(*r);
+		if (carry) {   /* the object's facts have not travelled yet: inline them (ADR-0005 rule 8) */
+			__builtin_memcpy((__u8 *)r + sizeof(*r), &f, sizeof(f));
+			r->fflags |= P15_FF_OBJ_NEW;
+			r->facts_len = r->facts_full = sizeof(f);
+			r->h.len = sizeof(*r) + sizeof(f);
+		}
+		flow_count(P15_FLC_FILE_MAP_FULL);
+		flow_count(P15_FLC_UNREGISTERED);
+		goto fill;
+	}
+	r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
+	if (!r) {
+		flow_count(P15_FLC_FLOW_LOST);
+		return;
+	}
+	__builtin_memset(r, 0, sizeof(*r));
+	fill_hdr(&r->h, P15_T_FLOW, P15_FLOW_VERSION);
+	r->fid = fe->fid;
+	r->obj = obj;
+	r->fflags = extra;
+	r->reason = P15_FLOWR_SINGLE;
+	r->h.len = sizeof(*r);
+fill:
+	r->first_ts = first_ts;
+	r->last_ts = last_ts;
+	r->bytes = bytes;
+	r->count = 1;
+	r->kind = kind;
+	if (extra & P15_FF_START_UNKNOWN)
+		flow_count(P15_FLC_START_UNKNOWN);
+	bpf_ringbuf_submit(r, wake());
+	flow_count(flow_emit_slot[kind]);
+}
+
+/* vfs entry: exclude self and kernel threads (no return runs for them); else keep the file in the
+ * cookie and the entry time in the task slot (option A). */
+static __always_inline int rw_entry(struct pt_regs *ctx)
+{
+	__u64 *cookie = bpf_session_cookie(ctx);
+	__u64 key = PT_REGS_PARM1(ctx);
+	struct rw_start *st;
+
+	flow_count(P15_FLC_SESS_ENTRY);
+	if (is_self()) {
+		flow_count(P15_FLC_V_EXCL_SELF);
+		return 1;
+	}
+	if (kthread()) {
+		flow_count(P15_FLC_V_EXCL_KTHREAD);
+		return 1;
+	}
+	{
+		/* a read() or write() on a socket reaches sock_recvmsg/sock_sendmsg, whose tracepoint
+		 * writes the RECV or SEND (ADR-0005 rule 11): the vfs hook leaves it, so it is not
+		 * recorded twice (review V2) */
+		struct file *file = bpf_core_cast((void *)key, struct file);
+		struct inode *inode = file->f_inode;
+
+		if (inode && (inode->i_mode & S_IFMT) == S_IFSOCK) {
+			flow_count(P15_FLC_V_OWNED_BY_SOCK);
+			return 1;
+		}
+	}
+	*cookie = key;
+	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, BPF_LOCAL_STORAGE_GET_F_CREATE);
+	if (st) {
+		st->file = key;
+		st->ts = bpf_ktime_get_boot_ns();
+	}
+	return 0;
+}
+
+/* vfs return: the transfer's size is the return value; a FLOW only for ret > 0. */
+static __always_inline int rw_return(struct pt_regs *ctx, __u16 kind, __u32 vectored)
+{
+	__u64 *cookie = bpf_session_cookie(ctx);
+	__u64 file_key = *cookie, now, first;
+	long ret = (long)PT_REGS_RC(ctx);
+	struct file *file;
+	struct inode *inode;
+	struct rw_start *st;
+	__u32 extra = vectored;
+
+	flow_count(P15_FLC_SESS_RETURN);
+	if (ret == 0) {
+		flow_count(P15_FLC_V_EMPTY);
+		return 0;
+	}
+	if (ret < 0) {
+		flow_count(P15_FLC_V_FAILED);
+		return 0;
+	}
+	file = bpf_core_cast((void *)file_key, struct file);
+	inode = file->f_inode;
+	if (!inode) {
+		flow_count(P15_FLC_V_NO_INODE);
+		return 0;
+	}
+	flow_count(P15_FLC_V_ATTEMPT);
+	now = bpf_ktime_get_boot_ns();
+	st = bpf_task_storage_get(&rw_starts, bpf_get_current_task_btf(), 0, 0);
+	if (st && st->file == file_key) {
+		first = st->ts;
+		st->file = 0;   /* used: a later return without its entry cannot match it */
+	} else {
+		first = now;
+		extra |= P15_FF_START_UNKNOWN;
+	}
+	emit_flow(file, inode, kind, (__u64)ret, first, now, extra);
+	return 0;
+}
+
+SEC("kprobe.session/vfs_read")
+int flow_read(struct pt_regs *ctx)
+{
+	return bpf_session_is_return(ctx) ? rw_return(ctx, P15_FLOWK_READ, 0) : rw_entry(ctx);
+}
+
+SEC("kprobe.session/vfs_write")
+int flow_write(struct pt_regs *ctx)
+{
+	return bpf_session_is_return(ctx) ? rw_return(ctx, P15_FLOWK_WRITE, 0) : rw_entry(ctx);
+}
+
+SEC("kprobe.session/vfs_readv")
+int flow_readv(struct pt_regs *ctx)
+{
+	return bpf_session_is_return(ctx) ? rw_return(ctx, P15_FLOWK_READ, P15_FF_VECTORED) : rw_entry(ctx);
+}
+
+SEC("kprobe.session/vfs_writev")
+int flow_writev(struct pt_regs *ctx)
+{
+	return bpf_session_is_return(ctx) ? rw_return(ctx, P15_FLOWK_WRITE, P15_FF_VECTORED) : rw_entry(ctx);
+}
+
+/* sock:sock_send_length / sock:sock_recv_length (design checks D5-D7). Classic tracepoints: the
+ * kernel runs them with preemption off, so they are not skipped for other tasks. The context's
+ * fields are not in the dev container's vmlinux.h; CO-RE relocates them against the target's BTF
+ * (the 7.0 kernel has the type). send always passes flags 0; recv passes the receive flags, so
+ * MSG_PEEK is visible (D5). */
+struct trace_event_raw_sock_msg_length___p15 {
+	struct trace_entry ent;
+	void *sk;
+	__u16 family;
+	__u16 protocol;
+	int ret;
+	int flags;
+} __attribute__((preserve_access_index));
+
+static __always_inline int sock_flow(__u64 sk_addr, long ret, int msg_flags, __u16 kind)
+{
+	/* the tracepoint gives the sock's address as a scalar; cast it to a trusted pointer so the
+	 * chain to the file and inode is a protected direct load, as file_free casts its key (E-0190).
+	 * read_facts needs a trusted inode: a bpf_probe_read scalar would be rejected (R6 invalid). */
+	struct sock *sk = sk_addr ? bpf_core_cast((void *)sk_addr, struct sock) : NULL;
+	struct socket *sock;
+	struct file *file;
+	struct inode *inode;
+	__u64 now;
+	__u32 extra = 0;
+
+	flow_count(P15_FLC_SOCK_SEEN);
+	if (is_self()) {
+		flow_count(P15_FLC_S_EXCL_SELF);
+		return 0;
+	}
+	if (kthread()) {
+		flow_count(P15_FLC_S_EXCL_KTHREAD);
+		return 0;
+	}
+	sock = sk ? sk->sk_socket : NULL;
+	file = sock ? sock->file : NULL;
+	if (!file) {
+		flow_count(P15_FLC_S_NO_FILE);   /* a kernel socket used from a user task (D6): out of scope */
+		return 0;
+	}
+	if (ret == 0) {
+		flow_count(P15_FLC_S_EMPTY);
+		return 0;
+	}
+	if (ret < 0) {
+		flow_count(P15_FLC_S_FAILED);
+		return 0;
+	}
+	inode = file->f_inode;
+	if (!inode) {
+		flow_count(P15_FLC_S_NO_INODE);
+		return 0;
+	}
+	flow_count(P15_FLC_S_ATTEMPT);
+	if (kind == P15_FLOWK_RECV && (msg_flags & MSG_PEEK))
+		extra |= P15_FF_PEEK;
+	now = bpf_ktime_get_boot_ns();
+	emit_flow(file, inode, kind, (__u64)ret, now, now, extra);   /* an instant (ADR-0005 rule 5) */
+	return 0;
+}
+
+SEC("tracepoint/sock/sock_send_length")
+int flow_send(struct trace_event_raw_sock_msg_length___p15 *ctx)
+{
+	return sock_flow((__u64)ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_SEND);
+}
+
+SEC("tracepoint/sock/sock_recv_length")
+int flow_recv(struct trace_event_raw_sock_msg_length___p15 *ctx)
+{
+	return sock_flow((__u64)ctx->sk, ctx->ret, ctx->flags, P15_FLOWK_RECV);
+}
+
 
 /* ---- the snapshot's FD pass (ADR-0015 rule 7) ----
  *

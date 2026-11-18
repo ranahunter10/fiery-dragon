@@ -1,0 +1,94 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 100  of event 'task-clock:ppp'
+# Event count (approx.): 50025000
+#
+# Overhead  Command      Shared Object      Symbol                          
+# ........  ...........  .................  ................................
+#
+    18.00%  p15d-writer  p15d               [.] tiles
+            |
+            ---0x74b3f1b375cb
+               0x74b3f1aa3df9
+               p15_writer_main
+               drain_queue
+               append (inlined)
+               p15w_append
+               tiles
+
+    13.00%  p15d         p15d               [.] on_bulk
+            |
+            ---_start
+               __libc_start_main
+               0x74b3f1a2a600
+               main
+               p15_drain_poll
+               take_all
+               take
+               ring__consume_n
+               ringbuf_process_ring
+               on_bulk
+
+     8.00%  p15d         p15d               [.] p15_rec_check
+            |
+            ---_start
+               __libc_start_main
+               0x74b3f1a2a600
+               main
+               p15_drain_poll
+               take_all
+               take
+               ring__consume_n
+               ringbuf_process_ring
+               on_bulk
+               p15_rec_check
+               |          
+               |--7.00%--check_file (inlined)
+               |          |          
+               |          |--1.00%--check_tail (inlined)
+               |          |          
+               |           --1.00%--check_part (inlined)
+               |          
+                --1.00%--fixed_size (inlined)
+
+     7.00%  p15d-writer  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+            |
+            ---0x74b3f1b375cb
+               0x74b3f1aa3df9
+               p15_writer_main
+               p15q_wait
+               poll (inlined)
+               __poll
+               0x74b3f1aa039b
+               0x74b3f1aac802
+               entry_SYSCALL_64_after_hwframe
+               do_syscall_64
+               x64_sys_call
+               __x64_sys_poll
+               do_sys_poll
+               do_poll.constprop.0
+               poll_schedule_timeout.constprop.0
+               schedule_hrtimeout_range
+               schedule_hrtimeout_range_clock
+               schedule
+               __schedule
+               finish_task_switch.isra.0
+
+     7.00%  p15d-writer  p15d               [.] crc_hw
+            |
+            ---0x74b3f1b375cb
+               0x74b3f1aa3df9
+               p15_writer_main
+               drain_queue
+               append (inlined)
+               p15w_append
+               crc_hw
+
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

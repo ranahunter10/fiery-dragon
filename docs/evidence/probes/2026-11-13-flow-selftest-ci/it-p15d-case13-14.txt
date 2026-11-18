@@ -1,0 +1,23 @@
+case 13: --flow: a known workload's reads, writes, sends and receives become FLOW records (ADR-0005, step 2b) [t+118s]
+  ok   the Python reader's counts equal p15w-inspect's (c13)
+  workload pid 13845: READ/WRITE 12345 1/1, readv/writev 7 1/1, pipe 3331 1/1; SEND 321 1, 222 1; RECV bytes 543, PEEK 1; FILE seen io 5, net 2; vfs on a socket 7
+  ok   --flow: exit 0, WAL valid in both readers, RUNNING, books B1-B5 closed (rc 0)
+  ok   the 12345-byte write and read are one WRITE and one READ
+  ok   writev and readv are one WRITE and one READ each, flagged VECTORED
+  ok   the pipe's 3331 bytes are one WRITE and one READ
+  ok   the socket's write() is one SEND, not also a WRITE (review V2); send() is one SEND
+  ok     ... the vfs hook counted the socket call as owned by the socket (7)
+  ok   the receiver's RECVs add up to the 543 bytes sent, and the peek is flagged PEEK
+  ok   FILE records for the pipe's two ends (first I/O) and the sockets (network)
+  ok   every FLOW starts before it ends, and no start time was lost
+  ok   FLOW_STATS: none refused, none lost to the ring, no kernel skips
+  ok   the flow self-test ran at load and passed (selftest.result: pass (spine, files, net, flow))
+case 14: --flow with the first FILE of every file lost (--test-flow-file-fail-first): counted, DEGRADED, retried [t+129s]
+  ok   the Python reader's counts equal p15w-inspect's (c14)
+  workload pid 13993: lost-then-retried ends: pipe write 1, read 1, send 1, receive 1; FILE lost 12
+  ok   a lost FILE: exit 3, the run DEGRADED, the books still closed, the WAL valid (rc 3)
+  ok   each end: its first FLOW names an id with no FILE; its next two name a new id, whose FILE was written (the retry, review V3)
+  ok   FLOW_STATS: the four planted losses (and others') counted as file_lost, no FLOW lost, none refused
+case 4: a bad flag [t+139s]
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)

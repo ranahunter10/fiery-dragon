@@ -1,0 +1,54 @@
+config duration=600 sample=60 settle=10 pause=1 p15d_args=- ncpu=3
+sample t=454 cpu_ms_per_s=0.393 drain_ms_per_s=0.233 writer_ms_per_s=0.160 rss_kb=24136 wal_bytes=2467560 state=0 spine_drained=2829 spine_skipped=0 bulk_written=19949 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.652
+sample t=514 cpu_ms_per_s=3.317 drain_ms_per_s=1.946 writer_ms_per_s=1.371 rss_kb=24796 wal_bytes=6262440 state=0 spine_drained=5763 spine_skipped=0 bulk_written=53654 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.220
+sample t=574 cpu_ms_per_s=2.330 drain_ms_per_s=1.400 writer_ms_per_s=0.930 rss_kb=24820 wal_bytes=7663880 state=0 spine_drained=7323 spine_skipped=0 bulk_written=64480 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.236
+sample t=634 cpu_ms_per_s=2.760 drain_ms_per_s=1.519 writer_ms_per_s=1.241 rss_kb=24872 wal_bytes=9040056 state=0 spine_drained=8862 spine_skipped=0 bulk_written=74887 net_skipped=0 queue_full=0 gaps=0 poll_gap_max_s=0.258
+workload exit=0
+end exit=0 end=1 state=0 invariant=1 records=89613 read_errors=0 stops=0 read_s=1
+truth step=archive steps=16 expected=416 found=416
+truth step=compile steps=17 expected=476 found=476
+truth step=git steps=16 expected=208 found=208
+truth step=http steps=16 expected=48 found=48
+truth step=memfd steps=16 expected=16 found=16
+truth step=pyfiles steps=16 expected=192 found=192
+truth step=shell steps=16 expected=32 found=32
+file_stats open_emitted=37264 missing_emitted=22 walked=14 walk_raced=0 walk_truncated=0 walk_unnamed=8 open_lost=0 missing_lost=0 close_lost=0 fentry_missed=22 kprobe_missed=0 files_live_max=650 objs_live_max=2427
+graph_out graph: /var/tmp/p15-measure-soak/graph.duckdb
+graph_out records: FORK 2296, EXEC 2049, EXIT 2306, RENAME 2211, CLOCK_SYNC 17, STATS 169, END 1, NET 336, NET_STATS 169, PROC 815, SNAP_DONE 6, OPEN 37290, CLOSE 37318, FD 4292, FILE_STATS 169, FLOW_STATS 169
+graph_out   accept_not_paired            0
+graph_out   edge_ACCEPT                  128
+graph_out   edge_BIND                    16
+graph_out   edge_CLONE                   2083
+graph_out   edge_CONNECT                 176
+graph_out   edge_EXECUTE                 2049
+graph_out   edge_HELD                    739
+graph_out   edge_LISTEN                  16
+graph_out   edge_OPEN                    37289
+graph_out   edge_OPEN_failed             1
+graph_out   edge_proc_end_without_image  18
+graph_out   edge_without_node            0
+graph_out   exec_file_tuple              2049
+graph_out   fid_two_objs                 0
+graph_out   file_rule_fid                207
+graph_out   file_rule_obj                1750
+graph_out   file_rule_tuple              4322
+graph_out   image_exec                   2049
+graph_out   image_exec_without_edge      0
+graph_out   image_fork                   2077
+graph_out   image_snapshot               33
+graph_out   node_file                    6279
+graph_out   node_proc                    2227
+graph_out   node_sock                    320
+graph_out   obj_facts_conflict           0
+graph_out   open_denied                  0
+graph_out   open_never_opened            1
+graph_out   open_no_path                 8
+graph_out   openfile_close-only          1
+graph_out   openfile_open                37290
+graph_out   openfile_snapshot            591
+graph_out   thread_rename                131
+graph_out tree: exec 2049, exit_process 2094, exit_thread 212, fork_process 2083, fork_thread 213, from_snapshot 144, image_exec 2049, image_fork 2077, image_none 114, image_snapshot 33, pre_existing 144, rename 2080, rename_thread 131
+graph rc=0 build_s=4 bytes=18362368
+graph_truth dropper_chain found=17 expected=17
+graph_truth sock_pairs found=128 expected=128
+graph_truth memfd_exec found=16 expected=16

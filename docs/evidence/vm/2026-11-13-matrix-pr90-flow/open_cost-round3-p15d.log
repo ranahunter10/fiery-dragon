@@ -1,0 +1,3 @@
+ashu@p15-dev:~/fiery-dragon$ sudo tail -n 20 /var/tmp/p15-open-cost/work/p15d-3.log
+p15d level=info code=start run_dir=/var/tmp/p15-open-cost/work/wal-3/20261113T020642Z-7ff43b9c sched="SCHED_FIFO 1" spine_ring=4194304 net=on files=on crc32c=sse4.2
+p15d level=info code=end exit=4 state=2 invariant=2 reason="FLOW: vfs entries 250 != returns + excluded self + excluded kthread + owned by a socket"

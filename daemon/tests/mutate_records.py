@@ -123,6 +123,8 @@ M = [
  ("((const struct p15_snap_done_v2 *)data)->fd_pass > 1) {", "((const struct p15_snap_done_v2 *)data)->fd_pass > 2) {"),
  # data flow (ADR-0005 rules 2, 7, 8; ADR-0015 rules 2, 5, 9): FLOW and FILE
  ("case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;", "case P15_T_FLOW:   return 0;"),
+ ("case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stats_v1) : 0;", "case P15_T_FLOW_STATS: return 0;"),
+ ("case P15_T_FLOW_STATS: return \"FLOW_STATS\";", "case P15_T_FLOW_STATS: return \"?\";"),
  ("case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;", "case P15_T_FILE:   return 0;"),
  ("\t} else if (h->type == P15_T_FLOW) {", "\t} else if (0) {"),
  (" || h->type == P15_T_FD || h->type == P15_T_FILE) {", " || h->type == P15_T_FD) {"),

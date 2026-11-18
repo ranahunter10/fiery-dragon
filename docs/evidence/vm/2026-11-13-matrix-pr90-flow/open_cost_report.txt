@@ -1,0 +1,8 @@
+# open_cost: what capture adds to an open and a close (decision 22a.4)
+
+Run: kernel=7.0.0-38-generic cpus=3 rounds=20 same=200000 distinct=20000 settle=1.0 idle=1.0 p15d_args=--flow.
+
+## Books that did not close: no timing is reported
+
+- round 3: capture books: pid=20665 expected=220000 opens=220000 path_missing=0 closes=220000 facts=20001 open_bytes=25440040 close_bytes=12320000 other_opens=27 lost=0 end=1 state=2 invariant=2 stops=0 exit=4 idle_cpu_ns=2119314 idle_wall_ns=1459826757 agent_cpu_ns=44547380 agent_wall_ns=800560081 idle_switches=22 agent_switches=87
+

@@ -1,0 +1,40 @@
+# soak: p15d under real programs (gate 4)
+
+Planned 10.0 min of workload, sampled every 60 s; p15d options: --flow; 3 CPUs.
+End: exit 0, state 0, invariant 1; 294,848 records read in 4 s.
+
+| over the run | median | max | first | last |
+|---|---|---|---|---|
+| p15d CPU, ms/s | 3.10 | 4.34 | 4.34 | 2.28 |
+| drain thread, ms/s | 1.73 | 2.36 | | |
+| writer thread, ms/s | 1.37 | 1.98 | | |
+| resident memory, MiB | 24.4 | 24.6 | 23.8 | 24.6 |
+| longest poll gap, s | 0.232 | 0.413 | | |
+
+WAL: 28.3 MiB, 45.8 KiB/s. Spine records drained: 23,169; bulk-ring records written (NET and file identity): 259,976; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+
+| step | steps | items expected | found | recall |
+|---|---|---|---|---|
+| archive | 45 | 1,170 | 1,170 | 100.00% |
+| compile | 45 | 1,260 | 1,260 | 100.00% |
+| git | 45 | 585 | 585 | 100.00% |
+| http | 44 | 132 | 132 | 100.00% |
+| memfd | 44 | 44 | 44 | 100.00% |
+| pyfiles | 45 | 540 | 540 | 100.00% |
+| shell | 44 | 88 | 88 | 100.00% |
+
+File identity: 79,770 OPEN from the path program, 0 from the session return (0 walked, 0 raced, 0 without a path); fentry skips 0; lost: OPEN 0, CLOSE 0; most open files 588, objects 746.
+
+Graph build: 60 s per hour of workload, target under 60 s: over (not judged before gate 10).
+Graph: built in 10 s, 26.3 MiB; edge_ACCEPT 352, edge_BIND 44, edge_CLONE 5,435, edge_CONNECT 363, edge_EXECUTE 5,432, edge_HELD 609, edge_LISTEN 44, edge_OPEN 79,777, edge_proc_end_without_image 2, edge_without_node 0, node_file 11,001, node_proc 5,578, node_sock 759.
+
+| graph check | found | expected |
+|---|---|---|
+| dropper_chain | 45 | 45 |
+| sock_pairs | 352 | 352 |
+| memfd_exec | 44 | 44 |
+
+## Verdict
+
+- PASS
+

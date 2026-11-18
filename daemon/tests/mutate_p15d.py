@@ -35,8 +35,8 @@ M = [
     ("drain.c", "\tp15_counters_sum(c, sum);\n\treturn 0;", "\t(void)c;\n\tmemset(sum, 0, sizeof(uint64_t) * P15_CTR_MAX);\n\treturn 0;", IT),
     ("loader.c", "if (l->ncpu <= 0 || p15_counters_configure(l->spine->maps.spine_counters, &l->spine->rodata->spine_counters_ncpu,\n\t\t\t\t\t\t   l->ncpu)) {",
      "if (l->ncpu <= 0) {", IT),
-    ("p15d.c", '\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\t{\n\t\tstruct p15_loader_opts lo = {\n\t\t\t.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,\n\t\t\t.files = run.files, .test_no_path_fentry = run.cfg.test_no_path_fentry,\n\t\t\t.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,\n\t\t};\n\n\t\tcode = p15_loader_start(&ld, &lo, err, sizeof(err));\n\t}\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n',
-     '\t{\n\t\tstruct p15_loader_opts lo = {\n\t\t\t.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,\n\t\t\t.files = run.files, .test_no_path_fentry = run.cfg.test_no_path_fentry,\n\t\t\t.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,\n\t\t};\n\n\t\tcode = p15_loader_start(&ld, &lo, err, sizeof(err));\n\t}\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n', IT),   # snapshot loaded after attach
+    ("p15d.c", '\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\t{\n\t\tstruct p15_loader_opts lo = {\n\t\t\t.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,\n\t\t\t.files = run.files, .flow = run.cfg.flow, .test_no_path_fentry = run.cfg.test_no_path_fentry,\n\t\t\t.test_flow_file_fail_first = run.cfg.test_flow_file_fail_first,\n\t\t\t.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,\n\t\t};\n\n\t\tcode = p15_loader_start(&ld, &lo, err, sizeof(err));\n\t}\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n',
+     '\t{\n\t\tstruct p15_loader_opts lo = {\n\t\t\t.spine_ring_bytes = run.spine_ring_bytes, .bulk_ring_bytes = run.bulk_ring_bytes, .net = run.net,\n\t\t\t.files = run.files, .flow = run.cfg.flow, .test_no_path_fentry = run.cfg.test_no_path_fentry,\n\t\t\t.test_flow_file_fail_first = run.cfg.test_flow_file_fail_first,\n\t\t\t.file_map_entries = run.cfg.file_map_entries, .obj_map_entries = run.cfg.obj_map_entries,\n\t\t};\n\n\t\tcode = p15_loader_start(&ld, &lo, err, sizeof(err));\n\t}\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_loader_free(&ld);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n\trun.start_ns = ld.daemon_start_ns;\n\tcode = p15_snapshot_init(&snap, &run, err, sizeof(err));\n\tif (code) {\n\t\tlogline("error", "load", err);\n\t\tp15_snapshot_free(&snap);\n\t\treturn code;\n\t}\n', IT),   # snapshot loaded after attach
     # queue: capacity, ordering, publication
     ("queue.c", "if (h - t >= q->n) {", "if (h - t > q->n) {", UNIT),
     ("queue.c", "\tatomic_store_explicit(&q->head, h, memory_order_release);", "", UNIT),
@@ -62,9 +62,9 @@ M = [
     ("writer.c", "\tbuf.e.signal = (uint32_t)atomic_load(&w->run->stop_signal);", "", IT),
     ("run.c", "\tcase P15_RUN_DEGRADED:\n\t\treturn P15_EXIT_DEGRADED;\n\tdefault:\n\t\treturn P15_EXIT_INVALID;", "\tdefault:\n\t\treturn P15_EXIT_OK;", IT),
     # file identity (ADR-0015, step 2a part 2): the shared bulk ring's books, FILE_STATS, the run state
-    ("drain.c", "atomic_fetch_add(is_net ? &d->run->net_drained : &d->run->file_drained, 1);",
-     "atomic_fetch_add(&d->run->net_drained, 1);", IT),
-    ("writer.c", "\tif (r->files) {\n\t\tif (file_books(r, why, n))", "\tif (0) {\n\t\tif (file_books(r, why, n))", UNIT),
+    ("drain.c", "atomic_fetch_add(is_net ? &d->run->net_drained : is_flow ? &d->run->flow_drained : &d->run->file_drained, 1);",
+     "atomic_fetch_add(is_flow ? &d->run->flow_drained : &d->run->net_drained, 1);", IT),
+    ("writer.c", "\t\tif (file_books(r, why, n) || flow_books(r, why, n))", "\t\tif (((void)file_books, 0) || flow_books(r, why, n))", UNIT),
     ("writer.c", "A(BACKING_LOST) + A(FENTRY_NO_INODE)) {", "A(BACKING_LOST)) {", UNIT),
     ("writer.c", "if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||", "if (", UNIT),
     ("writer.c", "A(RET_BACKING) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {", "A(RET_BACKING) + A(SESSION_NO_ENTRY)) {", UNIT),
@@ -85,11 +85,10 @@ M = [
     ("writer.c", "if (A(FREE_RUN) != A(CLOSE_EMITTED) + A(CLOSE_LOST) + A(FREE_UNREGISTERED)) {", "if (0) {", UNIT),
     ("writer.c", "uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_consumed + atomic_load(&r->file_invalid);",
      "uint64_t taken = atomic_load(&r->file_drained) + r->file_selftest_consumed;", UNIT),
-    ("writer.c", "if (!r->net && atomic_load(&r->file_drained) != atomic_load(&r->net_written) + atomic_load(&r->net_drain_lost)) {",
-     "if (0) {", UNIT),
+    ("writer.c", "\t\tif (!r->net) {\n\t\t\tuint64_t bulk", "\t\tif (0) {\n\t\t\tuint64_t bulk", UNIT),
     # the facts epoch (E-0151): without it an object first opened during the self-tests has no facts in the WAL
     ("loader.c", "\tif (l->file)\n\t\tl->file->data->facts_epoch++;", "", IT),
-    ("writer.c", "\tif (w->run->files)\n\t\tfile_stats(w);", "\tif (0)\n\t\tfile_stats(w);", IT),
+    ("writer.c", "\tif (w->run->files) {\n\t\tfile_stats(w);", "\tif (w->run->files) {\n\t\tif (0)\n\t\t\tfile_stats(w);", IT),
     ("loader.c", "\tif (o->files && (code = load_file(l, o, err, errlen)))\n\t\treturn code;",
      "\tif (0 && (code = load_file(l, o, err, errlen)))\n\t\treturn code;", IT),
     # the snapshot's FD pass (ADR-0015 rule 7, E-0160): case 9 of it_p15d.sh

@@ -7,6 +7,7 @@
 #include "drain.h"
 #include "exitcodes.h"
 #include "p15_file.h"
+#include "p15_flow.h"
 #include "p15_records.h"
 #include "queue.h"
 #include "run.h"
@@ -257,6 +258,51 @@ int main(void)
 	BREAKS(net_drain_lost, 1, "bulk ring", "the shared ring's writer side broken");
 	r.state = P15_RUN_RUNNING;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "restored: closed again");
+
+	/* data-flow books (bpf/include/p15_flow.h, B1 to B5), added to the same closed file-identity run.
+	 * FLOW and FILE records share the bulk ring, so they add to the writer side (net_written). */
+	r.flowc[P15_FLC_SESS_ENTRY] = 34;      /* B1: entries = returns + excluded self, kthread + owned by a socket */
+	r.flowc[P15_FLC_V_EXCL_SELF] = 3;
+	r.flowc[P15_FLC_V_EXCL_KTHREAD] = 2;
+	r.flowc[P15_FLC_V_OWNED_BY_SOCK] = 3;
+	r.flowc[P15_FLC_SESS_RETURN] = 26;     /* B2: returns = empty + failed + no inode + emit attempts */
+	r.flowc[P15_FLC_V_EMPTY] = 4;
+	r.flowc[P15_FLC_V_FAILED] = 1;
+	r.flowc[P15_FLC_V_NO_INODE] = 1;
+	r.flowc[P15_FLC_V_ATTEMPT] = 20;
+	r.flowc[P15_FLC_SOCK_SEEN] = 19;       /* B3: sock = excluded + no-file + empty + failed + no inode + attempts */
+	r.flowc[P15_FLC_S_NO_INODE] = 1;
+	r.flowc[P15_FLC_S_EXCL_SELF] = 2;
+	r.flowc[P15_FLC_S_EXCL_KTHREAD] = 1;
+	r.flowc[P15_FLC_S_NO_FILE] = 3;
+	r.flowc[P15_FLC_S_EMPTY] = 1;
+	r.flowc[P15_FLC_S_FAILED] = 1;
+	r.flowc[P15_FLC_S_ATTEMPT] = 10;
+	r.flowc[P15_FLC_READ_EMITTED] = 12;    /* B4: attempts (20+10) = written (28) + lost (2) */
+	r.flowc[P15_FLC_WRITE_EMITTED] = 6;
+	r.flowc[P15_FLC_SEND_EMITTED] = 5;
+	r.flowc[P15_FLC_RECV_EMITTED] = 5;
+	r.flowc[P15_FLC_FLOW_LOST] = 2;
+	r.flowc[P15_FLC_FILE_EMITTED] = 4;     /* B5: FLOW 28 + FILE 4 = drained 29 + self-test 2 + invalid 1 */
+	r.flow_drained = 29;
+	r.flow_selftest_consumed = 2;
+	r.flow_invalid = 1;
+	r.net_written += 29;                   /* the bulk ring carries the 29 drained flow records too */
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "file and flow books close together");
+	BREAKS(flowc[P15_FLC_V_EXCL_SELF], 1, "vfs entries", "B1: a vfs entry unaccounted");
+	BREAKS(flowc[P15_FLC_V_EMPTY], 1, "vfs returns", "B2: a vfs return unaccounted");
+	BREAKS(flowc[P15_FLC_S_NO_FILE], 1, "sock events", "B3: a sock event unaccounted");
+	BREAKS(flowc[P15_FLC_V_OWNED_BY_SOCK], 1, "vfs entries", "B1: a socket's vfs entry unaccounted");
+	BREAKS(flowc[P15_FLC_V_NO_INODE], 1, "vfs returns", "B2: a vfs return without an inode unaccounted");
+	BREAKS(flowc[P15_FLC_S_NO_INODE], 1, "sock events", "B3: a sock event without an inode unaccounted");
+	BREAKS(flowc[P15_FLC_FLOW_LOST], 1, "emit attempts", "B4: attempts != written + lost");
+	BREAKS(flowc[P15_FLC_FILE_EMITTED], 1, "FLOW: written", "B5: a FILE record off the drain side");
+	BREAKS(flow_selftest_consumed, 1, "FLOW: written", "B5: a record the self-test took, uncounted");
+	BREAKS(flow_invalid, 1, "FLOW: written", "B5: invalid flow records are on the drain side");
+	BREAKS(net_drain_lost, 1, "bulk ring", "the flow records count on the shared ring's writer side");
+	r.state = P15_RUN_RUNNING;
+	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "flow books restored: closed again");
+
 	r.files = 0;
 	r.filec[P15_FC_FREE_RUN] = 99;
 	EXPECT(p15_invariant_check(&r, why, sizeof(why)) == P15_INV_CLOSED, "without file identity its books are not read");
