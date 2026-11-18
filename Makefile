@@ -56,7 +56,7 @@ LDLIBS     := $(LIBBPF_A) -lelf -lz
 SMOKE := $(OUT)/core_smoke $(OUT)/load_check $(OUT)/empty.bpf.o $(OUT)/rb_size $(OUT)/net_probe $(OUT)/sliceb_probe
 SPINE := $(OUT)/p15-spine $(OUT)/test_selftest $(OUT)/test_wal $(OUT)/test_exitcodes $(OUT)/test_records \
          $(OUT)/hook_cost $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_queue $(OUT)/test_config $(OUT)/test_run \
-         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/rw_hook_cost $(OUT)/flow_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
+         $(OUT)/test_snapshot $(OUT)/test_counters $(OUT)/test_open_iter $(OUT)/rw_hook_cost $(OUT)/flow_cost $(OUT)/prim_cost $(OUT)/open_sections $(OUT)/path_walk $(OUT)/crc32c_bench
 DAEMON_COMMON := daemon/records.c daemon/selftest.c daemon/counters.c
 WAL_SRC := daemon/wal.c daemon/crc32c.c
 P15D_SRC := daemon/p15d.c daemon/config.c daemon/run.c daemon/queue.c daemon/drain.c daemon/writer.c daemon/loader.c daemon/barrier.c \
@@ -151,6 +151,10 @@ $(OUT)/test_run: daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/dra
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_run.c daemon/run.c daemon/writer.c daemon/drain.c daemon/queue.c \
 	  daemon/config.c daemon/records.c daemon/counters.c $(WAL_SRC) $(LDLIBS) -lpthread -o $@
 
+# Root: loads the shipped object's map iterator alone and runs it over planted entries (it_p15d case 20).
+$(OUT)/test_open_iter: daemon/tests/test_open_iter.c daemon/counters.c daemon/*.h bpf/include/*.h $(OUT)/file.skel.h $(LIBBPF_A) | $(OUT)
+	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_open_iter.c daemon/counters.c $(LDLIBS) -o $@
+
 $(OUT)/test_counters: daemon/tests/test_counters.c daemon/counters.c daemon/*.h $(OUT)/spine.skel.h $(LIBBPF_A) | $(OUT)
 	$(CC) $(CFLAGS) $(LDFLAGS) daemon/tests/test_counters.c daemon/counters.c $(LDLIBS) -o $@
 
@@ -207,7 +211,7 @@ test-c-tsan: | $(OUT)
 	$(OUT)/tsan/test_queue
 
 # p15d end to end (root): a short run with a workload, then the WAL checked by p15w-inspect.
-it-p15d: $(OUT)/p15d $(OUT)/p15w-inspect
+it-p15d: $(OUT)/p15d $(OUT)/p15w-inspect $(OUT)/test_open_iter
 	daemon/tests/it_p15d.sh $(OUT)
 
 # The same C tests under AddressSanitizer and UndefinedBehaviorSanitizer: any leak,

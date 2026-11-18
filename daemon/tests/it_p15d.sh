@@ -525,6 +525,52 @@ else
     echo "  SKIP (the flow programs are not loadable here; CI and the VM run cases 16 and 17)"
 fi
 
+echo "case 18: three opens whose session return never runs, as a detach in flight leaves them (--test-open-end-mode 1; p15_file.h) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    # $1 name, $2 mode (lost | claimed), then p15d's extra options
+    open_end() {
+        local name=$1 mode=$2 hpid pid rc irc line; shift 2
+        rm -rf "$T/$name.pid" "$T/$name.opened" "$T/$name.late"
+        "$PY" daemon/tests/it_open_end.py hold "$T" "$name" & hpid=$!
+        for _ in $(seq 100); do [ -s "$T/$name.pid" ] && break; sleep 0.1; done
+        "$B/p15d" --wal-dir "$T/$name" --duration 4 --stats-ms 200 --test-open-end-tgid "$hpid" "$@" 2>"$T/$name.err" &
+        pid=$!
+        if started "$T/$name.err"; then
+            kill -USR1 "$hpid"
+            for _ in $(seq 100); do [ -d "$T/$name.opened" ] && break; sleep 0.1; done
+            if [ "$mode" = claimed ]; then
+                for _ in $(seq 200); do grep -q 'code=test_pause phase=flow_cut' "$T/$name.err" 2>/dev/null && break; sleep 0.05; done
+                kill -USR2 "$hpid"
+                for _ in $(seq 100); do [ -d "$T/$name.late" ] && break; sleep 0.1; done
+            fi
+        fi
+        wait $pid; rc=$?
+        kill -TERM "$hpid" 2>/dev/null; wait "$hpid" 2>/dev/null   # only now: the three files stay open to the end
+        RUN=$T/$name; inspect >"$T/$name.txt"; irc=$?
+        check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && [ -d $T/$name.opened ]" "exit 0, WAL valid, the helper opened its files (p15d $rc, inspect $irc)"
+        check "grep -q 'END: exit 0, state 0, invariant 1' $T/$name.txt" "END: exit 0, RUNNING, the session's book closes"
+        while IFS= read -r line; do
+            case "$line" in ok\ *) ok "${line#ok }";; FAIL\ *) bad "${line#FAIL }";; *) bad "unexpected checker output: $line";; esac
+        done < <(PYTHONPATH=python "$PY" daemon/tests/it_open_end.py check "$(ls -d "$T/$name"/*/ | head -1)" "$T" "$name" "$mode" 2>&1)
+        [ $fail -eq 0 ] || grep -E "code=(end|barrier|fail)" "$T/$name.err" | tail -3
+    }
+    open_end c18 lost --test-open-end-mode 1
+    echo "case 19: three opens counted before their return runs, and two opens after the gate (--test-open-end-mode 2) [t+${SECONDS}s]"
+    open_end c19 claimed --test-open-end-mode 2 --test-flow-cut-pause-ms 1500
+else
+    echo "  SKIP (file identity not loadable here; CI and the VM run cases 18 and 19)"
+fi
+
+echo "case 20: the end's iterator over planted open-file entries: it claims the opens in flight, once [t+${SECONDS}s]"
+if "$B/test_open_iter" >"$T/c20.txt" 2>&1; then
+    ok "$(tail -1 "$T/c20.txt")"
+elif grep -q '^SKIP' "$T/c20.txt"; then
+    if [ "${P15_IT_NET:-auto}" = 1 ]; then bad "the iterator could not be loaded here, and P15_IT_NET=1 requires it: $(tail -1 "$T/c20.txt")"
+    else echo "  $(tail -1 "$T/c20.txt")"; fi
+else
+    bad "test_open_iter: $(grep -m3 FAIL "$T/c20.txt" | tr '\n' ' ')"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

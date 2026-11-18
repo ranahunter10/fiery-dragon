@@ -37,6 +37,8 @@ static const struct opt OPTS[] = {
 	{ "--flow-stop-wait-ms",   U32(flow_stop_wait_ms), 0,   10000,   200,    0 },
 	{ "--test-flow-cut-pause-ms", U32(flow_cut_pause_ms), 0, 10000,  0,      0 },
 	{ "--test-barrier-fail",   U32(barrier_fail),     0,    1,       0,      0 },
+	{ "--test-open-end-mode",  U32(open_end_mode),    0,    2,       0,      0 },
+	{ "--test-open-end-tgid",  U32(open_end_tgid),    0,    4194304, 0,      0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
@@ -163,7 +165,8 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.test_drain_pause_ms", "config.file_map_entries", "config.obj_map_entries",
 		"config.test_start_pause_ms", "config.stop_stall_s", "config.test_writer_stall_ms",
 		"config.test_writer_batch_ms", "config.poll_max_ms", "config.flow_stop_wait_ms",
-		"config.test_flow_cut_pause_ms", "config.test_barrier_fail",
+		"config.test_flow_cut_pause_ms", "config.test_barrier_fail", "config.test_open_end_mode",
+		"config.test_open_end_tgid",
 	};
 	size_t n = 0;
 

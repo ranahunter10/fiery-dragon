@@ -104,13 +104,26 @@ static int file_books(struct p15_run *r, char *why, size_t n)
 			 (unsigned long long)A(FENTRY_RUN));
 		return -1;
 	}
-	if (A(SESSION_ENTRY) != A(SESSION_RETURN) + A(SESSION_NO_INODE) ||
-	    A(SESSION_RETURN) != A(SESSION_COMMON) + A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED) +
-					 A(VERDICT_LOST) + A(RET_BACKING) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {
-		snprintf(why, n, "FILE: session entries %llu, returns %llu: not every run is accounted for",
-			 (unsigned long long)A(SESSION_ENTRY), (unsigned long long)A(SESSION_RETURN));
+#define U(slot) ((unsigned long long)A(slot))
+	/* written as sums on both sides so no term is subtracted (the counters are unsigned) */
+	if (A(SESSION_ENTRY) + A(SESSION_RETURNED_AFTER_COUNT) + A(SESSION_NOSLOT_RETURN) !=
+	    A(SESSION_RETURN) + A(SESSION_NO_INODE) + A(SESSION_GATED) + A(SESSION_OPEN_AT_END) + A(SESSION_NOSLOT_ENTRY)) {
+		/* every term, in the order of bpf/include/p15_file.h's book */
+		snprintf(why, n, "FILE session entries: entry %llu rac %llu nsret %llu != ret %llu noino %llu gated %llu "
+			 "open %llu nsent %llu", U(SESSION_ENTRY), U(SESSION_RETURNED_AFTER_COUNT), U(SESSION_NOSLOT_RETURN),
+			 U(SESSION_RETURN), U(SESSION_NO_INODE), U(SESSION_GATED), U(SESSION_OPEN_AT_END),
+			 U(SESSION_NOSLOT_ENTRY));
 		return -1;
 	}
+	if (A(SESSION_RETURN) != A(SESSION_COMMON) + A(MISSING_EMITTED) + A(MISSING_LOST) + A(VERDICT_EMITTED) +
+				 A(VERDICT_LOST) + A(RET_BACKING) + A(SESSION_NO_COOKIE) + A(SESSION_NO_ENTRY)) {
+		snprintf(why, n, "FILE session returns: ret %llu != common %llu missing %llu mlost %llu verdict %llu vlost %llu "
+			 "retbacking %llu nocookie %llu noentry %llu", U(SESSION_RETURN), U(SESSION_COMMON),
+			 U(MISSING_EMITTED), U(MISSING_LOST), U(VERDICT_EMITTED), U(VERDICT_LOST), U(RET_BACKING),
+			 U(SESSION_NO_COOKIE), U(SESSION_NO_ENTRY));
+		return -1;
+	}
+#undef U
 	if (A(MISSING_EMITTED) != A(WALKED) + A(WALK_UNNAMED) || A(RET_BACKING) != A(RET_BACKING_EMITTED) + A(RET_BACKING_LOST)) {
 		snprintf(why, n, "FILE: the session return's OPENs %llu != walked %llu + without a path %llu, or its BACKING "
 			 "branch %llu != written + lost", (unsigned long long)A(MISSING_EMITTED), (unsigned long long)A(WALKED),
@@ -428,6 +441,13 @@ static void file_stats(struct p15_writer *w)
 	F(ret_backing_lost, P15_FC_RET_BACKING_LOST)
 	F(ret_backing_verdict_emitted, P15_FC_RET_BACKING_VERDICT_EMITTED)
 	F(ret_backing_verdict_lost, P15_FC_RET_BACKING_VERDICT_LOST)
+	F(session_gated, P15_FC_SESSION_GATED)
+	F(session_noslot_entry, P15_FC_SESSION_NOSLOT_ENTRY)
+	F(session_noslot_return, P15_FC_SESSION_NOSLOT_RETURN)
+	F(session_open_at_end, P15_FC_SESSION_OPEN_AT_END)
+	F(session_returned_after_count, P15_FC_SESSION_RETURNED_AFTER_COUNT)
+	F(session_claim_race, P15_FC_SESSION_CLAIM_RACE)
+	F(session_reentered, P15_FC_SESSION_REENTERED)
 #undef F
 	s.files_live = atomic_load(&r->filec[P15_FC_FILES_LIVE]);   /* gauges: absolute, not since the start */
 	s.objs_live = atomic_load(&r->filec[P15_FC_OBJS_LIVE]);

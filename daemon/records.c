@@ -26,7 +26,8 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_BACKING: return version == 1 ? sizeof(struct p15_backing_v1) : 0;
 	case P15_T_CLOSE:  return version == 1 ? sizeof(struct p15_close_v1) : 0;
 	case P15_T_FD:     return version == 1 ? sizeof(struct p15_fd_v1) : 0;
-	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : version == 2 ? sizeof(struct p15_file_stats_v2) : 0;
+	case P15_T_FILE_STATS: return version == 1 ? sizeof(struct p15_file_stats_v1) : version == 2 ? sizeof(struct p15_file_stats_v2) :
+			       version == 3 ? sizeof(struct p15_file_stats_v3) : 0;
 	case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;
 	case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;
 	case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stats_v1) : 0;
@@ -756,9 +757,23 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 	case P15_T_FILE_STATS: {
 		const struct p15_file_stats_v1 *r = data;
 
-		if (h->version == 2) {
+		if (h->version == 2 || h->version == 3) {
+			/* version 3 is version 2 with fields added after it (asserted below) */
 			const struct p15_file_stats_v2 *s = data;
 
+			P15_ASSERT(P15_OFFSETOF(struct p15_file_stats_v3, obj_map_entries) ==
+				   P15_OFFSETOF(struct p15_file_stats_v2, obj_map_entries), "FILE_STATS v3 starts as v2");
+			if (h->version == 3) {
+				const struct p15_file_stats_v3 *t = data;
+
+				k += snprintf(buf + k, n - k, " at_end=%llu returned_after=%llu gated=%llu noslot=%llu/%llu",
+					      (unsigned long long)t->session_open_at_end,
+					      (unsigned long long)t->session_returned_after_count,
+					      (unsigned long long)t->session_gated, (unsigned long long)t->session_noslot_entry,
+					      (unsigned long long)t->session_noslot_return);
+				if (k < 0 || (size_t)k >= n)
+					return k;
+			}
 			k += snprintf(buf + k, n - k, " walked=%llu raced=%llu walk_truncated=%llu unnamed=%llu ret_backing=%llu/%llu",
 				      (unsigned long long)s->walked, (unsigned long long)s->walk_raced,
 				      (unsigned long long)s->walk_truncated, (unsigned long long)s->walk_unnamed,

@@ -37,6 +37,7 @@ struct p15_loader {
 	struct bpf_link *flow_links[6]; /* the flow programs (ADR-0005): attached after the self-tests so their I/O is not in the books */
 	int n_flow_links;
 	struct bpf_link *flow_open_link; /* the end's count of open calls (p15_flow.h): a task iterator, run once */
+	struct bpf_link *file_open_link; /* the end's count of opens in flight (p15_file.h): an iterator over the open-file map */
 	int selftest_failed;       /* failed checks, or -errno if it could not run */
 	int net_selftest_failed;
 	int file_selftest_failed;
@@ -58,6 +59,9 @@ struct p15_loader {
 	int ncpu;                   /* possible CPUs: the counter maps' row count (ADR-0026) */
 };
 
+/* TEST ONLY (--test-open-end-mode, --test-open-end-tgid; bpf/include/p15_file.h P15_TEST_OPEN_*):
+ * what the next p15_loader_start writes into the open session's read-only data. */
+void p15_loader_test_open_end(uint32_t mode, uint32_t tgid);
 /* Returns 0, or a P15_EXIT_* code with a reason in err. */
 P15_MUST_CHECK int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char *err, size_t errlen);
 /* The end of the flow programs' run, in two steps (bpf/include/p15_flow.h). Both do nothing and
@@ -68,6 +72,11 @@ P15_MUST_CHECK int p15_loader_start(struct p15_loader *l, const struct p15_loade
  * Returns 0, or -errno if the iterator could not be created or read. */
 void p15_loader_flow_gate(struct p15_loader *l);
 P15_MUST_CHECK int p15_loader_flow_count(struct p15_loader *l);
+/* The same two steps for the open path's session (bpf/include/p15_file.h): the gate on
+ * security_file_open's session, and the iterator over the open-file map that claims every open
+ * in flight into SESSION_OPEN_AT_END. Both do nothing and return 0 with --no-files. */
+void p15_loader_file_gate(struct p15_loader *l);
+P15_MUST_CHECK int p15_loader_file_count(struct p15_loader *l);
 /* Detach every program (so the rings stop filling); the maps stay readable. The spine is detached
  * last, as it is attached first: every record another program writes names a process, and that
  * process's EXIT belongs in the same run. */
