@@ -280,8 +280,9 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`pidsmaker.py`](../python/p15/graph/pidsmaker.py) | Export a graph file to the tables PIDSMaker reads (ADR-0028 rule 7). | `export` |
 | [`raw.py`](../python/p15/graph/raw.py) | every record of a run, one DuckDB table per record type. | `row`, `column`, `insert_rows`, `Loader`, `create`, `load` |
 | [`rules.py`](../python/p15/graph/rules.py) | Rules over the graph for known fileless patterns: the first detection tier (Phase II report §1.10.7). | `Alert`, `run` |
-| [`story.py`](../python/p15/graph/story.py) | The attack path around one node, readable: what led to it and what it led to. | `pick_start`, `why_chain`, `build`, `called_as`, `short`, `text`, `chip`, `page` |
+| [`story.py`](../python/p15/graph/story.py) | The attack path around one node, readable: what led to it and what it led to. | `pick_start`, `why_chain`, `build`, `called_as`, `text`, `chip`, `page`, `doc` |
 | [`track.py`](../python/p15/graph/track.py) | Backward and forward tracking on a graph file (BackTracker's rule, King and Chen SOSP'03, R-046). | `prepare`, `backward`, `forward`, `span`, `resolve`, `describe` |
+| [`viewer.py`](../python/p15/graph/viewer.py) | The attack path as a story to step through: one self-contained HTML page (the storybook). | `StoryError`, `short`, `kind_of`, `node`, `validate`, `from_text`, `embed`, `render`, `sha256` |
 
 ## python/tests
 
@@ -297,6 +298,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`test_rules.py`](../python/tests/test_rules.py) | p15.graph.rules and p15.graph.story on a hand-made graph: the demo's attack, and benign look-alikes each rule must not fire on. | `G`, `demo`, `Rules`, `Story` |
 | [`test_trace.py`](../python/tests/test_trace.py) | Tests for the process tree (proctree.py), the port query (net.py) and p15-trace's two reports (trace.py, report_html.py), on the synthetic run of scenario.py, whose story is known. | `Base`, `Tree`, `Port`, `TextReport`, `Html`, `Checker`, `Cli` |
 | [`test_track.py`](../python/tests/test_track.py) | the USING KEY queries against a plain-Python BackTracker on hand-made and random graphs (events at one moment and transfers over an interval), and on built graphs: a TCP connect... | `spans`, `ref_backward`, `ref_forward`, `db_of`, `HandMade`, `Random`, `Built` |
+| [`test_viewer.py`](../python/tests/test_viewer.py) | the story document read back from story.py's text report (the VM evidence of 2026-11-14), the format's checks, and the page. | `report`, `rules`, `embedded`, `EvidenceTest`, `StrictTest`, `ValidateTest`, `PageTest`, `CliTest`, `ShortTest` |
 | [`test_wal.py`](../python/tests/test_wal.py) | Tests for the P15W reader (python/p15/wal.py) against docs/formats/p15w-v1.md: every header check, every §4 stop cause and its torn/corrupt verdict, the run rules, and random da... | `Tmp`, `Crc`, `Header`, `Batches`, `Runs`, `BadRecords`, `Damage` |
 
 ## schema

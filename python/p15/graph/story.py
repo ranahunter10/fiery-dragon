@@ -2,6 +2,7 @@
 """The attack path around one node, readable: what led to it and what it led to.
 
     python3 -m p15.graph.story GRAPH.duckdb [NODE | --alert RULE] [--window S] [--html OUT.html]
+                               [--json STORY.json] [--viewer STORY.html]
 
 NODE is a node_id or key (`p:TGID:START_NS`). With `--alert R4` (or R1, R2, R3) an alert of that rule
 (p15.graph.rules) is the start, or any alert if that rule did not fire; with neither, an R4 alert, else any. When several alerts of the
@@ -25,6 +26,9 @@ How it is made (p15.graph.track does the walking):
      left out beside its EXECUTE); and the TCP pairings between kept sockets.
 Every alert of p15.graph.rules on a kept node is shown with the path.
 
+--json writes the same path as a story document (p15.graph.viewer's format, doc() here), and
+--viewer writes it as the storybook page that plays it edge by edge (p15.graph.viewer).
+
 Nothing here decides what is malicious: it is the graph's own walk, trimmed for reading. The walk's
 full result is p15.graph.track's.
 """
@@ -33,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -41,6 +46,8 @@ import duckdb
 
 from . import rules as RL
 from . import track as T
+from . import viewer as V
+from .viewer import short
 
 NOISE = re.compile(r"\.so(\.[0-9]+)*$|^/usr/lib/|^/lib(64)?/|^/etc/ld\.so|locale|^/usr/share/|^/proc/|^/sys/"
                    r"|^/dev/(null|zero|tty|urandom|random|pts/)|^/etc/(nsswitch\.conf|services|passwd|group|hosts"
@@ -198,18 +205,6 @@ def called_as(s: dict, op: str, src: int, dst: int, ts: int) -> str:
     return f"as {fn}"
 
 
-def short(label: str) -> str:
-    """A label without the long command line: 'proc 123 nc', 'file /tmp/x', 'sock a -> b'. A process
-    whose argv[0] differs from its comm (a program run from /proc/self/fd/3 has comm '3') gets it
-    in brackets: 'proc 422 3 [kworker]'."""
-    if label.startswith("proc "):
-        head, _, cmd = label.partition(" (")
-        argv0 = cmd[:-1].split(" ", 1)[0].rsplit("/", 1)[-1] if cmd else ""
-        comm = head.split(" ", 2)[2] if head.count(" ") >= 2 else ""
-        return head + (f" [{argv0}]" if argv0 and argv0 != comm else "")
-    return label
-
-
 def text(s: dict, alerts: list[RL.Alert]) -> str:
     L = []
     t0, lab = s["t0"], s["labels"]
@@ -298,6 +293,34 @@ def page(s: dict, alerts: list[RL.Alert], title: str) -> str:
     return "\n".join(H)
 
 
+def doc(s: dict, alerts: list[RL.Alert], graph: str | None = None) -> dict:
+    """The path as a story document (p15.graph.viewer.SCHEMA): the same nodes, cause chain, edges,
+    pairings and alerts as text() prints, times in seconds from the start's first moment. Every alert
+    of the run is listed; those on a kept node are on the path."""
+    t0, lab = s["t0"], s["labels"]
+
+    def sec(ts):
+        return None if ts is None else (int(ts) - t0) / 1e9
+
+    out = {
+        "schema": V.SCHEMA, "start": str(s["start"]),
+        "counts": {"shown": len(s["kept"]), "reached": s["reached"], "hidden_noise": s["hidden_noise"],
+                   "hidden_old": s["hidden_old"]},
+        "ancestors": list(s["ancestors"]),
+        "nodes": [V.node(str(n), lab[n]) for n in sorted(s["kept"])],
+        "why": [{"t": sec(ts), "src": str(src), "dst": str(dst), "op": op} for ts, src, dst, op in s["why"]],
+        "edges": [{"t": sec(ts), "t_end": sec(end), "src": str(src), "dst": str(dst), "op": op, "count": int(n),
+                   "bytes": int(b or 0), "called_as": called_as(s, op, src, dst, ts) or None}
+                  for ts, end, src, dst, op, n, b in s["edges"]],
+        "pairs": [{"client": str(c), "server": str(sv)} for c, sv in s["pairs"]],
+        "alerts": [{"rule": a.rule, "name": a.name, "t": sec(a.ts_ns), "detail": a.detail,
+                    "node": str(a.node) if a.node in s["kept"] else None, "on_path": a.node in s["kept"],
+                    "key": a.key} for a in alerts],
+        "source": {"kind": "graph", "graph": graph},
+    }
+    return V.validate(out)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="p15.graph.story", description=__doc__.split("\n\n")[0])
     ap.add_argument("graph", type=Path)
@@ -305,6 +328,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--alert", choices=sorted(RL.RULES), help="start from an alert of this rule (any alert if it did not fire)")
     ap.add_argument("--window", type=float, default=10.0, help="how far back the cause chain goes, in seconds (default 10)")
     ap.add_argument("--html", type=Path, help="also write the path as one HTML page")
+    ap.add_argument("--json", type=Path, help="also write the path as a story document (p15.graph.viewer)")
+    ap.add_argument("--viewer", type=Path, help="also write the storybook page that plays the path")
     a = ap.parse_args(argv)
     if not a.graph.exists():
         print(f"p15.graph.story: {a.graph}: no such file", file=sys.stderr)
@@ -323,6 +348,14 @@ def main(argv: list[str] | None = None) -> int:
     if a.html:
         a.html.write_text(page(s, alerts, "Attack path: " + short(s["labels"].get(start, str(start)))))
         print(f"\nHTML: {a.html}")
+    if a.json or a.viewer:
+        d = doc(s, alerts, a.graph.name)
+        if a.json:
+            a.json.write_text(json.dumps(d, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+            print(f"story: {a.json}")
+        if a.viewer:
+            a.viewer.write_text(V.render(d), encoding="utf-8")
+            print(f"storybook: {a.viewer}")
     return 0
 
 

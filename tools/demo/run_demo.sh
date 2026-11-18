@@ -21,7 +21,8 @@
 #   5. a small scan of three closed ports (blocking connects, so each is refused at once).
 # Afterwards the run's graph is built (python3 -m p15.graph), the detection rules run over it
 # (p15.graph.rules), and the attack path from the shell the web app started is written
-# (p15.graph.story, as text and HTML). Every payload is harmless: it prints the user id.
+# (p15.graph.story, as text and HTML, as a story document and as the storybook page that plays
+# it, p15.graph.viewer). Every payload is harmless: it prints the user id.
 set -u
 OUT=${1:?usage: run_demo.sh OUT_DIR}
 B=${B:-build}
@@ -101,7 +102,7 @@ g=0
 PYTHONPATH=python "$PY" -m p15.graph "$RUN" "$OUT/graph.duckdb" >"$OUT/graph.txt" 2>&1 || g=1
 PYTHONPATH=python "$PY" -m p15.graph.rules "$OUT/graph.duckdb" >"$OUT/rules.txt" 2>&1 || g=1
 PYTHONPATH=python "$PY" -m p15.graph.story "$OUT/graph.duckdb" --alert R4 --html "$OUT/attack-path.html" \
-    >"$OUT/attack-path.txt" 2>&1 || g=1
+    --json "$OUT/attack-path.json" --viewer "$OUT/storybook.html" >"$OUT/attack-path.txt" 2>&1 || g=1
 (cd "$OUT" && find . -type f ! -name SHA256SUMS ! -name '*.duckdb' | sort | xargs sha256sum >SHA256SUMS)
 chmod -R a+rX "$OUT"
 echo
