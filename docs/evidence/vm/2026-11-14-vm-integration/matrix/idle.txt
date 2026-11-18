@@ -1,0 +1,10 @@
+config rounds=3 settle=5.0 window=20.0 arms=default:--flow
+thread arm=default round=0 name=p15d-writer cpu_ns=13520158
+thread arm=default round=0 name=p15d cpu_ns=29956899
+run arm=default round=0 window_ns=20001618136 cpu_ns=43477057 spine=0 bulk=107 polls_per_s=8.4 exit=0 end=1 state=0 invariant=1 ok
+thread arm=default round=1 name=p15d-writer cpu_ns=12915297
+thread arm=default round=1 name=p15d cpu_ns=32242440
+run arm=default round=1 window_ns=20000699647 cpu_ns=45157737 spine=0 bulk=269 polls_per_s=9.5 exit=0 end=1 state=0 invariant=1 ok
+thread arm=default round=2 name=p15d-writer cpu_ns=17491905
+thread arm=default round=2 name=p15d cpu_ns=29118489
+run arm=default round=2 window_ns=20000727730 cpu_ns=46610394 spine=1 bulk=238 polls_per_s=9.3 exit=0 end=1 state=0 invariant=1 ok

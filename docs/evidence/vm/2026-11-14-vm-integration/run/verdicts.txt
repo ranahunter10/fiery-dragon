@@ -1,0 +1,14 @@
+setup                  rc=0      PASS
+build                  rc=0     35s  PASS
+test-c                 rc=0      1s  PASS
+test-python            rc=1     11s  FAIL
+build                  rc=0      0s  PASS
+test-c                 rc=0      0s  PASS
+test-python            rc=0     54s  PASS
+it_p15d                rc=0    228s  PASS
+canary_run             rc=0     12s  PASS
+demo_capture           rc=0     36s  PASS
+demo_graph             rc=0      2s  PASS
+demo_track             rc=0      0s  PASS
+mutants                rc=0   2295s  PASS
+matrix                 rc=0   1187s  PASS

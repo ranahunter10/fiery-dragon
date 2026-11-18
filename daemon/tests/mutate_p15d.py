@@ -155,6 +155,13 @@ M = [
     ("writer.c", "		p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n		memset(&m, 0, sizeof(m));\n		m.kind = P15_CANARY_MISS_KIND_LINK;", "		memset(&m, 0, sizeof(m));\n		m.kind = P15_CANARY_MISS_KIND_LINK;", IT),
     ("p15d.c", "	rc = p15_loader_each_link(&ld, link_add, &run);\n", "	rc = 0;\n	(void)link_add;\n", IT),
     ("drain.c", "	atomic_fetch_add(&d->run->spine_seq_next, 1);\n	p15_canary_see(&d->canary, h);", "	atomic_fetch_add(&d->run->spine_seq_next, 1);", IT),
+    # the open-file map's size from the host and its full state (decision 103; test_config, cases 26 and 27)
+    ("config.c", "	if (want < P15_FILE_MAP_DEFAULT)\n", "	if (0)\n", UNIT),
+    ("config.c", "	if (want > cap)\n", "	if (0)\n", UNIT),
+    ("config.c", "	if (cap > P15_FILE_MAP_MAX)\n", "	if (0)\n", UNIT),
+    ("config.c", "	uint64_t want = files_now * P15_FILE_MAP_HEADROOM;", "	uint64_t want = files_now;", UNIT),
+    ("p15d.c", "		run.cfg.file_map_entries = p15_file_map_auto(files, mem);\n", "", IT),
+    ("drain.c", "	if (f[P15_FC_FILE_MAP_FULL] != d->prev_file[P15_FC_FILE_MAP_FULL])\n		p15_run_set_state(d->run, P15_RUN_DEGRADED,", "	if (0)\n		p15_run_set_state(d->run, P15_RUN_DEGRADED,", IT),
 ]
 
 

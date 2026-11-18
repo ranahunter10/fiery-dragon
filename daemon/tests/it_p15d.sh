@@ -625,6 +625,44 @@ check "[ -n \"$k\" ] && [ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3,
 check "case \" $s_miss \" in *\" K:$((${k:-1} - 1)):spine_exec \"*) true;; *) false;; esac" "the link check names spine_exec ($s_miss)"
 check "[ \"\${s_missed:-0}\" -ge 1 ] && PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(':')[1:]); sys.exit(0 if w & ~s == 2 else 1)\" \"\$(printf '%s\\n' $s_miss | grep -m1 '^R:')\"" "and the canary, on its own evidence, misses exactly its EXEC"
 
+echo "case 26: the open-file map's size comes from the host and is in the header (decision 103) [t+${SECONDS}s]"
+hdr() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+m = wal.read_run(Path(sys.argv[1])).segments[0].meta
+print(m.get('config.file_map_entries', '-'), '|', m.get('file_map.sized_by', '-'))" "$(ls -d "$1"/*/ | head -1)"; }
+read -r c26n _ c26by <<<"$(hdr "$T/c21")"
+echo "  not given: $c26n entries, sized by: $c26by"
+check "[ \"\${c26n:-0}\" -ge 65536 ] && [ \"\${c26n:-0}\" -le 4194304 ] && case \"$c26by\" in host:*) true;; *) false;; esac" "without the option the size is computed from the host, at least the old fixed 65,536, and the header says from what"
+"$B/p15d" --wal-dir "$T/c26" $NET --file-map-entries 2048 --duration 1 2>"$T/c26.err"; rc=$?
+read -r c26n _ c26by <<<"$(hdr "$T/c26")"
+check "[ $rc -eq 0 ] && [ \"$c26n\" = 2048 ] && [ \"$c26by\" = option ]" "with --file-map-entries 2048 the header says 2048, sized by the option"
+
+echo "case 27: a full open-file map is a state of the run: one process opens 3000 files into a map of 1024 (F-04) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    D27=$(mktemp -d /tmp/p15d-it27-XXXXXX)
+    "$B/p15d" --wal-dir "$T/c27" --file-map-entries 1024 --duration 4 --stats-ms 200 2>"$T/c27.err" &
+    pid=$!
+    if started "$T/c27.err"; then
+        ( ulimit -n 4096; "$PY" -c "
+import os, sys, time
+fds = [os.open(os.path.join(sys.argv[1], 'f%d' % i), os.O_WRONLY | os.O_CREAT, 0o600) for i in range(3000)]
+time.sleep(1)" "$D27" )
+    fi
+    wait $pid; rc=$?
+    RUN=$T/c27; inspect >"$T/c27.txt" 2>&1; irc=$?
+    c27=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+fs = [r for r in wal.read_run(Path(sys.argv[1])).ring_records(2) if r.name == 'FILE_STATS'][-1].f
+print(fs['file_map_full'], fs['file_map_entries'])" "$(ls -d "$T"/c27/*/ | head -1)")
+    read -r c27full c27n <<<"$c27"
+    rm -rf "$D27"
+    check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c27.txt" "exit 3 (DEGRADED), WAL valid, every book closed (p15d $rc)"
+    check "[ \"\${c27full:-0}\" -gt 0 ] && [ \"$c27n\" = 1024 ]" "FILE_STATS counts the opens that found the map full ($c27full) and reports its size ($c27n)"
+    check "grep -q 'the open-file map is full' $T/c27.txt" "END's reason says the open-file map is full"
+else
+    echo "  SKIP (file identity not loadable here; CI and the VM run case 27)"
+fi
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

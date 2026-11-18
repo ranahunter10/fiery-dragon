@@ -1,0 +1,73 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 181  of event 'task-clock:ppp'
+# Event count (approx.): 90545250
+#
+# Overhead  Shared Object      Symbol                         
+# ........  .................  ...............................
+#
+    19.89%  [kernel.kallsyms]  [k] finish_task_switch.isra.0
+    11.05%  p15d               [.] tiles
+     4.97%  p15d               [.] on_bulk
+     4.42%  p15d               [.] crc_hw
+     3.87%  [kernel.kallsyms]  [k] fdget
+     3.87%  p15d               [.] after_poll
+     3.31%  [kernel.kallsyms]  [k] bpf_prog_get_target_btf
+     2.21%  [kernel.kallsyms]  [k] bpf_prog_get_info_by_fd
+     2.21%  [kernel.kallsyms]  [k] do_syscall_64
+     2.21%  [kernel.kallsyms]  [k] handle_softirqs
+     2.21%  [kernel.kallsyms]  [k] rep_movs_alternative
+     2.21%  libc.so.6          [.] syscall
+     2.21%  p15d               [.] p15_counters_sum_rows
+     2.21%  p15d               [.] p15_rec_check
+     1.66%  [kernel.kallsyms]  [k] __sys_bpf
+     1.66%  [kernel.kallsyms]  [k] _raw_spin_unlock_irq
+     1.66%  [kernel.kallsyms]  [k] apparmor_capable
+     1.66%  [kernel.kallsyms]  [k] bpf_obj_get_info_by_fd
+     1.10%  [kernel.kallsyms]  [k] _raw_spin_unlock_irqrestore
+     1.10%  [kernel.kallsyms]  [k] bpf_prog_get_stats
+     1.10%  [kernel.kallsyms]  [k] folio_alloc_noprof
+     1.10%  [kernel.kallsyms]  [k] fput
+     1.10%  libc.so.6          [.] 0x00000000000a039c
+     1.10%  libc.so.6          [.] 0x000000000019799f
+     1.10%  p15d               [.] p15_is_file_type
+     1.10%  p15d               [.] p15q_acquire
+     1.10%  p15d               [.] read_misses
+     0.55%  [kernel.kallsyms]  [k] __rcu_read_lock
+     0.55%  [kernel.kallsyms]  [k] __x64_sys_write
+     0.55%  [kernel.kallsyms]  [k] _copy_from_user
+     0.55%  [kernel.kallsyms]  [k] _copy_to_user
+     0.55%  [kernel.kallsyms]  [k] _find_next_bit
+     0.55%  [kernel.kallsyms]  [k] _raw_write_lock
+     0.55%  [kernel.kallsyms]  [k] allocate_slab
+     0.55%  [kernel.kallsyms]  [k] bpf_map_poll
+     0.55%  [kernel.kallsyms]  [k] check_stack_object
+     0.55%  [kernel.kallsyms]  [k] create_empty_buffers
+     0.55%  [kernel.kallsyms]  [k] ep_item_poll.isra.0
+     0.55%  [kernel.kallsyms]  [k] ext4_da_get_block_prep
+     0.55%  [kernel.kallsyms]  [k] ext4_sync_file
+     0.55%  [kernel.kallsyms]  [k] fdget_pos
+     0.55%  [kernel.kallsyms]  [k] its_return_thunk
+     0.55%  [kernel.kallsyms]  [k] kernel_init_pages
+     0.55%  [kernel.kallsyms]  [k] kmem_cache_alloc_noprof
+     0.55%  [kernel.kallsyms]  [k] select_estimate_accuracy
+     0.55%  [kernel.kallsyms]  [k] x64_sys_call
+     0.55%  [vdso]             [.] 0x00000000000009b0
+     0.55%  libc.so.6          [.] 0x0000000000197999
+     0.55%  libc.so.6          [.] 0x0000000000197aa1
+     0.55%  p15d               [.] bpf_prog_get_info_by_fd
+     0.55%  p15d               [.] p15_canary_tick
+     0.55%  p15d               [.] p15_counters_sum
+     0.55%  p15d               [.] p15_drain_poll
+     0.55%  p15d               [.] prog_misses
+     0.55%  p15d               [.] put
+     0.55%  p15d               [.] ring_buffer__epoll_fd
+     0.55%  p15d               [.] take_all
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

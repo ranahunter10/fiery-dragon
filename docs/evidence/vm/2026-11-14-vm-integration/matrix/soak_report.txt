@@ -1,0 +1,44 @@
+# soak: p15d under real programs (gate 4)
+
+Planned 10.0 min of workload, sampled every 60 s; p15d options: --flow; 3 CPUs.
+End: exit 0, state 0, invariant 1; 498,046 records read in 6 s.
+
+| over the run | median | max | first | last |
+|---|---|---|---|---|
+| p15d CPU, ms/s | 4.93 | 6.26 | 5.33 | 3.16 |
+| drain thread, ms/s | 3.20 | 4.16 | | |
+| writer thread, ms/s | 1.79 | 2.11 | | |
+| resident memory, MiB | 24.9 | 25.1 | 24.2 | 25.1 |
+| longest poll gap, s | 0.201 | 0.215 | | |
+
+WAL: 47.6 MiB, 73.0 KiB/s. Spine records drained: 39,274; bulk-ring records written (NET and file identity): 444,266; kernel skips: spine 0, NET 0; queue full 0; GAP records 0.
+
+| step | steps | items expected | found | recall |
+|---|---|---|---|---|
+| archive | 76 | 1,976 | 1,976 | 100.00% |
+| compile | 76 | 2,128 | 2,128 | 100.00% |
+| git | 76 | 988 | 988 | 100.00% |
+| http | 75 | 225 | 225 | 100.00% |
+| memfd | 75 | 75 | 75 | 100.00% |
+| pyfiles | 76 | 912 | 912 | 100.00% |
+| shell | 75 | 150 | 150 | 100.00% |
+
+File identity: 136,293 OPEN from the path program, 0 from the session return (0 walked, 0 raced, 0 without a path); fentry skips 0; lost: OPEN 0, CLOSE 0; most open files 607, objects 738.
+
+Data flow: FLOW READ 133,745, WRITE 28,180, SEND 2,059, RECV 1,648; lost 0; START_UNKNOWN 0, UNREGISTERED 0; FILE 2,388 (lost 0, map full 0); calls open at the end 1 (0 returned after the count); kernel skips 0; refused 0.
+
+FLOW_STATS, the other counters: sess_entry 214,526, sess_return 184,699, v_excl_self 29,814, v_excl_kthread 0, v_owned_by_sock 11, v_empty 22,669, v_failed 105, v_no_inode 0, v_attempt 161,925, sock_seen 5,151, s_excl_self 0, s_excl_kthread 0, s_no_file 0, s_empty 542, s_failed 902, s_no_inode 0, s_attempt 3,707, v_gated 1, v_no_slot_entry 0, v_no_slot_return 0, v_release_failed 0, v_entry_while_open 0, v_claim_race 0, v_release_none 0, flow_drained 168,020.
+
+Graph build: 132 s per hour of workload, target under 60 s: over (not judged before gate 10).
+Graph: built in 22 s, 56.8 MiB; edge_ACCEPT 600, edge_BIND 75, edge_CLONE 9,216, edge_CONNECT 628, edge_EXECUTE 9,211, edge_HELD 625, edge_LISTEN 75, edge_OPEN 136,298, edge_READ 133,745, edge_RECV 1,648, edge_SEND 2,059, edge_WRITE 28,180, edge_proc_end_without_image 4, edge_without_node 0, node_file 16,623, node_proc 9,355, node_sock 1,303.
+
+| graph check | found | expected |
+|---|---|---|
+| dropper_chain | 76 | 76 |
+| sock_pairs | 600 | 600 |
+| memfd_exec | 75 | 75 |
+
+## Verdict
+
+- PASS
+
