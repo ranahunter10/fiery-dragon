@@ -1,0 +1,10 @@
+# branch, commit and tree on origin (2026-11-19), against the tree the zip's README names
+dragon/detach-fix      011adb4 tree 2ded090f9a340f301567dd65cedc013ebeb49c61  dragon-detach-fix-followup.zip names 2ded090f9a340f301567dd65cedc013ebeb49c61  MATCH
+dragon/open-detach     7386fad tree 10d4384be61d1187813e1d8dbed1b479ea6e01db  dragon-open-detach.zip names 10d4384be61d1187813e1d8dbed1b479ea6e01db  MATCH
+dragon/canary          5596da3 tree 33bbdd41d00c9a3994f4b42d9950e5df63b715dc  dragon-canary.zip names 33bbdd41d00c9a3994f4b42d9950e5df63b715dc  MATCH
+dragon/file-map-size   091ca91 tree 9bc4e2a2d5b6c43a069a69405c9c839337e65dc3  dragon-file-map-size.zip names 9bc4e2a2d5b6c43a069a69405c9c839337e65dc3  MATCH
+dragon/disk-space      e65f258 tree 4dee60d1093d9b088b4bb5f1b8b0e1f82f36e0cf  dragon-disk-space.zip names 4dee60d1093d9b088b4bb5f1b8b0e1f82f36e0cf  MATCH
+dragon/flow-ring       bed3aa8 tree b558a1f54331e59283e94c3a7f0c134d3d5a563b  dragon-flow-ring.zip names b558a1f54331e59283e94c3a7f0c134d3d5a563b  MATCH
+dragon/demo            1866be0 tree 7e20dc509ad71f830c94c5b0ccdd3c471c2bd1f0  dragon-demo.zip names 7e20dc509ad71f830c94c5b0ccdd3c471c2bd1f0  MATCH
+dragon/workloads       b372c8a tree dfb62a8f8c124e459d69b85d422e1c7ddabdb51a  dragon-workloads.zip names dfb62a8f8c124e459d69b85d422e1c7ddabdb51a  MATCH
+capture/flow-programs baa1d07: main merged in (parents 13c46f8 b5331c2)
