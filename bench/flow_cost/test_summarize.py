@@ -11,10 +11,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import summarize as S  # noqa: E402
 
-FACS = {"session": 1.5, "ts": 1.6, "count": 1.7, "end_rec": 2.0, "ts_rec": 2.1}
+FACS = {"session": 1.5, "ts": 1.6, "count": 1.7, "end_rec": 2.0, "ts_rec": 2.1, "wit": 1.55, "wit_entry": 1.4}
 
 
-def synth(rounds=12, seed=1, check="ok", break_=None, drop=None):
+def synth(rounds=12, seed=1, check="ok", break_=None, drop=None, arms=None):
     """Rows whose per-read costs are none * factor, with small paired noise. break_ = (round, arm,
     field, value) puts a wrong value in one row."""
     rnd = random.Random(seed)
@@ -28,7 +28,7 @@ def synth(rounds=12, seed=1, check="ok", break_=None, drop=None):
             lines.append(f"nullsys round={r} calls=1000000 total_ns=90000000")
         u = 300.0 * math.exp(rnd.gauss(0, 0.1))
         for arm, f in {"none": 1.0, "none2": math.exp(rnd.gauss(0, 0.001)), **FACS}.items():
-            if drop == (r, arm):
+            if drop == (r, arm) or (arms is not None and arm not in arms):
                 continue
             per = u * f * (math.exp(rnd.gauss(0, 0.0005)) if arm != "none" else 1)
             v = {"hits": 0 if arm in S.UNTRACED else n, "lost": 0, "drained": n if arm in S.RECORDS else 0,
@@ -58,9 +58,33 @@ class Report(unittest.TestCase):
         self.assertAlmostEqual(added(text, "count against ts"), 30, delta=6)      # 1.7 against 1.6 of 300 ns
         self.assertAlmostEqual(added(text, "end_rec against session"), 150, delta=25)
         self.assertAlmostEqual(added(text, "session against none"), 150, delta=25)
+        self.assertAlmostEqual(added(text, "wit against session"), 15, delta=6)     # 1.55 against 1.5
+        self.assertAlmostEqual(added(text, "wit against wit_entry"), 45, delta=8)   # 1.55 against 1.4
+        self.assertAlmostEqual(added(text, "wit_entry against none"), 120, delta=20)
+        self.assertNotIn("Arms not in this run", text)
         self.assertIn("## cpu time per read (primary; 12 rounds)", text)
         self.assertIn("## wall time per read (secondary; 12 rounds)", text)
         self.assertIn("- 2000 reads, 2000 FLOWs, 0 outside their read, 0 lost, 0 creations failed: ok", text)
+
+    def test_older_run_without_the_witness_arms(self):
+        text, rc = S.report(synth(arms=("none", "none2", "session", "ts", "count", "end_rec", "ts_rec")))
+        self.assertEqual(rc, 0, text)
+        self.assertIn("Arms not in this run (an older harness): wit, wit_entry.", text)
+        self.assertNotIn("wit against", text)
+        self.assertAlmostEqual(added(text, "count against ts"), 30, delta=6)
+
+    def test_witness_arm_missing_from_one_round(self):
+        with self.assertRaises(S.ParseError):
+            S.report(synth(drop=(3, "wit")))
+
+    def test_denied_witness_call_fails_the_books(self):
+        text, rc = S.report(synth(break_=(2, "wit", "lost", 1)))
+        self.assertEqual(rc, 1)
+        self.assertIn("round 2 wit: 1 lost", text)
+
+    def test_no_untraced_arm(self):
+        with self.assertRaises(S.ParseError):
+            S.report(synth(arms=("none", "session", "ts", "count", "end_rec", "ts_rec")))
 
     def test_every_book(self):
         for field, value, words in (("hits", 99999, "hits, expected"), ("lost", 1, "lost (no cookie"),

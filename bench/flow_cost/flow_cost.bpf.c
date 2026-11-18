@@ -8,6 +8,12 @@
  *   end_rec   option D: the return writes a 96-byte FLOW (schema/records.toml) with its end time
  *             only, flagged START_UNKNOWN
  *   ts_rec    option A with the record: FLOW with first_ts from task storage
+ *   wit       the mediation witness (research note 2026-11-13 §2 I1, decision waiting 27): a
+ *             kprobe.session on security_file_permission, reached from rw_verify_area by every
+ *             read and write; the entry keeps the file in the cookie, the return counts the call
+ *             by its verdict (granted or denied)
+ *   wit_entry I1's cheaper variant: a kprobe.multi entry on security_file_permission that only
+ *             counts the call (no return, so no verdict)
  * The record arms reserve, fill and submit on a ring buffer without a wakeup; the harness drains
  * it from another CPU, as p15d's drain does. No file map, no marks: those are the same for A and
  * D and are measured with step 2b's programs.
@@ -25,7 +31,7 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 const volatile __u32 harness_tgid;
 
 enum { H_SESSION, H_TS, H_END_REC, H_TS_REC, H_NOCOOKIE, H_TS_LOST, H_TS_CREATE_FAILED, H_RESERVE_FAILED, H_COUNT,
-       H_COUNT_LOST, H_N };
+       H_COUNT_LOST, H_WIT, H_WIT_DENIED, H_WIT_ENTRY, H_N };
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -232,5 +238,30 @@ int rd_ts_rec(struct pt_regs *ctx)
 	first = start_of(f);
 	emit(first, bpf_ktime_get_boot_ns(), ret);
 	count(H_TS_REC);
+	return 0;
+}
+
+/* The witness arms (I1). security_file_permission(file, mask) runs inside vfs_read, from
+ * rw_verify_area (fs/read_write.c:475 at v7.0), so each harness read crosses it once. They
+ * measure the hook alone: the book that would compare the witness against the byte hooks (I1's
+ * mediated = flowed + denied + empty + intent) is not built, and its per-task state is not
+ * included. A denied call is counted apart and fails the arm's books: the harness's reads of
+ * /dev/zero are always granted. */
+SEC("kprobe.session/security_file_permission")
+int wit(struct pt_regs *ctx)
+{
+	if (!bpf_session_is_return(ctx))
+		return entry(ctx, 0);
+	if (!cookie_file(ctx))
+		return 0;
+	count((int)PT_REGS_RC(ctx) == 0 ? H_WIT : H_WIT_DENIED);
+	return 0;
+}
+
+SEC("kprobe.multi/security_file_permission")
+int wit_entry(struct pt_regs *ctx)
+{
+	if (ours())
+		count(H_WIT_ENTRY);
 	return 0;
 }
