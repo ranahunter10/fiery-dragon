@@ -134,6 +134,27 @@ static int on_bulk(void *ctx, void *data, size_t size)
 	return 0;
 }
 
+/* FLOW's ring (ADR-0051 draft): FLOW records only, on the WAL's bulk ring, on the flow books. */
+static int on_flow(void *ctx, void *data, size_t size)
+{
+	struct p15_drain *d = ctx;
+	const struct p15_hdr *h = data;
+	const char *why;
+
+	if (p15_rec_check(data, size, &why) || h->type != P15_T_FLOW) {
+		atomic_fetch_add(&d->run->flow_invalid, 1);
+		p15_run_set_state(d->run, P15_RUN_DEGRADED, "a flow-ring record failed its checks");
+		return 0;
+	}
+	if (put(d, P15W_RING_BULK, data, h->len)) {
+		p15_run_set_state(d->run, P15_RUN_INVALID, "a flow-ring record had no room in its batch (a drain bug)");
+		return 0;
+	}
+	atomic_fetch_add(&d->run->flow_drained, 1);
+	p15_canary_see(&d->canary, h);
+	return 0;
+}
+
 static int read_map(const struct p15_counters *c, uint64_t sum[P15_CTR_MAX]);
 
 /* The kernel's skip count of one program (bpf_prog_info.recursion_misses, ADR-0020 rule 3). */
@@ -500,6 +521,12 @@ static int after_poll(struct p15_drain *d)
 		while (f > bm && !atomic_compare_exchange_weak(&d->run->bulk_fill_max, &bm, f))
 			;
 	}
+	if (d->flow) {
+		uint64_t f = ring__avail_data_size(d->flow), fm = atomic_load(&d->run->flow_fill_max);
+
+		while (f > fm && !atomic_compare_exchange_weak(&d->run->flow_fill_max, &fm, f))
+			;
+	}
 	if (d->bulk && d->bulk_ctr.rows) {
 		uint64_t b[P15_CTR_MAX];
 		int k = P15_CTR_INDEX(P15_T_NET, P15_CK_RESERVE_FAILED);
@@ -525,15 +552,27 @@ static int after_poll(struct p15_drain *d)
 }
 
 /* Read one ring, never more than its batch has room for. What does not fit stays in the ring, which
- * absorbs the backlog (ADR-0017 layer 2); the kernel side counts a reserve that then fails. */
-static int take(struct p15_drain *d, struct ring *r, unsigned wal_ring)
+ * absorbs the backlog (ADR-0017 layer 2); the kernel side counts a reserve that then fails.
+ * keep > 0 (FLOW's ring): a new batch is taken only while more than keep are free; otherwise the
+ * records wait in their ring (counted in flow_deferred), so a flood of transfers never takes the
+ * batches the spine and the bulk ring need. */
+static int take(struct p15_drain *d, struct ring *r, unsigned wal_ring, uint32_t keep)
 {
 	int total = 0;
 
 	for (;;) {
-		uint32_t room = p15_drain_room(d, wal_ring);
+		uint32_t room;
 		int got;
 
+		if (keep && !(d->open && d->open->ring == wal_ring && d->open->cap - d->open->len >= P15_RECORD_MAX_SIZE) &&
+		    !p15q_may_take(&d->run->q, keep)) {
+			if (ring__avail_data_size(r)) {
+				d->queue_full_now = 1;
+				atomic_fetch_add(&d->run->flow_deferred, 1);
+			}
+			return total;
+		}
+		room = p15_drain_room(d, wal_ring);
 		if (!room) {
 			if (ring__avail_data_size(r))
 				d->queue_full_now = 1;
@@ -548,15 +587,35 @@ static int take(struct p15_drain *d, struct ring *r, unsigned wal_ring)
 	}
 }
 
-/* The spine first: when batches are scarce it gets the next free one. */
+/* The spine first: when batches are scarce it gets the next free one. Then the bulk ring (identity,
+ * NET), then FLOW, which never takes the last flow_keep free batches (ADR-0051 draft, F-01). */
 static int take_all(struct p15_drain *d)
 {
-	int n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;
+	int n = d->spine ? take(d, d->spine, P15W_RING_SPINE, 0) : 0, m, f;
 
 	if (n < 0 || !d->bulk)
 		return n;
-	m = take(d, d->bulk, P15W_RING_BULK);
-	return m < 0 ? m : n + m;
+	m = take(d, d->bulk, P15W_RING_BULK, 0);
+	if (m < 0 || !d->flow)
+		return m < 0 ? m : n + m;
+	f = take(d, d->flow, P15W_RING_BULK, d->flow_keep);
+	return f < 0 ? f : n + m + f;
+}
+
+int p15_drain_add_flow(struct p15_drain *d, int flow_rb_fd, uint32_t keep)
+{
+	int rc;
+
+	if (!d->bulk || !d->flow_ctr.rows || d->flow || !keep || keep >= d->run->q.n)
+		return -EINVAL;      /* with file identity, once, and leaving FLOW at least one batch */
+	rc = ring_buffer__add(d->rb, flow_rb_fd, on_flow, d);
+	if (rc)
+		return rc;
+	d->flow = ring_buffer__ring(d->rb, 2);
+	if (!d->flow)
+		return -errno ? -errno : -EINVAL;
+	d->flow_keep = keep;
+	return 0;
 }
 
 int p15_poll_next(int cur_ms, int took, int queue_full, int max_ms)
@@ -570,23 +629,33 @@ int p15_poll_next(int cur_ms, int took, int queue_full, int max_ms)
 
 int p15_drain_poll(struct p15_drain *d, int timeout_ms)
 {
-	struct epoll_event ev[2];
+	struct epoll_event ev[3];
 	int n;
 
 	d->queue_full_now = 0;
 	/* Wait only: ring_buffer__poll would read the rings itself, without asking for room. Below the
 	 * high-water mark records don't wake us (ADR-0020 rule 2), so the rings are read after every wait. */
-	n = epoll_wait(ring_buffer__epoll_fd(d->rb), ev, 2, timeout_ms);
-	if (n < 0 && errno != EINTR)
-		return -errno;
+	{
+		uint64_t t0 = p15_mono_ns(), slept;
+
+		n = epoll_wait(ring_buffer__epoll_fd(d->rb), ev, 3, timeout_ms);
+		if (n < 0 && errno != EINTR)
+			return -errno;
+		slept = p15_mono_ns() - t0;
+		if (n == 0 && timeout_ms > 0 && slept > (uint64_t)timeout_ms * 1000000ull)
+			p15_canary_oversleep(&d->canary, slept - (uint64_t)timeout_ms * 1000000ull);
+	}
 	n = take_all(d);
 	note_poll_gap(d, p15_boot_ns());
 	if (n < 0)
 		return n;
 	d->last_taken = n;
-	/* the rings count as empty for the canary only when this poll took nothing and left nothing behind */
-	p15_canary_tick(&d->canary, p15_mono_ns(), d->last_taken || d->queue_full_now);
 	n = after_poll(d);
+	/* After after_poll, so the canary judges the file counters this poll read: before it, the open
+	 * session's and the file free's runs were seen one poll late (with a 1.5 s drain pause, 1.5 s
+	 * late, which pushed case 23's only verdict past the end of its run). The rings count as empty
+	 * for the canary only when this poll took nothing and left nothing behind. */
+	p15_canary_tick(&d->canary, p15_mono_ns(), d->last_taken || d->queue_full_now);
 	if (d->queue_full_now)
 		usleep(1000);               /* the writer is behind: let it release batches (counted in q.full) */
 	return n;

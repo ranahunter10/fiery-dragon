@@ -34,6 +34,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_SELF_STATS: return version == 1 ? sizeof(struct p15_self_stats_v1) : 0;
 	case P15_T_CANARY_MISS: return version == 1 ? sizeof(struct p15_canary_miss_v1) : 0;
 	case P15_T_WAL_SPACE: return version == 1 ? sizeof(struct p15_wal_space_v1) : 0;
+	case P15_T_FLOW_RING: return version == 1 ? sizeof(struct p15_flow_ring_v1) : 0;
 	}
 	return 0;
 }
@@ -486,6 +487,7 @@ const char *p15_type_name(__u16 type)
 	case P15_T_SELF_STATS: return "SELF_STATS";
 	case P15_T_CANARY_MISS: return "CANARY_MISS";
 	case P15_T_WAL_SPACE: return "WAL_SPACE";
+	case P15_T_FLOW_RING: return "FLOW_RING";
 	case P15_T_FILE:       return "FILE";
 	case P15_T_FLOW:       return "FLOW";
 	}
@@ -628,6 +630,14 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)(r->reserve_bytes >> 20), (unsigned long long)r->spine_shed,
 				    (unsigned long long)r->fork_shed, (unsigned long long)r->exit_shed, (unsigned long long)r->bulk_shed, (unsigned long long)r->daemon_shed,
 				    (unsigned long long)r->nospace);
+	}
+	case P15_T_FLOW_RING: {
+		const struct p15_flow_ring_v1 *r = data;
+
+		return k + snprintf(buf + k, n - k, " ring_kib=%llu fill_max=%llu deferred=%llu queue_full=%llu keep=%u/%u",
+				    (unsigned long long)(r->ring_bytes >> 10), (unsigned long long)r->fill_max,
+				    (unsigned long long)r->deferred, (unsigned long long)r->queue_full, r->keep_batches,
+				    r->queue_batches);
 	}
 	case P15_T_SELF_STATS: {
 		const struct p15_self_stats_v1 *r = data;

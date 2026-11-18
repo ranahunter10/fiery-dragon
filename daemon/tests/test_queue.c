@@ -114,12 +114,37 @@ static void deadline(int sig)
 	_exit(1);   /* exit-ok: test deadline, the queue stopped moving (E-0159) */
 }
 
+/* FLOW's reserve (ADR-0051 draft): with 8 slots and keep 2, a held ring may take a new slot while
+ * 3 or more are free, and not at 2. */
+static void test_reserve(void)
+{
+	struct p15q q;
+
+	EXPECT(p15q_init(&q, 8, 64) == 0, "reserve: init");
+	for (int i = 0; i < 5; i++) {
+		EXPECT(p15q_may_take(&q, 2), "reserve: more than 2 free, a held ring may take one");
+		EXPECT(p15q_acquire(&q, 1) != NULL, "reserve: acquire");
+		p15q_publish(&q);
+	}
+	EXPECT(p15q_depth(&q) == 5 && p15q_may_take(&q, 2), "reserve: 3 free, still allowed");
+	EXPECT(p15q_acquire(&q, 1) != NULL, "reserve: the sixth");
+	p15q_publish(&q);
+	EXPECT(!p15q_may_take(&q, 2), "reserve: 2 free, the held ring must leave them");
+	EXPECT(p15q_acquire(&q, 0) != NULL, "reserve: the other rings still find a slot");
+	p15q_publish(&q);
+	EXPECT(p15q_peek(&q) != NULL, "reserve: peek");
+	p15q_release(&q);
+	EXPECT(!p15q_may_take(&q, 2) && p15q_may_take(&q, 1), "reserve: after one release, 2 free: held at keep 2, not at keep 1");
+	p15q_free(&q);
+}
+
 int main(void)
 {
 	signal(SIGALRM, deadline);
 	alarm(30);
 	test_single_thread();
 	test_two_threads();
+	test_reserve();
 	printf("%s: %d failures\n", __FILE__, failures);
 	return failures != 0;
 }

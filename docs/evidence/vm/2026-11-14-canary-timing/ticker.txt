@@ -1,0 +1,10 @@
+# /proc/sys/kernel/sched_rt_runtime_us 950000, sched_rt_period_us 1000000.
+# A 10 ms sleep loop (normal priority, ~/ticker.py) beside one p15d canary run. Pasted by the maintainer.
+try 1: p15d longest poll gap 587 ms; ticker: worst gap 945 ms; late: 0
+ticker: slept 945 ms (wanted 10) at +1.255 s
+STATS at +1.013 s: longest poll gap 368 ms
+STATS at +2.015 s: longest poll gap 520 ms
+STATS at +3.017 s: longest poll gap 587 ms
+STATS at +4.018 s: longest poll gap 414 ms
+STATS at +5.024 s: longest poll gap 468 ms
+STATS at +5.380 s: longest poll gap 331 ms

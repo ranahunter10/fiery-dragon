@@ -63,6 +63,9 @@ struct p15_loader {
 /* TEST ONLY (--test-open-end-mode, --test-open-end-tgid; bpf/include/p15_file.h P15_TEST_OPEN_*):
  * what the next p15_loader_start writes into the open session's read-only data. */
 void p15_loader_test_open_end(uint32_t mode, uint32_t tgid);
+/* FLOW's own ring (ADR-0051 draft, F-01): its size in bytes, a power of 2, before p15_loader_start.
+ * Without --flow the ring is one page whatever this says. */
+void p15_loader_flow_ring(uint32_t bytes);
 /* Returns 0, or a P15_EXIT_* code with a reason in err. */
 P15_MUST_CHECK int p15_loader_start(struct p15_loader *l, const struct p15_loader_opts *o, char *err, size_t errlen);
 /* The end of the flow programs' run, in two steps (bpf/include/p15_flow.h). Both do nothing and
@@ -91,6 +94,7 @@ int p15_loader_each_link(const struct p15_loader *l, int (*fn)(void *arg, const 
 int p15_loader_spine_rb_fd(const struct p15_loader *l);
 int p15_loader_counters_fd(const struct p15_loader *l);
 int p15_loader_bulk_rb_fd(const struct p15_loader *l);     /* -1 with --no-net and --no-files */
+int p15_loader_flow_rb_fd(const struct p15_loader *l);     /* -1 unless the flow programs are attached */
 int p15_loader_bulk_counters_fd(const struct p15_loader *l);  /* NET's counters; -1 with --no-net */
 int p15_loader_file_counters_fd(const struct p15_loader *l);  /* -1 with --no-files */
 int p15_loader_flow_counters_fd(const struct p15_loader *l);  /* data flow (ADR-0005); -1 with --no-files */

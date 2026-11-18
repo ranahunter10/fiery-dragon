@@ -1,0 +1,11 @@
+p15d exit 3 (3 expected: DEGRADED, the run went on; 4 was the old behaviour)
+p15d level=warn code=wal_space level=shed_bulk avail_mib=7 low_mib=8 reserve_mib=4
+FLOW_STATS {'read_emitted': 12912201, 'write_emitted': 12912200, 'send_emitted': 4, 'recv_emitted': 8, 'flow_lost': 0, 'file_emitted': 4, 'file_lost': 0, 'file_map_full': 0}
+FILE_STATS {'open_emitted': 38, 'open_lost': 0, 'open_full_size': 0, 'backing_emitted': 0, 'backing_lost': 0, 'missing_emitted': 0, 'missing_lost': 0, 'verdict_emitted': 0, 'verdict_lost': 0, 'close_emitted': 59, 'close_lost': 0, 'file_map_full': 0, 'obj_map_full': 0, 'ret_backing_emitted': 0, 'ret_backing_lost': 0, 'ret_backing_verdict_emitted': 0, 'ret_backing_verdict_lost': 0}
+NET_STATS {'net_emitted': 4, 'net_reserve_failed': 0, 'net_drain_lost': 0, 'bulk_fill_max': 0}
+FLOW_RING {'fill_max': 0, 'deferred': 0, 'queue_full': 0, 'keep_batches': 4}
+WAL_SPACE {'spine_shed': 0, 'bulk_shed': 25824525, 'daemon_shed': 0, 'nospace': 0, 'fork_shed': 0, 'exit_shed': 0, 'level': 2}
+END {'exit_code': 3, 'run_state': 1, 'invariant': 1, 'signal': 0, 'closing_snapshot': 1, 'reserved': 0, 'reason_full': 74, 'reason_len': 74}
+  WAL_SPACE  42
+  FLOW_RING  41
+END: exit 3, state 1, invariant 1, signal 0, reason "the WAL's disk is low (7 MiB free): bulk records shed (--wal-space-low-mb)", closing snapshot 1

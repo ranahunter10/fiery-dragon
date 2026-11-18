@@ -264,6 +264,82 @@ static void test_stall(void)
 	EXPECT(c.pid == 0 && MISSED() == 1, "a gap under the stall bound does not restart the deadline");
 }
 
+/* The drain's wait came back late (the VM did not run the thread when its timer fired, E-0316):
+ * that time moves the deadline, so the canary is not late; the excuse is counted stalled once. A
+ * drain slow in its own work reports no oversleep and stays late (test_late). */
+static void test_oversleep(void)
+{
+	struct p15_canary_state c;
+	uint64_t t = 110 * S, stalled0;
+
+	start(&c, 10, 0, 0);
+	stalled0 = atomic_load(&run.canary_stalled);
+	p15_canary_tick(&c, t, 0);
+	p15_canary_oversleep(&c, 300 * MS);
+	p15_canary_oversleep(&c, 300 * MS);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 1500 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 0 && RUNS() == 1, "seen 1.5 s after the start, 600 ms of it the drain's oversleep: in time");
+	EXPECT(atomic_load(&run.canary_stalled) == stalled0 + 1, "the excuse is counted stalled, once per canary");
+
+	start(&c, 10, 0, 0);
+	p15_canary_tick(&c, t, 0);
+	p15_canary_oversleep(&c, 20 * MS);   /* at the bound: timer jitter, not excused */
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 1010 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 1, "an oversleep of 20 ms is not excused: 10 ms late");
+
+	start(&c, 10, 0, 0);
+	p15_canary_oversleep(&c, 900 * MS);  /* no canary in flight: nothing to move */
+	p15_canary_tick(&c, t, 0);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 1200 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 1, "an oversleep before the canary started does not move its deadline");
+
+	/* every wait oversleeps (the VM, E-0318) and the EXEC never comes: the miss is still judged at
+	 * the unmoved deadline, not pushed away poll after poll */
+	start(&c, 10, 0, 0);
+	p15_canary_tick(&c, t, 0);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	for (unsigned i = 1; i <= 12; i++) {
+		p15_canary_oversleep(&c, 250 * MS);
+		p15_canary_tick(&c, t + i * 100 * MS, 0);
+	}
+	EXPECT(c.pid == 0 && MISSED() == 1 && LATE() == 0 && BAD(kind) == P15_CANARY_MISS_KIND_RECORD && BAD(seen) == 5,
+	       "chronic oversleep: the missing EXEC is still a miss, judged at the first empty poll after 1 s");
+}
+
+/* case 23 on the VM (E-0319): a 3 s deliberate pause that wakes 2.5 s late. The pause is the stuck
+ * drain the case stages, so the canary is late; the gap is not a guest stall (the deliberate part
+ * does not count toward the 5 s bound), and the overshoot is excused. */
+static void test_paused(void)
+{
+	struct p15_canary_state c;
+	uint64_t t = 110 * S;
+
+	start(&c, 10, 0, 0);
+	p15_canary_tick(&c, t, 0);
+	p15_canary_paused(&c, 3000 * MS, 2500 * MS);
+	see(&c, P15_T_FORK, PID);
+	see(&c, P15_T_EXEC, PID);
+	see(&c, P15_T_EXIT, PID);
+	reap_ready = 1;
+	p15_canary_tick(&c, t + 5600 * MS, 1);
+	EXPECT(c.pid == 0 && LATE() == 1 && BAD(late_ms) == 2100,
+	       "a 3 s pause woken 2.5 s late: late by 2.1 s (5.6 s less the 1 s deadline and the 2.5 s overshoot), not a stall");
+}
+
 static void test_exec_failed(void)
 {
 	struct p15_canary_state c;
@@ -371,6 +447,8 @@ int main(void)
 	test_miss();
 	test_polls_needed();
 	test_stall();
+	test_oversleep();
+	test_paused();
 	test_exec_failed();
 	test_never_reaped();
 	test_blind();

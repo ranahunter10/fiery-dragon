@@ -59,7 +59,7 @@ int main(void)
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--textfile", "/tmp/p.prom") == 0 && !strcmp(c.textfile, "/tmp/p.prom"), "--textfile");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--duration", "5") == 0 && c.duration_s == 5, "--duration");
 	n = p15_config_meta(&c, kv, vals, 48);
-	EXPECT(n == 34, "every setting echoed");
+	EXPECT(n == 36, "every setting echoed");
 	EXPECT(!strcmp(kv[22].key, "config.canary_s") && !strcmp(kv[22].value, "0") &&
 	       !strcmp(kv[23].key, "config.test_canary_blind") && !strcmp(kv[23].value, "0") &&
 	       !strcmp(kv[24].key, "config.test_link_close") && !strcmp(kv[24].value, "0") &&
@@ -72,8 +72,10 @@ int main(void)
 	       "the end's wait and its two test switches echoed, with their defaults");
 	EXPECT(!strcmp(kv[25].key, "config.wal_space_low_mb") && !strcmp(kv[25].value, "0") &&
 	       !strcmp(kv[26].key, "config.wal_space_reserve_mb") && !strcmp(kv[26].value, "0") &&
-	       !strcmp(kv[27].key, "config.wal_space_guard") && !strcmp(kv[27].value, "1"),
-	       "the free-space guard's settings echoed: auto sizes, guard on (F-02)");
+	       !strcmp(kv[27].key, "config.wal_space_guard") && !strcmp(kv[27].value, "1") &&
+	       !strcmp(kv[28].key, "config.flow_ring_kb") && !strcmp(kv[28].value, "4096") &&
+	       !strcmp(kv[29].key, "config.flow_keep_batches") && !strcmp(kv[29].value, "0"),
+	       "the free-space guard's settings echoed: auto sizes, guard on (F-02); the flow ring's (F-01)");
 	EXPECT(!strcmp(kv[16].key, "config.poll_max_ms") && !strcmp(kv[16].value, "200"), "the poll maximum echoed, its default 200 (ADR-0030)");
 	EXPECT(!strcmp(kv[0].key, "config.duration_s") && !strcmp(kv[0].value, "5"), "echo carries the value");
 	EXPECT(!strcmp(kv[10].key, "config.file_map_entries") && !strcmp(kv[10].value, "0") &&
@@ -88,6 +90,14 @@ int main(void)
 	EXPECT(p15_file_map_auto(5000000, 1ull << 40) == 4194304, "never more than the option's maximum");
 	EXPECT(p15_file_map_auto(UINT32_MAX, UINT64_MAX) == 4194304, "no overflow at the extremes");
 	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--file-map-entries", "0") != 0, "0 cannot be asked for: it only means 'not given'");
+	/* FLOW's batch reserve (ADR-0051 draft, F-01) */
+	EXPECT(parse(&c, err, 2, "--wal-dir", "/tmp/x") == 0 && p15_flow_keep(&c) == 4, "the reserve: a quarter of 16 batches");
+	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--queue-batches", "5") == 0 && p15_flow_keep(&c) == 1,
+	       "the reserve of 5 batches: 1 (a quarter, rounded down)");
+	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--flow-keep-batches", "7") == 0 && p15_flow_keep(&c) == 7, "the reserve as given");
+	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--flow-keep-batches", "16") != 0 && strstr(err, "--flow-keep-batches"),
+	       "a reserve of every batch is refused: FLOW would never be written");
+	EXPECT(parse(&c, err, 4, "--wal-dir", "/tmp/x", "--flow-ring-kb", "100") != 0, "the flow ring must be a power of 2");
 	EXPECT(!strcmp(kv[n - 6].key, "config.realtime") && !strcmp(kv[n - 6].value, "yes"), "realtime echoed");
 	EXPECT(!strcmp(kv[n - 5].key, "config.net") && !strcmp(kv[n - 5].value, "yes"), "net echoed");
 	EXPECT(!strcmp(kv[n - 4].key, "config.files") && !strcmp(kv[n - 4].value, "yes"), "files echoed");

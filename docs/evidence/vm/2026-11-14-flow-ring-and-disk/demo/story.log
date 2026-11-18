@@ -1,0 +1,13 @@
+14:07:08.248 p15d: start (30 s, network capture on)
+14:07:12.774 1. listener on 4444: nc pid 1959
+14:07:12.781 2. web app on 8080: pid 1963
+14:07:12.833 2b. stager on 8000: pid 1970 (serves k, a copy of id, and s2)
+14:07:14.125 3. curl /: done
+14:07:15.116 3. curl /about: done
+14:07:15.646 3. curl /lookup?name=localhost: done
+14:07:17.597 4. injected request sent: the app's shell ran nc to 4444, then the dropper and stage 2 from 8000
+14:07:18.851 5. scan of port 4441: refused, as expected
+14:07:18.865 5. scan of port 4442: refused, as expected
+14:07:18.880 5. scan of port 4443: refused, as expected
+14:07:19.964 p15d: waiting for the end of its 30 s
+14:07:44.238 p15d: exit 0

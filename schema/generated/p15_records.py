@@ -12,7 +12,7 @@ import numpy as np
 
 HEADER_SIZE = 32
 LEN_UNKNOWN = 0xFFFFFFFF
-SCHEMA_HASH = "7751fd894c109c253dd83d9b461a835dc405fac8801cb6424c559437306611d4"   # the WAL header's schema.hash (ADR-0007)
+SCHEMA_HASH = "c235507de7ad639dea0e0d0f5b9e02df5f5117bd850090ba9150e7c563631411"   # the WAL header's schema.hash (ADR-0007)
 
 F_TRUNCATED = 1 << 0
 F_READ_FAILED = 1 << 1
@@ -101,6 +101,7 @@ TYPES = {
     'SELF_STATS': 42,
     'CANARY_MISS': 43,
     'WAL_SPACE': 44,
+    'FLOW_RING': 45,
 }
 
 RECORDS = {
@@ -203,6 +204,9 @@ RECORDS = {
     (44, 1): Layout('WAL_SPACE', 44, 1, 'STATS',
         np.dtype({'names': ['h', 'avail_bytes', 'total_bytes', 'low_bytes', 'reserve_bytes', 'spine_shed', 'bulk_shed', 'daemon_shed', 'nospace', 'refresh_errors', 'fork_shed', 'exit_shed', 'level', 'transitions'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 124], 'itemsize': 128}),
         128, 128, ()),
+    (45, 1): Layout('FLOW_RING', 45, 1, 'STATS',
+        np.dtype({'names': ['h', 'ring_bytes', 'fill_max', 'deferred', 'queue_full', 'keep_batches', 'queue_batches'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u4', '<u4'], 'offsets': [0, 32, 40, 48, 56, 64, 68], 'itemsize': 72}),
+        72, 72, ()),
     (10, 1): Layout('FLOW', 10, 1, 'FLOW',
         np.dtype({'names': ['h', 'fid', 'obj', 'first_ts', 'last_ts', 'bytes', 'count', 'fflags', 'kind', 'reason', 'facts_full', 'facts_len', '_pad'], 'formats': [HEADER_DTYPE, '<u8', '<u8', '<u8', '<u8', '<u8', '<u4', '<u4', '<u2', '<u2', '<u4', '<u2', 'S6'], 'offsets': [0, 32, 40, 48, 56, 64, 72, 76, 80, 82, 84, 88, 90], 'itemsize': 96}),
         96, 136, (('facts', 40),), (('facts', 'OBJFACTS'),)),
@@ -894,6 +898,22 @@ SQL_COLUMNS = {
         ('exit_shed', 'UBIGINT'),
         ('level', 'UINTEGER'),
         ('transitions', 'UINTEGER'),
+    ),
+    'FLOW_RING': (
+        ('ring', 'UTINYINT'),
+        ('seq', 'UBIGINT'),
+        ('version', 'USMALLINT'),
+        ('flags', 'USMALLINT'),
+        ('ts_ns', 'UBIGINT'),
+        ('tgid', 'UINTEGER'),
+        ('tid', 'UINTEGER'),
+        ('start_ns', 'UBIGINT'),
+        ('ring_bytes', 'UBIGINT'),
+        ('fill_max', 'UBIGINT'),
+        ('deferred', 'UBIGINT'),
+        ('queue_full', 'UBIGINT'),
+        ('keep_batches', 'UINTEGER'),
+        ('queue_batches', 'UINTEGER'),
     ),
     'FLOW': (
         ('ring', 'UTINYINT'),

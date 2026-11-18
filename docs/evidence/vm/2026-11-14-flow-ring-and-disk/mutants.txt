@@ -1,0 +1,48 @@
+baseline: the unit tests pass in 1 s; a mutant gets 120 s
+baseline: the end-to-end test fail on the unmutated tree (exit 1 after 297 s); no mutant was run
+  FAIL exit 0, WAL valid, RUNNING (p15d 3, inspect 0)
+  FAIL at least two canaries got a verdict, none missed, none late, no CANARY_MISS record
+  FAIL exit 3 (DEGRADED), WAL valid, nothing lost (p15d 0)
+  FAIL counted late, not missed, with a CANARY_MISS record of kind LATE ()
+  FAIL exit 3 (DEGRADED by the lost FLOWs), WAL valid in both readers, books closed (rc 0)
+  FAIL the flood overflowed FLOW's ring: FLOWs lost and counted (0)
+it_p15d: FAIL (6 failed checks)
+shed all), last 1; shed spine 1220, bulk 3157; refused batches 0; /bin/true after the space came back: 100
+  ok   exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 3)
+  ok   WAL_SPACE records the levels in order: shed bulk, shed all, then ok again (2,3,1)
+  ok   spine records were shed at the reserve (1220), and the disk never had to refuse a batch
+  ok   after the space came back every exec is written again (100 of the last 100)
+  ok   the shed FORKs (306) and EXITs (306) are counted by type, within the spine's shed (1220)
+  ok   the reader's process-tree check counts the shed FORKs and EXITs as losses, so it is not INVALID (repaired)
+  ok   the log says so, and END's reason names the low disk
+case 29: the guard off, the disk really full: a refused batch is taken back, the WAL stays valid, p15d goes on (F-02) [t+267s]
+  refused batches 321; shed spine 2410; /bin/true after the space came back: 100
+  ok   exit 3 (DEGRADED), not INVALID; the WAL scans whole in both readers; books closed (p15d 3)
+  ok   the disk refused batches (321) and their spine records are counted shed (2410)
+  ok   after the space came back p15d writes again (100 of the last 100)
+case 30: a flood of one-byte transfers beside a process that opens files and connects: only FLOWs are lost (F-01, ADR-0051 draft) [t+279s]
+  victim 9504: OPEN 300 of 300, CLOSE 300, CONNECT 30 of 30; FLOW lost 0; identity lost 0, NET lost 0; FLOW ring: fill max 52832 bytes, deferred 1593 polls, keep 4 batches
+  FAIL exit 3 (DEGRADED by the lost FLOWs), WAL valid in both readers, books closed (rc 0)
+  FAIL the flood overflowed FLOW's ring: FLOWs lost and counted (0)
+  ok   no identity or NET record was lost: they are on the bulk ring, which the flood does not touch
+  ok   the victim's 300 OPENs, their 300 CLOSEs and its 30 connects are all in the WAL
+  ok   FLOW_RING says the ring filled (52832 bytes at most) and how many batches FLOW leaves free (4)
+  ok   the drain left FLOWs in their ring to keep batches free for the other rings (1593 polls)
+case 4: a bad flag [t+297s]
+  ok   exit 64 (usage)
+it_p15d: FAIL (6 failed checks)
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+  ok   the Python reader's counts equal p15w-inspect's (c5)
+  ok   the Python reader's counts equal p15w-inspect's (c6)
+  ok   the Python reader's counts equal p15w-inspect's (c8)
+  ok   the Python reader's counts equal p15w-inspect's (c9)
+  ok   the Python reader's counts equal p15w-inspect's (c13)
+  ok   the Python reader's counts equal p15w-inspect's (c14)
+  ok   the Python reader's counts equal p15w-inspect's (c16)
+  ok   the Python reader's counts equal p15w-inspect's (c17)
+  ok   the Python reader's counts equal p15w-inspect's (c18)
+  ok   the Python reader's counts equal p15w-inspect's (c19)
+  ok   the Python reader's counts equal p15w-inspect's (c30)
+

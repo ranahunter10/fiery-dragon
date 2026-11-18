@@ -19,9 +19,10 @@
 #include "compiler.h"
 
 /* Returns the number of failed checks, or -errno if the test could not be run. The records it took
- * from the shared bulk ring, anyone's: FLOW and FILE in *flow_consumed, file identity (OPEN,
- * OPEN_VERDICT, BACKING, CLOSE) in *file_consumed, the rest (NET) in *net_consumed. */
-P15_MUST_CHECK int p15_selftest_flow(int bulk_rb_fd, int lost_first, FILE *log, unsigned long long *flow_consumed,
+ * from the bulk ring and the flow ring (FLOW's own, ADR-0051 draft), anyone's: FLOW and FILE in
+ * *flow_consumed, file identity (OPEN, OPEN_VERDICT, BACKING, CLOSE) in *file_consumed, the rest
+ * (NET) in *net_consumed. */
+P15_MUST_CHECK int p15_selftest_flow(int bulk_rb_fd, int flow_rb_fd, int lost_first, FILE *log, unsigned long long *flow_consumed,
 				     unsigned long long *file_consumed, unsigned long long *net_consumed);
 
 #endif

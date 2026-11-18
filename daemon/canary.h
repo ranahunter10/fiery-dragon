@@ -22,6 +22,9 @@
  *         last of them finding the rings empty, and something wanted has not been seen.
  * A poll that comes more than P15_CANARY_STALL_NS after the previous one means the guest was not
  * scheduled (E-0250): the deadline starts again from that poll, and the canary is counted stalled.
+ * A drain wait that returns more than P15_CANARY_OVERSLEEP_NS after its timeout moves the deadline
+ * by the overshoot (p15_canary_oversleep), also counted stalled: on the VM such waits came back up
+ * to 1 s late while p15d did nothing slow (E-0316).
  * A canary still in flight when the run stops gets no verdict and is counted unfinished.
  *
  * Everything here runs on the drain thread. The writer reads the result through p15_run's
@@ -50,6 +53,9 @@
 #define P15_CANARY_DEADLINE_NS 1000000000ull   /* ADR-0019 G4.4: the records arrive within 1 s */
 #define P15_CANARY_POLLS 3
 #define P15_CANARY_STALL_NS 5000000000ull
+/* A drain wait that returned more than this after its timeout was the scheduler's (or the host's)
+ * delay, not the pipeline's: the canary's deadline moves by the whole overshoot (E-0316). */
+#define P15_CANARY_OVERSLEEP_NS 20000000ull
 
 struct p15_canary_state {
 	struct p15_run *run;
@@ -60,11 +66,14 @@ struct p15_canary_state {
 	/* the canary in flight */
 	pid_t pid;                  /* 0: none */
 	unsigned seen, cur_want;
-	uint64_t spawn_boot_ns, spawn_ns, deadline_ns, last_poll_ns;
+	uint64_t spawn_boot_ns, spawn_ns, last_poll_ns;
+	uint64_t deadline_ns;       /* for LATE: start + 1 s, moved by the drain's oversleep (p15_canary_oversleep) */
+	uint64_t miss_deadline_ns;  /* for MISS: start + 1 s, never moved by oversleep, so a miss is always judged */
 	uint64_t all_seen_ns;       /* when the last wanted thing was seen (monotonic); 0: not yet */
 	uint64_t base_session, base_free;   /* the two run counters when it started */
 	unsigned polls;
 	int reaped;
+	int excused;                /* its deadline was moved for the drain's oversleep (counted stalled once) */
 	uint64_t next_ns;           /* when the next one starts (monotonic) */
 	uint64_t n;                 /* canaries started, for the nonce */
 	/* injected for the unit test; NULL means the real ones */
@@ -81,6 +90,16 @@ void p15_canary_see(struct p15_canary_state *c, const struct p15_hdr *h);
 /* After each poll: start a canary when one is due, reap it, take its verdict. took: records the
  * poll took from the rings. */
 void p15_canary_tick(struct p15_canary_state *c, uint64_t now_mono_ns, int took);
+/* The drain's wait returned `over_ns` after its timeout: the thread was not run when its timer fired.
+ * On the VM such waits came back up to 1 s late while p15d itself did nothing slow (bpftrace, E-0316):
+ * that time is not the pipeline's, so a canary in flight gets it added to its deadline. A drain that
+ * is slow in its own work (case 23's pause, a blocked writer) is outside the wait and is not excused. */
+void p15_canary_oversleep(struct p15_canary_state *c, uint64_t over_ns);
+/* TEST ONLY (--test-drain-pause-ms): the drain slept `want_ns` on purpose and `over_ns` more. The
+ * pause is a stuck drain, so it counts against the canary; but it is not the guest standing still,
+ * so it does not count toward P15_CANARY_STALL_NS; the overshoot is excused like a wait's. On the
+ * VM a 3 s pause plus a late wake-up passed the 5 s stall bound and cancelled case 23's lateness. */
+void p15_canary_paused(struct p15_canary_state *c, uint64_t want_ns, uint64_t over_ns);
 /* The run is ending: no new canary; one in flight gets no verdict (counted unfinished). */
 void p15_canary_stop(struct p15_canary_state *c);
 

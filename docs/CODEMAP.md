@@ -78,6 +78,12 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`summarize.py`](../bench/open_sections/summarize.py) | Summarize open_sections output (bench/open_sections/open_sections.c). | `ParseError`, `parse`, `single`, `contend`, `report` |
 | [`test_summarize.py`](../bench/open_sections/test_summarize.py) | Tests for the open_sections report (bench/open_sections/summarize.py). | `single`, `contend`, `Single`, `Contend` |
 
+## bench/p15d_path
+
+| File | Job | Public names |
+|---|---|---|
+| [`p15d_path.c`](../bench/p15d_path/p15d_path.c) | what each step of p15d's user-space path costs per record, without the kernel. |  |
+
 ## bench/path_walk
 
 | File | Job | Public names |
@@ -199,20 +205,20 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`barrier.c`](../daemon/barrier.c) | See barrier.h. | `p15_barrier` |
 | [`barrier.h`](../daemon/barrier.h) | A grace-period barrier from user space (docs/research/2026-11-13-detach-fault-design.md §3.1). | `p15_barrier` |
-| [`canary.c`](../daemon/canary.c) | See canary.h. | `p15_canary_see`, `p15_canary_tick`, `p15_canary_stop` |
-| [`canary.h`](../daemon/canary.h) | a continuous self-test (ADR-0019 G4.4; docs/research/2026-11-14-canary-and-self-check.md). | `p15_canary_see`, `p15_canary_tick`, `p15_canary_stop` |
+| [`canary.c`](../daemon/canary.c) | See canary.h. | `p15_canary_see`, `p15_canary_tick`, `p15_canary_oversleep`, `p15_canary_paused`, `p15_canary_stop` |
+| [`canary.h`](../daemon/canary.h) | a continuous self-test (ADR-0019 G4.4; docs/research/2026-11-14-canary-and-self-check.md). | `p15_canary_see`, `p15_canary_tick`, `p15_canary_oversleep`, `p15_canary_paused`, `p15_canary_stop` |
 | [`compiler.h`](../daemon/compiler.h) | Compiler attributes shared by the daemon (ADR-0019 G2). |  |
-| [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_file_map_auto`, `p15_config_meta` |
-| [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_file_map_auto`, `p15_config_meta`, `p15_config_usage` |
+| [`config.c`](../daemon/config.c) | Strict command-line configuration for p15d (ADR-0019 G1). | `p15_config_usage`, `p15_config_parse`, `p15_flow_keep`, `p15_file_map_auto`, `p15_config_meta` |
+| [`config.h`](../daemon/config.h) | p15d's configuration: command-line flags only, parsed strictly (ADR-0019 G1). | `p15_config_parse`, `p15_flow_keep`, `p15_file_map_auto`, `p15_config_meta`, `p15_config_usage` |
 | [`counters.c`](../daemon/counters.c) | (no header comment) | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum_rows`, `p15_counters_sum` |
 | [`counters.h`](../daemon/counters.h) | The BPF loss counters, read without a bpf() map call (ADR-0026). | `p15_counters_configure`, `p15_counters_verify`, `p15_counters_map`, `p15_counters_unmap`, `p15_counters_sum`, `p15_counters_sum_rows` |
 | [`crc32c.c`](../daemon/crc32c.c) | CRC32C (Castagnoli). | `p15_crc32c_table`, `p15_crc32c`, `p15_crc32c_impl` |
 | [`crc32c.h`](../daemon/crc32c.h) | CRC32C (Castagnoli, CRC-32/ISCSI): the checksum of WAL batches (docs/formats/p15w-v1.md). | `p15_crc32c`, `p15_crc32c_table`, `p15_crc32c_impl` |
-| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish` |
-| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_free`, `p15_drain_room`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
+| [`drain.c`](../daemon/drain.c) | The drain thread's work (ADR-0006 rule 4, ADR-0017 layers 2-4). | `p15_daemon_hdr`, `p15_drain_room`, `p15_drain_free`, `p15_drain_add_flow`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish` |
+| [`drain.h`](../daemon/drain.h) | The drain (ADR-0006 rule 4, ADR-0017 layers 2-4): waits on the BPF rings, makes room in a queue batch, reads no more records than fit, checks each and copies it at its own len, ... | `p15_drain_add_flow`, `p15_drain_free`, `p15_drain_room`, `p15_poll_next`, `p15_drain_poll`, `p15_drain_finish`, `p15_daemon_hdr` |
 | [`exitcodes.h`](../daemon/exitcodes.h) | The daemon's exit codes: the only values p15d may exit with (ADR-0019 G2.2). |  |
-| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_test_open_end`, `p15_loader_start`, `p15_loader_flow_gate`, `p15_loader_flow_count`, `p15_loader_file_gate`, `p15_loader_file_count`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd` |
-| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_test_open_end`, `p15_loader_start`, `p15_loader_flow_gate`, `p15_loader_flow_count`, `p15_loader_file_gate`, `p15_loader_file_count`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd`, `p15_loader_bulk_counters_fd` (+2) |
+| [`loader.c`](../daemon/loader.c) | Loading the spine programs and the self-test (ADR-0003). | `p15_loader_flow_ring`, `p15_loader_test_open_end`, `p15_loader_start`, `p15_loader_flow_gate`, `p15_loader_flow_count`, `p15_loader_file_gate`, `p15_loader_file_count`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_bulk_rb_fd`, `p15_loader_flow_rb_fd` |
+| [`loader.h`](../daemon/loader.h) | Open, size, load and attach the BPF programs, then run the load-time self-test (ADR-0003). | `p15_loader_test_open_end`, `p15_loader_flow_ring`, `p15_loader_start`, `p15_loader_flow_gate`, `p15_loader_flow_count`, `p15_loader_file_gate`, `p15_loader_file_count`, `p15_loader_detach`, `p15_loader_free`, `p15_loader_spine_rb_fd`, `p15_loader_counters_fd`, `p15_loader_bulk_rb_fd` (+4) |
 | [`p15_spine.c`](../daemon/p15_spine.c) | load and attach the spine programs (ADR-0003), then p15-spine selftest run the load-time self-test once; exit 0 only if it passes p15-spine dump SECONDS run the self-test, then ... |  |
 | [`p15d.c`](../daemon/p15d.c) | the capture daemon (Phase 1 step 4b; ADR-0006, 0007, 0017, 0019). |  |
 | [`p15w_inspect.c`](../daemon/p15w_inspect.c) | check and summarise a P15W run directory or segment files (ADR-0007 "tools/wal-inspect"). |  |
@@ -248,7 +254,7 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 |---|---|---|
 | [`it_flow_open.py`](../daemon/tests/it_flow_open.py) | vfs calls still open when the flow programs detach (bpf/include/p15_flow.h; docs/research/2026-11-13-detach-fault-design.md). | `child`, `hold`, `check` |
 | [`it_open_end.py`](../daemon/tests/it_open_end.py) | opens in flight when the open path's session detaches (bpf/include/p15_file.h; docs/research/2026-11-14-open-session-end-count.md). | `hold`, `check` |
-| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `started`, `true_execs`, `skips`, `recon`, `pid1`, `qstat` (+7) |
+| [`it_p15d.sh`](../daemon/tests/it_p15d.sh) | End-to-end test of p15d (root): real BPF programs, real WAL, checked by p15w-inspect and by the Python reader. | `ok`, `bad`, `check`, `counts`, `inspect`, `storm`, `stopwait`, `started`, `true_execs`, `skips`, `recon`, `pid1` (+10) |
 | [`it_provenance.py`](../daemon/tests/it_provenance.py) | code provenance in a real run (ADR-0025 confirmation 2). | `kdev`, `ident`, `workload`, `check` |
 | [`mutate_p15d.py`](../daemon/tests/mutate_p15d.py) | Mutation sweep for p15d's modules (CONTRIBUTING §6): queue, config, drain, writer, run, counters, startup. |  |
 | [`mutate_records.py`](../daemon/tests/mutate_records.py) | Mutation sweep for the record checks and formatting, daemon/records.c (CONTRIBUTING §6). |  |

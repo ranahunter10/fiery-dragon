@@ -1,0 +1,38 @@
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fd-vm/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_canary.c daemon/canary.c daemon/run.c daemon/queue.c /home/ashu/fd-vm/build/libbpf/libbpf.a -lelf -lz -lpthread -o build/test_canary
+cc -O2 -g -std=gnu11 -Wall -Wextra -Wshadow -Wformat=2 -Wvla -Wstrict-prototypes -Wmissing-prototypes -Werror -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fcf-protection -fPIE -I/home/ashu/fd-vm/build/libbpf -Ibuild -Ischema/generated -Ibpf/include -Idaemon -pie -Wl,-z,relro,-z,now daemon/tests/test_space.c daemon/space.c -o build/test_space
+ok    ignoring a P15_MUST_CHECK result fails the build (cc)
+build/test_selftest
+daemon/tests/test_selftest.c: 0 failures
+build/test_wal
+crc32c implementation: sse4.2
+daemon/tests/test_wal.c: 0 failures
+build/test_exitcodes
+daemon/tests/test_exitcodes.c: 0 failures
+build/test_records
+daemon/tests/test_records.c: 0 failures
+build/test_queue
+two threads: 200000 items, queue full 708072 times, depth max 8
+daemon/tests/test_queue.c: 0 failures
+build/test_config
+daemon/tests/test_config.c: 0 failures
+build/test_run
+daemon/tests/test_run.c: 0 failures
+build/test_snapshot
+daemon/tests/test_snapshot.c: 0 failures
+build/test_counters
+daemon/tests/test_counters.c: 0 failures
+build/test_canary
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records late, mask 0x7 of 0x7, 500 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records missing, mask 0x2 of 0x7, 100 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records missing, mask 0x7 of 0x7, 1002 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records missing, mask 0x7 of 0x7, 4001 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records late, mask 0x7 of 0x7, 10 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records late, mask 0x7 of 0x7, 200 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records missing, mask 0x2 of 0x7, 0 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records late, mask 0x7 of 0x7, 2100 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records missing, mask 0x4 of 0x7, 10000 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=error code=canary_miss msg="canary 1 (pid 4242): records missing, mask 0x2 of 0x7, 0 ms after its deadline (1 FORK, 2 EXEC, 4 EXIT, 8 OPEN, 16 FLOW, 32 open session ran, 64 file free ran)"
+p15d level=warn code=canary_spawn msg="the canary could not be started: no error number given"
+test_canary: all passed
+build/test_space
+daemon/tests/test_space.c: 0 failures

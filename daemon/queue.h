@@ -54,6 +54,12 @@ P15_MUST_CHECK int p15q_wait(struct p15q *q, int timeout_ms);
 
 /* Published slots not yet released. */
 uint32_t p15q_depth(struct p15q *q);
+/* Producer: whether a ring held to a reserve (FLOW's, ADR-0051 draft) may take a new batch: only
+ * while more than `keep` slots are free, so the other rings always find one. */
+static inline int p15q_may_take(struct p15q *q, uint32_t keep)
+{
+	return q->n - p15q_depth(q) > keep;
+}
 /* Wake the consumer without publishing (e.g. to make it see a stop request). */
 void p15q_kick(struct p15q *q);
 

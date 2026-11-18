@@ -46,6 +46,18 @@ struct {
 
 const volatile __u64 file_wake_bytes = 1 << 20;   /* the ring's high-water mark (ADR-0020 rule 2) */
 
+/* The data-flow ring (ADR-0051, draft; the design review's F-01): FLOW records only, 4 MiB by
+ * default, sized by the loader. Identity (OPEN, CLOSE, FILE, FD, BACKING, OPEN_VERDICT) and NET
+ * stay on the bulk ring, so a process that floods transfers fills this ring and loses FLOWs, never
+ * another process's identity or network records. p15d drains it last and never into its last
+ * free batches. */
+struct {
+	__uint(type, BPF_MAP_TYPE_RINGBUF);
+	__uint(max_entries, 4 << 20);
+} flow_rb SEC(".maps");
+
+const volatile __u64 flow_wake_bytes = 1 << 20;   /* its high-water mark (ADR-0020 rule 2) */
+
 /* The identity counters (ADR-0026 rows, named slots: p15_file.h). */
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -178,6 +190,12 @@ static __always_inline __u64 new_id(void)
 static __always_inline __u64 wake(void)
 {
 	return bpf_ringbuf_query(&bulk_rb, BPF_RB_AVAIL_DATA) > file_wake_bytes ? BPF_RB_FORCE_WAKEUP
+										: BPF_RB_NO_WAKEUP;
+}
+
+static __always_inline __u64 flow_wake(void)
+{
+	return bpf_ringbuf_query(&flow_rb, BPF_RB_AVAIL_DATA) > flow_wake_bytes ? BPF_RB_FORCE_WAKEUP
 										: BPF_RB_NO_WAKEUP;
 }
 
@@ -1068,7 +1086,7 @@ static __always_inline void emit_flow(struct file *file, struct inode *inode, __
 
 			if (!bpf_map_delete_elem(&files, &key))
 				count_add(P15_FC_FILES_LIVE, (__u64)-1);
-			r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
+			r = bpf_ringbuf_reserve(&flow_rb, sizeof(*r), 0);
 			if (!r) {
 				flow_count(P15_FLC_FLOW_LOST);
 				return;
@@ -1086,7 +1104,7 @@ static __always_inline void emit_flow(struct file *file, struct inode *inode, __
 
 	if (!fe) {
 		/* the files map is full: one FLOW, UNREGISTERED, carrying the facts (ADR-0015 rule 9) */
-		r = bpf_ringbuf_reserve(&bulk_rb, P15_FLOW_MAX_SIZE, 0);
+		r = bpf_ringbuf_reserve(&flow_rb, P15_FLOW_MAX_SIZE, 0);
 		if (!r) {
 			flow_count(P15_FLC_FLOW_LOST);
 			return;
@@ -1108,7 +1126,7 @@ static __always_inline void emit_flow(struct file *file, struct inode *inode, __
 		flow_count(P15_FLC_UNREGISTERED);
 		goto fill;
 	}
-	r = bpf_ringbuf_reserve(&bulk_rb, sizeof(*r), 0);
+	r = bpf_ringbuf_reserve(&flow_rb, sizeof(*r), 0);
 	if (!r) {
 		flow_count(P15_FLC_FLOW_LOST);
 		return;
@@ -1128,7 +1146,7 @@ fill:
 	r->kind = kind;
 	if (extra & P15_FF_START_UNKNOWN)
 		flow_count(P15_FLC_START_UNKNOWN);
-	bpf_ringbuf_submit(r, wake());
+	bpf_ringbuf_submit(r, flow_wake());
 	flow_count(flow_emit_slot[kind]);
 }
 

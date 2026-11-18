@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "7751fd894c109c253dd83d9b461a835dc405fac8801cb6424c559437306611d4"
+#define P15_SCHEMA_HASH "c235507de7ad639dea0e0d0f5b9e02df5f5117bd850090ba9150e7c563631411"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -94,6 +94,7 @@ enum p15_type {
 	P15_T_SELF_STATS = 42,
 	P15_T_CANARY_MISS = 43,
 	P15_T_WAL_SPACE = 44,
+	P15_T_FLOW_RING = 45,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -1744,6 +1745,27 @@ P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, transitions) == 124, "p15_wal_s
 
 #define P15_WAL_SPACE_V1_MAX_SIZE 128
 
+/* FLOW_RING v1 (STATS): FLOW's own kernel ring (ADR-0051 draft; the design review's F-01), written with every FLOW_STATS while the flow programs are attached. FLOWs go to this ring and identity and NET stay on the bulk ring, so a flood of transfers loses FLOWs (flow_lost in FLOW_STATS), not other records. p15d drains this ring last and never into its last keep_batches free batches; a poll that left FLOWs waiting for that reason counts in deferred. In the WAL, FLOW records are on the bulk ring as before. */
+struct p15_flow_ring_v1 {
+	struct p15_hdr h;
+	__u64 ring_bytes;
+	__u64 fill_max;
+	__u64 deferred;
+	__u64 queue_full;
+	__u32 keep_batches;
+	__u32 queue_batches;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_flow_ring_v1) == 72, "p15_flow_ring_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, h) == 0, "p15_flow_ring_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, ring_bytes) == 32, "p15_flow_ring_v1.ring_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, fill_max) == 40, "p15_flow_ring_v1.fill_max offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, deferred) == 48, "p15_flow_ring_v1.deferred offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, queue_full) == 56, "p15_flow_ring_v1.queue_full offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, keep_batches) == 64, "p15_flow_ring_v1.keep_batches offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_flow_ring_v1, queue_batches) == 68, "p15_flow_ring_v1.queue_batches offset");
+
+#define P15_FLOW_RING_V1_MAX_SIZE 72
+
 /* FLOW v1 (FLOW): Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here. */
 struct p15_flow_v1 {
 	struct p15_hdr h;
@@ -1862,6 +1884,9 @@ P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, _pad) == 90, "p15_flow_v1._pad offse
 #define P15_WAL_SPACE_VERSION 1
 #define p15_wal_space p15_wal_space_v1
 #define P15_WAL_SPACE_MAX_SIZE P15_WAL_SPACE_V1_MAX_SIZE
+#define P15_FLOW_RING_VERSION 1
+#define p15_flow_ring p15_flow_ring_v1
+#define P15_FLOW_RING_MAX_SIZE P15_FLOW_RING_V1_MAX_SIZE
 #define P15_FLOW_VERSION 1
 #define p15_flow p15_flow_v1
 #define P15_FLOW_MAX_SIZE P15_FLOW_V1_MAX_SIZE

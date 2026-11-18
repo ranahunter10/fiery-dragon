@@ -239,7 +239,7 @@ static int try_once(struct ring_buffer *rb, const char *path, int lost_first, FI
 	return failed;
 }
 
-int p15_selftest_flow(int bulk_rb_fd, int lost_first, FILE *log, unsigned long long *flow_consumed,
+int p15_selftest_flow(int bulk_rb_fd, int flow_rb_fd, int lost_first, FILE *log, unsigned long long *flow_consumed,
 		      unsigned long long *file_consumed, unsigned long long *net_consumed)
 {
 	char dir[] = "/tmp/p15d-flowtest-XXXXXX", rdir[PATH_MAX], path[PATH_MAX + 16];
@@ -250,6 +250,9 @@ int p15_selftest_flow(int bulk_rb_fd, int lost_first, FILE *log, unsigned long l
 	rb = ring_buffer__new(bulk_rb_fd, on_rec, NULL, NULL);
 	if (!rb)
 		return -errno;
+	rc = ring_buffer__add(rb, flow_rb_fd, on_rec, NULL);   /* the FLOWs are on their own ring */
+	if (rc)
+		goto out;
 	if (!mkdtemp(dir) || !realpath(dir, rdir)) {
 		rc = -errno;
 		goto out;

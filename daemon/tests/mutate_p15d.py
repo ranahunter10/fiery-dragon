@@ -110,7 +110,7 @@ M = [
     ("drain.c", "(d->open->ring != ring || d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", "(d->open->cap - d->open->len < P15_RECORD_MAX_SIZE))", UNIT),
     ("drain.c", "\t\tgot = ring__consume_n(r, room);", "\t\tgot = ring__consume(r);", IT),
     ("drain.c", "\tn = take_all(d);\n\tnote_poll_gap(d, p15_boot_ns());", "\tn = ring_buffer__consume(d->rb);\n\tnote_poll_gap(d, p15_boot_ns());", IT),
-    ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE) : 0, m;", "\tint n = 0, m;", IT),
+    ("drain.c", "\tint n = d->spine ? take(d, d->spine, P15W_RING_SPINE, 0) : 0, m, f;", "\tint n = 0, m, f;", IT),
     # the end of the flow programs' run (bpf/include/p15_flow.h; the design note of 2026-11-13): B1's
     # terms by the unit test, the stop's order and the programs' count word by it_p15d cases 15 to 17
     ("writer.c", "+ L(V_OWNED_BY_SOCK) + L(V_GATED) + L(OPEN_AT_END) +", "+ L(V_OWNED_BY_SOCK) + L(OPEN_AT_END) +", UNIT),
@@ -147,8 +147,8 @@ M = [
     ("../bpf/progs/file.bpf.c", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_RETURNED | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", "		if ((s & (ST_SESSION_ENTRY | ST_SESSION_CLAIMED)) != ST_SESSION_ENTRY)", IT),
     # the self-check (ADR-0019 G4.4; canary.c, selfcheck.c; test_canary and it_p15d cases 21 to 25)
     ("canary.c", "		if (now - c->last_poll_ns > P15_CANARY_STALL_NS) {", "		if (0) {", UNIT),
-    ("canary.c", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->deadline_ns && !took &&", UNIT),
-    ("canary.c", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !(took && 0) &&", UNIT),
+    ("canary.c", "now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->miss_deadline_ns && !took &&", UNIT),
+    ("canary.c", "now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&", "now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !(took && 0) &&", UNIT),
     ("canary.c", "			finish(c, c->all_seen_ns > c->deadline_ns ? P15_CANARY_MISS_KIND_LATE : 0,", "			finish(c, 0,", UNIT),
     ("canary.c", "				c->cur_want &= ~P15_CANARY_EXEC;\n", "", UNIT),
     ("canary.c", "		p15_run_set_state(c->run, P15_RUN_DEGRADED, msg);\n		publish_bad(c, kind, late_ns);", "		publish_bad(c, kind, late_ns);", IT),
@@ -179,6 +179,14 @@ M = [
     ("writer.c", "	p15_run_set_state(r, P15_RUN_DEGRADED, msg);\n}\n\nstatic void append", "}\n\nstatic void append", IT),
     ("writer.c", "		if (p15_space_refresh(&w->space, p15w_fd(w->wal)) > 0)\n			space_changed(w);\n", "", IT),
     ("writer.c", "			forks += h->type == P15_T_FORK;", "			forks += 0;", IT),   # 122: shed FORKs uncounted: the tree check goes INVALID
+    # FLOW's own ring (ADR-0051 draft, F-01). 123-124 need the flow programs: the VM, it_p15d case 30.
+    ("drain.c", "		    !p15q_may_take(&d->run->q, keep)) {", "		    0) {", IT),   # 123: FLOW takes every free batch
+    ("drain.c", "	atomic_fetch_add(&d->run->flow_drained, 1);\n	p15_canary_see(&d->canary, h);", "	p15_canary_see(&d->canary, h);", IT),   # 124: flow-ring FLOWs off the books
+    ("queue.h", "	return q->n - p15q_depth(q) > keep;", "	return q->n - p15q_depth(q) >= keep;", UNIT),   # 125: the reserve one short
+    ("config.c", "	uint32_t keep = c->flow_keep_batches ? c->flow_keep_batches : c->queue_batches / 4;", "	uint32_t keep = c->flow_keep_batches;", UNIT),   # 126: the auto reserve gone
+    ("canary.c", "	c->deadline_ns += over_ns;", "	(void)over_ns;", UNIT),   # 127: the drain's oversleep not excused
+    ("canary.c", "		else if (!c->all_seen_ns && now >= c->miss_deadline_ns && c->polls", "		else if (!c->all_seen_ns && now >= c->deadline_ns && c->polls", UNIT),   # 128: a miss waits on the moved deadline
+    ("canary.c", "	c->last_poll_ns += want_ns;", "	(void)want_ns;", UNIT),   # 129: a deliberate pause counts toward the stall bound
 ]
 
 
@@ -212,8 +220,11 @@ def main() -> int:
             r = subprocess.run(f"timeout 900 sh -c '{test}'", shell=True, cwd=ROOT, capture_output=True, text=True)
             dt = time.monotonic() - t0
             if r.returncode:
+                # the whole output, for a failure that the lines below do not explain (a flaky case)
+                keep = ROOT / "build" / f"mutate-baseline-{name.replace(' ', '-')}.txt"
+                keep.write_text(r.stdout + r.stderr)
                 print(f"baseline: the {name} fail on the unmutated tree (exit {r.returncode} after {dt:.0f} s); "
-                      "no mutant was run\n" +
+                      f"no mutant was run; the whole output is in {keep}\n" +
                       "".join(ln + "\n" for ln in (r.stdout + r.stderr).splitlines() if "FAIL" in ln) +   # wherever it failed
                       (r.stdout + r.stderr)[-3000:], flush=True)
                 return 2
@@ -237,6 +248,13 @@ def main() -> int:
             killed += dead
             tag = ("killed  " if dead else "NO BUILD" if not built else "TIMEOUT " if timed_out else "SURVIVED")
             print(f"{tag} {i} {f} {old.strip().splitlines()[0][:70]} ({dt:.0f} s)", flush=True)
+            if dead:
+                # which checks killed it: a kill by an unrelated flaky check is not evidence
+                fails = [ln.strip() for ln in (r.stdout + r.stderr).splitlines() if "FAIL" in ln]
+                for ln in fails[:3]:
+                    print(f"           {ln[:150]}", flush=True)
+                with open(ROOT / "build" / "mutate-kills.txt", "a") as k:
+                    k.write(f"== {i} {f} {old.strip().splitlines()[0][:100]}\n" + "".join(x + "\n" for x in fails))
     finally:
         for f, text in orig.items():
             (ROOT / "daemon" / f).write_text(text)

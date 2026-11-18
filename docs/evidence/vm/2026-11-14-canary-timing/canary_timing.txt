@@ -1,0 +1,12 @@
+# ~/canary_timing.py on the first late run (WAL timestamps; the script is in this directory's README). Pasted by the maintainer.
+late in try 1
+canary 2 (pid 110044): records late, mask 0x6f of 0x6f, 164 ms after its deadline
+canary pid 110043: forked at +1.137 s; exec +1.1 ms, open +0.4 ms, exit +3.0 ms
+canary pid 110044: forked at +2.860 s; exec +1.6 ms, open +0.6 ms, exit +4.0 ms
+canary pid 110045: forked at +4.036 s; exec +1.1 ms, open +0.4 ms, exit +3.0 ms
+canary pid 110046: forked at +5.104 s; exec +1.4 ms, open +0.4 ms, exit +3.4 ms
+STATS at +1.126 s: longest poll gap 200 ms
+STATS at +4.002 s: longest poll gap 955 ms
+STATS at +5.114 s: longest poll gap 1164 ms
+STATS at +5.498 s: longest poll gap 21 ms
+CANARY_MISS {'canary_n': 2, 'kind': 2, 'n': 1, 'canary_pid': 110044, 'want': 111, 'seen': 111, 'late_ms': 164}

@@ -60,6 +60,9 @@ struct p15_run {
 	uint64_t bulk_base[P15_CTR_MAX];
 	_Atomic uint64_t net_drained, net_invalid;
 	_Atomic uint64_t bulk_fill_max;          /* interval field */
+	_Atomic uint64_t flow_fill_max;          /* interval field: FLOW's ring (ADR-0051 draft) */
+	_Atomic uint64_t flow_deferred;          /* polls that left FLOWs in their ring to keep batches free */
+	uint32_t flow_ring_bytes, flow_keep;     /* FLOW's ring and its batch reserve; 0 without --flow */
 
 	/* file identity (ADR-0015, bpf/include/p15_file.h): counters by named slot, as bulk[] for NET */
 	_Atomic uint64_t filec[P15_CTR_MAX];

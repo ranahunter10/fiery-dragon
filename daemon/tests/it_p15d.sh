@@ -42,6 +42,12 @@ echo "network capture and file identity: $([ $NET_OK = 1 ] && echo on || echo 'o
 storm() { local ps=(); for _ in $(seq "$1"); do /bin/true & ps+=($!); done; wait "${ps[@]}"; }   # not a bare wait: p15d is a job too
 # p15d prints code=start once its hooks are attached and both self-tests passed: wait for that,
 # not for a fixed time, so a slow start never hides events from the test (E-0089 follow-up)
+# stopwait PID: stop p15d once the case's workload is done, and take its exit code. The cases below
+# that run a workload beside p15d used a fixed --duration, which on the VM a workload could outlive:
+# its sleeps can wake up to a second late (E-0317), so the last steps fell after p15d had stopped
+# (case 28: "0 of the last 100"; case 30: the victim's last files, E-0318). They now run with a
+# safety cap and are stopped here, after the workload, whatever its pace.
+stopwait() { kill -INT "$1" 2>/dev/null; wait "$1"; }
 started() { for _ in $(seq 150); do grep -q code=start "$1" 2>/dev/null && return 0; sleep 0.1; done; echo "  FAIL p15d did not start within 15 s: $(cat "$1")"; return 1; }
 # the run's EXEC records of /bin/true, and the kernel's skips from the last STATS (ADR-0020)
 true_execs() { PYTHONPATH=python "$PY" -c "
@@ -252,18 +258,21 @@ if [ "$NET_OK" = 1 ]; then
 D9=$(mktemp -d /tmp/p15d-it9-XXXXXX); D9=$(realpath "$D9")
 printf 'held\n' > "$D9/held"; printf 'again\n' > "$D9/again"
 # opened before p15d starts, held on fd 3, stdin a pipe: only the FD pass can name them
-( exec 3<"$D9/held"; exec sleep 6 ) < <(exec sleep 6) &
+# It lives until killed below: a fixed 6 s life ended before p15d's opening snapshot when p15d's
+# start took longer on the VM (the holder gone, no FD row: E-0319).
+( exec 3<"$D9/held"; exec sleep 300 ) < <(exec sleep 30) &   # fd 0 stays a pipe after its writer ends
 holder=$!
 sleep 0.3
 # segments of 1 s: each opening snapshot repeats the FD pass and starts a new facts epoch, so a
 # file opened in two segments has its facts in both (ADR-0007's self-describing segments, E-0160)
-"$B/p15d" --wal-dir "$T/c9" --duration 4 --stats-ms 200 --rotate-s 1 2>"$T/c9.err" &
+"$B/p15d" --wal-dir "$T/c9" --duration 120 --stats-ms 200 --rotate-s 1 2>"$T/c9.err" &
 pid=$!
 if started "$T/c9.err"; then
     sleep 0.3; cat "$D9/held" "$D9/again" >/dev/null; kill $holder 2>/dev/null; wait $holder 2>/dev/null
-    sleep 2.2; cat "$D9/again" >/dev/null
+    sleep 2.2; cat "$D9/again" >/dev/null                         # at least one rotation later
 fi
-wait $pid; rc=$?
+kill $holder 2>/dev/null; wait $holder 2>/dev/null
+stopwait $pid; rc=$?
 RUN=$T/c9; inspect -v >"$T/c9.txt"; irc=$?
 row=$(grep -E "FD .* tgid=$holder .* snap=0 fd=3 " "$T/c9.txt" | head -1)
 echo "$row" | sed 's/^ *//' | cut -c1-240
@@ -371,7 +380,7 @@ fi
 echo "case 13: --flow: a known workload's reads, writes, sends and receives become FLOW records (ADR-0005, step 2b) [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
     D13=$(mktemp -d /tmp/p15d-it13-XXXXXX); D13=$(realpath "$D13")
-    "$B/p15d" --wal-dir "$T/c13" --flow --duration 5 --stats-ms 200 2>"$T/c13.err" &
+    "$B/p15d" --wal-dir "$T/c13" --flow --duration 120 --stats-ms 200 2>"$T/c13.err" &
     pid=$!
     if started "$T/c13.err"; then
         # one process, known sizes: a 12345-byte write and read of a file, a 7-byte writev and
@@ -398,7 +407,7 @@ print(os.getpid())
 WL
 )
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c13; inspect >"$T/c13.txt"; irc=$?
     c13=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
@@ -441,7 +450,7 @@ fi
 
 echo "case 14: --flow with the first FILE of every file lost (--test-flow-file-fail-first): counted, DEGRADED, retried [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
-    "$B/p15d" --wal-dir "$T/c14" --flow --test-flow-file-fail-first --duration 4 --stats-ms 200 2>"$T/c14.err" &
+    "$B/p15d" --wal-dir "$T/c14" --flow --test-flow-file-fail-first --duration 120 --stats-ms 200 2>"$T/c14.err" &
     pid=$!
     if started "$T/c14.err"; then
         # three transfers on each end of a pipe and of a socketpair: the first finds its FILE lost,
@@ -459,7 +468,7 @@ print(os.getpid())
 WL
 )
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c14; inspect >"$T/c14.txt"; irc=$?
     c14=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
@@ -586,9 +595,16 @@ for r in d:
 print(' '.join(out))" "$(ls -d "$1"/*/ | head -1)"; }
 selfrun() { local name=$1; shift; "$B/p15d" --wal-dir "$T/$name" $NET "$@" 2>"$T/$name.err"; rc=$?; RUN=$T/$name; inspect >"$T/$name.txt" 2>&1; irc=$?
     read -r s_runs s_missed s_late s_unf s_links s_checks s_gone s_want s_miss <<<"$(selfrec "$T/$name")"; }
+# selfrun_until NAME PATTERN ARGS...: as selfrun, but p15d runs until its log matches PATTERN (the
+# verdict the case stages), 60 s at most, then is stopped. A fixed duration let the VM's late
+# wake-ups push the only verdict past the end of the run (case 23 in a mutant run, E-0320).
+selfrun_until() { local name=$1 pat=$2 p; shift 2; "$B/p15d" --wal-dir "$T/$name" $NET --duration 120 "$@" 2>"$T/$name.err" & p=$!
+    for _ in $(seq 600); do grep -qE "$pat" "$T/$name.err" 2>/dev/null && break; kill -0 $p 2>/dev/null || break; sleep 0.1; done
+    stopwait $p; rc=$?; RUN=$T/$name; inspect >"$T/$name.txt" 2>&1; irc=$?
+    read -r s_runs s_missed s_late s_unf s_links s_checks s_gone s_want s_miss <<<"$(selfrec "$T/$name")"; }
 
-echo "case 21: the canary every second for 5 s: each one's records arrive, and every link is checked every tick (ADR-0019 G4.4) [t+${SECONDS}s]"
-selfrun c21 --canary-s 1 --duration 5
+echo "case 21: the canary every second for 8 s: each one's records arrive, and every link is checked every tick (ADR-0019 G4.4) [t+${SECONDS}s]"
+selfrun c21 --canary-s 1 --duration 8   # 8 s: at least two verdicts even when the VM wakes p15d late
 echo "  canaries $s_runs (missed $s_missed, late $s_late, unfinished $s_unf), want mask $s_want; links $s_links, checks $s_checks, gone $s_gone"
 check "[ $rc -eq 0 ] && [ $irc -eq 0 ] && grep -q 'END: exit 0, state 0, invariant 1' $T/c21.txt" "exit 0, WAL valid, RUNNING (p15d $rc, inspect $irc)"
 check "[ \"\${s_runs:-0}\" -ge 2 ] && [ \"$s_missed\" = 0 ] && [ \"$s_late\" = 0 ] && [ -z \"$s_miss\" ]" "at least two canaries got a verdict, none missed, none late, no CANARY_MISS record"
@@ -600,14 +616,18 @@ else
 fi
 
 echo "case 22: a canary whose EXEC is never seen (--test-canary-blind 2): counted, logged, CANARY_MISS, DEGRADED [t+${SECONDS}s]"
-selfrun c22 --canary-s 1 --test-canary-blind 2 --duration 4
+selfrun_until c22 'code=canary_miss .*records missing' --canary-s 1 --test-canary-blind 2
 check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c22.txt" "exit 3 (DEGRADED), WAL valid, the books still close: only the canary sees it (p15d $rc)"
 check "[ \"\${s_missed:-0}\" -ge 1 ] && case \" $s_miss \" in *' R:'*) true;; *) false;; esac" "SELF_STATS counts the miss and a CANARY_MISS record of kind RECORD is written ($s_miss)"
 check "PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(':')[1:]); sys.exit(0 if w & ~s == 2 else 1)\" \"\$(printf '%s\\n' $s_miss | grep -m1 '^R:')\"" "  ... whose masks say it is the EXEC that is missing"
 check "grep -q 'code=canary_miss' $T/c22.err && grep -q 'records missing, mask 0x2' $T/c22.txt" "  ... the log has the error and END's reason names the mask"
 
-echo "case 23: a stuck drain (1.5 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+${SECONDS}s]"
-selfrun c23 --canary-s 1 --test-drain-pause-ms 1500 --duration 6
+echo "case 23: a stuck drain (3 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+${SECONDS}s]"
+# A 3 s pause, so a canary judged at the next poll is 2 s late; the pause's overshoot is excused and
+# its deliberate part does not count as a stall (p15_canary_paused). The run lasts until the LATE
+# verdict is logged (selfrun_until), not a fixed time.
+selfrun_until c23 'code=canary_miss .*records late' --canary-s 1 --test-drain-pause-ms 3000
+echo "  canaries $s_runs (missed $s_missed, late $s_late, unfinished $s_unf); CANARY_MISS: ${s_miss:-none}"
 check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c23.txt" "exit 3 (DEGRADED), WAL valid, nothing lost (p15d $rc)"
 check "[ \"\${s_late:-0}\" -ge 1 ] && [ \"$s_missed\" = 0 ] && case \" $s_miss \" in *' L:'*) true;; *) false;; esac" "counted late, not missed, with a CANARY_MISS record of kind LATE ($s_miss)"
 
@@ -620,7 +640,7 @@ check "grep -q 'code=link_gone' $T/c24.err" "  ... and the log has the error"
 
 echo "case 25: the exec program's link closed with the canary on: the link check names it, and the canary misses its EXEC [t+${SECONDS}s]"
 k=$(sed -n 's/.*code=links n=[0-9]* names=//p' "$T/c24.err" | tr ',' '\n' | grep -n -m1 '^spine_exec$' | cut -d: -f1)
-selfrun c25 --canary-s 1 --test-link-close "${k:-0}" --duration 4
+selfrun_until c25 'code=canary_miss .*records missing' --canary-s 1 --test-link-close "${k:-0}"
 check "[ -n \"$k\" ] && [ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c25.txt" "exit 3 (DEGRADED) with every book closed: a detached program breaks no book (F-05)"
 check "case \" $s_miss \" in *\" K:$((${k:-1} - 1)):spine_exec \"*) true;; *) false;; esac" "the link check names spine_exec ($s_miss)"
 check "[ \"\${s_missed:-0}\" -ge 1 ] && PYTHONPATH=python $PY -c \"import sys; w, s = map(int, sys.argv[1].split(':')[1:]); sys.exit(0 if w & ~s == 2 else 1)\" \"\$(printf '%s\\n' $s_miss | grep -m1 '^R:')\"" "and the canary, on its own evidence, misses exactly its EXEC"
@@ -640,7 +660,7 @@ check "[ $rc -eq 0 ] && [ \"$c26n\" = 2048 ] && [ \"$c26by\" = option ]" "with -
 echo "case 27: a full open-file map is a state of the run: one process opens 3000 files into a map of 1024 (F-04) [t+${SECONDS}s]"
 if [ "$NET_OK" = 1 ]; then
     D27=$(mktemp -d /tmp/p15d-it27-XXXXXX)
-    "$B/p15d" --wal-dir "$T/c27" --file-map-entries 1024 --duration 4 --stats-ms 200 2>"$T/c27.err" &
+    "$B/p15d" --wal-dir "$T/c27" --file-map-entries 1024 --duration 120 --stats-ms 200 2>"$T/c27.err" &
     pid=$!
     if started "$T/c27.err"; then
         ( ulimit -n 4096; "$PY" -c "
@@ -648,7 +668,7 @@ import os, sys, time
 fds = [os.open(os.path.join(sys.argv[1], 'f%d' % i), os.O_WRONLY | os.O_CREAT, 0o600) for i in range(3000)]
 time.sleep(1)" "$D27" )
     fi
-    wait $pid; rc=$?
+    stopwait $pid; rc=$?
     RUN=$T/c27; inspect >"$T/c27.txt" 2>&1; irc=$?
     c27=$(PYTHONPATH=python "$PY" -c "
 import sys; from pathlib import Path; from p15 import wal
@@ -689,23 +709,27 @@ echo "case 28: the disk fills while p15d runs, guard on: bulk shed, then the spi
 D28=$T/disk28
 mkdir -p "$D28" && mount -t tmpfs -o size=48m tmpfs "$D28"
 dd if=/dev/zero of="$D28/fill1" bs=1M count=20 status=none
-"$B/p15d" --wal-dir "$D28/wal" $NET --wal-space-low-mb 24 --wal-space-reserve-mb 12 --duration 12 --stats-ms 200 \
+"$B/p15d" --wal-dir "$D28/wal" $NET --wal-space-low-mb 24 --wal-space-reserve-mb 12 --duration 120 --stats-ms 200 \
     2>"$T/c28.err" &
 pid=$!
+# Each step waits for p15d to log the level it causes (code=wal_space, writer.c space_changed),
+# not for a fixed time: the guard reads free space once per writer loop, and on the VM a loop can
+# come a second late (E-0317). 30 s at most per step, then the case goes on and its checks fail.
+level28() { for _ in $(seq 300); do grep -q "code=wal_space level=$1 " "$T/c28.err" && return 0; sleep 0.1; done
+            echo "  (p15d did not log level $1 within 30 s)"; return 1; }
 if started "$T/c28.err"; then
     sleep 1
     dd if=/dev/zero of="$D28/fill2" bs=1M count=8 status=none        # about 20 MiB free: below low
-    sleep 1.5
+    level28 shed_bulk
     dd if=/dev/zero of="$D28/fill3" bs=1M count=10 status=none       # about 10 MiB free: below the reserve
-    sleep 1.5
+    level28 shed_all
     storm 300                                                       # spine records the guard must shed
-    sleep 1
     rm -f "$D28/fill1" "$D28/fill2" "$D28/fill3"                    # space comes back
-    sleep 1.5
+    level28 ok
     t_back=$(boot_ns)
     storm 100                                                       # written again
 fi
-wait $pid; rc=$?
+stopwait $pid; rc=$?
 RUN=$D28/wal; inspect >"$T/c28.txt" 2>&1; irc=$?
 read -r lv28 last28 sp28 bk28 ns28 fk28 ex28 <<<"$(spacerec "$D28/wal")"
 tc28=$(treecheck "$D28/wal")
@@ -723,7 +747,7 @@ umount "$D28"
 echo "case 29: the guard off, the disk really full: a refused batch is taken back, the WAL stays valid, p15d goes on (F-02) [t+${SECONDS}s]"
 D29=$T/disk29
 mkdir -p "$D29" && mount -t tmpfs -o size=8m tmpfs "$D29"
-"$B/p15d" --wal-dir "$D29/wal" $NET --wal-space-guard 0 --duration 8 --stats-ms 200 --batch-kb 64 2>"$T/c29.err" &
+"$B/p15d" --wal-dir "$D29/wal" $NET --wal-space-guard 0 --duration 120 --stats-ms 200 --batch-kb 64 2>"$T/c29.err" &
 pid=$!
 if started "$T/c29.err"; then
     sleep 0.5
@@ -735,7 +759,7 @@ if started "$T/c29.err"; then
     t_back=$(boot_ns)
     storm 100
 fi
-wait $pid; rc=$?
+stopwait $pid; rc=$?
 RUN=$D29/wal; inspect >"$T/c29.txt" 2>&1; irc=$?
 read -r lv29 last29 sp29 bk29 ns29 fk29 ex29 <<<"$(spacerec "$D29/wal")"
 back29=$(true_after "$D29/wal" "${t_back:-0}")
@@ -744,6 +768,64 @@ check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invaria
 check "[ \"\${ns29:-0}\" -gt 0 ] && [ \"\${sp29:-0}\" -gt 0 ]" "the disk refused batches ($ns29) and their spine records are counted shed ($sp29)"
 check "[ \"\${back29:-0}\" -ge 100 ]" "after the space came back p15d writes again ($back29 of the last 100)"
 umount "$D29"
+
+echo "case 30: a flood of one-byte transfers beside a process that opens files and connects: only FLOWs are lost (F-01, ADR-0051 draft) [t+${SECONDS}s]"
+if [ "$NET_OK" = 1 ]; then
+    D30=$(mktemp -d /tmp/p15d-it30-XXXXXX); D30=$(realpath "$D30")
+    # The overflow and the reserve both forced, not left to timing (the VM's first sweep saw a run in
+    # which p15d, at SCHED_FIFO, drained the 64 KiB ring in time: no FLOW lost). The drain pauses
+    # 20 ms after every poll, so the ring (about 680 FLOWs) fills between polls; the writer takes
+    # 100 ms a 64 KiB batch, slower than the drain, so the queue fills and FLOW must leave its reserve.
+    "$B/p15d" --wal-dir "$T/c30" --flow --duration 120 --stats-ms 200 --flow-ring-kb 64 --batch-kb 64 \
+        --test-drain-pause-ms 20 --test-writer-batch-ms 100 2>"$T/c30.err" &
+    pid=$!
+    if started "$T/c30.err"; then
+        dd if=/dev/zero of=/dev/null bs=1 count=4000000 status=none &
+        flood=$!
+        sleep 0.5
+        # the victim: 300 files created and closed, and 30 connects to a listener, during the flood
+        vic=$("$PY" - "$D30" <<'WL'
+import os, socket, sys, time
+d = sys.argv[1]
+srv = socket.socket(); srv.bind(("127.0.0.1", 0)); srv.listen(64)
+for i in range(300):
+    fd = os.open(f"{d}/v{i}", os.O_CREAT | os.O_RDWR, 0o600)
+    os.close(fd)
+    if i % 10 == 0:
+        c = socket.create_connection(srv.getsockname()); a, _ = srv.accept(); c.close(); a.close()
+    time.sleep(0.005)
+print(os.getpid())
+WL
+)
+        kill "$flood" 2>/dev/null; wait "$flood" 2>/dev/null
+    fi
+    stopwait $pid; rc=$?
+    RUN=$T/c30; inspect >"$T/c30.txt"; irc=$?
+    c30=$(PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+run = wal.read_run(Path(sys.argv[1])); me = int(sys.argv[2] or 0); d = sys.argv[3].encode()
+bulk = list(run.ring_records(1)); dm = list(run.ring_records(2))
+opens = {r.f['fid'] for r in bulk if r.name == 'OPEN' and r.h['tgid'] == me and r.var.get('path', b'').startswith(d + b'/v')}
+closes = sum(1 for r in bulk if r.name == 'CLOSE' and r.f['fid'] in opens)
+conns = sum(1 for r in bulk if r.name == 'NET' and r.h['tgid'] == me and r.f['op'] == 1)
+last = lambda n: [r for r in dm if r.name == n][-1].f
+fs, fl, ns, ring = last('FILE_STATS'), last('FLOW_STATS'), last('NET_STATS'), last('FLOW_RING')
+lost_id = fs['open_lost'] + fs['close_lost'] + fs['backing_lost'] + fs['verdict_lost'] + fs['missing_lost']
+print(len(opens), closes, conns, fl['flow_lost'], lost_id, ns['net_reserve_failed'], ring['deferred'],
+      max(r.f['fill_max'] for r in dm if r.name == 'FLOW_RING'), ring['keep_batches'])" \
+      "$(ls -d "$T"/c30/*/ | head -1)" "${vic:-0}" "$D30")
+    read -r o30 cl30 cn30 fl30 id30 nl30 df30 fm30 kp30 <<<"$c30"
+    echo "  victim ${vic:-?}: OPEN $o30 of 300, CLOSE $cl30, CONNECT $cn30 of 30; FLOW lost $fl30; identity lost $id30, NET lost $nl30; FLOW ring: fill max $fm30 bytes, deferred $df30 polls, keep $kp30 batches"
+    check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c30.txt" "exit 3 (DEGRADED by the lost FLOWs), WAL valid in both readers, books closed (rc $rc)"
+    check "[ \"\${fl30:-0}\" -gt 0 ]" "the flood overflowed FLOW's ring: FLOWs lost and counted ($fl30)"
+    check "[ \"\${id30:-1}\" = 0 ] && [ \"\${nl30:-1}\" = 0 ]" "no identity or NET record was lost: they are on the bulk ring, which the flood does not touch"
+    check "[ \"\${o30:-0}\" = 300 ] && [ \"\${cl30:-0}\" = 300 ] && [ \"\${cn30:-0}\" = 30 ]" "the victim's 300 OPENs, their 300 CLOSEs and its 30 connects are all in the WAL"
+    check "[ \"\${fm30:-0}\" -gt 0 ] && [ \"\${kp30:-0}\" -ge 1 ]" "FLOW_RING says the ring filled ($fm30 bytes at most) and how many batches FLOW leaves free ($kp30)"
+    check "[ \"\${df30:-0}\" -gt 0 ]" "the drain left FLOWs in their ring to keep batches free for the other rings ($df30 polls)"
+    rm -rf "$D30"
+else
+    echo "  SKIP (the flow programs are not loadable here; CI and the VM run it)"
+fi
 
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?

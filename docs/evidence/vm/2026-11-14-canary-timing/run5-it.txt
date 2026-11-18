@@ -1,0 +1,5 @@
+# kit fd-vm-test6 (vm/integration-5: the oversleep excuse moved both canary deadlines), three it runs; pasted by the maintainer.
+it 1: FAIL (6): case 22 exit 0 and no RECORD miss (4 checks); case 25 "the canary, on its own evidence, misses exactly its EXEC";
+      case 28 "after the space came back every exec is written again (0 of the last 100)"
+it 2: FAIL (1): case 30 "the victim's 300 OPENs, their 300 CLOSEs and its 30 connects are all in the WAL"
+it 3: stopped by the maintainer

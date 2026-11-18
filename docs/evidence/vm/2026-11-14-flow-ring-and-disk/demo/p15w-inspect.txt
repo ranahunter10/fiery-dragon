@@ -1,0 +1,28 @@
+/var/tmp/p15-demo/wal/20261114T140712Z-ed289b2d//seg-00000000.p15w: segment 0, 913728 bytes, 268 batches, 8081 records, valid to the end
+  run.id = 20261114T140712Z-ed289b2d
+  kernel.release = 7.0.0-38-generic
+  schema.hash = da7219110a326d0b2fecb5415c76d193928e539072b807ea720adacbc4aa65a6
+  hooks.manifest = tp_btf/sched_process_fork,tracepoint/sched/sched_process_exec,tracepoint/sched/sched_process_exit,tracepoint/task/task_rename,fentry/security_file_open,kprobe.session/security_file_open,iter/bpf_map_elem,kprobe.multi/security_file_free,kprobe.multi/security_inode_free,kprobe.session/vfs_read,kprobe.session/vfs_write,kprobe.session/vfs_readv,kprobe.session/vfs_writev,tracepoint/sock/sock_send_length,tracepoint/sock/sock_recv_length,iter/task,iter/task_file,fexit/inet_stream_connect,fexit/inet_dgram_connect,fexit/inet_accept,fexit/inet_listen,fexit/inet_bind,fexit/inet6_bind
+  drain.sched = SCHED_FIFO 1
+records: spine 305, bulk 6009, daemon 1767; invalid 0
+  FORK       82
+  EXEC       63
+  EXIT       89
+  RENAME     71
+  NET        29
+  OPEN       1258
+  CLOSE      1386
+  FLOW       3257
+  FILE       79
+  CLOCK_SYNC 3
+  STATS      25
+  END        1
+  NET_STATS  25
+  PROC       278
+  SNAP_DONE  2
+  FD         1333
+  FILE_STATS 25
+  FLOW_STATS 25
+  SELF_STATS 25
+  FLOW_RING  25
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1

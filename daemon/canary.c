@@ -156,7 +156,8 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 		if (ctr(c, P15_FC_FREE_RUN) != c->base_free)
 			c->seen |= P15_CANARY_FREE & ~c->blind;
 		if (now - c->last_poll_ns > P15_CANARY_STALL_NS) {
-			c->deadline_ns = now + P15_CANARY_DEADLINE_NS;   /* the guest stood still: start the second again */
+			/* the guest stood still: start the second again, for both verdicts */
+			c->deadline_ns = c->miss_deadline_ns = now + P15_CANARY_DEADLINE_NS;
 			atomic_fetch_add(&c->run->canary_stalled, 1);
 		}
 		c->last_poll_ns = now;
@@ -166,9 +167,12 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 		if (c->all_seen_ns && c->reaped)
 			finish(c, c->all_seen_ns > c->deadline_ns ? P15_CANARY_MISS_KIND_LATE : 0,
 			       c->all_seen_ns > c->deadline_ns ? c->all_seen_ns - c->deadline_ns : 0);
-		else if (!c->all_seen_ns && now >= c->deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&
-			 (c->reaped || now >= c->deadline_ns + 10 * P15_CANARY_DEADLINE_NS))
-			finish(c, P15_CANARY_MISS_KIND_RECORD, now - c->deadline_ns);   /* unreaped for 10 s more: judged anyway, so it cannot hang */
+		/* A miss is judged against the unmoved deadline: the oversleep excuse only stops lateness from
+		 * being blamed on the pipeline. Moving this one too let a VM whose waits always overslept
+		 * push the verdict past the end of a short run (case 22 on the VM, E-0318). */
+		else if (!c->all_seen_ns && now >= c->miss_deadline_ns && c->polls >= P15_CANARY_POLLS && !took &&
+			 (c->reaped || now >= c->miss_deadline_ns + 10 * P15_CANARY_DEADLINE_NS))
+			finish(c, P15_CANARY_MISS_KIND_RECORD, now - c->miss_deadline_ns);   /* unreaped for 10 s more: judged anyway, so it cannot hang */
 		return;
 	}
 	if (c->stopped || now < c->next_ns)
@@ -179,12 +183,13 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 	c->seen = 0;
 	c->polls = 0;
 	c->reaped = 0;
+	c->excused = 0;
 	c->all_seen_ns = 0;
 	c->base_session = ctr(c, P15_FC_SESSION_ENTRY);
 	c->base_free = ctr(c, P15_FC_FREE_RUN);
 	c->spawn_boot_ns = p15_boot_ns();
 	c->spawn_ns = now;
-	c->deadline_ns = now + P15_CANARY_DEADLINE_NS;
+	c->deadline_ns = c->miss_deadline_ns = now + P15_CANARY_DEADLINE_NS;
 	c->last_poll_ns = now;
 	errno = 0;
 	c->pid = (c->spawn ? c->spawn : real_spawn)(c, (c->want & (P15_CANARY_FILES | P15_CANARY_FLOW)) != 0);
@@ -196,6 +201,25 @@ void p15_canary_tick(struct p15_canary_state *c, uint64_t now, int took)
 		fprintf(stderr, "p15d level=warn code=canary_spawn msg=\"the canary could not be started: %s\"\n",
 			e ? strerror(e) : "no error number given");
 	}
+}
+
+void p15_canary_oversleep(struct p15_canary_state *c, uint64_t over_ns)
+{
+	if (!c->interval_ns || !c->pid || over_ns <= P15_CANARY_OVERSLEEP_NS)
+		return;
+	c->deadline_ns += over_ns;
+	if (!c->excused) {
+		c->excused = 1;
+		atomic_fetch_add(&c->run->canary_stalled, 1);
+	}
+}
+
+void p15_canary_paused(struct p15_canary_state *c, uint64_t want_ns, uint64_t over_ns)
+{
+	if (!c->interval_ns || !c->pid)
+		return;
+	c->last_poll_ns += want_ns;     /* the stall bound measures time the drain did not choose */
+	p15_canary_oversleep(c, over_ns);
 }
 
 void p15_canary_stop(struct p15_canary_state *c)

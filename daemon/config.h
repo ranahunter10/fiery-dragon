@@ -65,6 +65,8 @@ struct p15_config {
 	uint32_t wal_space_reserve_mb; /* --wal-space-reserve-mb: below this the spine is shed too; 0: the smaller of
 					* 64 MiB and 2 % (at least 4 MiB) */
 	uint32_t wal_space_guard;    /* --wal-space-guard 0: off (every ring written until the disk refuses) */
+	uint32_t flow_ring_kb;       /* --flow-ring-kb: FLOW's own ring, power of 2 (ADR-0051 draft, F-01) */
+	uint32_t flow_keep_batches;  /* --flow-keep-batches: free batches the drain never fills with FLOW; 0: queue/4 */
 	uint32_t poll_max_ms;        /* --poll-max-ms: the drain's longest poll timeout, 10..1000, default 200; 10 ms
 				      * after a poll that took records, doubled after each empty one (ADR-0030) */
 };
@@ -83,6 +85,9 @@ P15_MUST_CHECK int p15_config_parse(struct p15_config *c, int argc, char **argv,
 #define P15_FILE_MAP_MEM_DIV 128u
 #define P15_FILE_MAP_ENTRY_BYTES 104u
 #define P15_FILE_MAP_MAX 4194304u
+/* The free batches the drain never fills with FLOW records, so the spine and the bulk ring always
+ * find one (ADR-0051 draft, F-01): --flow-keep-batches, or a quarter of --queue-batches, at least 1. */
+uint32_t p15_flow_keep(const struct p15_config *c);
 uint32_t p15_file_map_auto(uint64_t files_now, uint64_t mem_total_bytes);
 size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*vals)[24], size_t max);
 
