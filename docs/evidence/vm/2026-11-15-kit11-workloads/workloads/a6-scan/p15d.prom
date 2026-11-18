@@ -1,0 +1,57 @@
+# HELP p15_spine_events_total Spine hook events by record type and cause (ADR-0006).
+# TYPE p15_spine_events_total counter
+p15_spine_events_total{type="fork",cause="seen"} 38
+p15_spine_events_total{type="fork",cause="emitted"} 38
+p15_spine_events_total{type="fork",cause="reserve_failed"} 0
+p15_spine_events_total{type="fork",cause="read_failed"} 0
+p15_spine_events_total{type="fork",cause="truncated"} 0
+p15_spine_events_total{type="fork",cause="build_failed"} 0
+p15_spine_events_total{type="fork",cause="drained"} 43
+p15_spine_events_total{type="fork",cause="kernel_skipped"} 0
+p15_spine_events_total{type="exec",cause="seen"} 16
+p15_spine_events_total{type="exec",cause="emitted"} 16
+p15_spine_events_total{type="exec",cause="reserve_failed"} 0
+p15_spine_events_total{type="exec",cause="read_failed"} 0
+p15_spine_events_total{type="exec",cause="truncated"} 0
+p15_spine_events_total{type="exec",cause="build_failed"} 0
+p15_spine_events_total{type="exec",cause="drained"} 20
+p15_spine_events_total{type="exec",cause="kernel_skipped"} 0
+p15_spine_events_total{type="exit",cause="seen"} 38
+p15_spine_events_total{type="exit",cause="emitted"} 38
+p15_spine_events_total{type="exit",cause="reserve_failed"} 0
+p15_spine_events_total{type="exit",cause="read_failed"} 0
+p15_spine_events_total{type="exit",cause="truncated"} 0
+p15_spine_events_total{type="exit",cause="build_failed"} 0
+p15_spine_events_total{type="exit",cause="drained"} 43
+p15_spine_events_total{type="exit",cause="kernel_skipped"} 0
+p15_spine_events_total{type="rename",cause="seen"} 17
+p15_spine_events_total{type="rename",cause="emitted"} 17
+p15_spine_events_total{type="rename",cause="reserve_failed"} 0
+p15_spine_events_total{type="rename",cause="read_failed"} 0
+p15_spine_events_total{type="rename",cause="truncated"} 0
+p15_spine_events_total{type="rename",cause="build_failed"} 0
+p15_spine_events_total{type="rename",cause="drained"} 22
+p15_spine_events_total{type="rename",cause="kernel_skipped"} 0
+# TYPE p15_spine_written_total counter
+p15_spine_written_total 128
+# TYPE p15_gap_records_total counter
+p15_gap_records_total 0
+# TYPE p15_queue_full_total counter
+p15_queue_full_total 0
+# TYPE p15_wal_bytes_total counter
+p15_wal_bytes_total 569552
+# TYPE p15_poll_gap_max_seconds gauge
+p15_poll_gap_max_seconds 0.060668
+# TYPE p15_spine_fill_max_bytes gauge
+p15_spine_fill_max_bytes 0
+# HELP p15_net_events_total NET hook events by cause (ADR-0004).
+# TYPE p15_net_events_total counter
+p15_net_events_total{cause="seen"} 24
+p15_net_events_total{cause="emitted"} 24
+p15_net_events_total{cause="reserve_failed"} 0
+p15_net_events_total{cause="excluded"} 0
+p15_net_events_total{cause="written"} 2700
+p15_net_events_total{cause="kernel_skipped"} 0
+# HELP p15_run_state 0 RUNNING, 1 DEGRADED, 2 INVALID (ADR-0019 G2.3).
+# TYPE p15_run_state gauge
+p15_run_state 0

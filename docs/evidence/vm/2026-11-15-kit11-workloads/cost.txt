@@ -1,0 +1,6 @@
+p15d flags: --flow; rounds: 5
+w1-build     without     8161 ms  with p15d     8498 ms  ratio  1.041  (rounds without [8992, 8161, 8369, 7986, 7738], with [8382, 8520, 8116, 8498, 9394]; p15d exits ['0'])
+w3-web       without     2863 ms  with p15d     1996 ms  ratio  0.697  (rounds without [4255, 2863, 2599, 3427, 1944], with [2147, 3524, 1921, 1996, 1951]; p15d exits ['0'])
+w4-archive   without     1304 ms  with p15d     1365 ms  ratio  1.047  (rounds without [1209, 1428, 1330, 1207, 1304], with [1477, 1240, 1366, 1292, 1365]; p15d exits ['0'])
+w5-python    without      523 ms  with p15d      562 ms  ratio  1.075  (rounds without [553, 543, 518, 523, 517], with [565, 562, 554, 594, 551]; p15d exits ['0'])
+w6-pipeline  without     1059 ms  with p15d     1072 ms  ratio  1.012  (rounds without [1040, 1084, 1120, 1059, 1051], with [1072, 1079, 1079, 1057, 1061]; p15d exits ['0'])

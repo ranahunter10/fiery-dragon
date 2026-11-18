@@ -1,0 +1,1 @@
+rules: R1 dropper 0, R2 memfd-exec 0, R3 deleted-exec 0, R4 net-shell 0

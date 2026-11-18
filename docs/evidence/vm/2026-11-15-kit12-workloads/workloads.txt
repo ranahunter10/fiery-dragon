@@ -1,0 +1,34 @@
+== a4-masquerade (full trace) 22:43:18
+a4-masquerade  workload rc=1      587 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold
+     processes          4 of 4        100.00 %  
+     clone_edges        3 of 3        100.00 %  
+     execs              5 of 5        100.00 %  0 matched by last component only
+     opens             41 of 41       100.00 %  
+     connects           0 of 0               -  tgid, family, port, ret
+     accepts            0 of 0               -  tgid, count
+     bytes file_read   graph        44676 strace        44676  100.0000 %  exact in 4 of 4 processes
+     bytes file_write  graph           37 strace           37  100.0000 %  exact in 4 of 4 processes
+     bytes sock_recv   graph            0 strace            0           -  exact in 4 of 4 processes
+     bytes sock_send   graph            0 strace            0           -  exact in 4 of 4 processes
+     extra: processes 0; opens 8 (8 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 1 (11807104 B)
+     not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 28
+   VERDICT: capture and graph checks hold
+== a1-exfil (full trace) 22:43:27
+a1-exfil       workload rc=0     4102 ms  p15d rc=0 inspect rc=0 graph rc=0 compare rc=0  VERDICT: capture and graph checks hold; detection: every expected rule fired
+     processes         26 of 26       100.00 %  
+     clone_edges       25 of 25       100.00 %  
+     execs             26 of 26       100.00 %  0 matched by last component only
+     opens            427 of 427      100.00 %  
+     connects           2 of 2        100.00 %  tgid, family, port, ret
+     accepts            2 of 2        100.00 %  tgid, count
+     bytes file_read   graph     15119489 strace     15119489  100.0000 %  exact in 26 of 26 processes
+     bytes file_write  graph     11816152 strace     11816152  100.0000 %  exact in 26 of 26 processes
+     bytes sock_recv   graph     11811542 strace     11811542  100.0000 %  exact in 26 of 26 processes
+     bytes sock_send   graph     11811542 strace     11811542  100.0000 %  exact in 26 of 26 processes
+     extra: processes 0; opens 52 (52 an exec's program or interpreter, 0 other)
+     calls the flow programs do not hook (by design): copy_file_range 1 (11807104 B), splice 4 (7602 B)
+     not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 136, splice_to_socket 1, thread 1, unfinished 399
+     attack 'fake key to the catcher': reached True (expected True), bytes 4150 of 4150
+     attack rules: R1 fired; all fired: {'R1': 1}
+   VERDICT: capture and graph checks hold; detection: every expected rule fired

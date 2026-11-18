@@ -1,0 +1,15 @@
+p15d exit 0; strace root pid 264856
+  processes          4 of 4        100.00 %  
+  clone_edges        3 of 3        100.00 %  
+  execs              5 of 5        100.00 %  0 matched by last component only
+  opens             41 of 41       100.00 %  
+  connects           0 of 0               -  tgid, family, port, ret
+  accepts            0 of 0               -  tgid, count
+  bytes file_read   graph        44676 strace        44676  100.0000 %  exact in 4 of 4 processes
+  bytes file_write  graph           37 strace           37  100.0000 %  exact in 4 of 4 processes
+  bytes sock_recv   graph            0 strace            0           -  exact in 4 of 4 processes
+  bytes sock_send   graph            0 strace            0           -  exact in 4 of 4 processes
+  extra: processes 0; opens 8 (8 an exec's program or interpreter, 0 other)
+  calls the flow programs do not hook (by design): copy_file_range 1 (11807104 B)
+  not compared: AF_UNIX connects 0, O_PATH opens 0, oracle lines: open_failed 28
+VERDICT: capture and graph checks hold

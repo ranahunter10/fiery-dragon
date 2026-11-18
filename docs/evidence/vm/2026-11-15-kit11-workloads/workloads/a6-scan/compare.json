@@ -1,0 +1,144 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 52,
+  "unfinished_never_resumed": 0,
+  "open_failed": 279
+ },
+ "recall": {
+  "processes": {
+   "oracle": 31,
+   "found": 31,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 30,
+   "found": 30,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 11,
+   "found": 11,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 164,
+   "found": 164,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 21,
+   "found": 21,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 1,
+   "found": 1,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 22,
+   "exec_and_interpreter": 22,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 766180,
+   "graph": 766180,
+   "exact_processes": 31,
+   "processes": 31,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 4611,
+   "graph": 4611,
+   "exact_processes": 31,
+   "processes": 31,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 6,
+   "graph": 6,
+   "exact_processes": 31,
+   "processes": 31,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 6,
+   "graph": 6,
+   "exact_processes": 31,
+   "processes": 31,
+   "ratio": 1.0,
+   "differ": []
+  }
+ },
+ "unseen": {
+  "splice": {
+   "calls": 2,
+   "bytes": 322
+  }
+ },
+ "unix_connects": 0,
+ "opath_opens": 0,
+ "root": 253815,
+ "attack": {
+  "reach": [],
+  "rules": {},
+  "refused": {
+   "14501": true,
+   "14502": true,
+   "14503": true,
+   "14504": true,
+   "14505": true,
+   "14506": true,
+   "14507": true,
+   "14508": true,
+   "14509": true,
+   "14510": true,
+   "14511": true,
+   "14512": true,
+   "14513": true,
+   "14514": true,
+   "14515": true,
+   "14516": true,
+   "14517": true,
+   "14518": true,
+   "14519": true,
+   "14520": true
+  },
+  "comm": {},
+  "alerts": [],
+  "rules_fired": {}
+ },
+ "verdict": [],
+ "detection_gaps": []
+}

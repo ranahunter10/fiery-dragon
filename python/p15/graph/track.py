@@ -29,18 +29,24 @@ What a step may follow (`track_edge`, built once per connection as a temporary t
   information can flow;
 - a process that started before the capture, from the parent the opening snapshot names, at the
   process's start time (its fork, which the run does not hold as a CLONE edge);
-- the two sockets of one TCP connection on this host (`sock_pair`, ADR-0022), client -> server, and
-  an overlay file and its real file (`file_backing`, ADR-0015 rule 4), both ways. These are relations,
-  not events: they have no time (NULL), so a step across one keeps the threshold it had.
+- the two sockets of one TCP connection on this host (`sock_pair`, ADR-0022), and an overlay file
+  and its real file (`file_backing`, ADR-0015 rule 4), both ways. These are relations, not events:
+  they have no time (NULL), so a step across one keeps the threshold it had. A TCP connection carries
+  data both ways: what the server SENDs to its socket is what the client RECVs from its own, so the
+  pair is followed server -> client as well as client -> server (since transfers on a socket join
+  its node, ADR-0032; before that the server's SEND had no edge to the server's socket node).
 Edges that did not happen (a denied open, a refused connect) are never followed.
 
 Limits:
 - a run captured without the flow programs (before step 2b, or `--flow` off) holds open-level edges
   only, file -> process whatever the access (ADR-0028): a backward walk then stops at every file it
   reaches, and a forward walk never leaves a process through a write;
-- a transfer on a socket points at the socket's file object, which is not yet the socket node of
-  the NET records (`graph_count.flow_sock_not_joined`): until NET carries the object id (step 2e) a
-  walk does not pass from a SEND or RECV to the connection's other end.
+- a transfer on a socket joins the socket node of the NET records only when exactly one cookie names
+  the socket's object (ADR-0032); one that does not is counted (`graph_count.flow_sock_not_joined`)
+  and a walk does not pass from it to the connection's other end;
+- a socket node is both directions of its connection: what a process SENDs to its own socket and
+  what it later RECVs from that socket are the same node, so a walk may pass from a process's own
+  output to its own later input (an over-approximation: it never misses a dependency).
 """
 
 from __future__ import annotations
@@ -57,6 +63,7 @@ SELECT src, dst, ts_ns::BIGINT AS t0, end_ns::BIGINT AS t1, op FROM edge WHERE o
 UNION ALL SELECT parent_node, node_id, start_ns::BIGINT, start_ns::BIGINT, 'CLONE_BEFORE' FROM proc
           WHERE fork_ns IS NULL AND parent_node IS NOT NULL
 UNION ALL SELECT client_node, server_node, NULL, NULL, 'PAIR' FROM sock_pair
+UNION ALL SELECT server_node, client_node, NULL, NULL, 'PAIR' FROM sock_pair
 UNION ALL SELECT real_node, user_node, NULL, NULL, 'BACKING' FROM file_backing
 UNION ALL SELECT user_node, real_node, NULL, NULL, 'BACKING' FROM file_backing
 """

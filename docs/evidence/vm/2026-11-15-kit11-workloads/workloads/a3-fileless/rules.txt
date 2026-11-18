@@ -1,0 +1,5 @@
+rules: R1 dropper 2, R2 memfd-exec 1, R3 deleted-exec 1, R4 net-shell 0
+  +   0.520s  R1 dropper      p:253332:14801377615607  wrote /memfd:kworker (deleted) (pid 253331 python3), ran it as pid 253332
+  +   0.520s  R2 memfd-exec   p:253332:14801377615607  pid 253332 ran /proc/self/fd/3 as kworker -a
+  +   0.608s  R1 dropper      p:253333:14801467041709  wrote /var/tmp/p15-workloads/a3-fileless/work/.hidden-upd (pid 253331 python3), ran it as pid 253333
+  +   0.608s  R3 deleted-exec p:253333:14801467041709  pid 253333 ran /proc/self/fd/4 as upd

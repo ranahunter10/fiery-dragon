@@ -1,0 +1,2 @@
+per-round paired ratio with/without p15d --flow; no A/A arm in cost.sh
+w3-web       median 1.009  range 0.577-1.432  not resolved from 1  rounds [1.009, 0.746, 1.156, 0.928, 1.073, 1.432, 0.577]

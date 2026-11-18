@@ -1,0 +1,2 @@
+{"reach": [{"name": "fake key to the catcher", "from": {"path": "/var/tmp/p15-workloads/a1-exfil/work/home/.ssh/id_fake"}, "to": {"listener_port": 14444}, "bytes": 4150}],
+ "rules": ["R1"]}

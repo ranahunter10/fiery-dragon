@@ -1,0 +1,2 @@
+rules: R1 dropper 1, R2 memfd-exec 0, R3 deleted-exec 0, R4 net-shell 0
+  +   2.799s  R1 dropper      p:253027:14782161455348  wrote /var/tmp/p15-workloads/a1-exfil/work/home/.cache/upd (pid 253024 curl), ran it as pid 253027

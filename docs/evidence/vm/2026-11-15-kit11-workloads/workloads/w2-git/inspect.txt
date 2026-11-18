@@ -1,0 +1,27 @@
+/var/tmp/p15-workloads/w2-git/wal/20261114T222245Z-75596207//seg-00000000.p15w: segment 0, 3358656 bytes, 964 batches, 31212 records, valid to the end
+  run.id = 20261114T222245Z-75596207
+  kernel.release = 7.0.0-38-generic
+  schema.hash = da7219110a326d0b2fecb5415c76d193928e539072b807ea720adacbc4aa65a6
+  hooks.manifest = tp_btf/sched_process_fork,tracepoint/sched/sched_process_exec,tracepoint/sched/sched_process_exit,tracepoint/task/task_rename,fentry/security_file_open,kprobe.session/security_file_open,iter/bpf_map_elem,kprobe.multi/security_file_free,kprobe.multi/security_inode_free,kprobe.session/vfs_read,kprobe.session/vfs_write,kprobe.session/vfs_readv,kprobe.session/vfs_writev,tracepoint/sock/sock_send_length,tracepoint/sock/sock_recv_length,iter/task,iter/task_file,fexit/inet_stream_connect,fexit/inet_dgram_connect,fexit/inet_accept,fexit/inet_listen,fexit/inet_bind,fexit/inet6_bind
+  drain.sched = SCHED_FIFO 1
+records: spine 112, bulk 29267, daemon 1833; invalid 0
+  FORK       35
+  EXEC       20
+  EXIT       35
+  RENAME     22
+  OPEN       3638
+  CLOSE      3688
+  FLOW       21915
+  FILE       26
+  CLOCK_SYNC 2
+  STATS      11
+  END        1
+  NET_STATS  11
+  PROC       283
+  SNAP_DONE  2
+  FD         1479
+  FILE_STATS 11
+  FLOW_STATS 11
+  SELF_STATS 11
+  FLOW_RING  11
+END: exit 0, state 0, invariant 1, signal 2, reason "stop requested", closing snapshot 1

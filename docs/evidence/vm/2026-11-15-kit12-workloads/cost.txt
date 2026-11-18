@@ -1,0 +1,2 @@
+p15d flags: --flow; rounds: 7
+w3-web       without     1928 ms  with p15d     1953 ms  ratio  1.013  (rounds without [1928, 2583, 1729, 1925, 1920, 2134, 3385], with [1946, 1926, 1999, 1787, 2060, 3056, 1953]; p15d exits ['0'])

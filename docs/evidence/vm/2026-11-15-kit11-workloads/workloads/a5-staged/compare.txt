@@ -1,0 +1,17 @@
+p15d exit 0; strace root pid 253636
+  processes         21 of 21       100.00 %  
+  clone_edges       20 of 20       100.00 %  
+  execs             21 of 21       100.00 %  0 matched by last component only
+  opens            273 of 273      100.00 %  
+  connects           1 of 1        100.00 %  tgid, family, port, ret
+  accepts            1 of 1        100.00 %  tgid, count
+  bytes file_read   graph      1826152 strace      1826152  100.0000 %  exact in 21 of 21 processes
+  bytes file_write  graph       297573 strace       297573  100.0000 %  exact in 21 of 21 processes
+  bytes sock_recv   graph        61867 strace        61867  100.0000 %  exact in 21 of 21 processes
+  bytes sock_send   graph        61867 strace        61867  100.0000 %  exact in 21 of 21 processes
+  extra: processes 0; opens 42 (42 an exec's program or interpreter, 0 other)
+  calls the flow programs do not hook (by design): splice 5 (60422 B)
+  not compared: AF_UNIX connects 4, O_PATH opens 1, oracle lines: open_failed 75, unfinished 108
+  attack 'report2.txt to the catcher, through the archive': reached True (expected True), bytes 61867 of 61867
+  attack rules: ; all fired: {}
+VERDICT: capture and graph checks hold; detection: every expected rule fired

@@ -348,3 +348,32 @@ opening files. Excluded: vendored code, `vmlinux.h`, generated schema files, doc
 | [`sliceb_attach_check.sh`](../tools/vm/sliceb_attach_check.sh) | Slice B attach-point check (ADR-0005, ADR-0015; design checks O1-O3, O5 in docs/research/2026-11-09-slice-b-design-checks.md). |  |
 | [`stalls.py`](../tools/vm/stalls.py) | Find the guest's stalls in its kernel log and name the matrix steps they touched (E-0250). | `signs`, `stalls`, `steps`, `touched`, `report` |
 | [`test_stalls.py`](../tools/vm/test_stalls.py) | Tests for tools/vm/stalls.py, on the guest's own lines from E-0250 (2026-11-13). | `Stalls` |
+
+## tools/workloads
+
+| File | Job | Public names |
+|---|---|---|
+| [`catcher.py`](../tools/workloads/catcher.py) | A stand-in for an attacker's machine, on loopback: listen on PORT, say so by creating READY, accept one connection, send SEND's contents if given (a controller's commands), then... |  |
+| [`compare.py`](../tools/workloads/compare.py) | Compare p15d's graph of a workload with what strace saw of it, and check an attack's manifest. | `ret_of`, `recall`, `compare`, `nodes_of`, `attack`, `has_fn`, `verdict`, `text` |
+| [`cost.sh`](../tools/workloads/cost.sh) | What p15d costs a real workload, end to end: each benign scenario timed without p15d and with p15d --flow, alternating (A B B A per pair of rounds, so drift hits both arms alike... | `one` |
+| [`oracle.py`](../tools/workloads/oracle.py) | what `strace -f -yy -ttt` saw, as facts to compare with p15d's graph (tools/workloads/compare.py). | `Facts`, `split_first_arg`, `fd_target`, `is_sock`, `calls`, `parse`, `load` |
+| [`recheck.py`](../tools/workloads/recheck.py) | Re-read a finished run's strace logs with today's witness (oracle.py) and compare its byte totals with the graph totals that run's compare.json kept. |  |
+| [`run.sh`](../tools/workloads/run.sh) | Real workloads and attack scenarios, each captured by p15d and watched by strace, then compared (tools/workloads/README.md). | `wait_for` |
+| [`test_oracle.py`](../tools/workloads/test_oracle.py) | strace's log read as facts (oracle.py), and the comparison with a graph (compare.py) on a hand-made graph with only the tables it reads. | `Oracle`, `graph`, `Compare` |
+
+## tools/workloads/scenarios
+
+| File | Job | Public names |
+|---|---|---|
+| [`a1-exfil.sh`](../tools/workloads/scenarios/a1-exfil.sh) | full Attack 1, download, execute, exfiltrate (all on loopback, every payload harmless): a stager (http.server on 18000) serves a binary (a copy of `id`); the victim's shell down... |  |
+| [`a2-revshell.sh`](../tools/workloads/scenarios/a2-revshell.sh) | full Attack 2, a reverse shell: a controller on 14445 sends three commands (id, uname -a, exit) to a shell that the victim connected out to it with bash's /dev/tcp (sh's stdin, ... |  |
+| [`a3-fileless.sh`](../tools/workloads/scenarios/a3-fileless.sh) | full Attack 3, code with no file left on disk: python3 copies `uname` into a memfd and runs it (R2, and R1: written by one process, run by another); then copies `hostname` to a ... |  |
+| [`a4-masquerade.sh`](../tools/workloads/scenarios/a4-masquerade.sh) | full Attack 4, masquerade and persistence: a copy of `bash` is dropped as .X11/kworker and run (R1); a python3 process renames itself to "kworker/0:1" (prctl PR_SET_NAME) and wr... |  |
+| [`a5-staged.sh`](../tools/workloads/scenarios/a5-staged.sh) | full Attack 5, staged exfiltration over two hops: tar gathers a documents directory into an archive (file -> tar -> archive file), then a separate python3 process sends the arch... |  |
+| [`a6-scan.sh`](../tools/workloads/scenarios/a6-scan.sh) | full Attack 6, a port scan: blocking connects with bash's /dev/tcp to 20 closed ports (each refused) and one open port (a catcher on 14447), then a line sent to the open one. |  |
+| [`w1-build.sh`](../tools/workloads/scenarios/w1-build.sh) | full A real C build: libbpf's sources and headers (the repo's submodule, copied) compiled into a static library with make -j3: make, the compiler driver, cc1, the assembler and ... |  |
+| [`w2-git.sh`](../tools/workloads/scenarios/w2-git.sh) | light git: a shallow clone of this repository over file://, then log, status and grep in the clone. |  |
+| [`w3-web.sh`](../tools/workloads/scenarios/w3-web.sh) | full A web server under parallel clients: python3's threading http.server on 127.0.0.1:18080 serving a 2 MiB file and a page; 30 requests by curl, 10 at a time; every download i... |  |
+| [`w4-archive.sh`](../tools/workloads/scenarios/w4-archive.sh) | full An archive round trip: the repo's docs copied, tarred and gzipped, checksummed, unpacked elsewhere and compared file by file. |  |
+| [`w5-python.sh`](../tools/workloads/scenarios/w5-python.sh) | full Python: an SQLite database of 20,000 rows written in one transaction and queried, its result dumped as JSON; then the repo's python package byte-compiled in a copy. |  |
+| [`w6-pipeline.sh`](../tools/workloads/scenarios/w6-pipeline.sh) | full A shell pipeline: find, xargs, cat, tr, sort, uniq and head over the system's copyright files: many processes joined by pipes. |  |

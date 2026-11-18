@@ -1,0 +1,19 @@
+p15d exit 0; strace root pid 253171
+  processes         11 of 11       100.00 %  
+  clone_edges       10 of 10       100.00 %  
+  execs             12 of 12       100.00 %  0 matched by last component only
+  opens            146 of 146      100.00 %  
+  connects           1 of 1        100.00 %  tgid, family, port, ret
+  accepts            1 of 1        100.00 %  tgid, count
+  bytes file_read   graph       764478 strace       764478  100.0000 %  exact in 11 of 11 processes
+  bytes file_write  graph          890 strace          890  100.0000 %  exact in 11 of 11 processes
+  bytes sock_recv   graph          164 strace          164  100.0000 %  exact in 11 of 11 processes
+  bytes sock_send   graph          164 strace          164  100.0000 %  exact in 11 of 11 processes
+  extra: processes 0; opens 23 (23 an exec's program or interpreter, 0 other)
+  calls the flow programs do not hook (by design): splice 2 (652 B)
+  not compared: AF_UNIX connects 4, O_PATH opens 0, oracle lines: open_failed 51, unfinished 37
+  attack 'controller to id': reached True (expected True)
+  attack 'controller to uname': reached True (expected True)
+  attack 'id's output to the controller': reached True (expected True)
+  attack rules: R4 NOT fired; all fired: {}
+VERDICT: capture and graph checks hold; detection: rule R4 did not fire

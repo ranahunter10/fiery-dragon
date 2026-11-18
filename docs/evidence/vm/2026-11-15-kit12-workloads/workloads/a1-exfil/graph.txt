@@ -1,0 +1,47 @@
+graph: /var/tmp/p15-workloads/a1-exfil/graph.duckdb
+records: FORK 38, EXEC 33, EXIT 37, RENAME 36, CLOCK_SYNC 1, STATS 5, END 1, NET 8, NET_STATS 5, PROC 285, SNAP_DONE 2, OPEN 593, CLOSE 645, FILE 28, FD 1479, FILE_STATS 5, FLOW_STATS 5, SELF_STATS 5, FLOW_RING 5, FLOW 8541
+  accept_not_paired            0
+  edge_ACCEPT                  2
+  edge_BIND                    2
+  edge_CLONE                   36
+  edge_CONNECT                 2
+  edge_EXECUTE                 33
+  edge_HELD                    621
+  edge_LISTEN                  2
+  edge_OPEN                    593
+  edge_READ                    616
+  edge_RECV                    156
+  edge_SEND                    61
+  edge_WRITE                   7708
+  edge_proc_end_without_image  1
+  edge_without_node            0
+  exec_file_tuple              33
+  fid_two_objs                 0
+  file_rule_fid                189
+  file_rule_obj                303
+  file_rule_tuple              250
+  flow_interval_reversed       0
+  flow_sock_joined             191
+  flow_sock_not_joined         26
+  flow_start_unknown           0
+  flow_unregistered            0
+  image_exec                   33
+  image_exec_without_edge      0
+  image_fork                   35
+  image_snapshot               38
+  node_file                    742
+  node_proc                    179
+  node_sock                    6
+  obj_facts_conflict           0
+  open_denied                  0
+  open_never_opened            0
+  open_no_path                 0
+  openfile_close-only          8
+  openfile_file                28
+  openfile_open                593
+  openfile_snapshot            540
+  sock_cookie_without_net      0
+  sock_obj_two_cookies         0
+  thread_rename                2
+tree: exec 33, exit_process 36, exit_thread 1, fork_process 36, fork_thread 2, from_snapshot 142, image_exec 33, image_fork 35, image_none 107, image_snapshot 38, pre_existing 143, pre_existing_unlisted 1, rename 34, rename_thread 2
+wal bytes 1274792

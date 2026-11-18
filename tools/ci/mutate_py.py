@@ -634,6 +634,7 @@ M = [
  (GSQL, "WHERE w.kind IN (3, 4) AND f.rule IS DISTINCT FROM 'sock-cookie'", "WHERE w.kind IN (3, 4)"),
  (GSQL, "GROUP BY obj HAVING count(DISTINCT sock_cookie) > 1)),", "GROUP BY obj HAVING count(DISTINCT sock_cookie) > 2)),"),
  (GCLI, '"image_exec_without_edge", "sock_obj_two_cookies")', '"image_exec_without_edge")'),
+ (GTRACK, "UNION ALL SELECT server_node, client_node, NULL, NULL, 'PAIR' FROM sock_pair\n", ""),
 ]
 
 

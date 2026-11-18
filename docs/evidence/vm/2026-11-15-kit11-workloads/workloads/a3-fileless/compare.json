@@ -1,0 +1,161 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 3,
+  "unfinished_never_resumed": 0,
+  "open_failed": 19
+ },
+ "recall": {
+  "processes": {
+   "oracle": 5,
+   "found": 5,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 4,
+   "found": 4,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 5,
+   "found": 5,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 58,
+   "found": 58,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 0,
+   "found": 0,
+   "ratio": null,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 0,
+   "found": 0,
+   "ratio": null,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 10,
+   "exec_and_interpreter": 8,
+   "other": 2,
+   "other_first": [
+    [
+     253332,
+     "/memfd:kworker (deleted)"
+    ],
+    [
+     253333,
+     "/var/tmp/p15-workloads/a3-fileless/work/.hidden-upd (deleted)"
+    ]
+   ]
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 11947612,
+   "graph": 11947612,
+   "exact_processes": 5,
+   "processes": 5,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 11834665,
+   "graph": 11834665,
+   "exact_processes": 5,
+   "processes": 5,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 0,
+   "graph": 0,
+   "exact_processes": 5,
+   "processes": 5,
+   "ratio": null,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 0,
+   "graph": 0,
+   "exact_processes": 5,
+   "processes": 5,
+   "ratio": null,
+   "differ": []
+  }
+ },
+ "unseen": {
+  "splice": {
+   "calls": 2,
+   "bytes": 60
+  }
+ },
+ "unix_connects": 0,
+ "opath_opens": 0,
+ "root": 253330,
+ "attack": {
+  "reach": [],
+  "rules": {
+   "R1": true,
+   "R2": true,
+   "R3": true
+  },
+  "refused": {},
+  "comm": {},
+  "alerts": [
+   {
+    "rule": "R1",
+    "key": "p:253332:14801377615607",
+    "detail": "wrote /memfd:kworker (deleted) (pid 253331 python3), ran it as pid 253332"
+   },
+   {
+    "rule": "R2",
+    "key": "p:253332:14801377615607",
+    "detail": "pid 253332 ran /proc/self/fd/3 as kworker -a"
+   },
+   {
+    "rule": "R1",
+    "key": "p:253333:14801467041709",
+    "detail": "wrote /var/tmp/p15-workloads/a3-fileless/work/.hidden-upd (pid 253331 python3), ran it as pid 253333"
+   },
+   {
+    "rule": "R3",
+    "key": "p:253333:14801467041709",
+    "detail": "pid 253333 ran /proc/self/fd/4 as upd"
+   }
+  ],
+  "rules_fired": {
+   "R1": 2,
+   "R2": 1,
+   "R3": 1
+  }
+ },
+ "verdict": [],
+ "detection_gaps": []
+}

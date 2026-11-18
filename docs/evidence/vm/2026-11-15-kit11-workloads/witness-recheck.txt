@@ -1,0 +1,12 @@
+a1-exfil       file_read EXACT 15119636; file_write EXACT 11816152; sock_recv EXACT 11811542; sock_send EXACT 11811542; unseen: copy_file_range 1 (11807104 B), splice 4 (7602 B); into a socket: splice_to_socket 1
+a2-revshell    file_read EXACT 764478; file_write EXACT 890; sock_recv EXACT 164; sock_send EXACT 164; unseen: splice 2 (652 B)
+a3-fileless    file_read EXACT 11947612; file_write EXACT 11834665; sock_recv EXACT 0; sock_send EXACT 0; unseen: splice 2 (60 B)
+a4-masquerade  file_read EXACT 40688; file_write EXACT 37; sock_recv EXACT 0; sock_send EXACT 0; unseen: copy_file_range 1 (11807104 B)
+a5-staged      file_read EXACT 1826152; file_write EXACT 297573; sock_recv EXACT 61867; sock_send EXACT 61867; unseen: splice 5 (60422 B)
+a6-scan        file_read EXACT 766180; file_write EXACT 4611; sock_recv EXACT 6; sock_send EXACT 6; unseen: splice 2 (322 B)
+w1-build       file_read EXACT 58699169; file_write EXACT 26181736; sock_recv EXACT 0; sock_send EXACT 0; unseen: copy_file_range 67 (2020783 B)
+w2-git         light trace: no bytes
+w3-web         file_read EXACT 69594039; file_write EXACT 31462326; sock_recv EXACT 31466145; sock_send EXACT 31466145; unseen: splice 4 (4194304 B)
+w4-archive     file_read EXACT 86042106; file_write EXACT 51865288; sock_recv EXACT 0; sock_send EXACT 0; unseen: copy_file_range 900 (15973428 B)
+w5-python      file_read EXACT 3035110; file_write EXACT 982921; sock_recv EXACT 0; sock_send EXACT 0; unseen: copy_file_range 60 (941186 B)
+w6-pipeline    file_read EXACT 9351872; file_write EXACT 6243273; sock_recv EXACT 0; sock_send EXACT 0; unseen: splice 598 (5987402 B)

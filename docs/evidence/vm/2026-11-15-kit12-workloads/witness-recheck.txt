@@ -1,0 +1,2 @@
+a1-exfil       file_read EXACT 15119489; file_write EXACT 11816152; sock_recv EXACT 11811542; sock_send EXACT 11811542; unseen: copy_file_range 1 (11807104 B), splice 4 (7602 B); into a socket: splice_to_socket 1
+a4-masquerade  file_read EXACT 44676; file_write EXACT 37; sock_recv EXACT 0; sock_send EXACT 0; unseen: copy_file_range 1 (11807104 B)

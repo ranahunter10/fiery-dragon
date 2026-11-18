@@ -1,0 +1,15 @@
+scenario,round,arm,wall_ms,p15d_rc
+w3-web,1,none,1928,-
+w3-web,1,p15d,1946,0
+w3-web,2,p15d,1926,0
+w3-web,2,none,2583,-
+w3-web,3,none,1729,-
+w3-web,3,p15d,1999,0
+w3-web,4,p15d,1787,0
+w3-web,4,none,1925,-
+w3-web,5,none,1920,-
+w3-web,5,p15d,2060,0
+w3-web,6,p15d,3056,0
+w3-web,6,none,2134,-
+w3-web,7,none,3385,-
+w3-web,7,p15d,1953,0

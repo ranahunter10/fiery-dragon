@@ -1,0 +1,157 @@
+{
+ "p15d_rc": 0,
+ "oracle_counts": {
+  "unfinished": 408,
+  "unfinished_never_resumed": 0,
+  "open_failed": 136,
+  "thread": 1
+ },
+ "recall": {
+  "processes": {
+   "oracle": 26,
+   "found": 26,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "clone_edges": {
+   "oracle": 25,
+   "found": 25,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "execs": {
+   "oracle": 26,
+   "found": 26,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "0 matched by last component only"
+  },
+  "opens": {
+   "oracle": 427,
+   "found": 427,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": ""
+  },
+  "connects": {
+   "oracle": 2,
+   "found": 2,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, family, port, ret"
+  },
+  "accepts": {
+   "oracle": 2,
+   "found": 2,
+   "ratio": 1.0,
+   "missed": [],
+   "missed_total": 0,
+   "note": "tgid, count"
+  }
+ },
+ "extra": {
+  "processes": {
+   "n": 0,
+   "first": []
+  },
+  "opens": {
+   "n": 52,
+   "exec_and_interpreter": 52,
+   "other": 0,
+   "other_first": []
+  }
+ },
+ "bytes": {
+  "file_read": {
+   "oracle": 15119636,
+   "graph": 15119636,
+   "exact_processes": 26,
+   "processes": 26,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "file_write": {
+   "oracle": 11816152,
+   "graph": 11816152,
+   "exact_processes": 26,
+   "processes": 26,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_recv": {
+   "oracle": 11811542,
+   "graph": 11811542,
+   "exact_processes": 26,
+   "processes": 26,
+   "ratio": 1.0,
+   "differ": []
+  },
+  "sock_send": {
+   "oracle": 11807392,
+   "graph": 11811542,
+   "exact_processes": 25,
+   "processes": 26,
+   "ratio": 1.000351,
+   "differ": [
+    [
+     253028,
+     0,
+     4150
+    ]
+   ]
+  }
+ },
+ "unseen": {
+  "copy_file_range": {
+   "calls": 1,
+   "bytes": 11807104
+  },
+  "splice": {
+   "calls": 5,
+   "bytes": 11752
+  }
+ },
+ "unix_connects": 4,
+ "opath_opens": 0,
+ "root": 252998,
+ "attack": {
+  "reach": [
+   {
+    "name": "fake key to the catcher",
+    "from_nodes": 1,
+    "to_nodes": 1,
+    "reached": true,
+    "expect": true,
+    "bytes_want": 4150,
+    "bytes_got": 4150,
+    "bytes_ok": true
+   }
+  ],
+  "rules": {
+   "R1": true
+  },
+  "refused": {},
+  "comm": {},
+  "alerts": [
+   {
+    "rule": "R1",
+    "key": "p:253027:14782161455348",
+    "detail": "wrote /var/tmp/p15-workloads/a1-exfil/work/home/.cache/upd (pid 253024 curl), ran it as pid 253027"
+   }
+  ],
+  "rules_fired": {
+   "R1": 1
+  }
+ },
+ "verdict": [
+  "bytes sock_send: graph 11811542 vs strace 11807392 (first: [[253028, 0, 4150]])"
+ ],
+ "detection_gaps": []
+}
