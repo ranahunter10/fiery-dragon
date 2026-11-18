@@ -352,6 +352,13 @@ Raw phase-0 evidence: [`docs/evidence/phase0/`](evidence/phase0/README.md), byte
 29. **An FPGA audit device as the WAL's out-of-host anchor** (note F3, I3; HARDLOG, R-055). Recommendation: put it on the FPGA layer's agenda to study, not to build now.
 30. **Plan the evaluation around Bilot et al.'s metrics** (node-level, per attack; note F4, R-054). Recommendation: read R-053 and R-054 in full first, then fix what capture must log for them.
 
+### The demo's rules and attack path (Dragon, 2026-11-14; E-0311)
+
+Built: four graph rules (`python3 -m p15.graph.rules`), the report's first detection tier; and an attack-path page (`python3 -m p15.graph.story`). The demo also gained a dropper and a fileless second stage. Run on the VM: all four rules fired, and the path's cause chain runs from the injected shell back to the request that started it ([evidence](evidence/vm/2026-11-14-demo/)).
+
+128. **The demo is run with `--flow`.** Without the flow programs, R1 (dropper) cannot see the write, and the path cannot follow a file from its writer to its reader. Recommendation: make `--flow` the demo's default in `run_demo.sh`; today the caller passes it in `P15D_FLAGS`.
+129. **R4 fires on every shell a network-facing process starts**, so the demo's harmless lookups fire it too. Recommendation: keep the rule as a pattern (the report's tier 1) and say so in the presentation. A filter on the request's content would be a detector, which is the job of tiers 2 and 3.
+
 ### Decisions waiting from Dragon's design review (2026-11-13; numbered from 101)
 
 Each is set out with its options and evidence in [the review](audits/2026-11-13-design-review-dragon.md) §8; none is confirmed by a run (E-0300, E-0301).

