@@ -47,6 +47,12 @@ Common header of every record, 32 bytes (ADR-0008).
 - 2 `LATE`: a canary: everything was seen, late_ms after its 1 s deadline (the pipeline stood still)
 - 3 `LINK`: one of p15d's links is gone or is no longer the link it attached; link_index and link_name say which
 
+**WAL_SPACE_LEVEL** (values of `WAL_SPACE.level`): what the WAL's free-space guard lets through (daemon/space.h)
+
+- 1 `OK`: every ring is written (daemon/space.h level 0)
+- 2 `SHED_BULK`: free space is below low: the bulk ring (NET, file identity, data flow) is shed (level 1)
+- 3 `SHED_ALL`: free space is below the reserve: the spine is shed too; only the daemon ring is written (level 2)
+
 **FLOW_KIND** (values of `FLOW.kind`): the transfer's direction and hook family (ADR-0005 rule 2)
 
 - 1 `READ`: vfs_read, vfs_readv: object -> process
@@ -1085,6 +1091,29 @@ Fixed part 112 bytes; at most 112 bytes with its variable fields.
 | 72 | `link_index` | u32 | LINK: the link's place in p15d's list (the order of its code=links log line at the start), from 0 |
 | 76 | `link_err` | u32 | LINK: errno of the info call on its descriptor, or 0 when the descriptor now names another link or program |
 | 80 | `link_name` | char[32] | LINK: the program the link attached, NUL padded |
+
+## WAL_SPACE (type 44, version 1, class STATS)
+
+The WAL's free-space guard (the design review's F-02; daemon/space.h): written when its level changes, and with every STATS record while records are being shed or have been. The counts are cumulative. A shed record is counted in the run's books, so they still close; the run is DEGRADED from the first one.
+
+Fixed part 128 bytes; at most 128 bytes with its variable fields.
+
+| Offset | Field | Type | Meaning |
+|---:|---|---|---|
+| 0 | `h` | header | common header |
+| 32 | `avail_bytes` | u64 | free space the guard last estimated: the last fstatvfs reading less what was written since |
+| 40 | `total_bytes` | u64 | the filesystem's size at that reading |
+| 48 | `low_bytes` | u64 | below this, the bulk ring is shed |
+| 56 | `reserve_bytes` | u64 | below this, the spine is shed too |
+| 64 | `spine_shed` | u64 | spine records not written: shed by the guard, or in a batch the disk refused |
+| 72 | `bulk_shed` | u64 | bulk-ring records not written, the same way |
+| 80 | `daemon_shed` | u64 | daemon-ring records the disk refused (the guard never sheds them) |
+| 88 | `nospace` | u64 | batches the filesystem refused with ENOSPC or EDQUOT, truncated away (the WAL stays valid) |
+| 96 | `refresh_errors` | u64 | free-space readings that failed (the last estimate was kept) |
+| 104 | `fork_shed` | u64 | FORK records among spine_shed: the reader's process-tree check (ADR-0023) adds them to the counted FORK losses |
+| 112 | `exit_shed` | u64 | EXIT records among spine_shed, the same way for EXIT |
+| 120 | `level` | u32 | WAL_SPACE_LEVEL now |
+| 124 | `transitions` | u32 | changes of level since the run's start |
 
 ## FLOW (type 10, version 1, class FLOW)
 

@@ -33,6 +33,7 @@ static size_t fixed_size(__u16 type, __u16 version)
 	case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stats_v1) : 0;
 	case P15_T_SELF_STATS: return version == 1 ? sizeof(struct p15_self_stats_v1) : 0;
 	case P15_T_CANARY_MISS: return version == 1 ? sizeof(struct p15_canary_miss_v1) : 0;
+	case P15_T_WAL_SPACE: return version == 1 ? sizeof(struct p15_wal_space_v1) : 0;
 	}
 	return 0;
 }
@@ -484,6 +485,7 @@ const char *p15_type_name(__u16 type)
 	case P15_T_FLOW_STATS: return "FLOW_STATS";
 	case P15_T_SELF_STATS: return "SELF_STATS";
 	case P15_T_CANARY_MISS: return "CANARY_MISS";
+	case P15_T_WAL_SPACE: return "WAL_SPACE";
 	case P15_T_FILE:       return "FILE";
 	case P15_T_FLOW:       return "FLOW";
 	}
@@ -614,6 +616,18 @@ int p15_rec_format(const void *data, char *buf, size_t n)
 				    (unsigned long long)r->net_drained, (unsigned long long)r->net_invalid,
 				    (unsigned long long)r->net_written, (unsigned long long)r->net_drain_lost,
 				    (unsigned long long)r->bulk_fill_max);
+	}
+	case P15_T_WAL_SPACE: {
+		const struct p15_wal_space_v1 *r = data;
+		static const char *const lv[] = { "?", "ok", "shed_bulk", "shed_all" };
+
+		return k + snprintf(buf + k, n - k, " level=%s transitions=%u avail_mib=%llu low_mib=%llu reserve_mib=%llu "
+				    "shed spine=%llu (fork=%llu exit=%llu) bulk=%llu daemon=%llu nospace=%llu",
+				    lv[r->level <= P15_WAL_SPACE_LEVEL_MAX ? r->level : 0], r->transitions,
+				    (unsigned long long)(r->avail_bytes >> 20), (unsigned long long)(r->low_bytes >> 20),
+				    (unsigned long long)(r->reserve_bytes >> 20), (unsigned long long)r->spine_shed,
+				    (unsigned long long)r->fork_shed, (unsigned long long)r->exit_shed, (unsigned long long)r->bulk_shed, (unsigned long long)r->daemon_shed,
+				    (unsigned long long)r->nospace);
 	}
 	case P15_T_SELF_STATS: {
 		const struct p15_self_stats_v1 *r = data;

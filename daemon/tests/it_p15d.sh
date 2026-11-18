@@ -663,6 +663,88 @@ else
     echo "  SKIP (file identity not loadable here; CI and the VM run case 27)"
 fi
 
+# The WAL's free-space guard (F-02; daemon/space.h). spacerec prints, from a run's daemon ring:
+#   <levels seen, in order, deduplicated> <last level> <spine_shed> <bulk_shed> <nospace> <fork_shed> <exit_shed>
+spacerec() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+ws = [r.f for r in wal.read_run(Path(sys.argv[1])).ring_records(2) if r.name == 'WAL_SPACE']
+lv = []
+for f in ws:
+    if not lv or lv[-1] != f['level']: lv.append(f['level'])
+last = ws[-1] if ws else None
+print(','.join(map(str, lv)) or '-', last['level'] if last else '-', last['spine_shed'] if last else 0,
+      last['bulk_shed'] if last else 0, last['nospace'] if last else 0, last['fork_shed'] if last else 0,
+      last['exit_shed'] if last else 0)" "$(ls -d "$1"/*/ | head -1)"; }
+# the reader's process-tree check (python/p15/reconcile.py, ADR-0023) on a run: its verdict, one word
+treecheck() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import trace
+print(trace.load(Path(sys.argv[1])).recon.verdict.replace(' ', '_'))" "$(ls -d "$1"/*/ | head -1)"; }
+true_after() { PYTHONPATH=python "$PY" -c "
+import sys; from pathlib import Path; from p15 import wal
+run = wal.read_run(Path(sys.argv[1])); t = int(sys.argv[2])
+print(sum(1 for r in run.ring_records(0) if r.name == 'EXEC' and r.var['filename'] == b'/bin/true' and r.h['ts_ns'] > t))" "$(ls -d "$1"/*/ | head -1)" "$2"; }
+boot_ns() { awk '{printf "%d", $1 * 1e9}' /proc/uptime; }
+
+echo "case 28: the disk fills while p15d runs, guard on: bulk shed, then the spine, then space comes back (F-02) [t+${SECONDS}s]"
+D28=$T/disk28
+mkdir -p "$D28" && mount -t tmpfs -o size=48m tmpfs "$D28"
+dd if=/dev/zero of="$D28/fill1" bs=1M count=20 status=none
+"$B/p15d" --wal-dir "$D28/wal" $NET --wal-space-low-mb 24 --wal-space-reserve-mb 12 --duration 12 --stats-ms 200 \
+    2>"$T/c28.err" &
+pid=$!
+if started "$T/c28.err"; then
+    sleep 1
+    dd if=/dev/zero of="$D28/fill2" bs=1M count=8 status=none        # about 20 MiB free: below low
+    sleep 1.5
+    dd if=/dev/zero of="$D28/fill3" bs=1M count=10 status=none       # about 10 MiB free: below the reserve
+    sleep 1.5
+    storm 300                                                       # spine records the guard must shed
+    sleep 1
+    rm -f "$D28/fill1" "$D28/fill2" "$D28/fill3"                    # space comes back
+    sleep 1.5
+    t_back=$(boot_ns)
+    storm 100                                                       # written again
+fi
+wait $pid; rc=$?
+RUN=$D28/wal; inspect >"$T/c28.txt" 2>&1; irc=$?
+read -r lv28 last28 sp28 bk28 ns28 fk28 ex28 <<<"$(spacerec "$D28/wal")"
+tc28=$(treecheck "$D28/wal")
+back28=$(true_after "$D28/wal" "${t_back:-0}")
+echo "  levels $lv28 (1 ok, 2 shed bulk, 3 shed all), last $last28; shed spine $sp28, bulk $bk28; refused batches $ns28; /bin/true after the space came back: $back28"
+check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c28.txt" "exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d $rc)"
+check "case \"$lv28\" in *2*3*1) true;; *) false;; esac && [ \"$last28\" = 1 ]" "WAL_SPACE records the levels in order: shed bulk, shed all, then ok again ($lv28)"
+check "[ \"\${sp28:-0}\" -gt 0 ] && [ \"\${ns28:-1}\" = 0 ]" "spine records were shed at the reserve ($sp28), and the disk never had to refuse a batch"
+check "[ \"\${back28:-0}\" -ge 100 ]" "after the space came back every exec is written again ($back28 of the last 100)"
+check "[ \"\${fk28:-0}\" -gt 0 ] && [ \"\${ex28:-0}\" -gt 0 ] && [ \$((fk28 + ex28)) -le \"\${sp28:-0}\" ]" "the shed FORKs ($fk28) and EXITs ($ex28) are counted by type, within the spine's shed ($sp28)"
+check "[ \"$tc28\" != INVALID ]" "the reader's process-tree check counts the shed FORKs and EXITs as losses, so it is not INVALID ($tc28)"
+check "grep -q 'code=wal_space level=shed_all' $T/c28.err && grep -q 'disk is low' $T/c28.txt" "the log says so, and END's reason names the low disk"
+umount "$D28"
+
+echo "case 29: the guard off, the disk really full: a refused batch is taken back, the WAL stays valid, p15d goes on (F-02) [t+${SECONDS}s]"
+D29=$T/disk29
+mkdir -p "$D29" && mount -t tmpfs -o size=8m tmpfs "$D29"
+"$B/p15d" --wal-dir "$D29/wal" $NET --wal-space-guard 0 --duration 8 --stats-ms 200 --batch-kb 64 2>"$T/c29.err" &
+pid=$!
+if started "$T/c29.err"; then
+    sleep 0.5
+    dd if=/dev/zero of="$D29/fill" bs=64k count=1000 status=none 2>/dev/null   # fills the disk to the last block
+    storm 600                                                       # batches the disk must refuse
+    sleep 1
+    rm -f "$D29/fill"
+    sleep 1
+    t_back=$(boot_ns)
+    storm 100
+fi
+wait $pid; rc=$?
+RUN=$D29/wal; inspect >"$T/c29.txt" 2>&1; irc=$?
+read -r lv29 last29 sp29 bk29 ns29 fk29 ex29 <<<"$(spacerec "$D29/wal")"
+back29=$(true_after "$D29/wal" "${t_back:-0}")
+echo "  refused batches $ns29; shed spine $sp29; /bin/true after the space came back: $back29"
+check "[ $rc -eq 3 ] && [ $irc -eq 0 ] && grep -q 'END: exit 3, state 1, invariant 1' $T/c29.txt" "exit 3 (DEGRADED), not INVALID; the WAL scans whole in both readers; books closed (p15d $rc)"
+check "[ \"\${ns29:-0}\" -gt 0 ] && [ \"\${sp29:-0}\" -gt 0 ]" "the disk refused batches ($ns29) and their spine records are counted shed ($sp29)"
+check "[ \"\${back29:-0}\" -ge 100 ]" "after the space came back p15d writes again ($back29 of the last 100)"
+umount "$D29"
+
 echo "case 4: a bad flag [t+${SECONDS}s]"
 "$B/p15d" --wal-dir "$T/c4" --bogus 2>/dev/null; rc=$?
 check "[ $rc -eq 64 ]" "exit 64 (usage)"

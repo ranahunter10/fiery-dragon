@@ -507,7 +507,105 @@ static void test_on_open_writes_first(void)
 	free(d);
 }
 
+/* writev that fails every call with `eio_errno` once armed */
+static int eio_errno, eio_armed;
+
+static ssize_t eio_writev(int fd, const struct iovec *iov, int n)
+{
+	if (eio_armed) {
+		errno = eio_errno;
+		return -1;
+	}
+	return writev(fd, iov, n);
+}
+
 static void test_io_error_fails_the_writer(void)
+{
+	char *d = tmpdir();
+	struct p15w_opts o = { .dir = d, .clock = fake_clock, .writev = eio_writev };
+	struct p15w *w;
+
+	eio_errno = EIO;
+	eio_armed = 0;
+	EXPECT(p15w_open(&w, &o) == 0, "open");
+	eio_armed = 1;
+	EXPECT(put(w, P15W_RING_SPINE, 1, 32, 1) == -EIO, "write error returned");
+	EXPECT(p15w_stats(w)->errors == 1 && p15w_stats(w)->batches == 0 && p15w_stats(w)->nospace == 0,
+	       "counted as an error, not as a full disk");
+	eio_armed = 0;
+	EXPECT(put(w, P15W_RING_SPINE, 1, 32, 1) == -EIO, "failed writer refuses appends");
+	EXPECT(p15w_tick(w) == -EIO, "and ticks");
+	EXPECT(p15w_stats(w)->next_seq[0] == 0, "no sequence numbers spent");
+	EXPECT(p15w_close(w) == -EIO, "close reports the first error");
+	rmtree(d);
+	free(d);
+}
+
+/* writev that writes the first `nospace_after` bytes of the next batch (a short write), then fails
+ * the call that would write the rest with ENOSPC */
+static long nospace_after = -1;
+static int nospace_next;
+
+static ssize_t nospace_writev(int fd, const struct iovec *iov, int n)
+{
+	if (nospace_next) {
+		nospace_next = 0;
+		errno = ENOSPC;
+		return -1;
+	}
+	if (nospace_after >= 0) {
+		size_t want = (size_t)nospace_after;
+
+		nospace_after = -1;
+		if (want > 0) {
+			struct iovec one = { iov[0].iov_base, iov[0].iov_len < want ? iov[0].iov_len : want };
+
+			nospace_next = 1;
+			return writev(fd, &one, 1);
+		}
+		errno = ENOSPC;
+		return -1;
+	}
+	return writev(fd, iov, n);
+}
+
+/* F-02: a full disk refuses a batch part-way. The part written is taken back, the writer stays
+ * usable, the segment still scans whole, and the ring's sequence numbers stay gapless. */
+static void test_full_disk_is_survived(void)
+{
+	char *d = tmpdir();
+	struct p15w_opts o = { .dir = d, .clock = fake_clock, .writev = nospace_writev };
+	struct p15w *w;
+	struct p15w_scan s;
+	unsigned char *b;
+	size_t n;
+
+	nospace_after = -1;
+	EXPECT(p15w_open(&w, &o) == 0, "open");
+	EXPECT(put(w, P15W_RING_SPINE, 2, 64, 1) == 0, "a batch before the disk fills");
+	nospace_after = 50;                 /* 50 bytes of the next batch reach the file, then ENOSPC */
+	EXPECT(put(w, P15W_RING_SPINE, 3, 64, 2) == -ENOSPC, "the refused batch returns ENOSPC");
+	EXPECT(p15w_stats(w)->nospace == 1 && p15w_stats(w)->errors == 0, "counted as a full disk, not an error");
+	nospace_after = 0;                  /* nothing of this one reaches the file */
+	EXPECT(put(w, P15W_RING_BULK, 1, 64, 3) == -ENOSPC, "refused at its first byte");
+	EXPECT(p15w_stats(w)->nospace == 2, "counted again");
+	EXPECT(put(w, P15W_RING_SPINE, 1, 64, 4) == 0, "space again: the writer goes on");
+	EXPECT(p15w_tick(w) == 0, "and ticks");
+	EXPECT(p15w_stats(w)->next_seq[P15W_RING_SPINE] == 3 && p15w_stats(w)->next_seq[P15W_RING_BULK] == 0,
+	       "refused batches spend no sequence numbers");
+	EXPECT(p15w_close(w) == 0, "close: no error to report");
+	b = slurp(segpath(d, 0), &n);
+	EXPECT(p15w_scan_buf(b, n, &s) == 0 && s.stop == NULL && s.records == 3 && s.batches == 2,
+	       "the segment scans whole: two batches, three records, no torn tail");
+	EXPECT(b[n - 1] == 4, "the last batch is the one after the disk had room again");
+	free(b);
+	rmtree(d);
+	free(d);
+}
+
+/* A device that cannot be truncated (/dev/full) turns the refused batch into a failure: the WAL
+ * cannot take back what it wrote, so it must not go on. */
+static void test_full_disk_untruncatable_fails(void)
 {
 	char *d = tmpdir();
 	struct p15w *w = open_w(d, 0, 0, 0, NULL);
@@ -518,13 +616,30 @@ static void test_io_error_fails_the_writer(void)
 	} else {
 		dup2(full, p15w_fd(w));
 		close(full);
-		EXPECT(put(w, P15W_RING_SPINE, 1, 32, 1) == -ENOSPC, "write error returned");
-		EXPECT(p15w_stats(w)->errors == 1 && p15w_stats(w)->batches == 0, "counted, not written");
-		EXPECT(put(w, P15W_RING_SPINE, 1, 32, 1) == -EIO, "failed writer refuses appends");
-		EXPECT(p15w_tick(w) == -EIO, "and ticks");
-		EXPECT(p15w_stats(w)->next_seq[0] == 0, "no sequence numbers spent");
+		EXPECT(put(w, P15W_RING_SPINE, 1, 32, 1) < 0 && put(w, P15W_RING_SPINE, 1, 32, 1) == -EIO,
+		       "the batch cannot be taken back: the writer fails");
+		EXPECT(p15w_stats(w)->nospace == 0 && p15w_stats(w)->errors >= 1, "an error, not a survived full disk");
 	}
-	EXPECT(p15w_close(w) == (full < 0 ? 0 : -ENOSPC), "close reports the first error");
+	EXPECT(p15w_close(w) != 0 || full < 0, "close reports it");
+	rmtree(d);
+	free(d);
+}
+
+/* While held, a segment passes max_bytes instead of rotating (the reserve keeps no room for a header). */
+static void test_hold_rotation(void)
+{
+	char *d = tmpdir();
+	struct p15w *w = open_w(d, 4096, 0, 0, NULL);
+
+	p15w_hold_rotation(w, 1);
+	for (int i = 0; i < 20; i++)
+		EXPECT(put(w, P15W_RING_SPINE, 4, 64, 1) == 0, "append while held");
+	EXPECT(p15w_segment_index(w) == 0 && p15w_stats(w)->rotations_size == 0, "no rotation while held");
+	fake_ns += 3600ull * 1000000000ull;
+	EXPECT(p15w_tick(w) == 0 && p15w_segment_index(w) == 0, "nor by age");
+	p15w_hold_rotation(w, 0);
+	EXPECT(put(w, P15W_RING_SPINE, 4, 64, 1) == 0 && p15w_segment_index(w) == 1, "released: the next append rotates");
+	EXPECT(p15w_close(w) == 0, "close");
 	rmtree(d);
 	free(d);
 }
@@ -657,6 +772,9 @@ int main(void)
 	test_rotation_by_time_and_sync();
 	test_on_open_writes_first();
 	test_io_error_fails_the_writer();
+	test_full_disk_is_survived();
+	test_full_disk_untruncatable_fails();
+	test_hold_rotation();
 	test_short_writes_and_eintr();
 	test_bad_batches_rejected();
 	test_batch_builder();

@@ -60,6 +60,11 @@ struct p15_config {
 				      * marked seen, as if their program had stopped (P15_CANARY_* bits) */
 	uint32_t link_close;         /* --test-link-close N: TEST ONLY, after the start p15d closes the fd of its Nth link
 				      * (1-based, the self-check's order), as something acting inside p15d would */
+	uint32_t wal_space_low_mb;   /* --wal-space-low-mb: below this much free space the bulk ring is shed (space.h);
+				      * 0, the default, is the smaller of 512 MiB and 10 % of the filesystem */
+	uint32_t wal_space_reserve_mb; /* --wal-space-reserve-mb: below this the spine is shed too; 0: the smaller of
+					* 64 MiB and 2 % (at least 4 MiB) */
+	uint32_t wal_space_guard;    /* --wal-space-guard 0: off (every ring written until the disk refuses) */
 	uint32_t poll_max_ms;        /* --poll-max-ms: the drain's longest poll timeout, 10..1000, default 200; 10 ms
 				      * after a poll that took records, doubled after each empty one (ADR-0030) */
 };

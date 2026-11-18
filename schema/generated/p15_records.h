@@ -14,7 +14,7 @@
 #define P15_LEN_UNKNOWN 0xFFFFFFFFu
 
 /* sha256 of every layout's hash (schema/gen/gen.py schema_hash): the WAL header's schema.hash */
-#define P15_SCHEMA_HASH "7f17c2d7e1a905d39c351bd266c6a6b6c99be5ace05a2d9b70c676b7d9eecae0"
+#define P15_SCHEMA_HASH "7751fd894c109c253dd83d9b461a835dc405fac8801cb6424c559437306611d4"
 
 #define P15_F_TRUNCATED (1u << 0)   /* at least one variable-length field was cut at its maximum; see its _full and _len */
 #define P15_F_READ_FAILED (1u << 1)   /* a kernel or user memory read for this record failed; the affected field is empty or zero, and the failure is counted */
@@ -40,6 +40,12 @@
 #define P15_CANARY_MISS_KIND_LATE 2   /* a canary: everything was seen, late_ms after its 1 s deadline (the pipeline stood still) */
 #define P15_CANARY_MISS_KIND_LINK 3   /* one of p15d's links is gone or is no longer the link it attached; link_index and link_name say which */
 #define P15_CANARY_MISS_KIND_MAX 3
+
+/* WAL_SPACE_LEVEL (WAL_SPACE.level): what the WAL's free-space guard lets through (daemon/space.h) */
+#define P15_WAL_SPACE_LEVEL_OK 1   /* every ring is written (daemon/space.h level 0) */
+#define P15_WAL_SPACE_LEVEL_SHED_BULK 2   /* free space is below low: the bulk ring (NET, file identity, data flow) is shed (level 1) */
+#define P15_WAL_SPACE_LEVEL_SHED_ALL 3   /* free space is below the reserve: the spine is shed too; only the daemon ring is written (level 2) */
+#define P15_WAL_SPACE_LEVEL_MAX 3
 
 /* FLOW_KIND (FLOW.kind): the transfer's direction and hook family (ADR-0005 rule 2) */
 #define P15_FLOW_KIND_READ 1   /* vfs_read, vfs_readv: object -> process */
@@ -87,6 +93,7 @@ enum p15_type {
 	P15_T_FLOW_STATS = 41,
 	P15_T_SELF_STATS = 42,
 	P15_T_CANARY_MISS = 43,
+	P15_T_WAL_SPACE = 44,
 };
 
 /* Common header of every record, 32 bytes (ADR-0008). */
@@ -1702,6 +1709,41 @@ P15_ASSERT(P15_OFFSETOF(struct p15_canary_miss_v1, link_name) == 80, "p15_canary
 
 #define P15_CANARY_MISS_V1_MAX_SIZE 112
 
+/* WAL_SPACE v1 (STATS): The WAL's free-space guard (the design review's F-02; daemon/space.h): written when its level changes, and with every STATS record while records are being shed or have been. The counts are cumulative. A shed record is counted in the run's books, so they still close; the run is DEGRADED from the first one. */
+struct p15_wal_space_v1 {
+	struct p15_hdr h;
+	__u64 avail_bytes;
+	__u64 total_bytes;
+	__u64 low_bytes;
+	__u64 reserve_bytes;
+	__u64 spine_shed;
+	__u64 bulk_shed;
+	__u64 daemon_shed;
+	__u64 nospace;
+	__u64 refresh_errors;
+	__u64 fork_shed;
+	__u64 exit_shed;
+	__u32 level;
+	__u32 transitions;
+} __attribute__((aligned(8)));
+P15_ASSERT(sizeof(struct p15_wal_space_v1) == 128, "p15_wal_space_v1 size");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, h) == 0, "p15_wal_space_v1.h offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, avail_bytes) == 32, "p15_wal_space_v1.avail_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, total_bytes) == 40, "p15_wal_space_v1.total_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, low_bytes) == 48, "p15_wal_space_v1.low_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, reserve_bytes) == 56, "p15_wal_space_v1.reserve_bytes offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, spine_shed) == 64, "p15_wal_space_v1.spine_shed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, bulk_shed) == 72, "p15_wal_space_v1.bulk_shed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, daemon_shed) == 80, "p15_wal_space_v1.daemon_shed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, nospace) == 88, "p15_wal_space_v1.nospace offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, refresh_errors) == 96, "p15_wal_space_v1.refresh_errors offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, fork_shed) == 104, "p15_wal_space_v1.fork_shed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, exit_shed) == 112, "p15_wal_space_v1.exit_shed offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, level) == 120, "p15_wal_space_v1.level offset");
+P15_ASSERT(P15_OFFSETOF(struct p15_wal_space_v1, transitions) == 124, "p15_wal_space_v1.transitions offset");
+
+#define P15_WAL_SPACE_V1_MAX_SIZE 128
+
 /* FLOW v1 (FLOW): Data moved between a process and an object through one open file (ADR-0005 rule 8): one transfer, or an aggregate of transfers with the same key that Xu's checks let fold (step 2c). The header names the thread of the first event (its tgid, tid and start_ns), not necessarily the task that wrote the record; its ts_ns is when the record was written, so records stay in ring order and the reader sorts by first_ts. An aggregate pending when its open file is freed travels in CLOSE (step 2c), not here. */
 struct p15_flow_v1 {
 	struct p15_hdr h;
@@ -1817,6 +1859,9 @@ P15_ASSERT(P15_OFFSETOF(struct p15_flow_v1, _pad) == 90, "p15_flow_v1._pad offse
 #define P15_CANARY_MISS_VERSION 1
 #define p15_canary_miss p15_canary_miss_v1
 #define P15_CANARY_MISS_MAX_SIZE P15_CANARY_MISS_V1_MAX_SIZE
+#define P15_WAL_SPACE_VERSION 1
+#define p15_wal_space p15_wal_space_v1
+#define P15_WAL_SPACE_MAX_SIZE P15_WAL_SPACE_V1_MAX_SIZE
 #define P15_FLOW_VERSION 1
 #define p15_flow p15_flow_v1
 #define P15_FLOW_MAX_SIZE P15_FLOW_V1_MAX_SIZE

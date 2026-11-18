@@ -42,6 +42,9 @@ static const struct opt OPTS[] = {
 	{ "--canary-s",            U32(canary_s),         0,    3600,    0,      0 },   /* ADR-0019 G4.4: 10 once its matrix has passed */
 	{ "--test-canary-blind",   U32(canary_blind),     0,    127,     0,      0 },
 	{ "--test-link-close",     U32(link_close),       0,    64,      0,      0 },
+	{ "--wal-space-low-mb",    U32(wal_space_low_mb), 0,    1048576, 0,      0 },   /* F-02; 0: auto (space.h) */
+	{ "--wal-space-reserve-mb", U32(wal_space_reserve_mb), 0, 1048576, 0,    0 },
+	{ "--wal-space-guard",     U32(wal_space_guard),  0,    1,       1,      0 },
 };
 #define NOPTS (sizeof(OPTS) / sizeof(OPTS[0]))
 
@@ -184,6 +187,7 @@ size_t p15_config_meta(const struct p15_config *c, struct p15w_kv *kv, char (*va
 		"config.test_writer_batch_ms", "config.poll_max_ms", "config.flow_stop_wait_ms",
 		"config.test_flow_cut_pause_ms", "config.test_barrier_fail", "config.test_open_end_mode",
 		"config.test_open_end_tgid", "config.canary_s", "config.test_canary_blind", "config.test_link_close",
+		"config.wal_space_low_mb", "config.wal_space_reserve_mb", "config.wal_space_guard",
 	};
 	size_t n = 0;
 

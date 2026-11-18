@@ -27,6 +27,7 @@ struct p15w {
 	unsigned seg;
 	uint64_t seg_bytes, seg_batches, opened_ns, last_sync_ns;
 	int dirty, in_open, failed;      /* failed: the first error, as -errno */
+	int hold_rotation;               /* p15w_hold_rotation: the disk is nearly full, no new segment */
 	struct p15w_stats st;
 };
 
@@ -92,7 +93,8 @@ static int now(struct p15w *w, clockid_t id, uint64_t *ns)
 	return 0;
 }
 
-static int write_all(struct p15w *w, struct iovec *iov, int n)
+/* Write every byte or return -errno (without failing the writer: the caller decides). */
+static int write_raw(struct p15w *w, struct iovec *iov, int n)
 {
 	while (n > 0) {
 		ssize_t r = w->o.writev(w->fd, iov, n);
@@ -100,7 +102,7 @@ static int write_all(struct p15w *w, struct iovec *iov, int n)
 		if (r < 0) {
 			if (errno == EINTR)
 				continue;
-			return fail(w, errno);
+			return -(errno ? errno : EIO);
 		}
 		while (n > 0 && (size_t)r >= iov->iov_len) {
 			r -= iov->iov_len;
@@ -114,6 +116,13 @@ static int write_all(struct p15w *w, struct iovec *iov, int n)
 		}
 	}
 	return 0;
+}
+
+static int write_all(struct p15w *w, struct iovec *iov, int n)
+{
+	int rc = write_raw(w, iov, n);
+
+	return rc ? fail(w, -rc) : 0;
 }
 
 static int write_header(struct p15w *w)
@@ -316,7 +325,7 @@ int p15w_append(struct p15w *w, unsigned ring, uint32_t count, const void *paylo
 		w->st.rejected_batches++;
 		return -EINVAL;
 	}
-	if (!w->in_open && w->seg_batches > 0 && w->seg_bytes + total > w->o.max_bytes &&
+	if (!w->in_open && !w->hold_rotation && w->seg_batches > 0 && w->seg_bytes + total > w->o.max_bytes &&
 	    (rc = rotate(w, &w->st.rotations_size)))
 		return rc;
 	if (w->seg_bytes + total > w->o.max_bytes)
@@ -332,8 +341,19 @@ int p15w_append(struct p15w *w, unsigned ring, uint32_t count, const void *paylo
 	iov[0].iov_len = sizeof(h);
 	iov[1].iov_base = (void *)payload;
 	iov[1].iov_len = len;
-	if ((rc = write_all(w, iov, 2)))
+	rc = write_raw(w, iov, 2);
+	if (rc == -ENOSPC || rc == -EDQUOT) {
+		/* the disk is full (F-02): take back whatever part of the batch reached the file, so the
+		 * segment still ends at a whole batch, and stay usable. The batch is not written; the
+		 * caller counts it. Its sequence numbers are not used, so the ring's numbering stays
+		 * gapless in the WAL. */
+		if (ftruncate(w->fd, (off_t)w->seg_bytes) || lseek(w->fd, (off_t)w->seg_bytes, SEEK_SET) < 0)
+			return fail(w, errno);
+		w->st.nospace++;
 		return rc;
+	}
+	if (rc)
+		return fail(w, -rc);
 	w->st.next_seq[ring] += count;
 	w->seg_bytes += total;
 	w->seg_batches++;
@@ -354,7 +374,7 @@ int p15w_tick(struct p15w *w)
 		return -EIO;
 	if ((rc = now(w, CLOCK_MONOTONIC, &t)))
 		return rc;
-	if (w->seg_batches > 0 && t - w->opened_ns >= w->o.max_ns)
+	if (w->seg_batches > 0 && !w->hold_rotation && t - w->opened_ns >= w->o.max_ns)
 		return rotate(w, &w->st.rotations_time);
 	if (w->dirty && t - w->last_sync_ns >= w->o.sync_ns) {
 		if (timed_sync(w))
@@ -372,7 +392,7 @@ uint64_t p15w_due_ns(struct p15w *w)
 
 	if (w->failed || now(w, CLOCK_MONOTONIC, &t))
 		return 0;
-	if (w->seg_batches > 0)
+	if (w->seg_batches > 0 && !w->hold_rotation)
 		due = w->opened_ns + w->o.max_ns > t ? w->opened_ns + w->o.max_ns - t : 0;
 	if (w->dirty) {
 		uint64_t s = w->last_sync_ns + w->o.sync_ns > t ? w->last_sync_ns + w->o.sync_ns - t : 0;
@@ -406,6 +426,7 @@ uint64_t p15w_take_fsync_max(struct p15w *w)
 	return m;
 }
 unsigned p15w_segment_index(const struct p15w *w) { return w->seg; }
+void p15w_hold_rotation(struct p15w *w, int hold) { w->hold_rotation = hold; }
 int p15w_fd(const struct p15w *w) { return w->fd; }
 
 /* ---- batch builder ---- */

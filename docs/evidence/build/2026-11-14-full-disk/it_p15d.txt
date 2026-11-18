@@ -1,0 +1,171 @@
+network capture and file identity: off (--no-net --no-files: fentry/fexit not loadable here)
+case 1: an 8 s run with 200 short processes, started once p15d is ready [t+0s]
+  ok   the Python reader's counts equal p15w-inspect's (c1)
+p15d level=info code=start run_dir=/tmp/p15d-it-pUPvKz/c1/20261114T050254Z-57f34688 sched="SCHED_FIFO 1" spine_ring=4194304 net=off (--no-net) files=off (--no-files) crc32c=sse4.2
+p15d level=info code=links n=4 names=spine_fork,spine_exec,spine_exit,spine_rename
+p15d level=info code=end exit=0 state=0 invariant=1 reason="stop requested"
+/tmp/p15d-it-pUPvKz/c1/20261114T050254Z-57f34688//seg-00000000.p15w: segment 0, 140032 bytes, 111 batches, 1038 records, valid to the end
+  run.id = 20261114T050254Z-57f34688
+  kernel.release = 6.18.44-fc-v470
+  schema.hash = 7751fd894c109c253dd83d9b461a835dc405fac8801cb6424c559437306611d4
+records: spine 813, bulk 0, daemon 225; invalid 0
+  FORK       204
+  EXEC       202
+  EXIT       203
+  RENAME     204
+  CLOCK_SYNC 5
+  STATS      42
+  END        1
+  PROC       133
+  SNAP_DONE  2
+  SELF_STATS 42
+END: exit 0, state 0, invariant 1, signal 0, reason "stop requested", closing snapshot 1
+  ok   exit 0 (valid run)
+  ok   p15w-inspect: every segment valid, every record passes, END present
+  ok   END: exit 0, RUNNING, invariant closed
+  ok   every one of the 200 children's EXEC of /bin/true is in the WAL (got 200)
+  ok   the kernel skipped no spine event (ADR-0020: fork=0 exec=0 exit=0 rename=0)
+  ok   a STATS record every 200 ms (got 42)
+  ok   Prometheus textfile written
+  ok   hook manifest in the header
+  reconciliation: complete 0 0 0 0 opening:67:1 closing:66:1
+  ok   END v2: the closing snapshot was taken (ADR-0023 rule 1)
+  ok   an opening and a closing snapshot, both complete (their books close)
+  ok   ADR-0023 confirmation 2: fork_unexplained = exit_unexplained = 0, verdict complete
+  ok   the snapshot lists p15d itself, with its resolved path
+case 2: stop by SIGTERM [t+12s]
+  ok   the Python reader's counts equal p15w-inspect's (c2)
+END: exit 0, state 0, invariant 1, signal 15, reason "stop requested", closing snapshot 1
+  ok   exit 0, WAL valid
+  ok   END records signal 15
+  ok   a stop by signal is orderly: the closing snapshot was taken
+case 3: forced spine overflow (4 KiB ring, drain paused 300 ms per poll, 400 processes) [t+16s]
+  ok   the Python reader's counts equal p15w-inspect's (c3)
+p15d level=info code=start run_dir=/tmp/p15d-it-pUPvKz/c3/20261114T050310Z-57f34688 sched="normal (--no-rt)" spine_ring=4096 net=off (--no-net) files=off (--no-files) crc32c=sse4.2
+p15d level=info code=links n=4 names=spine_fork,spine_exec,spine_exit,spine_rename
+p15d level=info code=end exit=4 state=2 invariant=1 reason="spine records lost (GAP)"
+records: spine 84, bulk 0, daemon 149; invalid 0
+  FORK       26
+  EXEC       17
+  EXIT       20
+  RENAME     21
+  CLOCK_SYNC 1
+  STATS      6
+  GAP        2
+  END        1
+  PROC       131
+  SNAP_DONE  2
+  SELF_STATS 6
+END: exit 4, state 2, invariant 1, signal 0, reason "spine records lost (GAP)", closing snapshot 1
+  ok   exit 4 (INVALID)
+  ok   the WAL itself is still valid
+  ok   GAP records locate the loss (got 2)
+  ok   END: INVALID, and the books still close (loss is counted)
+  reconciliation: repaired 0 11 377 384 opening:66:1 closing:65:1
+  ok   ADR-0023 confirmation 3: the reconciliation is not INVALID under forced loss (repaired)
+  ok   unexplained forks 0 <= counted 377, exits 11 <= counted 384
+case 5: SKIP (network capture not loadable here; CI and the VM run it with P15_IT_NET=1) [t+24s]
+case 6: code provenance (ADR-0025): a program run from memory, three stream kinds, a pipe, PROC v2 against EXEC v2 [t+24s]
+  ok   the Python reader's counts equal p15w-inspect's (c6)
+  ok   exit 0, WAL valid
+  ok   the memfd program ran (exit 0, vm.memfd_noexec=0)
+  ok   exactly one EXEC of p15-it-memfd (found 1)
+  ok     ... exe_name is the memfd's name (b'memfd:p15-it')
+  ok     ... nlink 0 on tmpfs (nlink 0, magic 0x1021994)
+  ok     ... the reader classes it 'runs from memory' (['runs from memory (no file on disk)', 'executable is writable by its runner'])
+  ok   the streams program ran
+  ok   exactly one EXEC of p15-it-streams (found 1)
+  ok     ... stdin is the pipe the workload opened (record {'ino': 15379, 'dev': 15, 'mode': 4480}, fstat {'ino': 15379, 'dev': 15, 'mode': 4480})
+  ok     ... stdout is the file the workload opened (record {'ino': 1139002, 'dev': 266338304, 'mode': 33188}, fstat {'ino': 1139002, 'dev': 266338304, 'mode': 33188})
+  ok     ... stderr is the socket the workload opened (record {'ino': 15380, 'dev': 9, 'mode': 49663}, fstat {'ino': 15380, 'dev': 9, 'mode': 49663})
+  ok   the pipeline ran
+  ok   one EXEC each of p15-it-writer and p15-it-reader (found 1, 1)
+  ok     ... joined writer -> reader by their shared pipe inode
+  ok     ... p15-trace's provenance block shows that pipe
+  ok     ... and the process that ran from memory
+  ok   one EXEC of p15-it-live, pid 3579
+  ok   one closing snapshot (found 1)
+  ok     ... it lists p15-it-live under the same process key as its EXEC
+  ok     ... PROC v2 and EXEC v2 agree on all 17 shared facts
+case 7: no map syscall once a program is attached (ADR-0026), traced with strace [t+34s]
+  ok   exit 0 under strace
+  ok   after the first event attach: 0 map lookups, updates or deletes (got: 0)
+  ok     ... while p15d did read the kernel's skip counters by info call (170 calls): the trace saw the run
+case 8: file identity (ADR-0015, step 2a part 2): a file created, reopened and read, a FIFO open that fails in ->open [t+38s]
+case 8: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1) [t+38s]
+case 9: files already open at start (ADR-0015 rule 7, the snapshot's FD pass) [t+38s]
+case 9: SKIP (file identity not loadable here; CI and the VM run it with P15_IT_NET=1)
+case 10: the stop's watchdog (E-0162): a writer that stands still, and one that is only slow [t+38s]
+  ok   a writer stuck in the closing snapshot: exit 75 (STUCK), got 75
+  ok     ... within the watchdog's bound, not the writer's 30 s (4 s)
+  ok     ... the log names the phase
+  ok     ... the WAL is valid and has no END
+  ok   a writer slow for 0.8 s, under the 2 s bound: an orderly stop, END written
+case 11: a full queue loses nothing (E-0173): 4 batches of 16 KiB, a writer slowed to 100 ms a batch, 2000 processes, spine only [t+45s]
+  queue_full 571, spine reserve failures 0; EXEC of /bin/true: 2000; END: exit 0, state 0, invariant 1, signal 15, reason 
+  ok   the queue was full during the run (the path under test ran: queue_full 571)
+  ok   the spine ring absorbed the backlog: no reserve failed
+  ok   exit 0, RUNNING, the invariant closed: no record was taken and dropped (rc 0)
+  ok   every one of the 2000 children's EXEC is in the WAL (got 2000)
+  SKIP the bulk ring's flood (file identity not loadable here; CI and the VM run it)
+case 12: the path program left unattached: the session return writes every open, walked, with its object (E-0190, ADR-0029) [t+55s]
+  SKIP (file identity not loadable here; CI and the VM run it)
+case 13: --flow: a known workload's reads, writes, sends and receives become FLOW records (ADR-0005, step 2b) [t+55s]
+  SKIP (file identity not loadable here; CI and the VM run it)
+case 14: --flow with the first FILE of every file lost (--test-flow-file-fail-first): counted, DEGRADED, retried [t+55s]
+  SKIP (file identity not loadable here; CI and the VM run it)
+case 15: no grace period at the end (--test-barrier-fail): the run says its end counts are not exact [t+55s]
+  ok   exit 3 (DEGRADED), WAL valid (p15d 3, inspect 0)
+  ok   END: DEGRADED, the books still close, the reason says the end counts are not exact
+  ok     ... and the log has the barrier's error, never a silent wait
+case 16: --flow with three calls held open across the detach: a read, a write and a readv (p15_flow.h) [t+57s]
+  SKIP (the flow programs are not loadable here; CI and the VM run cases 16 and 17)
+case 18: three opens whose session return never runs, as a detach in flight leaves them (--test-open-end-mode 1; p15_file.h) [t+57s]
+  SKIP (file identity not loadable here; CI and the VM run cases 18 and 19)
+case 20: the end's iterator over planted open-file entries: it claims the opens in flight, once [t+57s]
+  ok   test_open_iter: 3 opens in flight claimed among 8 entries, once
+case 21: the canary every second for 5 s: each one's records arrive, and every link is checked every tick (ADR-0019 G4.4) [t+58s]
+  canaries 4 (missed 0, late 0, unfinished 0), want mask 7; links 4, checks 20, gone 0
+  ok   exit 0, WAL valid, RUNNING (p15d 0, inspect 0)
+  ok   at least two canaries got a verdict, none missed, none late, no CANARY_MISS record
+  ok   every link checked, none gone
+  ok   spine only: a canary must cause its FORK, EXEC and EXIT (want 7)
+case 22: a canary whose EXEC is never seen (--test-canary-blind 2): counted, logged, CANARY_MISS, DEGRADED [t+64s]
+  ok   exit 3 (DEGRADED), WAL valid, the books still close: only the canary sees it (p15d 3)
+  ok   SELF_STATS counts the miss and a CANARY_MISS record of kind RECORD is written (R:7:5 R:7:5)
+  ok     ... whose masks say it is the EXEC that is missing
+  ok     ... the log has the error and END's reason names the mask
+case 23: a stuck drain (1.5 s after every poll, --test-drain-pause-ms): the canary's records arrive late (ADR-0019 G4's confirmation) [t+69s]
+  ok   exit 3 (DEGRADED), WAL valid, nothing lost (p15d 3)
+  ok   counted late, not missed, with a CANARY_MISS record of kind LATE (L:510)
+case 24: one of p15d's links closed behind its back (--test-link-close 1): found at the next stats tick [t+76s]
+  ok   exit 3 (DEGRADED), WAL valid (p15d 3)
+  ok   SELF_STATS counts one link gone, and one CANARY_MISS of kind LINK names it (K:0:spine_fork)
+  ok     ... and the log has the error
+case 25: the exec program's link closed with the canary on: the link check names it, and the canary misses its EXEC [t+80s]
+  ok   exit 3 (DEGRADED) with every book closed: a detached program breaks no book (F-05)
+  ok   the link check names spine_exec (K:1:spine_exec R:7:5 R:7:5)
+  ok   and the canary, on its own evidence, misses exactly its EXEC
+case 26: the open-file map's size comes from the host and is in the header (decision 103) [t+84s]
+  not given: 65536 entries, sized by: host: 135 files open, 8024 MiB
+  ok   without the option the size is computed from the host, at least the old fixed 65,536, and the header says from what
+  ok   with --file-map-entries 2048 the header says 2048, sized by the option
+case 27: a full open-file map is a state of the run: one process opens 3000 files into a map of 1024 (F-04) [t+86s]
+  SKIP (file identity not loadable here; CI and the VM run case 27)
+case 28: the disk fills while p15d runs, guard on: bulk shed, then the spine, then space comes back (F-02) [t+86s]
+  levels 2,3,1 (1 ok, 2 shed bulk, 3 shed all), last 1; shed spine 1216, bulk 0; refused batches 0; /bin/true after the space came back: 100
+  ok   exit 3 (DEGRADED), WAL valid in both readers, books closed with the shed records counted (p15d 3)
+  ok   WAL_SPACE records the levels in order: shed bulk, shed all, then ok again (2,3,1)
+  ok   spine records were shed at the reserve (1216), and the disk never had to refuse a batch
+  ok   after the space came back every exec is written again (100 of the last 100)
+  ok   the shed FORKs (304) and EXITs (304) are counted by type, within the spine's shed (1216)
+  ok   the reader's process-tree check counts the shed FORKs and EXITs as losses, so it is not INVALID (repaired)
+  ok   the log says so, and END's reason names the low disk
+case 29: the guard off, the disk really full: a refused batch is taken back, the WAL stays valid, p15d goes on (F-02) [t+103s]
+  refused batches 146; shed spine 2412; /bin/true after the space came back: 100
+  ok   exit 3 (DEGRADED), not INVALID; the WAL scans whole in both readers; books closed (p15d 3)
+  ok   the disk refused batches (146) and their spine records are counted shed (2412)
+  ok   after the space came back p15d writes again (100 of the last 100)
+case 4: a bad flag [t+114s]
+  ok   exit 64 (usage)
+it_p15d: PASS (0 failed checks)

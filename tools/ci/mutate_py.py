@@ -258,6 +258,8 @@ M = [
  (RECON, "if p.fork_ns is not None and p.fork_ns >= began:", "if p.fork_ns is not None and p.fork_ns <= began:"),
  (RECON, "if p.exit_ns is None:\n            rec.exit_unexplained.append(k)", "if False:\n            rec.exit_unexplained.append(k)"),
  (RECON, 'p.parent = S.parent_key(pr)', "pass"),
+ (RECON, 'fork_l += space.f["fork_shed"]', "pass"),
+ (RECON, 'exit_l += space.f["exit_shed"]', "pass"),
  (RECON, "if fork_l is not None and len(rec.fork_unexplained) > fork_l:", "if False:"),
  (RECON, "if exit_l is not None and len(rec.exit_unexplained) > exit_l:", "if False:"),
  (RECON, 'elif end.f["closing_snapshot"] != 1:', "elif False:"),

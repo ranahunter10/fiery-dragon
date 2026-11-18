@@ -117,6 +117,10 @@ struct p15_run {
 	/* writer side */
 	_Atomic uint64_t spine_written, spine_drain_lost;
 	_Atomic uint64_t net_written, net_drain_lost;   /* every bulk-ring record (NET and file identity) */
+	/* records not written because the disk is (nearly) full (space.h, F-02): shed by the guard or in
+	 * a batch the filesystem refused. Terms of the books beside *_written and *_drain_lost. */
+	_Atomic uint64_t spine_shed, net_shed, daemon_shed;
+	_Atomic uint64_t fork_shed, exit_shed;   /* among spine_shed, for the reader's process-tree check */
 	_Atomic int invariant;                   /* enum p15_invariant, set at the end */
 
 	/* the closing snapshot (ADR-0023 rule 1): main asks while the hooks are attached, the writer

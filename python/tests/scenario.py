@@ -92,7 +92,7 @@ OPENING = [(INIT, (0, 0), "/usr/lib/systemd/systemd", ["/sbin/init"], "systemd")
 
 
 def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=False, snap=False, drop=(),
-          fork_lost=0, exit_lost=0, closing_books=None, late_fork=False) -> Path:
+          fork_lost=0, exit_lost=0, closing_books=None, late_fork=False, fork_shed=None, exit_shed=0) -> Path:
     ms = 1_000_000
     spine = [
         fork(START + 500, BASH, SRV), exe(START + 600, SRV, "/usr/bin/python3", ["python3", "-m", "http.server", "18077"]),
@@ -137,6 +137,9 @@ def build(d: Path, *, net_on=True, end=True, gap=False, skipped=0, stats_v1=Fals
                           fork_reserve_failed=fork_lost, exit_reserve_failed=exit_lost))
     daemon.append(rec("NET_STATS", h_ts_ns=START + 6 * S, net_seen=len(bulk), net_emitted=len(bulk),
                       net_drained=len(bulk), net_written=len(bulk)))
+    if fork_shed is not None:   # the WAL's free-space guard shed spine records (daemon/space.h)
+        daemon.append(rec("WAL_SPACE", h_ts_ns=START + 6 * S, level=3, transitions=1, spine_shed=fork_shed + exit_shed,
+                          fork_shed=fork_shed, exit_shed=exit_shed))
     if snap:
         daemon += snapshot(START + 5 * S + S // 2, 1, 2, OPENING + [
             (SRV, BASH, "/usr/bin/python3.14", ["python3", "-m", "http.server", "18077"], "python3")],

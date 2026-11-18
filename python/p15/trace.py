@@ -133,7 +133,7 @@ def load(path: Path) -> Context:
     last = {}
     for r in daemon:
         last[r.name] = r
-    recon = C.reconcile(tree, snaps, last.get("STATS"), last.get("END"))
+    recon = C.reconcile(tree, snaps, last.get("STATS"), last.get("END"), last.get("WAL_SPACE"))
     return Context(run, tree, events, last.get("END"), last.get("STATS"), last.get("NET_STATS"), start, anchors,
                    run.meta["config.net"] == "yes", errors, snaps, recon, exec_recs)
 

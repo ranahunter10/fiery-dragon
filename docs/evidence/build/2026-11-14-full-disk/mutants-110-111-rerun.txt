@@ -1,0 +1,4 @@
+baseline: the space-guard tests pass in 0 s; a mutant gets 120 s
+killed   110 space.c if (lv == P15_SPACE_SHED_ALL && avail < up_res) (0 s)
+killed   111 space.c if (lv >= P15_SPACE_SHED_BULK && avail < up_low) (0 s)
+mutation sweep: 2/2 killed (mutants [110, 111] only)

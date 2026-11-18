@@ -138,6 +138,21 @@ class Reconcile(Base):
         self.assertEqual(r.verdict, "INVALID")
         self.assertIn("1 exits unexplained but 0 counted lost", r.line())
 
+    def test_a_fork_shed_by_the_space_guard_is_counted(self):
+        # daemon/space.h: at SHED_ALL the writer sheds spine batches; WAL_SPACE counts their FORKs
+        r = self.ctx(snap=True, drop={("FORK", S.SRV)}, fork_shed=1).recon
+        self.assertEqual((r.verdict, r.fork_unexplained), ("repaired", [S.SRV]))
+        self.assertIn("counted losses: fork 1, exit 0", r.line())
+
+    def test_an_exit_shed_by_the_space_guard_is_counted(self):
+        r = self.ctx(snap=True, drop={("EXIT", S.C1)}, fork_shed=0, exit_shed=1).recon
+        self.assertEqual((r.verdict, r.exit_unexplained), ("repaired", [S.C1]))
+
+    def test_a_shed_exit_does_not_cover_a_lost_fork(self):
+        r = self.ctx(snap=True, drop={("FORK", S.SRV)}, fork_shed=0, exit_shed=1).recon
+        self.assertEqual(r.verdict, "INVALID")
+        self.assertIn("1 forks unexplained but 0 counted lost", r.line())
+
     def test_not_possible_without_a_closing_snapshot(self):
         self.assertIn("END says the closing snapshot was not taken (0)", self.ctx().recon.line())
         self.assertIn("did not end in order", self.ctx(snap=True, end=False).recon.line())

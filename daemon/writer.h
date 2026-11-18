@@ -11,6 +11,7 @@
 
 #include "compiler.h"
 #include "run.h"
+#include "space.h"
 #include "wal.h"
 
 /* Takes the closing snapshot into the WAL (ADR-0023 rule 1): 0 complete, > 0 incomplete (the run
@@ -25,6 +26,8 @@ struct p15_writer {
 	uint64_t prev_stats_ns;
 	unsigned stats_written;
 	uint64_t canary_bad_written;   /* failed canaries already written as CANARY_MISS records */
+	struct p15_space space;     /* the WAL's free-space guard (space.h): set up by main before the thread starts */
+	int in_space_record;
 	int close_rc;               /* p15w_close's result, for main */
 };
 

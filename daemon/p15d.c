@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
@@ -37,6 +38,7 @@
 #include "run.h"
 #include "selfcheck.h"
 #include "snapshot.h"
+#include "space.h"
 #include "wal.h"
 #include "writer.h"
 
@@ -245,8 +247,9 @@ int main(int argc, char **argv)
 {
 	static char run_dir[4096], err[300], boot_id[64], host[256], tz[64], run_id[96], ring_b[24], bulk_b[24], cut[8] = "0";
 	static char map_by[64] = "option";
-	static char cfg_vals[32][24];
-	struct p15w_kv meta[64];
+	static char cfg_vals[48][24], space_low[24], space_res[24];
+	struct p15w_kv meta[80];
+	uint64_t sp_low = 0, sp_res = 0;
 	struct p15_loader ld;
 	struct p15_drain d;
 	struct p15_writer w;
@@ -374,6 +377,17 @@ int main(int argc, char **argv)
 	KV("ring.spine.bytes", ring_b);
 	KV("ring.bulk.bytes", run.net || run.files ? bulk_b : "0 (--no-net --no-files: no bulk capture)");
 	KV("file_map.sized_by", map_by);   /* how config.file_map_entries, below, was chosen */
+	{
+		/* the WAL's free-space guard (space.h, F-02): its thresholds for this filesystem, in bytes */
+		struct statvfs sv;
+		uint64_t total = statvfs(run_dir, &sv) ? 0 : (uint64_t)sv.f_blocks * sv.f_frsize;
+
+		p15_space_sizes(total, run.cfg.wal_space_low_mb, run.cfg.wal_space_reserve_mb, &sp_low, &sp_res);
+		snprintf(space_low, sizeof(space_low), "%llu", (unsigned long long)sp_low);
+		snprintf(space_res, sizeof(space_res), "%llu", (unsigned long long)sp_res);
+	}
+	KV("wal_space.low_bytes", run.cfg.wal_space_guard ? space_low : "0 (--wal-space-guard 0)");
+	KV("wal_space.reserve_bytes", run.cfg.wal_space_guard ? space_res : "0 (--wal-space-guard 0)");
 	KV("tz", tz);
 	KV("drain.sched", sched);
 	KV("recovered.bytes_cut", cut);
@@ -404,6 +418,7 @@ int main(int argc, char **argv)
 	wo.on_open_ctx = &snap;
 	memset(&w, 0, sizeof(w));
 	w.run = &run;
+	p15_space_init(&w.space, (int)run.cfg.wal_space_guard, sp_low, sp_res);
 	w.closing = take_closing;
 	w.closing_ctx = &snap;
 	rc = p15w_open(&w.wal, &wo);

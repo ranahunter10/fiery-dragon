@@ -1077,6 +1077,38 @@ fields = [
   { name = "link_name",  c = "char[32]", doc = "LINK: the program the link attached, NUL padded" },
 ]
 
+[[enum]]
+name = "WAL_SPACE_LEVEL"
+field = "WAL_SPACE.level"
+doc = "what the WAL's free-space guard lets through (daemon/space.h)"
+values = [
+  { name = "OK",        value = 1, doc = "every ring is written (daemon/space.h level 0)" },
+  { name = "SHED_BULK", value = 2, doc = "free space is below low: the bulk ring (NET, file identity, data flow) is shed (level 1)" },
+  { name = "SHED_ALL",  value = 3, doc = "free space is below the reserve: the spine is shed too; only the daemon ring is written (level 2)" },
+]
+
+[[record]]
+name = "WAL_SPACE"
+type = 44
+version = 1
+class = "STATS"
+doc = "The WAL's free-space guard (the design review's F-02; daemon/space.h): written when its level changes, and with every STATS record while records are being shed or have been. The counts are cumulative. A shed record is counted in the run's books, so they still close; the run is DEGRADED from the first one."
+fields = [
+  { name = "avail_bytes",   c = "u64", doc = "free space the guard last estimated: the last fstatvfs reading less what was written since" },
+  { name = "total_bytes",   c = "u64", doc = "the filesystem's size at that reading" },
+  { name = "low_bytes",     c = "u64", doc = "below this, the bulk ring is shed" },
+  { name = "reserve_bytes", c = "u64", doc = "below this, the spine is shed too" },
+  { name = "spine_shed",    c = "u64", doc = "spine records not written: shed by the guard, or in a batch the disk refused" },
+  { name = "bulk_shed",     c = "u64", doc = "bulk-ring records not written, the same way" },
+  { name = "daemon_shed",   c = "u64", doc = "daemon-ring records the disk refused (the guard never sheds them)" },
+  { name = "nospace",       c = "u64", doc = "batches the filesystem refused with ENOSPC or EDQUOT, truncated away (the WAL stays valid)" },
+  { name = "refresh_errors", c = "u64", doc = "free-space readings that failed (the last estimate was kept)" },
+  { name = "fork_shed",     c = "u64", doc = "FORK records among spine_shed: the reader's process-tree check (ADR-0023) adds them to the counted FORK losses" },
+  { name = "exit_shed",     c = "u64", doc = "EXIT records among spine_shed, the same way for EXIT" },
+  { name = "level",         c = "u32", doc = "WAL_SPACE_LEVEL now" },
+  { name = "transitions",   c = "u32", doc = "changes of level since the run's start" },
+]
+
 # ---- data flow (ADR-0005; STATE decision 18): FLOW class, on the bulk ring, counted loss ----
 [[enum]]
 name = "FLOW_KIND"

@@ -1,0 +1,121 @@
+killed    0 records.c if (h->len > size) {
+killed    1 records.c if (h->len % 8) {
+killed    2 records.c if (h->len < fixed) {
+killed    3 records.c case P15_T_STATS:  return version == 1 ?
+killed    4 records.c case P15_T_GAP:    return version == 1 ? sizeof(struct p15_gap_v1) : ver
+killed    5 records.c version == 2 ? sizeof(struct p15_stats_v2) : 0;
+killed    6 records.c version == 2 ? sizeof(struct p15_net_stats_v2) : 0;
+killed    7 records.c } else if (h->len != fixed) {
+killed    8 records.c if (fixed + used > h->len) {
+killed    9 records.c if (h->len != ((fixed + used + 7) & ~(size_t)7) && !slack_ok) {
+killed    10 records.c if (h->len != ((fixed + used + 7) & ~(size_t)7) && !slack_ok) {
+killed    11 records.c for (size_t i = fixed + used; i < h->len; i++)
+killed    12 records.c if (((const __u8 *)data)[i]) {
+killed    13 records.c h->flags & P15_F_READ_FAILED, why))
+killed    14 records.c if (e->filename_len > P15_EXEC_V1_FILENAME_MAX || e->argv_len > P15_EXEC
+killed    15 records.c case P15_T_EXEC:   return version == 1 ? sizeof(struct p15_exec_v1) : ve
+killed    16 records.c e->exe_name_len > P15_EXEC_V2_EXE_NAME_MAX) {
+killed    17 records.c tail = (size_t)e->filename_len + e->argv_len + e->exe_name_len;
+killed    18 records.c printable(nm, sizeof(nm), tail + r->filename_len + r->argv_len, r->exe_n
+killed    19 records.c if (rl > P15_END_V1_REASON_MAX) {
+killed    20 records.c if (check_tail(data, fixed, rl, 0, why))
+killed    21 records.c case P15_T_END:    return version == 1 ? sizeof(struct p15_end_v1) : ver
+killed    22 records.c __u16 rl = h->version == 1 ? ((const struct p15_end_v1 *)data)->reason_l
+killed    23 records.c if (h->version >= 2 && ((const struct p15_end_v2 *)data)->reserved) {
+killed    24 records.c m += snprintf(buf + m, n - (size_t)m, " closing_snapshot=%d", r2->closin
+killed    25 records.c case P15_T_PROC:   return version == 1 ? sizeof(struct p15_proc_v1) : ve
+killed    26 records.c if (ep_len > P15_PROC_V1_EXE_PATH_MAX || av_len > P15_PROC_V1_ARGV_MAX) 
+killed    27 records.c if (ep_len > P15_PROC_V2_EXE_PATH_MAX || av_len > P15_PROC_V2_ARGV_MAX) 
+killed    28 records.c if (reserved || (kind != 1 && kind != 2) || (pflags & ~3u)) {
+killed    29 records.c if (reserved || (kind != 1 && kind != 2) || (pflags & ~3u)) {
+killed    30 records.c if (check_tail(data, fixed, (size_t)ep_len + av_len, 0, why))
+killed    31 records.c ((const struct p15_snap_done_v2 *)data)->kind) != 2) {
+killed    32 records.c (h->version == 1 ? ((const struct p15_snap_done_v1 *)data)->kind : ((con
+killed    33 records.c nlink=%u fsmagic=0x%x mode=0%o uid=%u self_exec_id=%llu
+killed    34 records.c case P15_T_END:        return "END";
+killed    35 records.c case P15_T_GAP:        return "GAP";
+killed    36 records.c (unsigned long long)r->fork_build_failed, (unsigned long long)r->exec_bu
+killed    37 records.c (unsigned long long)r->spine_written,
+killed    38 records.c printable(b, sizeof(b), (const __u8 *)(r1 + 1), r1->reason_len);
+killed    39 records.c case P15_T_NET:    return version == 1 ? sizeof(struct p15_net_v1) : ver
+killed    40 records.c if (h->flags & ~(__u16)(P15_F_TRUNCATED | P15_F_READ_FAILED | P15_F_ISN)
+killed    41 records.c if ((h->flags & P15_F_ISN) && !(h->type == P15_T_NET && h->version >= 2)
+killed    42 records.c if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {
+killed    43 records.c if (r->reserved || (!(h->flags & P15_F_ISN) && r->tcp_isn)) {
+killed    44 records.c m += snprintf(buf + m, n - (size_t)m, " isn=%u", r->tcp_isn);
+killed    45 records.c case P15_T_OPEN:   return version == 1 ? sizeof(struct p15_open_v1) : 0;
+killed    46 records.c if (p15_is_file_type(h->type) || h->type == P15_T_FD || h->type == P15_T
+killed    47 records.c if ((len != 0 && len != sizeof(*f)) || full != len) {
+killed    48 records.c if ((len != 0 && len != sizeof(*f)) || full != len) {
+killed    49 records.c if (!!len != !!want) {
+killed    50 records.c if (len && ((f->oflags & ~1u) || f->seen < 1 || f->seen > 5)) {
+killed    51 records.c if (len && ((f->oflags & ~1u) || f->seen < 1 || f->seen > 5)) {
+killed    52 records.c if (r->fflags & ~ok) {
+killed    53 records.c if (!!(r->fflags & P15_FF_PATH_ERROR) != !!r->path_err) {
+killed    54 records.c if (!(r->fflags & ret) && r->verdict) {
+killed    55 records.c if (!(r->fflags & ret) && r->verdict) {
+killed    56 records.c if ((r->fflags & ret) == ret || ((r->fflags & P15_FF_PATH_RACED) && !(r-
+killed    57 records.c if ((r->fflags & ret) == ret || ((r->fflags & P15_FF_PATH_RACED) && !(r-
+killed    58 records.c if ((r->fflags & P15_FF_PATH_WALKED) && (r->fflags & (P15_FF_PATH_ERROR 
+killed    59 records.c (r->fflags & P15_FF_FULL_SIZE) && h->len == P15_OPEN_V1_MAX_SIZE, why);
+killed    60 records.c (r->fflags & P15_FF_FULL_SIZE) && h->len == P15_OPEN_V1_MAX_SIZE, why);
+killed    61 records.c if (r->verdict >= 0) {
+killed    62 records.c r->fflags & P15_FF_USER_OBJ_NEW, "BACKING: user_facts
+killed    63 records.c if (((const struct p15_close_v1 *)data)->fflags & ~(P15_FF_NEVER_OPENED 
+killed    64 records.c if (check_part(data, fixed, r->facts_len, r->facts_full, 1, "FD:
+killed    65 records.c fixed + r->facts_len + r->path_len > h->len) {
+killed    66 records.c return type == P15_T_OPEN || type == P15_T_OPEN_VERDICT || type == P15_T
+killed    67 records.c case P15_T_SNAP_DONE: return version == 1 ? sizeof(struct p15_snap_done_
+killed    68 records.c ((const struct p15_snap_done_v2 *)data)->fd_pass > 1) {
+killed    69 records.c case P15_T_FLOW:   return version == 1 ? sizeof(struct p15_flow_v1) : 0;
+killed    70 records.c case P15_T_FLOW_STATS: return version == 1 ? sizeof(struct p15_flow_stat
+killed    71 records.c case P15_T_FLOW_STATS: return "FLOW_STATS";
+killed    72 records.c case P15_T_SELF_STATS: return version == 1 ? sizeof(struct p15_self_stat
+killed    73 records.c case P15_T_CANARY_MISS: return version == 1 ? sizeof(struct p15_canary_m
+killed    74 records.c case P15_T_CANARY_MISS: return "CANARY_MISS";
+killed    75 records.c case P15_T_WAL_SPACE: return version == 1 ? sizeof(struct p15_wal_space_
+killed    76 records.c case P15_T_FILE:   return version == 1 ? sizeof(struct p15_file_v1) : 0;
+killed    77 records.c } else if (h->type == P15_T_FLOW) {
+killed    78 records.c || h->type == P15_T_FD || h->type == P15_T_FILE) {
+killed    79 records.c P15_FF_VECTORED | P15_FF_START_UNKNOWN;
+killed    80 records.c if (r->kind < 1 || r->kind > P15_FLOW_KIND_MAX ||
+killed    81 records.c r->reason < 1 || r->reason > P15_FLOW_REASON_MAX) {
+killed    82 records.c r->reason < 1 || r->reason > P15_FLOW_REASON_MAX) {
+killed    83 records.c if (r->count < 1 || r->bytes < r->count ||
+killed    84 records.c if (r->count < 1 || r->bytes < r->count ||
+killed    85 records.c (r->reason == P15_FLOW_REASON_SINGLE && r->count != 1)) {
+killed    86 records.c if (((r->fflags & P15_FF_PEEK) && r->kind != P15_FLOW_KIND_RECV) ||
+killed    87 records.c ((r->fflags & (P15_FF_VECTORED | P15_FF_START_UNKNOWN)) && !vfs)) {
+killed    88 records.c ((r->fflags & (P15_FF_VECTORED | P15_FF_START_UNKNOWN)) && !vfs)) {
+killed    89 records.c if ((r->fflags & P15_FF_OBJ_NEW) && !(r->fflags & P15_FF_UNREGISTERED)) 
+killed    90 records.c if (r->reason != P15_FLOW_REASON_SINGLE &&
+killed    91 records.c !!(r->fflags & P15_FF_UNREGISTERED) != (r->reason == P15_FLOW_REASON_MAP
+killed    92 records.c if (r->facts_len > P15_PART_OBJFACTS_SIZE || fixed + r->facts_len > h->l
+killed    93 records.c r->fflags & P15_FF_OBJ_NEW,
+killed    94 records.c if (check_tail(data, fixed, r->facts_len, 0, why))
+killed    95 records.c if (memcmp(r->_pad, zero, sizeof(zero))) {
+killed    96 records.c if (r->fflags & ~P15_FF_OBJ_NEW) {
+killed    97 records.c if (r->seen < 3 || r->seen > 5) {
+killed    98 records.c if (!!(h->flags & P15_F_TRUNCATED) != (r->name_full != r->name_len) || r
+killed    99 records.c r->name_len > P15_FILE_V1_NAME_MAX ||
+killed    100 records.c r->fflags & P15_FF_OBJ_NEW,
+killed    101 records.c if (check_tail(data, fixed, (size_t)r->facts_len + r->name_len, 0, why))
+killed    102 records.c if (memcmp(r->_pad, zero, sizeof(zero))) {
+killed    103 records.c case P15_T_FLOW:       return "FLOW";
+killed    104 records.c kinds[r->kind <= P15_FLOW_KIND_MAX ? r->kind : 0]
+killed    105 snapshot_frame.c if (h->type != f->type)
+killed    106 snapshot_frame.c return h->version == P15_FD_VERSION && ((const struct p15_fd *)rec)->sna
+killed    107 snapshot_frame.c return len >= sizeof(struct p15_fd) && len <= P15_FD_MAX_SIZE && len % 8
+killed    108 snapshot_frame.c f->entries = &done->fd_entries;
+killed    109 snapshot_frame.c f->invalid = &done->fd_invalid;
+killed    110 snapshot_frame.c f->error = &done->fd_error;
+killed    111 snapshot_frame.c if (!d->fd_pass)
+killed    112 snapshot_frame.c if (d->fd_error) {
+killed    113 snapshot_frame.c if (d->fd_files != d->fd_no_inode + d->fd_emitted + d->fd_write_failed) 
+killed    114 snapshot_frame.c if (d->fd_files != d->fd_no_inode + d->fd_emitted + d->fd_write_failed) 
+killed    115 snapshot_frame.c if (d->fd_emitted != d->fd_entries + d->fd_invalid + d->fd_unwritten) {
+killed    116 snapshot_frame.c if (d->fd_emitted != d->fd_known + d->fd_registered + d->fd_map_full) {
+killed    117 snapshot_frame.c if (d->fd_write_failed || d->fd_invalid || d->fd_unwritten) {
+killed    118 snapshot_frame.c return fd_books_close(d, why, n);
+killed    119 snapshot_frame.c d->fd_pass = 1;
+mutation sweep: 120/120 killed
