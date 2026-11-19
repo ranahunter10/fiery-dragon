@@ -55,6 +55,22 @@ Expect R4 to fire twice: once for the injected shell, and once for an ordinary l
    - processes that started before the capture are labelled, not guessed;
    - nothing is dropped without a counter (STATS/NET_STATS; GAP windows).
 
+## The storybook: the attack path, told step by step
+
+`run_demo.sh` also writes `attack-path.json` (the path as a story document) and `storybook.html`, a page that plays the attack path one edge at a time (`python3 -m p15.graph.viewer`; `p15.graph.story --json --viewer`). The page is one file and fetches nothing, so it opens from the copied folder on the laptop like the other reports.
+
+- **What it shows:** the same nodes, edges, times and alerts as `attack-path.txt`, laid out in time order with sockets above the process line and files below. Chapters are found from the data: how the start was reached (the cause chain), the start, then one chapter per command the injected shell ran (children forked within 2 ms, such as the two ends of `curl … | sh`, share one), then what followed. Each alert is flagged on the timeline at the EXECUTE that fired it.
+- **Driving it:** `Play`, or `→` and `←` one edge at a time; `Page Down` for the next chapter; click a box for all its edges, and an edge in that list to jump to it; `O` shows the whole graph. The camera follows the story until you drag or zoom; `F` turns following back on. `How to read this` explains every mark.
+- **The recorded run of 14 November** is [`storybook-2026-11-14.html`](storybook-2026-11-14.html), read back from the committed evidence ([`attack-path.txt`](../evidence/vm/2026-11-14-demo/attack-path.txt), with `rules.txt` for the alert off the path). It is the fallback if the live run fails. Regenerate it after a change to the page or the parser (a test fails while it is stale):
+
+  ```bash
+  E=docs/evidence/vm/2026-11-14-demo
+  PYTHONPATH=python python3 -m p15.graph.viewer --from-text $E/attack-path.txt --rules $E/rules.txt \
+      --manifest $E/manifest.txt --title "The demo attack, 14 November 2026" -o docs/demo/storybook-2026-11-14.html
+  ```
+
+- **What it is not:** it decides nothing. The page lays out p15.graph.story's output and plays it; the reading back of a text report is strict, so a line it does not recognise is an error with its line number, never a shorter story. Times read back from text have millisecond precision.
+
 ## What to say if asked
 
 - **"Why no parent for the shell that ran the script?"** It started before the capture. Its parent comes with the start-up snapshot (Phase 1 step 4c), and the report says so instead of inventing one.

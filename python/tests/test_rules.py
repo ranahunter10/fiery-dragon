@@ -231,6 +231,36 @@ class Story(unittest.TestCase):
         s2 = ST.build(g.con, self.n["benign"], 10.0)
         self.assertIn("file (pipe) ", " ".join(s2["labels"].values()))
 
+    def test_story_document_agrees_with_the_text_read_back(self):
+        """story.doc (from the graph) and p15.graph.viewer.from_text (from story.text) are the two ways
+        into the storybook: for the same path they must hold the same nodes, steps, edges and alerts."""
+        from p15.graph import viewer as V
+        alerts = RL.run(self.g.con)
+        s = ST.build(self.g.con, self.n["sh"], 10.0)
+        live = ST.doc(s, alerts, "g.duckdb")
+        back = V.from_text(ST.text(s, alerts))
+        sh = {n["id"]: n["short"] for n in live["nodes"]}
+
+        def t3(t):
+            return None if t is None else f"{t:+.3f}"
+
+        self.assertEqual(sorted(sh.values()), sorted(n["id"] for n in back["nodes"]))
+        self.assertEqual(live["counts"], back["counts"])
+        self.assertEqual(sh[live["start"]], back["start"])
+        self.assertEqual([(t3(w["t"]), sh[w["src"]], sh[w["dst"]], w["op"]) for w in live["why"]],
+                         [(t3(w["t"]), w["src"], w["dst"], w["op"]) for w in back["why"]])
+        self.assertEqual([(t3(e["t"]), sh[e["src"]], sh[e["dst"]], e["op"], e["count"], e["bytes"], e["called_as"])
+                          for e in live["edges"]],
+                         [(t3(e["t"]), e["src"], e["dst"], e["op"], e["count"], e["bytes"], e["called_as"])
+                          for e in back["edges"]])
+        self.assertEqual(sorted((sh[p["client"]], sh[p["server"]]) for p in live["pairs"]),
+                         sorted((p["client"], p["server"]) for p in back["pairs"]))
+        self.assertEqual([(a["rule"], a["detail"], sh[a["node"]]) for a in live["alerts"] if a["on_path"]],
+                         [(a["rule"], a["detail"], a["node"]) for a in back["alerts"]])
+        self.assertGreater(len(live["edges"]), 5)
+        self.assertTrue(any(not a["on_path"] for a in live["alerts"]))   # the benign shell's R4, off the path
+        self.assertIn('id="story-data"', V.render(live))
+
     def test_short_labels(self):
         self.assertEqual(ST.short("proc 7 nc (nc -w1 x)"), "proc 7 nc")
         self.assertEqual(ST.short("proc 422 3 (kworker)"), "proc 422 3 [kworker]")

@@ -1,0 +1,19 @@
+# package and repository checks, 2026-11-18T18:46:02Z
+## outer SHA256SUMS
+OK 1430
+## dragon-handoff-2026-11-15/SHA256SUMS
+OK 32
+## GitHub main
+b5331c23c004f2e009d43eb1c7a4aef090ab1fdf
+## GitHub branches vs the bundle's refs/remotes/origin
+65 GitHub branches, 0 differ
+## trees promised by prs/README.md
+net/socket-join 26a3602 tree f58a7d176399f271ef4c5ca77f184b5c65e50ee1 (README: f58a7d176399f271ef4c5ca77f184b5c65e50ee1)
+dragon/demo after git am: tree 7e20dc509ad71f830c94c5b0ccdd3c471c2bd1f0 (README: 7e20dc509ad71f830c94c5b0ccdd3c471c2bd1f0)
+dragon/workloads after git am: tree dfb62a8f8c124e459d69b85d422e1c7ddabdb51a (README: dfb62a8f8c124e459d69b85d422e1c7ddabdb51a)
+## open PRs: not checked here (this session's GitHub API access is refused for the repository: HTTP 403)
+## session container
+Python 3.13.18
+ModuleNotFoundError: No module named 'duckdb'
+ModuleNotFoundError: No module named 'google_crc32c'
+libelf-dev not installed; package installs are blocked in this session

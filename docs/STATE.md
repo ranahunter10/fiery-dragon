@@ -2,7 +2,7 @@
 
 > The single source of truth for where the project stands. It is updated at the end of every working session, in the same PR as the work.
 
-**Last updated:** 2026-11-14 (UTC), PR "graph: FLOW and FILE in the graph; tracking over intervals" (stacked on #90), updated to #90's head
+**Last updated:** 2026-11-18 (UTC), branch `feat/graph-story-viewer` (stacked on `dragon/workloads`): the storybook viewer, and the handoff of 2026-11-18 checked (E-0328, E-0329). Not updated for 15-17 November beyond that
 **Phase:** 1, spine (starting). Phase 0 is closed for what the spine needs; its remaining items are scheduled before the phases that need them (audit §4).
 
 ## Resuming a session (read this first, then stop reading)
@@ -358,6 +358,14 @@ Built: four graph rules (`python3 -m p15.graph.rules`), the report's first detec
 
 128. **The demo is run with `--flow`.** Without the flow programs, R1 (dropper) cannot see the write, and the path cannot follow a file from its writer to its reader. Recommendation: make `--flow` the demo's default in `run_demo.sh`; today the caller passes it in `P15D_FLAGS`.
 129. **R4 fires on every shell a network-facing process starts**, so the demo's harmless lookups fire it too. Recommendation: keep the rule as a pattern (the report's tier 1) and say so in the presentation. A filter on the request's content would be a detector, which is the job of tiers 2 and 3.
+
+### The storybook viewer (2026-11-18; E-0328, E-0329)
+
+Built: `python3 -m p15.graph.viewer`, one offline page that plays the attack path of `p15.graph.story` edge by edge, in chapters, with the alerts on its timeline; `story.py --json --viewer`; `run_demo.sh` writes both. The recorded run of 14 November is [`docs/demo/storybook-2026-11-14.html`](demo/storybook-2026-11-14.html), read back from its evidence. Checked in the session container: the reader's tests and the page in a headless Chromium (desktop, phone, dark). Not run there: `test_rules.py` (DuckDB), so the check that the live document equals the text read back waits for CI or the VM.
+
+143. **Where this goes.** It needs `story.py`, which is on `dragon/workloads` (chain A: `net/socket-join` → dragon-demo → dragon-workloads), not on `main`. Options: (a) a PR stacked on dragon-workloads' PR once chain A is pushed; (b) wait for chain A to merge and open it on `main`. Recommendation: (a), so CI runs `test_rules.py`'s cross-check now. Evidence: `prs/README.md` of Dragon's handoff; E-0329.
+144. **Its size.** About 1,800 changed lines without the generated page and the evidence: the page template is 1,069 (HTML, CSS and script), the reader and its tests 618, the rest about 125. CONTRIBUTING asks for about 400. Options: (a) one PR, reviewed as the reader with its tests, then the page with its screenshots; (b) two stacked PRs, reader and format first, page second. Recommendation: (b) if the review is to be line by line, since the page can change without the format.
+145. **The storybook in the presentation.** Options: (a) the talking point for the attack path (after `--port 4444`), with the committed 14 November page as the fallback; (b) keep `attack-path.html` and show the storybook only if asked. Recommendation: (a), after a rehearsal on the laptop's browser from the VM's copied folder. Evidence: [docs/demo/README.md](demo/README.md) "The storybook".
 
 ### Decisions waiting from Dragon's design review (2026-11-13; numbered from 101)
 

