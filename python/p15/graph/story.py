@@ -150,9 +150,11 @@ def build(con: duckdb.DuckDBPyConnection, start: int, window_s: float) -> dict:
             noise.add(n)
             continue
         kept.add(n)
-    # the program each kept process ran: upstream of it, so a forward walk never reaches it
-    for src, _dst in con.execute("SELECT src, dst FROM edge WHERE op = 'EXECUTE' AND ok AND dst IN (SELECT unnest(?::BIGINT[]))",
-                                 [sorted(kept)]).fetchall():
+    # the program each kept process ran: upstream of it, so a forward walk never reaches it. Only a
+    # run inside the story (from the start's first moment): an earlier one is not among the edges
+    # shown, so its program would be counted as shown and never appear
+    for src, _dst in con.execute("SELECT src, dst FROM edge WHERE op = 'EXECUTE' AND ok AND ts_ns >= ? "
+                                 "AND dst IN (SELECT unnest(?::BIGINT[]))", [int(first), sorted(kept)]).fetchall():
         kept.add(src)
         noise.discard(src)
     reached = set(back) | set(fwd) | kept   # programs of kept processes are added, not walked to
